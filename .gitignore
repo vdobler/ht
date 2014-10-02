@@ -1,0 +1,6 @@
+*~
+ht.test
+tmp/*
+*.R
+*.png
+ht/ht
