@@ -26,7 +26,7 @@ type Command struct {
 
 	Usage string       // must start with command name
 	Help  string       // the output of 'ht help'
-	Flag  flag.FlagSet // special flags for this command
+	Flag  flag.FlagSet // the flags for this command
 }
 
 // Name returns the command's name: the first word in the usage line.
@@ -66,12 +66,13 @@ The commands are
     * list  List the tests found in suite.ht
     * exec  Execute the tests found in suite.ht
     * perf  Run a load test
+    * bench Benchmark the tests
 
 Flags:
     -D <name>=<value>  set parameter exapnsion of <name> to <value>  
-    -only <id>,...   run only test with the given ids
-    -skip <id>,...   skip tests wih the given ids ...
-    -
+    -I <path>          add <path> to the search path for suites/tests
+    -only <id>,...     run only test with the given ids
+    -skip <id>,...     skip tests wih the given ids ...
 
 Tests IDs have the following format <SuiteNo>.<Type><TestNo> with
 <SuiteNo> and <TestNo> the sequential numbers of the suite and the
@@ -84,24 +85,38 @@ test inside the suite. Type is either empty, "u" for setUp test or
 // Variables which can be set via the command line. Statisfied flag.Value interface.
 type cmdlVar map[string]string
 
-func (c cmdlVar) String() string { return "" }
-func (c cmdlVar) Set(s string) error {
+func (v cmdlVar) String() string { return "" }
+func (v cmdlVar) Set(s string) error {
 	part := strings.SplitN(s, "=", 2)
 	if len(part) != 2 {
 		return fmt.Errorf("Bad argument '%s' to -D commandline parameter", s)
 	}
-	c[part[0]] = part[1]
+	v[part[0]] = part[1]
+	return nil
+}
+
+// Includepath which can be set via the command line. Statisfied flag.Value interface.
+type cmdlIncl []string
+
+func (i *cmdlIncl) String() string { return "" }
+func (i *cmdlIncl) Set(s string) error {
+	s = strings.TrimRight(s, "/")
+	*i = append(*i, s)
 	return nil
 }
 
 // Most of the flags.
-var variablesFlag cmdlVar = make(cmdlVar) // flag -D
+var variablesFlag cmdlVar = make(cmdlVar)    // flag -D
+var includeFlag cmdlIncl = make(cmdlIncl, 0) // flag -I
 var onlyFlag = flag.String("only", "", "run only these tests, e.g. -only 3,4,9")
 var skipFlag = flag.String("skip", "", "skip these tests, e.g. -skip 2,5")
 
 func main() {
+	flag.Var(variablesFlag, "D", "set/overwrite a parameter e.g. '-D HOST=test.domain.org'")
+	flag.Var(&includeFlag, "I", "add path to include paths")
 	flag.Usage = usage
 	flag.Parse()
+	addCWD(&includeFlag)
 
 	args := flag.Args()
 	if len(args) < 1 {
@@ -254,4 +269,15 @@ func mustAtoi(s string) int {
 		log.Fatalf("%s", err.Error())
 	}
 	return n
+}
+
+// add current working direcory to end of include path slice if not already
+// there.
+func addCWD(i *cmdlIncl) {
+	for _, p := range *i {
+		if p == "." {
+			return
+		}
+	}
+	*i = append(*i, ".")
 }
