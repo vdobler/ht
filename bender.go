@@ -52,18 +52,30 @@ func makeRequestChannel(suites []*Suite, count int, duration time.Duration) chan
 	return rc
 }
 
+// LoadTestOptions controls details of a load test.
 type LoadTestOptions struct {
-	Type    string // one of "throughput" or "concurrency"
-	Count   int
+	// Type determines wether a "throughput" or "concurrency" test is done.
+	Type string
+
+	// Count many request are made during the load test.
+	Count int
+
+	// Timout determines how long a test may run: The load test is
+	// terminated if timeout is exeded, even if not Count many requests
+	// heve been made.
 	Timeout time.Duration
-	Rate    float64
+
+	// Rate of requests in [request/sec].
+	Rate float64
+
+	// Uniform changes to uniform (equaly spaced) distribution of
+	// requests. Fals uses an exponential distribution.
 	Uniform bool
 }
 
-// LoadTest will perform a load test of the main tests of suites by repeating them
-// until count request have been made or the load tests takes longer than duration.
-// The load test is a throughput test if rate > 0 and a concurrent load test if
-// concurrent > 0.
+// LoadTest will perform a load test of the main tests of suites, the details
+// of the load test is conctrolled by opts.
+
 // Errors are reported if any suite's Setup failed.
 func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Result, error) {
 	if opts.Type != "throughput" && opts.Type != "concurrency" {
