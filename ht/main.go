@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 
@@ -170,12 +169,6 @@ func help(args []string) {
 func loadSuites(args []string) []*ht.Suite {
 	var suites []*ht.Suite
 
-	// Construct search paths to scan for suite files.
-	var searchPaths []string
-	for _, s := range args {
-		searchPaths = append(searchPaths, path.Dir(s))
-	}
-	searchPaths = append(searchPaths, ".")
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 
 	// Handle -only and -skip flags.
@@ -184,9 +177,7 @@ func loadSuites(args []string) []*ht.Suite {
 	// Input and setup suites from command line arguments.
 	for _, s := range args {
 		// Prepend "current" dir. Ugly, inefficent, works.
-		thisSearchPath := append([]string{path.Dir(s)}, searchPaths...)
-		filename := path.Base(s)
-		suite, err := ht.LoadSuite(filename, thisSearchPath)
+		suite, err := ht.LoadSuite(s, includeFlag)
 		if err != nil {
 			log.Fatalf("Cannot read suite %q: %s", s, err)
 		}
