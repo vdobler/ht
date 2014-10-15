@@ -6,6 +6,7 @@ package ht
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path"
@@ -208,31 +209,43 @@ type jsonSuite struct {
 }
 
 // loadJsonSuite loads the file with the given filename and decodes into a jsonSuite.
-// It will try to find filename in all paths.
-func loadJsonSuite(filename string, paths []string) (rs jsonSuite, err error) {
+// It will try to find filename in all paths and will report the dir path back in which
+// the suite was found.
+func loadJsonSuite(filename string, paths []string) (rs jsonSuite, dir string, err error) {
 	var all []byte
 	for _, p := range paths {
-		name := path.Join(p, filename)
-		all, err = ioutil.ReadFile(name)
+		dir = path.Join(p, filename)
+		all, err = ioutil.ReadFile(dir)
 		if err == nil {
 			break
 		}
 	}
+	dir = path.Dir(dir)
 	if err != nil {
-		return rs, err
+		return rs, dir, err
 	}
 	err = json.Unmarshal(all, &rs)
 	if err != nil {
-		return rs, err
+		return rs, dir, err
 	}
-	return rs, nil
+	return rs, dir, nil
 }
 
-// LoadSuite reads a suite from filename. Uargh
+// LoadSuite reads a suite from filename while looking for filename in the
+// filesystem paths.
+//
+// References to individual tests are made by name of the test with two
+// special ways to load test from their own files or from different suits
+// to access "non-local tests":
+//     @name-of-file-with-one-test             will load a single test from
+//                                             the given file
+//     Name of test @ filename-of-other suite  will use test "Name of Test"
+//                                             from the suite found in the
+//                                             given file
+// Bothe filenames are relative to the position of the suite beeing read
+// (i.e. pathsis ignored while loading such tests).
 func LoadSuite(filename string, paths []string) (*Suite, error) {
-	loaded := make(map[string][]*Test) // filename --> Tests
-
-	s, err := loadJsonSuite(filename, paths)
+	s, dir, err := loadJsonSuite(filename, paths)
 	if err != nil {
 		return nil, err
 	}
@@ -244,51 +257,24 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 		OmitChecks:  s.Suite.OmitChecks,
 	}
 
-	findTest := func(name string) *Test {
-		var collection []*Test
-		if i := strings.LastIndex(name, "@"); i != -1 {
-			file := strings.TrimSpace(name[i+1:])
-			if t, ok := loaded[file]; ok {
-				collection = t
-			} else {
-				rs, err := loadJsonSuite(file, paths)
-				if err != nil {
-					return nil // TODO, return error here
-				}
-				loaded[file] = rs.Tests
-				collection = rs.Tests
-				name = strings.TrimSpace(name[:i])
-			}
-		} else {
-			collection = s.Tests
-		}
-
-		for i := range collection {
-			if collection[i].Name == name {
-				return collection[i]
-			}
-		}
-		return nil
-	}
-
 	for _, name := range s.Suite.Setup {
-		tp := findTest(name)
-		if tp == nil {
-			return nil, fmt.Errorf("no test %q found", name)
+		tp, err := findTest(name, s.Tests, dir)
+		if err != nil {
+			return nil, fmt.Errorf("test %q: %s", name, err)
 		}
 		suite.Setup = append(suite.Setup, tp)
 	}
 	for _, name := range s.Suite.Tests {
-		tp := findTest(name)
-		if tp == nil {
-			return nil, fmt.Errorf("no test %q found", name)
+		tp, err := findTest(name, s.Tests, dir)
+		if err != nil {
+			return nil, fmt.Errorf("test %q: %s", name, err)
 		}
 		suite.Tests = append(suite.Tests, tp)
 	}
 	for _, name := range s.Suite.Teardow {
-		tp := findTest(name)
-		if tp == nil {
-			return nil, fmt.Errorf("no test %q found", name)
+		tp, err := findTest(name, s.Tests, dir)
+		if err != nil {
+			return nil, fmt.Errorf("test %q: %s", name, err)
 		}
 		suite.Teardown = append(suite.Teardown, tp)
 	}
@@ -298,4 +284,50 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 	suite.OmitChecks = s.Suite.OmitChecks
 
 	return &suite, nil
+}
+
+// findTest tries to find a test with the given name in the given Suite.
+// Non-local tests are tried to be loaded from dir.
+func findTest(name string, collection []*Test, dir string) (*Test, error) {
+	if strings.HasPrefix(name, "@") {
+		name = strings.TrimSpace(name[1:])
+		name = path.Join(dir, name)
+		println("Local Single Test", name)
+		return loadJsonTest(name)
+	}
+
+	if i := strings.LastIndex(name, "@"); i != -1 {
+		// Load suite only from given dir (possible relative to dir).
+		file := strings.TrimSpace(name[i+1:])
+		name = strings.TrimSpace(name[:i])
+		println("Local References Test", file, name)
+		rs, _, err := loadJsonSuite(file, []string{dir})
+		if err != nil {
+			return nil, err
+		}
+		collection = rs.Tests
+	} else {
+		println("Plain Test", name)
+	}
+
+	for i := range collection {
+		if collection[i].Name == name {
+			return collection[i], nil
+		}
+	}
+	return nil, errors.New("not found")
+}
+
+// loadJsonTest loads the file with the given filename and decodes into a Test.
+func loadJsonTest(filename string) (*Test, error) {
+	all, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	t := &Test{}
+	err = json.Unmarshal(all, t)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
 }
