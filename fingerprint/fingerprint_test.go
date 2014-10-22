@@ -59,7 +59,7 @@ func TestNewColorHist(t *testing.T) {
 		img := readImage("testdata/" + file + ".jpg")
 		ch := NewColorHist(img)
 		chstr := ch.String()
-		ch2, err := NewColorHistFromString(chstr)
+		ch2, err := ColorHistFromString(chstr)
 		if err != nil {
 			t.Errorf("%s: %s", file, err.Error())
 		}

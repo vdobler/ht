@@ -229,8 +229,8 @@ func NewBMVHash(img image.Image) BMVHash {
 	return hash
 }
 
-// ColorHist is a normalized colour histogram based on the
-// Greta Mecbeth Color Picker.
+// ColorHist is a normalized color histogram based on the
+// colors from the Greta Mecbeth Color Picker.
 type ColorHist [24]byte
 
 // String produces a string representation by renormalizing the histogram
@@ -243,8 +243,8 @@ func (ch ColorHist) String() string {
 	return string(buf)
 }
 
-// NewColorHistFromString converts 24 hex digits to a ColorHist.
-func NewColorHistFromString(s string) (ColorHist, error) {
+// ColorHistFromString converts 24 hex digits to a ColorHist.
+func ColorHistFromString(s string) (ColorHist, error) {
 	ch := ColorHist{}
 	if len(s) != 24 {
 		return ch, fmt.Errorf("fingerprint: Bad format for ColorHist string %q", s)
@@ -283,6 +283,7 @@ func NewColorHistFromString(s string) (ColorHist, error) {
 	return ch, nil
 }
 
+// ColorHist computest the color histogram of img.
 func NewColorHist(img image.Image) ColorHist {
 	bounds := img.Bounds()
 
@@ -306,13 +307,16 @@ func NewColorHist(img image.Image) ColorHist {
 	return ch
 }
 
+// colorBin returns the index of the nearest color in macbeth.
+// Using an euclidean distance in RGB space because I have not the slightest
+// understanding of color spaces and/or color perception.
 func colorBin(c color.Color) int {
 	rr, gg, bb, _ := c.RGBA()
 	r := int(rr >> 8)
 	g := int(gg >> 8)
 	b := int(bb >> 8)
 
-	min, bin := 200000, -1 // 200000 > 195075 = 3 * 255²
+	min, bin := 200000, -1 // 200000 > 196608 = 3 * 256²
 	for i, mb := range macbeth {
 		rd, gd, bd := r-mb[0], g-mb[1], b-mb[2]
 		d := rd*rd + gd*gd + bd*bd
@@ -320,12 +324,11 @@ func colorBin(c color.Color) int {
 			min, bin = d, i
 		}
 	}
-	if bin < 0 {
-		panic(fmt.Sprintf("No bin found for color %04x,%04x,%04x", rr, gg, bb))
-	}
 	return bin
 }
 
+// The 24 Macbeth colors from the ColorChecker as 8bit RGB values, taken from
+// http://en.wikipedia.org/wiki/ColorChecker.
 var macbeth [][3]int = [][3]int{
 	// Natural colors
 	{0x73, 0x52, 0x44},
