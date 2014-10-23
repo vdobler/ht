@@ -229,6 +229,14 @@ func NewBMVHash(img image.Image) BMVHash {
 	return hash
 }
 
+// ----------------------------------------------------------------------------
+// Color Histogram Fingerprinting
+//
+// See Marios A. Gavrielides, Elena Sikudova, Dimitris Spachos, and Ioannis Pitas
+// in G. Antoniou et al. (Eds.): SETN 2006, LNAI 3955, pp. 494–497, 2006
+// Springer-Verlag Berlin Heidelberg 2006
+// http://poseidon.csd.auth.gr/papers/PUBLISHED/CONFERENCE/pdf/Gavrielides06a.pdf
+
 // ColorHist is a normalized color histogram based on the
 // colors from the Greta Mecbeth Color Picker.
 type ColorHist [24]byte
@@ -241,6 +249,37 @@ func (ch ColorHist) String() string {
 		buf = strconv.AppendInt(buf, int64(n>>4), 16)
 	}
 	return string(buf)
+}
+
+func (h ColorHist) l1Norm(g ColorHist) float64 {
+	// The histograms do not contain absolute counts but are scaled
+	// the fullest bin equaling 255. Rescaling so that both images
+	// contain the same number of pixels.
+	nh, ng := 0, 0
+	for i := 0; i < 24; i++ {
+		nh += int(h[i])
+		ng += int(g[i])
+	}
+	rh, rg := 1.0, 1.0
+	if nh > ng {
+		rg = float64(nh) / float64(ng)
+	} else {
+		rh = float64(ng) / float64(nh)
+	}
+	// 	fmt.Printf("%d  %d  rh=%.4f  rg=%.4f\n", nh, ng, rh, rg)
+	sum := 0.0
+	for i := 0; i < 24; i++ {
+		d := (rh*float64(h[i]) - rg*float64(g[i])) / 255
+		// fmt.Printf("  %2d (%3d,%3d) [%.4f,%.4f] %.4f\n", i, h[i], g[i],
+		//	rh*float64(h[i]), rg*float64(g[i]), d)
+		if d >= 0 {
+			sum += d
+		} else {
+			sum -= d
+		}
+	}
+
+	return sum / (24 * rg * rh)
 }
 
 // ColorHistFromString converts 24 hex digits to a ColorHist.

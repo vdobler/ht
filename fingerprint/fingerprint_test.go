@@ -29,7 +29,7 @@ func readImage(fn string) image.Image {
 }
 
 func TestBinColor(t *testing.T) {
-	for _, file := range []string{"boat", "clock", "lena", "mandrill", "peppers"} {
+	for _, file := range []string{"boat", "clock", "lena", "baboon", "pepper"} {
 		img := readImage("testdata/" + file + ".jpg")
 		bounds := img.Bounds()
 		bined := image.NewRGBA(bounds)
@@ -54,8 +54,79 @@ func TestBinColor(t *testing.T) {
 	}
 }
 
+func TestUniformColorHist(t *testing.T) {
+	red := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	for x := 0; x < 100; x++ {
+		for y := 0; y < 100; y++ {
+			red.SetRGBA(x, y, color.RGBA{0xff, 0, 0, 0xff})
+		}
+	}
+	green := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	for x := 0; x < 100; x++ {
+		for y := 0; y < 100; y++ {
+			green.SetRGBA(x, y, color.RGBA{0, 0xff, 0, 0xff})
+		}
+	}
+	blue := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	for x := 0; x < 100; x++ {
+		for y := 0; y < 50; y++ { // Only half filled!
+			blue.SetRGBA(x, y, color.RGBA{0, 0, 0xff, 0xff})
+		}
+	}
+	rh := NewColorHist(red)
+	gh := NewColorHist(green)
+	bh := NewColorHist(blue)
+
+	if rh.String() != "00000000000000f000000000" ||
+		gh.String() != "0000000000000f0000000000" ||
+		bh.String() != "000000000000f0000000000f" {
+		t.Fatalf("Got rh=%s gh=%s bh=%s", rh.String(), gh.String(), bh.String())
+	}
+
+	rb, rg, bg := rh.l1Norm(bh), rh.l1Norm(gh), bh.l1Norm(gh)
+
+	// Two bins out of 24 differ completely
+	if rg < 2.0/24-1e-6 || rg > 2.0/24+1e-6 {
+		t.Errorf("Got %.6f, want 2/24=0.0833", rg)
+	}
+
+	// One bin differs completely (f vs 0), two differ half (scaling!) (0 vs f/2)
+	if rb < 2.0/24-1e-6 || rb > 2.0/24+1e-6 {
+		t.Errorf("Got %.6f, want 2/24=0.0833", rb)
+	}
+	if bg < 2.0/24-1e-6 || bg > 2.0/24+1e-6 {
+		t.Errorf("Got %.6f, want 2/24=0.0833", bg)
+	}
+}
+
+func TestMaxDiffColorHist(t *testing.T) {
+	first := image.NewRGBA(image.Rect(0, 0, 100, 12))
+	for x := 0; x < 100; x++ {
+		for y := 0; y < 12; y++ {
+			c := color.RGBA{uint8(macbeth[y][0]), uint8(macbeth[y][1]),
+				uint8(macbeth[y][2]), 0xff}
+			first.SetRGBA(x, y, c)
+		}
+	}
+	second := image.NewRGBA(image.Rect(0, 0, 100, 12))
+	for x := 0; x < 100; x++ {
+		for y := 0; y < 12; y++ {
+			c := color.RGBA{uint8(macbeth[y+12][0]),
+				uint8(macbeth[y+12][1]), uint8(macbeth[y+12][2]), 0xff}
+			second.SetRGBA(x, y, c)
+		}
+	}
+	h := NewColorHist(first)
+	g := NewColorHist(second)
+	if h.l1Norm(g) < 0.99999999 {
+		t.Errorf("g=%s  h=%s  delte=%f\n", h.String(), g.String(), h.l1Norm(g))
+	}
+}
+
 func TestNewColorHist(t *testing.T) {
-	for _, file := range []string{"boat", "clock", "lena", "mandrill", "peppers"} {
+	files := []string{"boat", "clock", "lena", "lenal", "lenas", "lenat", "lenaf", "baboon", "pepper"}
+	hists := make(map[string]ColorHist)
+	for _, file := range files {
 		img := readImage("testdata/" + file + ".jpg")
 		ch := NewColorHist(img)
 		chstr := ch.String()
@@ -68,5 +139,23 @@ func TestNewColorHist(t *testing.T) {
 			t.Errorf("%s %s != %s", file, chstr, ch2str)
 		}
 		fmt.Printf("%10s: %s\n", file, chstr)
+		hists[file] = ch
 	}
+
+	fmt.Printf("           ")
+	for _, a := range files {
+		fmt.Printf("%-8s", a)
+	}
+	fmt.Println()
+	for _, a := range files {
+		h := hists[a]
+		fmt.Printf("%9s  ", a)
+		for _, b := range files {
+			g := hists[b]
+			delta := h.l1Norm(g)
+			fmt.Printf("%.4f  ", delta)
+		}
+		fmt.Println()
+	}
+
 }
