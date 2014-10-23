@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package response provides a type for caputiring a HTTP response. Its main
+// Package response provides a type for captuiring a HTTP response. Its main
 // purpose is breaking an import cycle between ht and ht/check.
 package response
 

@@ -201,6 +201,7 @@ type Image struct {
 func (c Image) Okay(response *response.Response) error {
 	img, format, err := image.Decode(response.BodyReader())
 	if err != nil {
+		fmt.Printf("Image.Okay resp.BodyReader=%#v\n", response.BodyReader())
 		return CantCheck{err}
 	}
 	// TODO: Do not abort on first failure.
