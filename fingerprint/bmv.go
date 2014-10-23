@@ -53,12 +53,21 @@ func (h BMVHash) String() string {
 
 // NewBMVHashFromString parses the hexadecimal number in s and panics
 // if s cannot be parsed to a uint64.
-func NewBMVHashFromString(s string) BMVHash {
+func BMVHashFromString(s string) (BMVHash, error) {
 	v, err := strconv.ParseUint(s, 16, 64)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
-	return BMVHash(v)
+	return BMVHash(v), nil
+}
+
+// BMVDelta returns the difference between the two block mean value hashes
+// h and g.  The difference is in the range [0,1] with 0 for identical
+// hashes and 1 for maximal different hashes (i.e. a Hamming distance of 64).
+// The lowest significant difference in BMVHashes is 2 bits corrsponding to
+// a delta of 2/64 = 0.03125.
+func BMVDelta(h, g BMVHash) float64 {
+	return float64(h.HammingDistance(g)) / 64
 }
 
 // HammingDistance returns the Hammig distance between
@@ -71,44 +80,6 @@ func (h BMVHash) HammingDistance(v BMVHash) int {
 		val &= val - 1
 	}
 	return dist
-}
-
-// BitBlock produces a binary representation.
-func (h BMVHash) BitBlock() []string {
-	block := make([]string, 8)
-	s := ""
-	for i := 0; i < 64; i++ {
-		if h&(1<<uint(63-i)) != 0 {
-			s += "1"
-		} else {
-			s += "0"
-		}
-		if i%8 == 7 {
-			block[i/8] = s
-			s = ""
-		}
-	}
-	return block
-}
-
-// Delta produces a small ASCII art string where each bit difference between
-// h and g is marked with "XX" and identical bits marked with "--".  The
-// resulting string consists of 8 lines (\n seperated), each 16 charater
-// long.
-func (h BMVHash) Delta(g BMVHash) string {
-	s := ""
-	for i := 0; i < 64; i++ {
-		var bit uint64 = (1 << uint(63-i))
-		if uint64(h)&bit != uint64(g)&bit {
-			s += "XX"
-		} else {
-			s += "--"
-		}
-		if i%8 == 7 {
-			s += "\n"
-		}
-	}
-	return s
 }
 
 // produce a [0, 0xFFFFFFFF] gray value from [0, 0xFFFF] r g b data

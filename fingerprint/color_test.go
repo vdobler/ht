@@ -124,8 +124,11 @@ func TestMaxDiffColorHist(t *testing.T) {
 }
 
 func TestNewColorHist(t *testing.T) {
-	files := []string{"boat", "clock", "lena", "lenal", "lenas", "lenat", "lenaf", "baboon", "pepper"}
+	files := []string{"boat", "clock", "lena", "lenal", "lenas", "lenat",
+		"lenaf", "baboon", "pepper"}
 	hists := make(map[string]ColorHist)
+	bmvs := make(map[string]BMVHash)
+
 	for _, file := range files {
 		img := readImage("testdata/" + file + ".jpg")
 		ch := NewColorHist(img)
@@ -140,6 +143,7 @@ func TestNewColorHist(t *testing.T) {
 		}
 		fmt.Printf("%10s: %s\n", file, chstr)
 		hists[file] = ch
+		bmvs[file] = NewBMVHash(img)
 	}
 
 	fmt.Printf("           ")
@@ -152,8 +156,13 @@ func TestNewColorHist(t *testing.T) {
 		fmt.Printf("%9s  ", a)
 		for _, b := range files {
 			g := hists[b]
-			delta := h.l1Norm(g)
-			fmt.Printf("%.4f  ", delta)
+			fmt.Printf("%.4f  ", ColorHistDelta(h, g))
+		}
+		fmt.Println()
+		fmt.Printf("           ")
+		for _, b := range files {
+			fmt.Printf("%.4f  ", BMVDelta(bmvs[a], bmvs[b]))
+
 		}
 		fmt.Println()
 	}

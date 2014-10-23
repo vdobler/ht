@@ -35,6 +35,13 @@ func (ch ColorHist) String() string {
 	return string(buf)
 }
 
+// ColorHistDelta returns the difference between the two color histograms
+// h and g.  The difference is in the range [0,1] with 0 for identical
+// color histograms and 1 for maximal different histograms.
+func ColorHistDelta(h, g ColorHist) float64 {
+	return h.l1Norm(g)
+}
+
 func (h ColorHist) l1Norm(g ColorHist) float64 {
 	// The histograms do not contain absolute counts but are scaled
 	// the fullest bin equaling 255. Rescaling so that both images

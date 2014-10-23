@@ -4,10 +4,7 @@
 
 package fingerprint
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 func TestHammingDistance(t *testing.T) {
 	a := BMVHash(0x99) // 10011001
@@ -29,13 +26,5 @@ func TestHammingDistance(t *testing.T) {
 	}
 	if c.HammingDistance(d) != 3 {
 		t.Fail()
-	}
-}
-
-func TestBitBlock(t *testing.T) {
-	h := BMVHash(0xff00aa0f55f03cc3)
-	b := strings.Join(h.BitBlock(), "|")
-	if b != "11111111|00000000|10101010|00001111|01010101|11110000|00111100|11000011" {
-		t.Errorf("Got %s", b)
 	}
 }

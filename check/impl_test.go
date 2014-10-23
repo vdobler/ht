@@ -121,6 +121,7 @@ var imageTests = []TC{
 	{imgr, Image{Format: "jpg"}, someError},
 	{imgr, Image{Format: "png", Width: 12}, someError},
 	{imgr, Image{Format: "png", Height: 8}, someError},
+	{imgr, Image{ColorHist: "000000000000000000f00007", Threshold: 0.01}, nil},
 }
 
 func TestImage(t *testing.T) {
