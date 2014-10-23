@@ -227,9 +227,9 @@ func (c Image) Okay(response *response.Response) error {
 			return CantCheck{fmt.Errorf("bad BMV hash: %s", err)}
 		}
 		imgBMV := fingerprint.NewBMVHash(img)
-		if fingerprint.BMVDelta(targetBMV, imgBMV) > c.Threshold {
-			return fmt.Errorf("Got BMV of %s, want %s",
-				imgBMV.String(), targetBMV.String())
+		if d := fingerprint.BMVDelta(targetBMV, imgBMV); d > c.Threshold {
+			return fmt.Errorf("Got BMV of %s, want %s (delta=%.4f)",
+				imgBMV.String(), targetBMV.String(), d)
 		}
 
 	}

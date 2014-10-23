@@ -163,6 +163,10 @@ var imageTests = []TC{
 	{imgl, Image{Format: "jpeg", ColorHist: "4f000000f400006010040004", Threshold: 0.01}, nil},
 	{imgl, Image{Format: "jpeg", BMV: "b698bd890b0b8f8c", Threshold: 0.01,
 		Width: 64, Height: 64}, nil},
+	{imgl, Image{ColorHist: "bababuba"}, someError},
+	{imgl, Image{ColorHist: "4f000000f40000601004000"}, someError},
+	{imgl, Image{ColorHist: "4f000000f40000601004000ff"}, someError},
+	{imgl, Image{BMV: "strange"}, someError},
 }
 
 func TestImage(t *testing.T) {
