@@ -12,7 +12,7 @@
 // and teardown actions.
 //
 // All elements like Checks, Request, Tests and Suites are organized in
-// a way to allow easy deserialisation from JSON. This allows to load
+// a way to allow easy deserialisation from a text format. This allows to load
 // and execute whole Suites at runtime.
 //
 // Checks
@@ -88,9 +88,10 @@
 // a malformed URL) or b) if the checks are malformed (e.g. uses a malformed
 // regexp). Such Tests/Checks are labeled Bogus.
 //
-// There are two ways in which a Tests may fail: 1) if the request itslef
-// fails or 2) if any of the checks fail. The first is labeled an Error,
-// failing checks are labeld a Failure.
+// There are three ways in which a Tests may fail:
+//   1. The test setup is malformed, such tests are called Bogus.
+//   2. The request itself fails. This is called an Error
+//   3. Any of the checks fail. This is called a Failure
 //
 // Unrolling a Test
 //

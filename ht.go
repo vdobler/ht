@@ -154,7 +154,7 @@ func (t *Test) Debugf(format string, v ...interface{}) {
 // on vars. The keys of vars are the variable names. The values of a
 // variable v are choosen from vars[v] by cycling through the list:
 // In the n'th repetition is vars[v][n%N] with N=len(vars[v])).
-func (test *Test) Repeat(count int, vars map[string][]string) []*Test {
+func Repeat(test *Test, count int, vars map[string][]string) []*Test {
 	reps := make([]*Test, count)
 	for r := 0; r < count; r++ {
 		// Construct appropriate Replacer from variables.
@@ -165,7 +165,7 @@ func (test *Test) Repeat(count int, vars map[string][]string) []*Test {
 			oldnew = append(oldnew, v[n])
 		}
 		replacer := strings.NewReplacer(oldnew...)
-		reps[r] = test.SubstituteVariables(replacer)
+		reps[r] = test.substituteVariables(replacer)
 	}
 	return reps
 }
@@ -196,8 +196,8 @@ func lcmOf(vars map[string][]string) int {
 	return n
 }
 
-// SubstituteVariables returns a copy of t with replacer applied.
-func (t *Test) SubstituteVariables(replacer *strings.Replacer) *Test {
+// substituteVariables returns a copy of t with replacer applied.
+func (t *Test) substituteVariables(replacer *strings.Replacer) *Test {
 	// Apply to name, description, URL and body.
 	c := &Test{
 		Name:        replacer.Replace(t.Name),

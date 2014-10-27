@@ -58,7 +58,7 @@ func (s *Suite) Init() {
 			tests = append(tests, t)
 		} else {
 			nreps := lcmOf(t.UnrollWith)
-			unrolled := t.Repeat(nreps, t.UnrollWith)
+			unrolled := Repeat(t, nreps, t.UnrollWith)
 			// Clear repetitions to prevent re-unrolling during
 			// a second Prepare.
 			for _, u := range unrolled {
