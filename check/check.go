@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	_ "image/gif"
 	_ "image/jpeg"
@@ -31,6 +33,7 @@ type Compiler interface {
 	Compile() error
 }
 
+// NameOf returns the name of the check.
 func NameOf(check Check) string {
 	typ := reflect.TypeOf(check)
 	if typ.Kind() == reflect.Ptr {
@@ -38,6 +41,67 @@ func NameOf(check Check) string {
 	}
 	return typ.Name()
 }
+
+// SubstituteVariables returns a deep copy of check with all exported string
+// fields in check modified by applying r.  TODO: applying r is not "variable replacing"
+func SubstituteVariables(check Check, r *strings.Replacer) Check {
+	src := reflect.ValueOf(check)
+	dst := reflect.New(src.Type()).Elem()
+	deepCopy(dst, src, r)
+	return dst.Interface().(Check)
+}
+
+// deepCopy copes src recursively to dst while transforming all string fields
+// by applying r.
+func deepCopy(dst, src reflect.Value, r *strings.Replacer) {
+	if !dst.CanSet() {
+		return
+	}
+	switch src.Kind() {
+	case reflect.String:
+		// TODO: maybe skip certain fields based on their struct tag?
+		dst.SetString(r.Replace(src.String()))
+	case reflect.Int, reflect.Int64:
+		t := r.Replace(strconv.FormatInt(src.Int(), 10))
+		i, _ := strconv.ParseInt(t, 10, 64)
+		dst.SetInt(i)
+	case reflect.Struct:
+		for i := 0; i < src.NumField(); i += 1 {
+			deepCopy(dst.Field(i), src.Field(i), r)
+		}
+	case reflect.Slice:
+		dst.Set(reflect.MakeSlice(src.Type(), src.Len(), src.Cap()))
+		for i := 0; i < src.Len(); i += 1 {
+			deepCopy(dst.Index(i), src.Index(i), r)
+		}
+	case reflect.Map:
+		dst.Set(reflect.MakeMap(src.Type()))
+		for _, key := range src.MapKeys() {
+			srcValue := src.MapIndex(key)
+			dstValue := reflect.New(srcValue.Type()).Elem()
+			deepCopy(dstValue, srcValue, r)
+			dst.SetMapIndex(key, dstValue)
+		}
+	case reflect.Ptr:
+		src = src.Elem()
+		if !src.IsValid() {
+			return
+		}
+		dst.Set(reflect.New(src.Type()))
+		deepCopy(dst.Elem(), src, r)
+	case reflect.Interface:
+		// Like Pointer but with one more call to Elem.
+		src = src.Elem()
+		dstIface := reflect.New(src.Type()).Elem()
+		deepCopy(dstIface, src, r)
+		dst.Set(dstIface)
+	default:
+		dst.Set(src)
+	}
+}
+
+// ----------------------------------------------------------------------------
+// Registry
 
 // CheckRegistry keeps track of all known Checks.
 var CheckRegistry map[string]reflect.Type
@@ -47,6 +111,8 @@ func init() {
 	RegisterCheck(StatusCode{})
 }
 
+// RegisterCheck registers the check. Once a check is registered it may be
+// unmarshaled from its name and marshaled data.
 func RegisterCheck(check Check) {
 	name := NameOf(check)
 	typ := reflect.TypeOf(check)
