@@ -39,6 +39,11 @@ func makeRequestChannel(suites []*Suite, count int, duration time.Duration) chan
 				if test.Poll.Max < 0 {
 					continue // Test is disabled.
 				}
+				err := test.prepare(suite.Variables)
+				if err != nil {
+					log.Printf("Failed to prepare test %q of suite %q: %s", err)
+					continue
+				}
 				rc <- test
 				n++
 				if n >= count || time.Since(start) > duration {
@@ -95,11 +100,12 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Result, error) {
 
 	log.Printf("Running load testwith %+v", opts)
 
+	// rc provides a stream of prepared test taken from suites.
 	rc := makeRequestChannel(suites, opts.Count, opts.Timeout)
 
 	executor := func(now int64, r interface{}) (interface{}, error) {
 		t := r.(*Test)
-		result := t.Run()
+		result := t.execute()
 		if result.Status == Pass {
 			return result, nil
 		}

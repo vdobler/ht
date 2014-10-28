@@ -193,8 +193,8 @@ func (t *Test) nowVariables(now time.Time) (vars map[string]string) {
 	return vars
 }
 
-// MergeVariables merges all variables found in vars.
-func MergeVariables(vars ...map[string]string) map[string]string {
+// mergeVariables merges all variables found in the various vars.
+func mergeVariables(vars ...map[string]string) map[string]string {
 	result := make(map[string]string)
 	for _, e := range vars {
 		for k, v := range e {
@@ -204,11 +204,11 @@ func MergeVariables(vars ...map[string]string) map[string]string {
 	return result
 }
 
-// NewReplacer produces a replacer to perform substitution of the
+// newReplacer produces a replacer to perform substitution of the
 // given variables with their values. The keys of vars are the variable
 // names and the replacer subsitutes "{{k}}" with vars[k] for each key
 // in vars.
-func NewReplacer(vars map[string]string) *strings.Replacer {
+func newReplacer(vars map[string]string) *strings.Replacer {
 	oldnew := make([]string, 0, 2*len(vars))
 	for k, v := range vars {
 		oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??

@@ -27,11 +27,11 @@ import (
 
 var (
 	// DefaultUserAgent is the user agent string to send in http requests
-	// if no user agent header is specified.
+	// if no user agent header is specified explicitely.
 	DefaultUserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36"
 
 	// DefaultAccept is the accept header to be sent if no accept header
-	// is defined in the test.
+	// is set explicitely in the test.
 	DefaultAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 
 	// DefaultClientTimeout is the timeout used by the http clients.
@@ -39,13 +39,12 @@ var (
 )
 
 // Request is a HTTP request.
-// The only required field is URL, all others have suitable defaults.
 type Request struct {
 	// Method is the HTTP method to use.
 	// A empty method is equivalent to "GET"
 	Method string `json:",omitempty"`
 
-	// URL ist the URL of the request
+	// URL ist the URL of the request.
 	URL string
 
 	// Params contains the parameters and their values to send in
@@ -79,6 +78,12 @@ type Request struct {
 	FollowRedirects bool `json:",omitempty"`
 }
 
+// Cookie.
+type Cookie struct {
+	Name  string
+	Value string `json:",omitempty"`
+}
+
 // ----------------------------------------------------------------------------
 // Test
 
@@ -87,11 +92,16 @@ type Request struct {
 type Test struct {
 	Name        string
 	Description string
-	Request     Request         // The HTTP request to test.
-	Checks      check.CheckList // Checks contains all checks to perform on the Response
+
+	// Request is the HTTP request.
+	Request Request
+
+	// Checks contains all checks to perform on the response to the HTTP request.
+	Checks check.CheckList
 
 	// UnrollWith contains values to be used during unrolling the test
 	// to several instances.
+	// TODO: doesn't belong here: move to deserialization code.
 	UnrollWith map[string][]string
 
 	Jar http.CookieJar `json:"-"` // The possible prepopulated cookie jar to use.
@@ -100,15 +110,17 @@ type Test struct {
 	Poll    Poll          `json:",omitempty"`
 	Timeout time.Duration // If zero use DefaultClientTimeout
 
-	client  *http.Client
-	request *http.Request
-	checks  []check.Check // compiled checks.
+	client   *http.Client
+	request  *http.Request
+	response *response.Response
+	checks   []check.Check // compiled checks.
 
 	verbose int
 }
 
 // Poll determines if and how to redo a test after a failure or if the
-// test should be skipped alltogether.
+// test should be skipped alltogether. The zero value of Poll means "Just do
+// the test once."
 type Poll struct {
 	// Maximum number of redos. Both 0 and 1 mean: "Just one try. No redo."
 	// Negative values indicate that the test should be skipped.
@@ -118,13 +130,9 @@ type Poll struct {
 	Sleep time.Duration `json:",omitempty"`
 }
 
+// Skip return whether the test should be skipped.
 func (p Poll) Skip() bool {
 	return p.Max < 0
-}
-
-type Cookie struct {
-	Name  string
-	Value string `json:",omitempty"`
 }
 
 func (t *Test) Infof(format string, v ...interface{}) {
@@ -148,16 +156,83 @@ func (t *Test) Debugf(format string, v ...interface{}) {
 	}
 }
 
-// Compile prepares the test for execution by substitutin the given
-// variables and crafting the underlying http request and compiling
-// the checks.
+// Run runs the test t. The actual HTTP request is crafted and executed and
+// the checks are performed on the received response. This whole process
+// is repeated on failure or skipped entirely according to t.Poll.
 //
-// It is possible to re-compile a test after changing fields in t.Request.
-func (t *Test) Compile(variables map[string]string) error {
+// Normally all checks in t.Checks are executed. If the first check in
+// t.Checks is a StatusCode check against 200 and it fails, then the rest of
+// the tests are skipped.
+func (t *Test) Run(variables map[string]string) Result {
+	var result Result
+
+	maxTries := t.Poll.Max
+	if maxTries == 0 {
+		maxTries = 1
+	}
+	if maxTries < 0 {
+		// This test is deliberately skipped.
+		result.Status = Skipped
+		return result
+	}
+
+	// Try until first success.
+	try := 0
+	start := time.Now()
+	for try = 0; try < maxTries; try++ {
+		if try > 0 {
+			time.Sleep(t.Poll.Sleep)
+		}
+		err := t.prepare(variables)
+		if err != nil {
+			result.Status, result.Error = Bogus, err
+			return result
+		}
+		result = t.execute()
+		if result.Status == Pass {
+			break
+		}
+	}
+	result.FullDuration = time.Since(start)
+	if t.Poll.Max > 1 {
+		if result.Status == Pass {
+			t.Debugf("Polling Test=%q succeded after %d tries.",
+				t.Name, try+1)
+		} else {
+			t.Debugf("Polling Test=%q failed all %d tries.",
+				t.Name, maxTries)
+		}
+	}
+	return result
+}
+
+// execute does a single request and check the response.
+func (t *Test) execute() Result {
+	var result Result
+	response, err := t.executeRequest()
+	if err == nil {
+		result.Elements = t.executeChecks(response)
+		result.Status = CombinedStatus(result.Elements)
+	} else {
+		result.Status = Error
+		result.Error = err
+		result.Elements = make([]Result, len(t.Checks))
+		for i := range result.Elements {
+			result.Elements[i].Status = Skipped
+		}
+	}
+	result.Duration = response.Duration
+	// TODO: stuff respons into Result and return it
+	return result
+}
+
+// prepare the test for execution by substituting the given variables and
+// crafting the underlying http request the checks.
+func (t *Test) prepare(variables map[string]string) error {
 	// Create appropriate replace.
 	nowVars := t.nowVariables(time.Now())
-	allVars := MergeVariables(variables, nowVars)
-	repl := NewReplacer(allVars)
+	allVars := mergeVariables(variables, nowVars)
+	repl := newReplacer(allVars)
 
 	// Create the request.
 	contentType, err := t.newRequest(repl)
@@ -289,7 +364,7 @@ var (
 	nonfollowingClient *http.Client
 )
 
-// prepareClient sets up t's http client.
+// prepareClient sets up t's HTTP client.
 func (t *Test) prepareClient() {
 	// TODO: sprinkle gently with mutex
 	if t.Timeout == 0 || t.Timeout == DefaultClientTimeout {
@@ -345,11 +420,9 @@ var (
 	redirectNofollow = errors.New("we do not follow redirects")
 )
 
-// ExecuteRequest makes the HTTP request defined in t and measures the response time.
-func (t *Test) ExecuteRequest() (*response.Response, error) {
-	if !t.prepared() {
-		log.Fatalf("ExecuteRequest on unprepared test %q", t.Name)
-	}
+// executeRequest performs the HTTP request defined in t which must have been
+// prepared by Prepare. Executing an unprepared Test results will panic.
+func (t *Test) executeRequest() (*response.Response, error) {
 	t.Debugf("Test %q requesting %q", t.Name, t.request.URL)
 
 	var err error
@@ -387,14 +460,14 @@ func hasFailures(result []Result) bool {
 	return false
 }
 
-// ExecuteChecks applies the checks in t to the HTTP response received during
-// ExecuteRequest. A non-nil error is returned for bogus checks and checks
+// executeChecks applies the checks in t to the HTTP response received during
+// executeRequest. A non-nil error is returned for bogus checks and checks
 // which have errors: Just failing checks do not lead to non-nil-error
 //
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) ExecuteChecks(response *response.Response) []Result {
+func (t *Test) executeChecks(response *response.Response) []Result {
 	result := make([]Result, len(t.Checks))
 	for i, ck := range t.Checks {
 		start := time.Now()
@@ -429,77 +502,20 @@ func (t *Test) prepared() bool {
 	return t.request != nil
 }
 
-// Run the given test: Execute the request and perform the test until success or
-// test.Poll.Max tries are exceeded.
-func (t *Test) Run() Result {
-	var result Result
-	if !t.prepared() {
-		err := t.Compile(nil) // TODO
-		if err != nil {
-			result.Status, result.Error = Bogus, err
-			return result
-		}
-	}
-
-	maxTries := t.Poll.Max
-	if maxTries == 0 {
-		maxTries = 1
-	}
-	if maxTries < 0 {
-		// This test is deliberately skipped.
-		result.Status = Skipped
-		return result
-	}
-
-	// Try until first success.
-	try := 0
-	start := time.Now()
-	for try = 0; try < maxTries; try++ {
-		if try > 0 {
-			time.Sleep(t.Poll.Sleep)
-		}
-		response, err := t.ExecuteRequest()
-		if err == nil {
-			result.Elements = t.ExecuteChecks(response)
-			result.Status = CombinedStatus(result.Elements)
-		} else {
-			result.Status = Error
-			result.Error = err
-			result.Elements = make([]Result, len(t.Checks))
-			for i := range result.Elements {
-				result.Elements[i].Status = Skipped
-			}
-		}
-		result.Duration = response.Duration
-		if result.Status == Pass {
-			break
-		}
-	}
-	result.FullDuration = time.Since(start)
-	if t.Poll.Max > 1 {
-		if result.Status == Pass {
-			t.Debugf("Polling Test=%q succeded after %d tries.",
-				t.Name, try+1)
-		} else {
-			t.Debugf("Polling Test=%q failed all %d tries.",
-				t.Name, maxTries)
-		}
-	}
-	return result
-}
-
 // Benchmark executes t count many times and reports the outcome.
 // Before doing the measurements warmup many request are made and discarded.
 // Conc determines the concurrency level. If conc==1 the given pause
 // is made between request. A conc > 1 will execute conc many request
 // in paralell (without pauses).
-func (t *Test) Benchmark(warmup int, count int, pause time.Duration, conc int) []Result {
+// TODO: move this into an BenmarkOptions
+func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []Result {
 	println("Test.Benchmark ", count)
 	for n := 0; n < warmup; n++ {
 		if n > 0 {
 			time.Sleep(pause)
 		}
-		t.ExecuteRequest()
+		t.prepare(variables)
+		t.executeRequest()
 	}
 
 	results := make([]Result, count)
@@ -510,19 +526,21 @@ func (t *Test) Benchmark(warmup int, count int, pause time.Duration, conc int) [
 		// One request after the other, nicely spaced.
 		for n := 0; n < count; n++ {
 			time.Sleep(pause)
-			results[n] = t.Run()
+			results[n] = t.Run(variables)
 		}
 	} else {
 		// Start conc request and restart an other once one finishes.
 		rc := make(chan Result, conc)
 		for i := 0; i < conc; i++ {
 			go func() {
-				rc <- t.Run()
+				rc <- t.Run(variables)
 			}()
 		}
 		for j := 0; j < count; j++ {
 			results[j] = <-rc
-			rc <- t.Run()
+			go func() {
+				rc <- t.Run(variables)
+			}()
 		}
 
 	}
@@ -539,25 +557,6 @@ func CombinedStatus(result []Result) Status {
 		}
 	}
 	return status
-}
-
-// CheckError contains the results of all checks of a test.
-type CheckError []error
-
-func (ce CheckError) Error() string {
-	s := ""
-	for i, e := range ce {
-		s += fmt.Sprintf("Check %d:", i)
-		if e == nil {
-			s += "<<Pass>>"
-		} else {
-			s += e.Error()
-		}
-		if i < len(ce)-1 {
-			s += "\t"
-		}
-	}
-	return s
 }
 
 var skippedError = errors.New("Skipped")

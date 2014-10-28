@@ -74,7 +74,7 @@ func (s *Suite) Init() {
 
 // Compile prepares all tests in s for execution.
 func (s *Suite) Compile() error {
-	// Create cookie jar.
+	// Create cookie jar if needed.
 	var jar *cookiejar.Jar
 	if s.KeepCookies {
 		jar, _ = cookiejar.New(nil)
@@ -82,7 +82,7 @@ func (s *Suite) Compile() error {
 
 	// Compile all tests and inject jar and logger.
 	prepare := func(t *Test, which string, omit bool) error {
-		err := t.Compile(s.Variables)
+		err := t.prepare(s.Variables)
 		if err != nil {
 			return fmt.Errorf("Suite %q, cannot prepare %s %q: %s",
 				s.Name, which, t.Name, err)
@@ -90,7 +90,11 @@ func (s *Suite) Compile() error {
 		if omit {
 			t.checks = nil
 		}
-		t.Jar = jar
+		if s.KeepCookies {
+			t.Jar = jar
+		} else {
+			t.Jar = nil
+		}
 		t.Log = s.Log
 		return nil
 	}
@@ -134,7 +138,7 @@ func (s *Suite) execute(tests []*Test) Result {
 	}
 	result := Result{Elements: make([]Result, len(tests))}
 	for i, test := range tests {
-		result.Elements[i] = test.Run()
+		result.Elements[i] = test.Run(s.Variables)
 	}
 	result.Status = CombinedStatus(result.Elements)
 	return result
@@ -172,7 +176,7 @@ func (s *Suite) ExecuteConcurrent(maxConcurrent int) error {
 		go func() {
 			defer wg.Done()
 			for test := range c {
-				result := test.Run() // TODO
+				result := test.Run(s.Variables) // TODO
 				if result.Status != Pass {
 					res <- test.Name
 				}

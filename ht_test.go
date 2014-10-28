@@ -49,7 +49,7 @@ func TestSubstituteVariables(t *testing.T) {
 	}
 
 	repl := strings.NewReplacer("{{x}}", "Y")
-	rt := test.SubstituteVariables(repl)
+	rt := test.substituteVariables(repl)
 	if rt.Name != "Name=Y" || rt.Description != "Desc=Y" ||
 		rt.Request.URL != "url=Y" ||
 		rt.Request.Params["pn={{x}}"][0] != "pv=Y" || // TODO: names too?
@@ -61,7 +61,7 @@ func TestSubstituteVariables(t *testing.T) {
 }
 
 func TestRepeat(t *testing.T) {
-	test := Test{Description: "q={{query}} c={{count}} f={{f}}"}
+	test := &Test{Description: "q={{query}} c={{count}} f={{f}}"}
 
 	variables := map[string][]string{
 		"query": []string{"foo", "bar"},
@@ -73,7 +73,7 @@ func TestRepeat(t *testing.T) {
 	if nrep != 6 {
 		t.Errorf("Got %d as lcmOf, wnat 6", nrep)
 	}
-	r := test.Repeat(nrep, variables)
+	r := Repeat(test, nrep, variables)
 	if len(r) != 6 {
 		t.Fatalf("Got %d repetitions, want 6: %#v", len(r), r)
 	}
@@ -100,7 +100,7 @@ func TestParameterHandling(t *testing.T) {
 	}}
 
 	// As part of the URL.
-	err := test.Compile(nil)
+	err := test.prepare(nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -114,7 +114,7 @@ func TestParameterHandling(t *testing.T) {
 
 	// URLencoded in the body.
 	test.Request.ParamsAs = "body"
-	err = test.Compile(nil)
+	err = test.prepare(nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -128,7 +128,7 @@ func TestParameterHandling(t *testing.T) {
 	test.Request.Body = ""
 
 	test.Request.ParamsAs = "multipart"
-	err = test.Compile(nil)
+	err = test.prepare(nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -158,7 +158,7 @@ func TestRTStats(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
 	defer ts.Close()
 
-	test := Test{
+	test := &Test{
 		Name: "Sleep {{SMIN}}-{{SMAX}}",
 		Request: Request{
 			Method: "GET",
@@ -180,7 +180,7 @@ func TestRTStats(t *testing.T) {
 		"SMIN": []string{"5", "30", "50"},
 		"SMAX": []string{"20", "70", "100"},
 	}
-	tests := test.Repeat(3, rtimes)
+	tests := Repeat(test, 3, rtimes)
 
 	suite := &Suite{
 		Name:        "Response Time Statistics",
@@ -326,7 +326,7 @@ func TestNewReplacer(t *testing.T) {
 		"JETZT":  `{{NOW | "02.Jan.2006 15:04h"}}`,
 	}
 
-	r := NewReplacer(vm)
+	r := newReplacer(vm)
 	for k, _ := range vm {
 		t.Logf("%s --> %s", k, r.Replace("{{"+k+"}}"))
 	}
@@ -398,13 +398,13 @@ func TestClientTimeout(t *testing.T) {
 		},
 		Timeout: 40 * time.Millisecond,
 	}
-	err := test.Compile(nil)
+	err := test.prepare(nil)
 	if err != nil {
 		t.Fatalf("Unecpected error: %v", err)
 	}
 
 	start := time.Now()
-	_, err = test.ExecuteRequest()
+	_, err = test.executeRequest()
 	if err == nil {
 		t.Fatalf("No error reported.")
 	}
