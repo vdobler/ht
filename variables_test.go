@@ -16,6 +16,46 @@ import (
 	"github.com/vdobler/ht/check"
 )
 
+func TestRepeat(t *testing.T) {
+	test := &Test{Description: "q={{query}} c={{count}} f={{f}}"}
+
+	variables := map[string][]string{
+		"query": []string{"foo", "bar"},
+		"count": []string{"1", "2", "3"},
+		"f":     []string{"fix"},
+	}
+
+	nrep := lcmOf(variables)
+	if nrep != 6 {
+		t.Errorf("Got %d as lcmOf, wnat 6", nrep)
+	}
+	r := Repeat(test, nrep, variables)
+	if len(r) != 6 {
+		t.Fatalf("Got %d repetitions, want 6: %#v", len(r), r)
+	}
+
+	for i, want := range []string{"q=foo c=1 f=fix", "q=bar c=2 f=fix", "q=foo c=3 f=fix",
+		"q=bar c=1 f=fix", "q=foo c=2 f=fix", "q=bar c=3 f=fix"} {
+		if r[i].Description != want {
+			t.Errorf("%d got %q, want %q", i, r[i].Description, want)
+		}
+	}
+}
+
+func TestLCM(t *testing.T) {
+	for i, tc := range []struct{ n, m, e int }{
+		{1, 1, 1},
+		{2, 3, 6},
+		{12, 4, 12},
+		{2 * 2 * 3 * 5 * 5, 2 * 3 * 3 * 5 * 7, 2 * 2 * 3 * 3 * 5 * 5 * 7},
+	} {
+		if got := lcm(tc.n, tc.m); got != tc.e {
+			t.Errorf("%d: lcm(%d,%d)=%d want %d", i, tc.n, tc.m, got, tc.e)
+		}
+
+	}
+}
+
 func TestSubstituteVariables(t *testing.T) {
 	test := Test{
 		Name:        "Name={{x}}",

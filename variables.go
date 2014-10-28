@@ -7,6 +7,7 @@ package ht
 import (
 	"net/http"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -141,9 +142,47 @@ func (t *Test) findNowVariables() (v []string) {
 		add(cookie.Value)
 	}
 	for _, c := range t.Checks {
-		v = append(v, findNV(c)...)
+		v = append(v, findNowVarsInCheck(c)...)
 	}
 	return v
+}
+
+func findNowVarsInCheck(check check.Check) []string {
+	v := reflect.ValueOf(check)
+	return findNowVarsInCheckRec(v)
+}
+
+func findNowVarsInCheckRec(v reflect.Value) (a []string) {
+	switch v.Kind() {
+	case reflect.String:
+		m := nowTimeRe.FindAllString(v.String(), 1)
+		if m == nil {
+			return
+		}
+		return m
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i += 1 {
+			a = append(a, findNowVarsInCheckRec(v.Field(i))...)
+		}
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i += 1 {
+			a = append(a, findNowVarsInCheckRec(v.Index(i))...)
+		}
+	case reflect.Map:
+		for _, key := range v.MapKeys() {
+			a = append(a, findNowVarsInCheckRec(v.MapIndex(key))...)
+		}
+	case reflect.Ptr:
+		v = v.Elem()
+		if !v.IsValid() {
+			return nil
+		}
+		a = findNowVarsInCheckRec(v)
+	case reflect.Interface:
+		v = v.Elem()
+		a = findNowVarsInCheckRec(v)
+	}
+	return a
 }
 
 // nowVariables looks through t, extracts all occurences of now variables, i.e.
