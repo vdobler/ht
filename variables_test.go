@@ -29,7 +29,11 @@ func TestRepeat(t *testing.T) {
 	if nrep != 6 {
 		t.Errorf("Got %d as lcmOf, wnat 6", nrep)
 	}
-	r := Repeat(test, nrep, variables)
+	r, err := Repeat(test, nrep, variables)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
 	if len(r) != 6 {
 		t.Fatalf("Got %d repetitions, want 6: %#v", len(r), r)
 	}
@@ -77,7 +81,7 @@ func TestSubstituteVariables(t *testing.T) {
 	}
 
 	repl := strings.NewReplacer("{{x}}", "Y")
-	rt := test.substituteVariables(repl)
+	rt := test.substituteVariables(replacer{str: repl, fn: nil})
 	if rt.Name != "Name=Y" || rt.Description != "Desc=Y" ||
 		rt.Request.URL != "url=Y" ||
 		rt.Request.Params["pn={{x}}"][0] != "pv=Y" || // TODO: names too?
@@ -90,16 +94,25 @@ func TestSubstituteVariables(t *testing.T) {
 
 func TestNewReplacer(t *testing.T) {
 	vm := map[string]string{
-		"HOST":   "www.google.com",
-		"NOW":    "Foo {{NOW}} Bar",
-		"NOW+7":  "{{NOW +7m}}",
-		"FUTURE": `{{NOW + 8d | "Jan 2006"}}`,
-		"JETZT":  `{{NOW | "02.Jan.2006 15:04h"}}`,
+		"HOST":  "example.test",
+		"user":  "JohnDoe",
+		"#9991": "401",
+		"#9992": "-3",
 	}
 
-	r := newReplacer(vm)
-	for k, _ := range vm {
-		t.Logf("%s --> %s", k, r.Replace("{{"+k+"}}"))
+	repl, err := newReplacer(vm)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	s := repl.str.Replace("http://{{HOST}}/path?u={{user}}")
+	if s != "http://example.test/path?u=JohnDoe" {
+		t.Errorf("Got %q", s)
+	}
+
+	a, b := repl.fn[9991], repl.fn[9992]
+	if len(repl.fn) != 2 || a != 401 || b != -3 {
+		t.Errorf("Got %+v", repl.fn)
 	}
 }
 

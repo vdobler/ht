@@ -20,20 +20,21 @@ import (
 // on vars. The keys of vars are the variable names. The values of a
 // variable v are choosen from vars[v] by cycling through the list:
 // In the n'th repetition is vars[v][n%N] with N=len(vars[v])).
-func Repeat(test *Test, count int, vars map[string][]string) []*Test {
+func Repeat(test *Test, count int, vars map[string][]string) ([]*Test, error) {
 	reps := make([]*Test, count)
 	for r := 0; r < count; r++ {
-		// Construct appropriate Replacer from variables.
-		oldnew := make([]string, 0, 2*len(vars))
+		curVars := make(map[string]string)
 		for k, v := range vars {
-			oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
-			n := r % len(v)
-			oldnew = append(oldnew, v[n])
+			curVars[k] = v[r%len(v)]
 		}
-		replacer := strings.NewReplacer(oldnew...)
+		replacer, err := newReplacer(curVars)
+		if err != nil {
+			return nil, err
+		}
+
 		reps[r] = test.substituteVariables(replacer)
 	}
-	return reps
+	return reps, nil
 }
 
 // lcm computest the least common multiple of m and n.
@@ -63,14 +64,14 @@ func lcmOf(vars map[string][]string) int {
 }
 
 // substituteVariables returns a copy of t with replacer applied.
-func (t *Test) substituteVariables(replacer *strings.Replacer) *Test {
+func (t *Test) substituteVariables(repl replacer) *Test {
 	// Apply to name, description, URL and body.
 	c := &Test{
-		Name:        replacer.Replace(t.Name),
-		Description: replacer.Replace(t.Description),
+		Name:        repl.str.Replace(t.Name),
+		Description: repl.str.Replace(t.Description),
 		Request: Request{
-			URL:  replacer.Replace(t.Request.URL),
-			Body: replacer.Replace(t.Request.Body),
+			URL:  repl.str.Replace(t.Request.URL),
+			Body: repl.str.Replace(t.Request.Body),
 		},
 	}
 
@@ -79,7 +80,7 @@ func (t *Test) substituteVariables(replacer *strings.Replacer) *Test {
 	for param, vals := range t.Request.Params {
 		rv := make([]string, len(vals))
 		for i, v := range vals {
-			rv[i] = replacer.Replace(v)
+			rv[i] = repl.str.Replace(v)
 		}
 		c.Request.Params[param] = rv
 	}
@@ -89,21 +90,21 @@ func (t *Test) substituteVariables(replacer *strings.Replacer) *Test {
 	for h, vals := range t.Request.Header {
 		rv := make([]string, len(vals))
 		for i, v := range vals {
-			rv[i] = replacer.Replace(v)
+			rv[i] = repl.str.Replace(v)
 		}
 		c.Request.Header[h] = rv
 	}
 
 	// Apply to cookie values.
 	for _, cookie := range t.Request.Cookies {
-		rc := Cookie{Name: cookie.Name, Value: replacer.Replace(cookie.Value)}
+		rc := Cookie{Name: cookie.Name, Value: repl.str.Replace(cookie.Value)}
 		c.Request.Cookies = append(c.Request.Cookies, rc)
 	}
 
 	// Apply to checks.
 	c.Checks = make([]check.Check, len(t.Checks))
 	for i := range t.Checks {
-		c.Checks[i] = check.SubstituteVariables(t.Checks[i], replacer)
+		c.Checks[i] = check.SubstituteVariables(t.Checks[i], repl.str, repl.fn)
 	}
 
 	return c
@@ -243,17 +244,42 @@ func mergeVariables(vars ...map[string]string) map[string]string {
 	return result
 }
 
+// replacer determines a set of string and integer replacements
+// for the variable substitutions.
+type replacer struct {
+	str *strings.Replacer
+	fn  map[int64]int64
+}
+
 // newReplacer produces a replacer to perform substitution of the
-// given variables with their values. The keys of vars are the variable
-// names and the replacer subsitutes "{{k}}" with vars[k] for each key
-// in vars.
-func newReplacer(vars map[string]string) *strings.Replacer {
-	oldnew := make([]string, 0, 2*len(vars))
+// given variables with their values. A key of the form "#123" (i.e. hash
+// followed by literal decimal integer) is treated as an integer substitution.
+// Other keys are treated as string variables which subsitutes "{{k}}" with
+// vars[k] for a key k. Maybe just have a look at the code.
+func newReplacer(vars map[string]string) (replacer, error) {
+	oldnew := []string{}
+	fn := make(map[int64]int64)
 	for k, v := range vars {
-		oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
-		oldnew = append(oldnew, v)
+		if strings.HasPrefix(k, "#") {
+			// An integer substitution
+			o, err := strconv.ParseInt(k[1:], 10, 64)
+			if err != nil {
+				return replacer{}, err
+			}
+			n, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return replacer{}, err
+			}
+			fn[o] = n
+		} else {
+			// A string substitution.
+			oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
+			oldnew = append(oldnew, v)
+		}
 	}
 
-	replacer := strings.NewReplacer(oldnew...)
-	return replacer
+	return replacer{
+		str: strings.NewReplacer(oldnew...),
+		fn:  fn,
+	}, nil
 }

@@ -26,7 +26,10 @@ type sampleCheck struct {
 	M []nested
 	P interface{}
 
-	X          float32
+	X float32
+	Y int
+	Z int
+
 	privateInt int
 	privateStr string
 }
@@ -39,11 +42,24 @@ type nested struct {
 	Y int
 }
 
+func BenchmarkSubstituteVariables(b *testing.B) {
+	r := strings.NewReplacer("a", "X", "e", "Y", "o", "Z")
+	f := map[int64]int64{99: 77}
+	var ck Check
+	ck = BodyContains{Text: "Hallo", Count: 99}
+	for i := 0; i < b.N; i++ {
+		f := SubstituteVariables(ck, r, f)
+		if _, ok := f.(BodyContains); !ok {
+			b.Fatalf("Bad type %T", f)
+		}
+	}
+}
+
 func TestSubstituteVariables(t *testing.T) {
 	r := strings.NewReplacer("a", "X", "e", "Y", "o", "Z")
 	var ck Check
 	ck = BodyContains{Text: "Hallo"}
-	f := SubstituteVariables(ck, r)
+	f := SubstituteVariables(ck, r, nil)
 	if bc, ok := f.(BodyContains); !ok {
 		t.Errorf("Bad type %T", f)
 	} else if bc.Text != "HXllZ" {
@@ -69,17 +85,19 @@ func TestSubstituteVariables(t *testing.T) {
 			{X: "aa", Y: 34},
 			{X: "bb", Y: 33},
 		},
-		P: "foo",
-		X: 56,
-
+		P:          "foo",
+		X:          56,
+		Y:          731,
+		Z:          9348,
 		privateInt: 56,
 		privateStr: "foo",
 	}
 
-	r = strings.NewReplacer("a", "X", "o", "Y",
-		"34", "44", "56", "66", "12321", "11", "999", "888")
-	s := SubstituteVariables(sample, r)
+	r = strings.NewReplacer("a", "X", "o", "Y")
+	g := map[int64]int64{34: 44, 56: 66, 12321: 11, 999: 888}
+	s := SubstituteVariables(sample, r, g)
 	sc, ok := s.(sampleCheck)
+	println("AAAA", sc.Y)
 	if !ok {
 		t.Fatalf("Bad type %T", s)
 	}
@@ -107,7 +125,8 @@ func TestSubstituteVariables(t *testing.T) {
 	}
 
 	// Unexported stuff gets zeroed.
-	if sc.X != 56 || sc.privateInt != 0 || sc.privateStr != "" {
+	if sc.X != 56 || sc.Y != 731 || sc.Z != 9348 || sc.privateInt != 0 || sc.privateStr != "" {
 		t.Fatalf("Got %+v", sc)
 	}
+
 }

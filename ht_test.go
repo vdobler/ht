@@ -141,7 +141,7 @@ func TestRTStats(t *testing.T) {
 		"SMIN": []string{"5", "30", "50"},
 		"SMAX": []string{"20", "70", "100"},
 	}
-	tests := Repeat(test, 3, rtimes)
+	tests, _ := Repeat(test, 3, rtimes)
 
 	suite := &Suite{
 		Name:        "Response Time Statistics",

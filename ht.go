@@ -232,7 +232,10 @@ func (t *Test) prepare(variables map[string]string) error {
 	// Create appropriate replace.
 	nowVars := t.nowVariables(time.Now())
 	allVars := mergeVariables(variables, nowVars)
-	repl := newReplacer(allVars)
+	repl, err := newReplacer(allVars)
+	if err != nil {
+		return err
+	}
 
 	// Create the request.
 	contentType, err := t.newRequest(repl)
@@ -247,7 +250,7 @@ func (t *Test) prepare(variables map[string]string) error {
 	for h, v := range t.Request.Header {
 		rv := make([]string, len(v))
 		for i := range v {
-			rv[i] = repl.Replace(v[i])
+			rv[i] = repl.str.Replace(v[i])
 		}
 		t.request.Header[h] = rv
 
@@ -262,7 +265,7 @@ func (t *Test) prepare(variables map[string]string) error {
 		t.request.Header.Set("User-Agent", DefaultUserAgent)
 	}
 	for _, cookie := range t.Request.Cookies {
-		cv := repl.Replace(cookie.Value)
+		cv := repl.str.Replace(cookie.Value)
 		t.request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
 	}
 
@@ -270,7 +273,7 @@ func (t *Test) prepare(variables map[string]string) error {
 	t.checks = make([]check.Check, len(t.Checks))
 	cfc, cfce := []int{}, []string{}
 	for i := range t.Checks {
-		t.checks[i] = check.SubstituteVariables(t.Checks[i], repl)
+		t.checks[i] = check.SubstituteVariables(t.Checks[i], repl.str, repl.fn)
 		if compiler, ok := t.checks[i].(check.Compiler); ok {
 			e := compiler.Compile()
 			if e != nil {
@@ -294,18 +297,18 @@ func (t *Test) prepare(variables map[string]string) error {
 // newRequest sets up the request field of t.
 // If a sepcial Content-Type header is needed (e.g. because of a multipart
 // body) it is returned.
-func (t *Test) newRequest(repl *strings.Replacer) (contentType string, err error) {
+func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	// Prepare request method.
 	if t.Request.Method == "" {
 		t.Request.Method = "GET"
 	}
 
-	rurl := repl.Replace(t.Request.URL)
+	rurl := repl.str.Replace(t.Request.URL)
 	urlValues := make(url.Values)
 	for param, vals := range t.Request.Params {
 		rv := make([]string, len(vals))
 		for i, v := range vals {
-			rv[i] = repl.Replace(v)
+			rv[i] = repl.str.Replace(v)
 		}
 		urlValues[param] = rv
 	}
@@ -348,7 +351,8 @@ func (t *Test) newRequest(repl *strings.Replacer) (contentType string, err error
 
 	// The body.
 	if t.Request.Body != "" {
-		body = ioutil.NopCloser(strings.NewReader(repl.Replace(t.Request.Body)))
+		rbody := repl.str.Replace(t.Request.Body)
+		body = ioutil.NopCloser(strings.NewReader(rbody))
 	}
 
 	t.request, err = http.NewRequest(t.Request.Method, rurl, body)
