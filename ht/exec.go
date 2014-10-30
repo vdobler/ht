@@ -17,8 +17,8 @@ var cmdExec = &Command{
 	Run:   runExecute,
 	Usage: "exec [-serial] <suite.ht>...",
 	Help: `
-Exec loads the given suites, unrolls the tests, compiles
-the tests end executes them.
+Exec loads the given suites, unrolls the tests, prepares
+the tests and executes them.
 	`,
 }
 

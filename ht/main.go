@@ -71,7 +71,8 @@ Flags:
     -D <name>=<value>  set parameter exapnsion of <name> to <value>  
     -I <path>          add <path> to the search path for suites/tests
     -only <id>,...     run only test with the given ids
-    -skip <id>,...     skip tests wih the given ids ...
+    -skip <id>,...     skip tests wih the given ids
+    -verbosity <n>     force this verbosity on all tests
 
 Tests IDs have the following format <SuiteNo>.<Type><TestNo> with
 <SuiteNo> and <TestNo> the sequential numbers of the suite and the
@@ -109,6 +110,7 @@ var variablesFlag cmdlVar = make(cmdlVar)    // flag -D
 var includeFlag cmdlIncl = make(cmdlIncl, 0) // flag -I
 var onlyFlag = flag.String("only", "", "run only these tests, e.g. -only 3,4,9")
 var skipFlag = flag.String("skip", "", "skip these tests, e.g. -skip 2,5")
+var verbosity = flag.Int("verbosity", -99, "force this verbosity level")
 
 func main() {
 	flag.Var(variablesFlag, "D", "set/overwrite a parameter e.g. '-D HOST=test.domain.org'")
@@ -156,7 +158,12 @@ func help(args []string) {
 
 	for _, cmd := range commands {
 		if cmd.Name() == arg {
-			fmt.Printf("ht %s\n%s\n", cmd.Usage, cmd.Help)
+			fmt.Printf(`Usage:
+
+    ht %s
+%s
+Flags:
+`, cmd.Usage, cmd.Help)
 			cmd.Flag.PrintDefaults()
 			return
 		}
@@ -185,10 +192,20 @@ func loadSuites(args []string) []*ht.Suite {
 			suite.Variables[varName] = varVal
 		}
 		suite.Log = logger
-		suite.Init()
 		err = suite.Compile()
 		if err != nil {
 			log.Fatal(err.Error())
+		}
+		if *verbosity != -99 {
+			for i := range suite.Setup {
+				suite.Setup[i].Verbosity = *verbosity
+			}
+			for i := range suite.Tests {
+				suite.Tests[i].Verbosity = *verbosity
+			}
+			for i := range suite.Teardown {
+				suite.Teardown[i].Verbosity = *verbosity
+			}
 		}
 		suites = append(suites, suite)
 	}

@@ -53,7 +53,8 @@ func runBench(cmd *Command, suites []*ht.Suite) {
 			if test.Poll.Max < 0 {
 				continue
 			}
-			results := test.Benchmark(warmupFlag, bcountFlag, pauseFlag, concurrentFlag)
+			results := test.Benchmark(suite.Variables,
+				warmupFlag, bcountFlag, pauseFlag, concurrentFlag)
 			fmt.Printf("Suite: %s; Test: %s\n", suite.Name, test.Name)
 			printBenchmarkSummary(results)
 		}

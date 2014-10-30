@@ -14,8 +14,8 @@ var cmdList = &Command{
 	Run:   runList,
 	Usage: "list [-raw] <suite.ht>...",
 	Help: `
-Exec loads the given suites, unrolls the tests, compiles
-the tests end executes them.
+List loads the given suites, unrolls the tests, prepares
+the tests and prints the list of tests.
 	`,
 }
 
