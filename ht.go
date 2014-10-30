@@ -53,7 +53,7 @@ type Request struct {
 	// If the parameters are sent as multipart it is possible to include
 	// files: If a parameter values starts with "@file:" the rest of
 	// the value is interpreted as as filename and this file is sent.
-	Params url.Values
+	Params url.Values `json:",omitempty"`
 
 	// ParamsAs determines how the parameters in the Param field are sent:
 	//   "URL" or "": append properly encoded to URL
@@ -61,13 +61,15 @@ type Request struct {
 	//   "multipart": send as multipart in body.
 	// The two values "body" and "multipart" must not be used
 	// on a GET or HEAD request.
-	ParamsAs string
+	ParamsAs string `json:",omitempty"`
 
 	// Header contains the specific http headers to be sent in this request.
-	Header http.Header
+	// User-Agent and Accept headers are set automaticaly to the global
+	// default values if not set explicitely.
+	Header http.Header `json:",omitempty"`
 
 	// Cookies contains the cookies to send in the request.
-	Cookies []Cookie
+	Cookies []Cookie `json:",omitempty"`
 
 	// Body is the full body to send in the request. Body must be
 	// empty if Params are sent as multipart or form-urlencoded.
@@ -99,18 +101,16 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks check.CheckList
 
-	Poll    Poll          `json:",omitempty"`
-	Timeout time.Duration // If zero use DefaultClientTimeout
+	Poll      Poll          `json:",omitempty"`
+	Timeout   time.Duration // If zero use DefaultClientTimeout.
+	Verbosity int           // Verbosity level in logging.
 
 	Jar http.CookieJar `json:"-"` // The possible prepopulated cookie jar to use.
-	Log *log.Logger    `json:"-"` // The logger to use by the test and the checks.
 
 	client   *http.Client
 	request  *http.Request
 	response *response.Response
 	checks   []check.Check // compiled checks.
-
-	verbose int
 }
 
 // Poll determines if and how to redo a test after a failure or if the
@@ -130,24 +130,35 @@ func (p Poll) Skip() bool {
 	return p.Max < 0
 }
 
-func (t *Test) Infof(format string, v ...interface{}) {
-	if t.Log != nil && t.verbose > 1 {
-		format = "INFO " + format
-		t.Log.Printf(format, v...)
+func (t *Test) errorf(format string, v ...interface{}) {
+	if t.Verbosity >= 0 {
+		format = "ERROR " + format + " in %q"
+		v = append(v, t.Name)
+		log.Printf(format, v...)
 	}
 }
 
-func (t *Test) Warnf(format string, v ...interface{}) {
-	if t.Log != nil && t.verbose > 0 {
-		format = "WARN " + format
-		t.Log.Printf(format, v...)
+func (t *Test) infof(format string, v ...interface{}) {
+	if t.Verbosity >= 1 {
+		format = "INFO " + format + " in %q"
+		v = append(v, t.Name)
+		log.Printf(format, v...)
 	}
 }
 
-func (t *Test) Debugf(format string, v ...interface{}) {
-	if t.Log != nil && t.verbose > 2 {
-		format = "DEBG " + format
-		t.Log.Printf(format, v...)
+func (t *Test) debugf(format string, v ...interface{}) {
+	if t.Verbosity >= 2 {
+		format = "DEBUG " + format + " in %q"
+		v = append(v, t.Name)
+		log.Printf(format, v...)
+	}
+}
+
+func (t *Test) tracef(format string, v ...interface{}) {
+	if t.Verbosity >= 3 {
+		format = "TRACE " + format + " in %q"
+		v = append(v, t.Name)
+		log.Printf(format, v...)
 	}
 }
 
@@ -191,11 +202,9 @@ func (t *Test) Run(variables map[string]string) Result {
 	result.FullDuration = time.Since(start)
 	if t.Poll.Max > 1 {
 		if result.Status == Pass {
-			t.Debugf("Polling Test=%q succeded after %d tries.",
-				t.Name, try+1)
+			t.debugf("polling succeded after %d tries", try+1)
 		} else {
-			t.Debugf("Polling Test=%q failed all %d tries.",
-				t.Name, maxTries)
+			t.debugf("polling failed all %d tries", maxTries)
 		}
 	}
 	return result
@@ -206,8 +215,12 @@ func (t *Test) execute() Result {
 	var result Result
 	response, err := t.executeRequest()
 	if err == nil {
-		result.Elements = t.executeChecks(response)
-		result.Status = CombinedStatus(result.Elements)
+		if len(t.Checks) > 0 {
+			result.Elements = t.executeChecks(response)
+			result.Status = CombinedStatus(result.Elements)
+		} else {
+			result.Status = Pass
+		}
 	} else {
 		result.Status = Error
 		result.Error = err
@@ -217,7 +230,7 @@ func (t *Test) execute() Result {
 		}
 	}
 	result.Duration = response.Duration
-	// TODO: stuff respons into Result and return it
+	// TODO: stuff response into Result and return it
 	return result
 }
 
@@ -235,8 +248,8 @@ func (t *Test) prepare(variables map[string]string) error {
 	// Create the request.
 	contentType, err := t.newRequest(repl)
 	if err != nil {
-		err := fmt.Errorf("failed preparing request for test %q: %s", t.Name, err.Error())
-		t.Warnf(err.Error())
+		err := fmt.Errorf("failed preparing request: %s", err.Error())
+		t.errorf("%s", err.Error())
 		return err
 	}
 
@@ -274,8 +287,8 @@ func (t *Test) prepare(variables map[string]string) error {
 			if e != nil {
 				cfc = append(cfc, i)
 				cfce = append(cfce, err.Error())
-				t.Warnf("Failed preparing check %d %q for test %q: %s",
-					i, check.NameOf(t.Checks[i]), t.Name, err.Error())
+				t.errorf("preparing check %d %q: %s",
+					i, check.NameOf(t.Checks[i]), err.Error())
 			}
 		}
 	}
@@ -422,7 +435,7 @@ var (
 // executeRequest performs the HTTP request defined in t which must have been
 // prepared by Prepare. Executing an unprepared Test results will panic.
 func (t *Test) executeRequest() (*response.Response, error) {
-	t.Debugf("Test %q requesting %q", t.Name, t.request.URL)
+	t.debugf("requesting %q", t.request.URL.String())
 
 	var err error
 	start := time.Now()
@@ -445,7 +458,7 @@ func (t *Test) executeRequest() (*response.Response, error) {
 	}
 	response.Duration = time.Since(start)
 
-	t.Debugf("Test %q request took %s %s", t.Name, response.Duration, msg)
+	t.debugf("request took %s, %s", response.Duration, msg)
 
 	return response, err
 }
@@ -480,8 +493,8 @@ func (t *Test) executeChecks(response *response.Response) []Result {
 				result[i].Status = Fail
 			}
 			if err != nil {
-				t.Debugf("Check Failed Test=%q %d. Check=%s: %s",
-					t.Name, i, check.NameOf(ck), err)
+				t.debugf("check %d %s failed: %s",
+					i, check.NameOf(ck), err)
 			}
 			// Abort needles checking if all went wrong.
 			if sc, ok := ck.(check.StatusCode); ok && i == 0 && sc.Expect == 200 {

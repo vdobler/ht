@@ -67,7 +67,6 @@ func (s *Suite) Compile() error {
 		} else {
 			t.Jar = nil
 		}
-		t.Log = s.Log
 		return nil
 	}
 	for _, t := range s.Setup {
