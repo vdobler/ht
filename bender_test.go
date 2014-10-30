@@ -21,38 +21,37 @@ func TestThroughput(t *testing.T) {
 	defer ts.Close()
 	// lg := log.New(os.Stdout, "ht ", log.LstdFlags)
 
-	suite := &Suite{
-		Name: "Throughput",
-		Tests: []*Test{
-			&Test{
-				Name: "Sleep {{SMIN}}-{{SMAX}}",
-				Request: Request{
-					Method: "GET",
-					URL:    ts.URL + "/",
-					Params: url.Values{
-						"smin": []string{"{{SMIN}}"},
-						"smax": []string{"{{SMAX}}"},
-						"bad":  {"5"},
-					},
-					FollowRedirects: false,
-				},
-				Checks: []check.Check{
-					check.StatusCode{200},
-				},
-				Timeout: 800 * time.Millisecond,
-				UnrollWith: map[string][]string{
-					"SMIN": []string{"1", "40", "200", "1", "40"},
-					"SMAX": []string{"30", "90", "300", "30", "90"},
-				},
+	test := &Test{
+		Name: "Sleep {{SMIN}}-{{SMAX}}",
+		Request: Request{
+			Method: "GET",
+			URL:    ts.URL + "/",
+			Params: url.Values{
+				"smin": []string{"{{SMIN}}"},
+				"smax": []string{"{{SMAX}}"},
+				"bad":  {"5"},
 			},
+			FollowRedirects: false,
 		},
+		Checks: []check.Check{
+			check.StatusCode{200},
+		},
+		Timeout: 800 * time.Millisecond,
+	}
+	unroll := map[string][]string{
+		"SMIN": []string{"1", "40", "200", "1", "40"},
+		"SMAX": []string{"30", "90", "300", "30", "90"},
+	}
+	tests, err := Repeat(test, 5, unroll)
+
+	suite := &Suite{
+		Name:  "Throughput",
+		Tests: tests,
 		// Log: lg,
 	}
 
-	var err error
 	var results []Result
 
-	suite.Init()
 	err = suite.Compile()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)

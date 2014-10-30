@@ -99,16 +99,11 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks check.CheckList
 
-	// UnrollWith contains values to be used during unrolling the test
-	// to several instances.
-	// TODO: doesn't belong here: move to deserialization code.
-	UnrollWith map[string][]string
+	Poll    Poll          `json:",omitempty"`
+	Timeout time.Duration // If zero use DefaultClientTimeout
 
 	Jar http.CookieJar `json:"-"` // The possible prepopulated cookie jar to use.
 	Log *log.Logger    `json:"-"` // The logger to use by the test and the checks.
-
-	Poll    Poll          `json:",omitempty"`
-	Timeout time.Duration // If zero use DefaultClientTimeout
 
 	client   *http.Client
 	request  *http.Request
@@ -513,7 +508,6 @@ func (t *Test) prepared() bool {
 // in paralell (without pauses).
 // TODO: move this into an BenmarkOptions
 func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []Result {
-	println("Test.Benchmark ", count)
 	for n := 0; n < warmup; n++ {
 		if n > 0 {
 			time.Sleep(pause)

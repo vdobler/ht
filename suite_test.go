@@ -17,9 +17,9 @@ func TestLoadSuite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
+	pretty.Printf("%# v\n", suite)
 
 	suite.Log = log.New(os.Stdout, "", log.LstdFlags)
-	suite.Init()
 	err = suite.Compile()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())

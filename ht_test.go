@@ -333,9 +333,6 @@ func TestMarshalTest(t *testing.T) {
 				Cookie{Name: "trusted", Value: "true"},
 			},
 		},
-		UnrollWith: map[string][]string{
-			"QUERY": {"design", "hybris", "kiesabbau"},
-		},
 		Checks: []check.Check{
 			check.StatusCode{200},
 			check.BodyContains{Text: "© 2014 Unic", Count: 1},
