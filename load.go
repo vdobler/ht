@@ -43,6 +43,8 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 		OmitChecks:  s.Suite.OmitChecks,
 	}
 
+	println("AAAAAA ", s.Suite.Verbosity)
+
 	appendTests := func(testNames []string) ([]*Test, error) {
 		tests := []*Test{}
 		for _, name := range testNames {
@@ -57,6 +59,10 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 				Checks:      st.Checks,
 				Poll:        st.Poll,
 				Timeout:     st.Timeout,
+				Verbosity:   st.Verbosity,
+			}
+			if s.Suite.Verbosity > 0 {
+				t.Verbosity = s.Suite.Verbosity
 			}
 			if len(st.Unroll) > 0 {
 				nreps := lcmOf(st.Unroll)
@@ -103,8 +109,9 @@ type serTest struct {
 	// generated from the deserialized data to several real Tests.
 	Unroll map[string][]string `json:",omitempty"`
 
-	Poll    Poll          `json:",omitempty"`
-	Timeout time.Duration `json:",omitempty"`
+	Poll      Poll          `json:",omitempty"`
+	Timeout   time.Duration `json:",omitempty"`
+	Verbosity int           `json:",omitempty"`
 }
 
 // serSuite is the struct used to deserialize a Suite.
@@ -118,6 +125,7 @@ type serSuite struct {
 		Setup       []string `json:",omitempty"`
 		Tests       []string `json:",omitempty"`
 		Teardown    []string `json:",omitempty"`
+		Verbosity   int      `json:",omitempty"`
 	}
 	Variables map[string]string `json:",omitempty"`
 }

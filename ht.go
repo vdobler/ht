@@ -132,7 +132,7 @@ func (p Poll) Skip() bool {
 
 func (t *Test) errorf(format string, v ...interface{}) {
 	if t.Verbosity >= 0 {
-		format = "ERROR " + format + " in %q"
+		format = "ERROR " + format + " [%q]"
 		v = append(v, t.Name)
 		log.Printf(format, v...)
 	}
@@ -140,7 +140,7 @@ func (t *Test) errorf(format string, v ...interface{}) {
 
 func (t *Test) infof(format string, v ...interface{}) {
 	if t.Verbosity >= 1 {
-		format = "INFO " + format + " in %q"
+		format = "INFO " + format + " [%q]"
 		v = append(v, t.Name)
 		log.Printf(format, v...)
 	}
@@ -148,7 +148,7 @@ func (t *Test) infof(format string, v ...interface{}) {
 
 func (t *Test) debugf(format string, v ...interface{}) {
 	if t.Verbosity >= 2 {
-		format = "DEBUG " + format + " in %q"
+		format = "DEBUG " + format + " [%q]"
 		v = append(v, t.Name)
 		log.Printf(format, v...)
 	}
@@ -156,7 +156,7 @@ func (t *Test) debugf(format string, v ...interface{}) {
 
 func (t *Test) tracef(format string, v ...interface{}) {
 	if t.Verbosity >= 3 {
-		format = "TRACE " + format + " in %q"
+		format = "TRACE " + format + " [%q]"
 		v = append(v, t.Name)
 		log.Printf(format, v...)
 	}
@@ -207,6 +207,9 @@ func (t *Test) Run(variables map[string]string) Result {
 			t.debugf("polling failed all %d tries", maxTries)
 		}
 	}
+
+	t.infof("test %s (%s)", result.Status, result.Duration)
+
 	return result
 }
 
@@ -487,17 +490,15 @@ func (t *Test) executeChecks(response *response.Response) []Result {
 		result[i].Duration = time.Since(start)
 		result[i].Error = err
 		if err != nil {
+			t.debugf("check %d %s failed: %s", i, check.NameOf(ck), err)
 			if _, ok := err.(check.MalformedCheck); ok {
 				result[i].Status = Bogus
 			} else {
 				result[i].Status = Fail
 			}
-			if err != nil {
-				t.debugf("check %d %s failed: %s",
-					i, check.NameOf(ck), err)
-			}
 			// Abort needles checking if all went wrong.
 			if sc, ok := ck.(check.StatusCode); ok && i == 0 && sc.Expect == 200 {
+				t.tracef("skipping remaining tests")
 				for j := 1; j < len(result); j++ {
 					result[j].Status = Skipped
 				}
@@ -505,6 +506,7 @@ func (t *Test) executeChecks(response *response.Response) []Result {
 			}
 		} else {
 			result[i].Status = Pass
+			t.tracef("check %d %s: Pass", i, check.NameOf(ck))
 		}
 	}
 	return result
