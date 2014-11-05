@@ -262,16 +262,16 @@ func cookieHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // expectCheckFailures checks that each check failed.
-func expectCheckFailures(t *testing.T, descr string, result Result, test Test) {
+func expectCheckFailures(t *testing.T, descr string, result TestResult, test Test) {
 	if result.Status != Fail {
 		t.Fatalf("%s: Expected Fail, got %s", descr, result.Status)
 	}
-	if len(result.Elements) != len(test.Checks) {
+	if len(result.CheckResults) != len(test.Checks) {
 		t.Fatalf("%s: Expected %d entries, got %d: %#v",
-			descr, len(test.Checks), len(result.Elements), result)
+			descr, len(test.Checks), len(result.CheckResults), result)
 	}
 
-	for i, r := range result.Elements {
+	for i, r := range result.CheckResults {
 		if r.Status != Fail {
 			t.Errorf("%s check %d: Expect Fail, got %s", descr, i, r.Status)
 		}

@@ -82,7 +82,7 @@ type LoadTestOptions struct {
 // of the load test is conctrolled by opts.
 
 // Errors are reported if any suite's Setup failed.
-func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Result, error) {
+func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
 	if opts.Type != "throughput" && opts.Type != "concurrency" {
 		return nil, fmt.Errorf("Unknown load tests type %q", opts.Type)
 	}
@@ -105,7 +105,11 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Result, error) {
 
 	executor := func(now int64, r interface{}) (interface{}, error) {
 		t := r.(*Test)
-		result := t.execute()
+		result := TestResult{
+			CheckResults: make([]CheckResult, len(t.Checks)),
+		}
+		t.execute(&result)
+		// TODO: result.Response = nil?
 		if result.Status == Pass {
 			return result, nil
 		}
@@ -128,11 +132,11 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Result, error) {
 		bender.LoadTestConcurrency(sem, rc, executor, recorder)
 	}
 
-	allResults := make([]Result, 0, opts.Count)
+	allResults := make([]TestResult, 0, opts.Count)
 
 	resultRec := func(msg interface{}) {
 		if ere, ok := msg.(*bender.EndRequestEvent); ok {
-			if result, ok := ere.Response.(Result); ok {
+			if result, ok := ere.Response.(TestResult); ok {
 				allResults = append(allResults, result)
 			}
 		}
@@ -148,7 +152,7 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Result, error) {
 	return allResults, nil
 }
 
-func AnalyseLoadtest(results []Result) {
+func AnalyseLoadtest(results []TestResult) {
 	p, f, e, s, b := 0, 0, 0, 0, 0
 	var max, maxp, maxf, maxe time.Duration
 	for _, r := range results {

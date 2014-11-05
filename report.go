@@ -5,16 +5,12 @@
 package ht
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/mgutz/ansi"
-	"github.com/vdobler/ht/check"
 	"github.com/vdobler/ht/response"
 )
 
@@ -46,20 +42,69 @@ type SuiteResult struct {
 	Name         string
 	Description  string
 	Status       Status
+	Error        error
+	Started      time.Time // Start time
 	FullDuration time.Duration
 	TestResults  []TestResult
 }
 
+// CombineTests returns the combined status of the Tests in sr.
+func (sr SuiteResult) CombineTests() Status {
+	status := NotRun
+	for _, r := range sr.TestResults {
+		if r.Status > status {
+			status = r.Status
+		}
+	}
+	return status
+}
+
+func (sr SuiteResult) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
+	for _, tr := range sr.TestResults {
+		switch tr.Status {
+		case NotRun:
+			notRun++
+		case Skipped:
+			skipped++
+		case Pass:
+			passed++
+		case Fail:
+			failed++
+		case Error:
+			errored++
+		case Bogus:
+			bogus++
+		default:
+			panic(fmt.Sprintf("No such Status %d in suite %q test %q",
+				tr.Status, sr.Name, tr.Name))
+		}
+	}
+	return
+}
+
 // TestResults captures the outcome of a single test run.
 type TestResult struct {
-	Name         string            // Name of the test.
-	Description  string            // Copy of the description of the test
-	Status       Status            // The outcume of the test.
-	Error        error             // Error of bogus and errored tests.
-	Response     response.Response // The received response.
-	FullDuration time.Duration     // Total time of test execution, including tries.
-	Tries        int               // Number of tries executed.
-	Checks       []CheckResult     // The individual checks.
+	Name         string             // Name of the test.
+	Description  string             // Copy of the description of the test
+	Status       Status             // The outcume of the test.
+	Started      time.Time          // Start time
+	Error        error              // Error of bogus and errored tests.
+	Response     *response.Response // The received response.
+	Duration     time.Duration      // A copy of Response.Duration
+	FullDuration time.Duration      // Total time of test execution, including tries.
+	Tries        int                // Number of tries executed.
+	CheckResults []CheckResult      // The individual checks.
+}
+
+// CombineChecks returns the combined status of the Checks in tr.
+func (tr TestResult) CombineChecks() Status {
+	status := NotRun
+	for _, r := range tr.CheckResults {
+		if r.Status > status {
+			status = r.Status
+		}
+	}
+	return status
 }
 
 // CheckResult captures the outcom of a single check inside a test.
@@ -69,17 +114,6 @@ type CheckResult struct {
 	Status   Status        // Outcome of check. All status but Error
 	Duration time.Duration // How long the check took.
 	Error    error         // For a Status of Bogus or Fail.
-}
-
-// Result is the outcome of a Test or Check.
-type Result struct {
-	Status       Status
-	Name         string        `json:",omitempty"`
-	Error        error         `json:",omitempty"`
-	Duration     time.Duration `json:",omitempty"`
-	FullDuration time.Duration `json:",omitempty"`
-	Details      string        `json:",omitempty"`
-	Elements     []Result
 }
 
 var txtTmpl *template.Template
@@ -121,6 +155,7 @@ func box(title string) string {
 	return fmt.Sprintf("%s\n|   %s   |\n%s", top, title, top)
 }
 
+/*
 func (t *Test) PrintReport(w io.Writer, result Result) error {
 	// Fill descriptive data in various results for display.
 	// TODO: maybe extract to own method or do during prepare?
@@ -142,6 +177,7 @@ func (t *Test) PrintReport(w io.Writer, result Result) error {
 
 	return txtTmpl.Execute(os.Stdout, result)
 }
+*/
 
 func printReport() {
 	pass := ansi.ColorFunc("green")

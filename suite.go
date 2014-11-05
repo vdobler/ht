@@ -6,6 +6,7 @@ package ht
 
 import (
 	"fmt"
+	"time"
 
 	"log"
 
@@ -89,45 +90,69 @@ func (s *Suite) Compile() error {
 
 // Execute the setup tests in s. The tests are executed sequentialy,
 // execution stops on the first error.
-func (s *Suite) ExecuteSetup() Result {
-	return s.execute(s.Setup)
+func (s *Suite) ExecuteSetup() SuiteResult {
+	return s.execute(s.Setup, "Main Tests")
 }
 
 // ExecuteTeardown runs all teardown tests ignoring all errors.
-func (s *Suite) ExecuteTeardown() Result {
-	return s.execute(s.Teardown)
+func (s *Suite) ExecuteTeardown() SuiteResult {
+	return s.execute(s.Teardown, "Teardown")
 }
 
 // Execute all non-setup, non-teardown tests of s sequentialy.
-func (s *Suite) ExecuteTests() Result {
-	return s.execute(s.Tests)
+func (s *Suite) ExecuteTests() SuiteResult {
+	return s.execute(s.Tests, "Setup")
 }
 
-func (s *Suite) execute(tests []*Test) Result {
+func (s *Suite) execute(tests []*Test, which string) SuiteResult {
 	if len(tests) == 0 {
-		return Result{Status: Pass}
+		return SuiteResult{Status: Pass}
 	}
-	result := Result{Elements: make([]Result, len(tests))}
+	start := time.Now()
+	result := SuiteResult{
+		Name:        s.Name + " (" + which + ")",
+		Description: s.Description,
+		Started:     start,
+		TestResults: make([]TestResult, len(tests)),
+	}
 	for i, test := range tests {
-		result.Elements[i] = test.Run(s.Variables)
+		result.TestResults[i] = test.Run(s.Variables)
 	}
-	result.Status = CombinedStatus(result.Elements)
+	result.FullDuration = time.Since(start)
+	result.Status = result.CombineTests()
 	return result
 }
 
 // Execute the whole suite sequentially.
-func (s *Suite) Execute() Result {
+func (s *Suite) Execute() SuiteResult {
 	result := s.ExecuteSetup()
 	if result.Status != Pass {
-		result.Error = fmt.Errorf("Setup failed")
-		return result
+		n, k, p, f, e, b := result.Stats()
+		result.Error = fmt.Errorf("Setup failed: N=%d S=%d P=%d F=%d E=%d B=%d",
+			n, k, p, f, e, b)
+	} else {
+		// Setup worked, run real tests.
+		sutr := result.TestResults
+		result := s.ExecuteTests()
+		if result.Status != Pass {
+			n, k, p, f, e, b := result.Stats()
+			result.Error = fmt.Errorf("Suite failed: N=%d S=%d P=%d F=%d E=%d B=%d",
+				n, k, p, f, e, b)
+		}
+		// Prepend setup results
+		result.TestResults = append(sutr, result.TestResults...)
 	}
-	result = s.ExecuteTests()
-	if result.Status != Pass {
-		result.Error = fmt.Errorf("TODO")
-		return result
+
+	// Teardown and append results. Failures/Errors in teardown do not
+	// influence the suite status, but bogus teardown test render the
+	// whole suite bogus
+	tdResult := s.ExecuteTeardown()
+	if tdResult.Status == Bogus && result.Status != Bogus {
+		result.Status = Bogus
+		result.Error = fmt.Errorf("Teardown is bogus.")
 	}
-	s.ExecuteTeardown()
+	result.TestResults = append(result.TestResults, tdResult.TestResults...)
+
 	return result
 }
 

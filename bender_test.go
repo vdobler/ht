@@ -50,8 +50,6 @@ func TestThroughput(t *testing.T) {
 		// Log: lg,
 	}
 
-	var results []Result
-
 	err = suite.Compile()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -62,7 +60,7 @@ func TestThroughput(t *testing.T) {
 		Count:   1000,
 		Uniform: true,
 	}
-	results, err = LoadTest([]*Suite{suite}, options)
+	results, err := LoadTest([]*Suite{suite}, options)
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}

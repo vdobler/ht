@@ -6,6 +6,7 @@ package ht
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -90,7 +91,7 @@ type Cookie struct {
 // Test
 
 // Test is a single logical test which does one HTTP request and checks
-// a number of Checks on the recieved Result.
+// a number of Checks on the recieved Response.
 type Test struct {
 	Name        string
 	Description string
@@ -169,8 +170,21 @@ func (t *Test) tracef(format string, v ...interface{}) {
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) Run(variables map[string]string) Result {
-	var result Result
+func (t *Test) Run(variables map[string]string) TestResult {
+	// Set up a TestResult, prefill static information
+	result := TestResult{
+		Name:        t.Name,
+		Description: t.Description,
+	}
+	result.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
+	for i, c := range t.Checks {
+		result.CheckResults[i].Name = check.NameOf(c)
+		buf, err := json.Marshal(c)
+		if err != nil {
+			buf = []byte(err.Error())
+		}
+		result.CheckResults[i].JSON = string(buf)
+	}
 
 	maxTries := t.Poll.Max
 	if maxTries == 0 {
@@ -179,6 +193,7 @@ func (t *Test) Run(variables map[string]string) Result {
 	if maxTries < 0 {
 		// This test is deliberately skipped.
 		result.Status = Skipped
+		// TODO: Should Checks be filled with skipped CheckResult?
 		return result
 	}
 
@@ -194,12 +209,13 @@ func (t *Test) Run(variables map[string]string) Result {
 			result.Status, result.Error = Bogus, err
 			return result
 		}
-		result = t.execute()
+		t.execute(&result)
 		if result.Status == Pass {
 			break
 		}
 	}
 	result.FullDuration = time.Since(start)
+	result.Tries = try + 1
 	if t.Poll.Max > 1 {
 		if result.Status == Pass {
 			t.debugf("polling succeded after %d tries", try+1)
@@ -208,33 +224,27 @@ func (t *Test) Run(variables map[string]string) Result {
 		}
 	}
 
-	t.infof("test %s (%s)", result.Status, result.Duration)
+	t.infof("test %s (%s %s)", result.Status, result.FullDuration, result.Response.Duration)
 
 	return result
 }
 
 // execute does a single request and check the response.
-func (t *Test) execute() Result {
-	var result Result
+func (t *Test) execute(result *TestResult) {
 	response, err := t.executeRequest()
 	if err == nil {
 		if len(t.Checks) > 0 {
-			result.Elements = t.executeChecks(response)
-			result.Status = CombinedStatus(result.Elements)
+			t.executeChecks(response, result.CheckResults)
+			result.Status = result.CombineChecks()
 		} else {
 			result.Status = Pass
 		}
 	} else {
 		result.Status = Error
 		result.Error = err
-		result.Elements = make([]Result, len(t.Checks))
-		for i := range result.Elements {
-			result.Elements[i].Status = Skipped
-		}
 	}
+	result.Response = response
 	result.Duration = response.Duration
-	// TODO: stuff response into Result and return it
-	return result
 }
 
 // prepare the test for execution by substituting the given variables and
@@ -466,15 +476,6 @@ func (t *Test) executeRequest() (*response.Response, error) {
 	return response, err
 }
 
-func hasFailures(result []Result) bool {
-	for _, r := range result {
-		if r.Status == Fail || r.Status == Error {
-			return true
-		}
-	}
-	return false
-}
-
 // executeChecks applies the checks in t to the HTTP response received during
 // executeRequest. A non-nil error is returned for bogus checks and checks
 // which have errors: Just failing checks do not lead to non-nil-error
@@ -482,8 +483,7 @@ func hasFailures(result []Result) bool {
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) executeChecks(response *response.Response) []Result {
-	result := make([]Result, len(t.Checks))
+func (t *Test) executeChecks(response *response.Response, result []CheckResult) {
 	for i, ck := range t.Checks {
 		start := time.Now()
 		err := ck.Okay(response)
@@ -499,17 +499,18 @@ func (t *Test) executeChecks(response *response.Response) []Result {
 			// Abort needles checking if all went wrong.
 			if sc, ok := ck.(check.StatusCode); ok && i == 0 && sc.Expect == 200 {
 				t.tracef("skipping remaining tests")
+				// Clear Status and Error field as these might be
+				// populated from a prioer try run of the test.
 				for j := 1; j < len(result); j++ {
 					result[j].Status = Skipped
+					result[j].Error = nil
 				}
-				return result
 			}
 		} else {
 			result[i].Status = Pass
 			t.tracef("check %d %s: Pass", i, check.NameOf(ck))
 		}
 	}
-	return result
 }
 
 func (t *Test) prepared() bool {
@@ -522,7 +523,7 @@ func (t *Test) prepared() bool {
 // is made between request. A conc > 1 will execute conc many request
 // in paralell (without pauses).
 // TODO: move this into an BenmarkOptions
-func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []Result {
+func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []TestResult {
 	for n := 0; n < warmup; n++ {
 		if n > 0 {
 			time.Sleep(pause)
@@ -531,7 +532,7 @@ func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pau
 		t.executeRequest()
 	}
 
-	results := make([]Result, count)
+	results := make([]TestResult, count)
 	origPollMax := t.Poll.Max
 	t.Poll.Max = 1
 
@@ -543,7 +544,7 @@ func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pau
 		}
 	} else {
 		// Start conc request and restart an other once one finishes.
-		rc := make(chan Result, conc)
+		rc := make(chan TestResult, conc)
 		for i := 0; i < conc; i++ {
 			go func() {
 				rc <- t.Run(variables)
@@ -560,16 +561,6 @@ func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pau
 	t.Poll.Max = origPollMax
 
 	return results
-}
-
-func CombinedStatus(result []Result) Status {
-	status := NotRun
-	for _, r := range result {
-		if r.Status > status {
-			status = r.Status
-		}
-	}
-	return status
 }
 
 var skippedError = errors.New("Skipped")
