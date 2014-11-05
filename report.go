@@ -15,6 +15,7 @@ import (
 
 	"github.com/mgutz/ansi"
 	"github.com/vdobler/ht/check"
+	"github.com/vdobler/ht/response"
 )
 
 // Status describes the status of a Test or a Check.
@@ -39,6 +40,36 @@ const (
 	Error                 // Request or body reading failed (not for checks).
 	Bogus                 // Bogus test or check (malformd URL, bad regexp, etc.)
 )
+
+// SuiteResult captuires the outcome of running a whole suite.
+type SuiteResult struct {
+	Name         string
+	Description  string
+	Status       Status
+	FullDuration time.Duration
+	TestResults  []TestResult
+}
+
+// TestResults captures the outcome of a single test run.
+type TestResult struct {
+	Name         string            // Name of the test.
+	Description  string            // Copy of the description of the test
+	Status       Status            // The outcume of the test.
+	Error        error             // Error of bogus and errored tests.
+	Response     response.Response // The received response.
+	FullDuration time.Duration     // Total time of test execution, including tries.
+	Tries        int               // Number of tries executed.
+	Checks       []CheckResult     // The individual checks.
+}
+
+// CheckResult captures the outcom of a single check inside a test.
+type CheckResult struct {
+	Name     string        // Name of the check as registered.
+	JSON     string        // JSON serialization of check.
+	Status   Status        // Outcome of check. All status but Error
+	Duration time.Duration // How long the check took.
+	Error    error         // For a Status of Bogus or Fail.
+}
 
 // Result is the outcome of a Test or Check.
 type Result struct {

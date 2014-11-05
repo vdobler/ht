@@ -74,7 +74,6 @@
 // and defaults to RFC1123. Offset can be negative, the known units are "s" for
 // seconds, "m" for minutes, "h" for hours and "d" for days.
 //
-// TODO: Add integer substitutions.
 // TODO: Add {RAND,UNIQUE}{INT,ID,WORDS} or something similiar.
 //
 // Tests
