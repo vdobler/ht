@@ -33,4 +33,5 @@ func TestLoadSuite(t *testing.T) {
 		t.Fatalf("Unexpected problems result=\n%s\n", s)
 	}
 
+	result.PrintReport(os.Stdout)
 }

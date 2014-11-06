@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ func TestStatusCode(t *testing.T) {
 	for _, code := range []int{200, 201, 204, 300, 400, 404, 500} {
 		s := fmt.Sprintf("%d", code)
 		test := Test{
+			Name: "A very basic test.",
 			Request: Request{
 				Method:          "GET",
 				URL:             ts.URL + "/",
@@ -44,6 +46,7 @@ func TestStatusCode(t *testing.T) {
 		if result.Status != Pass {
 			t.Errorf("Unexpected error for %d: %s", code, result.Error)
 		}
+		result.PrintReport(os.Stdout)
 	}
 }
 
