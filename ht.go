@@ -175,6 +175,7 @@ func (t *Test) Run(variables map[string]string) TestResult {
 	result := TestResult{
 		Name:        t.Name,
 		Description: t.Description,
+		Started:     time.Now(),
 	}
 	result.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
