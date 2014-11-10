@@ -10,6 +10,8 @@ import (
 
 	"log"
 
+	"net"
+	"net/http"
 	"net/http/cookiejar"
 
 	"strings"
@@ -48,13 +50,24 @@ type Suite struct {
 // Compile prepares all tests in s for execution.
 func (s *Suite) Compile() error {
 	// Create cookie jar if needed.
-	var jar *cookiejar.Jar
+	cp := &ClientPool{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 10 * time.Second,
+		},
+	}
 	if s.KeepCookies {
-		jar, _ = cookiejar.New(nil)
+		jar, _ := cookiejar.New(nil)
+		cp.Jar = jar
 	}
 
 	// Compile all tests and inject jar and logger.
 	prepare := func(t *Test, which string, omit bool) error {
+		t.ClientPool = cp
 		err := t.prepare(s.Variables)
 		if err != nil {
 			return fmt.Errorf("Suite %q, cannot prepare %s %q: %s",
@@ -62,11 +75,6 @@ func (s *Suite) Compile() error {
 		}
 		if omit {
 			t.checks = nil
-		}
-		if s.KeepCookies {
-			t.Jar = jar
-		} else {
-			t.Jar = nil
 		}
 		return nil
 	}

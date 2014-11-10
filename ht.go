@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/vdobler/ht/check"
@@ -106,12 +107,74 @@ type Test struct {
 	Timeout   time.Duration // If zero use DefaultClientTimeout.
 	Verbosity int           // Verbosity level in logging.
 
-	Jar http.CookieJar `json:"-"` // The possible prepopulated cookie jar to use.
+	// ClientPool allows to inject special http.Transports or a
+	// cookie jar to be used by this Test.
+	ClientPool *ClientPool
 
 	client   *http.Client
 	request  *http.Request
 	response *response.Response
 	checks   []check.Check // compiled checks.
+}
+
+// ClientPool maintains a pool of clients for the given transport
+// and cookie jar. ClientPools must not be copied.
+type ClientPool struct {
+	Transport http.RoundTripper
+	Jar       http.CookieJar
+
+	mu      sync.Mutex
+	clients map[time.Duration]*http.Client
+}
+
+// get retreives a new or existing http.Client for the given timeout and
+// redirect following policy.
+func (p *ClientPool) Get(timeout time.Duration, followRedirects bool) *http.Client {
+	if timeout == 0 {
+		log.Fatalln("ClientPool.Get called with zero timeout.")
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.clients) == 0 {
+		p.clients = make(map[time.Duration]*http.Client)
+	}
+
+	key := timeout
+	if followRedirects {
+		key = -key
+	}
+
+	if client, ok := p.clients[key]; ok {
+		return client
+	}
+
+	var client *http.Client
+	if followRedirects {
+		client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: timeout}
+	} else {
+		client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: timeout}
+	}
+	if p.Jar != nil {
+		client.Jar = p.Jar
+	}
+	if p.Transport != nil {
+		client.Transport = p.Transport
+	}
+
+	p.clients[key] = client
+	return client
+}
+
+func doFollowRedirects(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	return nil
+}
+
+func dontFollowRedirects(req *http.Request, via []*http.Request) error {
+	return redirectNofollow
 }
 
 // Poll determines if and how to redo a test after a failure or if the
@@ -192,9 +255,8 @@ func (t *Test) Run(variables map[string]string) TestResult {
 		maxTries = 1
 	}
 	if maxTries < 0 {
-		// This test is deliberately skipped.
+		// This test is deliberately skipped. A zero duration is okay.
 		result.Status = Skipped
-		// TODO: Should Checks be filled with skipped CheckResult?
 		return result
 	}
 
@@ -311,8 +373,17 @@ func (t *Test) prepare(variables map[string]string) error {
 		return err
 	}
 
-	t.prepareClient()
-	t.client.Jar = t.Jar
+	to := DefaultClientTimeout
+	if t.Timeout > 0 {
+		to = t.Timeout
+	}
+	if t.ClientPool != nil {
+		t.client = t.ClientPool.Get(to, t.Request.FollowRedirects)
+	} else if t.Request.FollowRedirects {
+		t.client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: to}
+	} else {
+		t.client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: to}
+	}
 	return nil
 }
 
@@ -383,63 +454,6 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	}
 
 	return contentType, nil
-}
-
-var (
-	followingClient    *http.Client
-	nonfollowingClient *http.Client
-)
-
-// prepareClient sets up t's HTTP client.
-func (t *Test) prepareClient() {
-	// TODO: sprinkle gently with mutex
-	if t.Timeout == 0 || t.Timeout == DefaultClientTimeout {
-		if t.Request.FollowRedirects {
-			if followingClient == nil || followingClient.Timeout != DefaultClientTimeout {
-				followingClient = &http.Client{
-					CheckRedirect: func(req *http.Request, via []*http.Request) error {
-						if len(via) >= 10 {
-							return errors.New("stopped after 10 redirects")
-						}
-						return nil
-					},
-					Timeout: DefaultClientTimeout,
-				}
-			}
-			t.client = followingClient
-		} else {
-			if nonfollowingClient == nil || nonfollowingClient.Timeout != DefaultClientTimeout {
-				nonfollowingClient = &http.Client{
-					CheckRedirect: func(req *http.Request, via []*http.Request) error {
-						return redirectNofollow
-					},
-					Timeout: DefaultClientTimeout,
-				}
-			}
-			t.client = nonfollowingClient
-		}
-		return
-	}
-
-	// Tests with special timeouts get their own individual client.
-	if t.Request.FollowRedirects {
-		t.client = &http.Client{
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) >= 10 {
-					return errors.New("stopped after 10 redirects")
-				}
-				return nil
-			},
-			Timeout: t.Timeout,
-		}
-	} else {
-		t.client = &http.Client{
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return redirectNofollow
-			},
-			Timeout: t.Timeout,
-		}
-	}
 }
 
 var (

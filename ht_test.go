@@ -300,18 +300,14 @@ func TestClientTimeout(t *testing.T) {
 		},
 		Timeout: 40 * time.Millisecond,
 	}
-	err := test.prepare(nil)
-	if err != nil {
-		t.Fatalf("Unecpected error: %v", err)
-	}
-
 	start := time.Now()
-	_, err = test.executeRequest()
-	if err == nil {
-		t.Fatalf("No error reported.")
-	}
+	result := test.Run(nil)
 	if d := time.Since(start); d > 99*time.Millisecond {
 		t.Errorf("Took too long: %s", d)
+	}
+
+	if result.Status != Error {
+		t.Errorf("Got status %s, want Error", result.Status)
 	}
 }
 
