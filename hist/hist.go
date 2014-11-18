@@ -28,7 +28,7 @@ func NewLogHist(bits uint, max int) *LogHist {
 	}
 	lastBucket := h.Bucket(max)
 	_, lastValue := h.Cover(lastBucket)
-	h.Count = make([]int, lastValue)
+	h.Count = make([]int, lastValue+1)
 	h.Max = lastValue
 	return h
 }
@@ -70,9 +70,11 @@ func (h *LogHist) Cover(bucket int) (a int, b int) {
 func (h *LogHist) Add(v int) {
 	if v < 0 {
 		h.Underflow++
+		return
 	}
 	if v >= h.Max {
 		h.Overflow++
+		return
 	}
 	b := h.Bucket(v)
 	h.Count[b]++
@@ -82,4 +84,57 @@ func (h *LogHist) Add(v int) {
 // allowed range of [0,h.Max].
 func (h *LogHist) MustAdd(v int) {
 	h.Count[h.Bucket(v)]++
+}
+
+// Integral returns the running sum of all buckets.
+func (h *LogHist) Integral() []uint64 {
+	sum := make([]uint64, len(h.Count))
+	s := uint64(0)
+	for i, c := range h.Count {
+		s += +uint64(c)
+		sum[i] = s
+	}
+	return sum
+}
+
+// Percentils takes a sorted list of increasing float64 from the intervall [0,1].
+// For each value it returns the corresponding percentil of h.
+// Percentil ignores overflowing and underflowing values in h.
+func (h *LogHist) Percentils(ps []float64) []int {
+	sum := h.Integral()
+	n := float64(sum[len(sum)-1])
+
+	v := make([]int, len(ps))
+	s := 0
+	for i, x := range ps {
+		for float64(sum[s])/n < x {
+			s++
+		}
+		a, b := h.Cover(s)
+		v[i] = a + (b-a)/2
+	}
+	return v
+}
+
+// Average returns an approximation to the average of all non-over/underflowing
+// values added to h.
+func (h *LogHist) Average() int {
+	// println("Average")
+	sum := uint64(0)
+	n := uint64(0)
+	for b, c := range h.Count {
+		left, right := h.Cover(b)
+		d := uint64(left + right - 1)
+		sum += d * uint64(c/2)
+		if c%2 == 1 {
+			sum += d / 2
+		}
+		// println(left, right, c, " -> sum =", sum)
+		n += uint64(c)
+	}
+	if n == 0 {
+		return 0
+	}
+	// println(":", sum, n)
+	return int(sum / n)
 }
