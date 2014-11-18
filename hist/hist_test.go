@@ -10,14 +10,51 @@ import (
 	"testing"
 )
 
-func TestNewLogHist(t *testing.T) {
-	h := NewLogHist(2, 300)
-	for v := 0; v < 300; v++ {
-		bucket := h.Bucket(v)
-		a, b := h.Cover(bucket)
-		fmt.Printf("v =%3d  b=%2d  bs=%2d  %3d-%3d\n", v, bucket, b-a, a, b)
-	}
+func TestLogHist(t *testing.T) {
+	for _, bits := range []uint{2, 3, 4, 5, 6, 7, 8, 9, 10} {
+		for _, max := range []int{3, 30, 300, 3000, 30000} {
+			h := NewLogHist(bits, max)
+			n := 1 << bits
+			if h.Max < max {
+				t.Errorf("bits=%d Max=%d, want>=%d", bits, h.Max, max)
+			}
 
+			lastBucket := 0
+			bs := 1
+			blockstart := 0
+			for v := 1; v <= h.Max; v++ {
+				bucket := h.Bucket(v)
+
+				// Bucket increases continuousely and monotonic.
+				if bucket != lastBucket && bucket != lastBucket+1 {
+					t.Errorf("bits=%d max=%d v=%d: bucket jumped from %d to %d",
+						bits, max, v, lastBucket, bucket)
+				}
+
+				// Bucket steps are equally spaced in v.
+				if (v-blockstart)%bs == 0 {
+					if bucket != lastBucket+1 {
+						t.Errorf("bits=%d max=%d v=%d: bucket %d, want %d",
+							bits, max, v, bucket, lastBucket+1)
+					}
+				} else {
+					if bucket != lastBucket {
+						t.Errorf("bits=%d max=%d v=%d: bucket %d, want %d",
+							bits, max, v, bucket, lastBucket)
+					}
+				}
+
+				if blockstart+n*bs == v {
+					// Start the next block.
+					bs *= 2
+					blockstart = v
+				}
+
+				lastBucket = bucket
+			}
+
+		}
+	}
 }
 
 func TestAverage(t *testing.T) {
