@@ -5,7 +5,6 @@
 package hist
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 )
@@ -101,43 +100,52 @@ func TestAverage(t *testing.T) {
 		if got := h.Average(); got != tc.want {
 			t.Errorf("%d: Average(%v)=%d, want %d", i, tc.v, got, tc.want)
 		}
+	}
+}
 
+func TestAverage2(t *testing.T) {
+	h := NewLogHist(7, 1000)
+	for i := 0; i <= 1000; i++ {
+		h.Add(i)
+	}
+	if got := h.Average(); got != 500 {
+		t.Errorf("Average(0..1000)=%d, want 500", got)
 	}
 
+	h = NewLogHist(7, 1000)
+	for i := 0; i < 100000; i++ {
+		v := int(rand.NormFloat64()*100 + 500)
+		h.Add(v)
+	}
+	if got := h.Average(); got < 495 || got > 505 {
+		t.Errorf("Average=%d, want 500", got)
+	}
 }
 
 func TestPercentils(t *testing.T) {
-	h := NewLogHist(7, 10000)
+	h := NewLogHist(7, 1000)
 
 	for i := 0; i < 100000; i++ {
-		v := int(rand.NormFloat64()*500 + 3000)
+		v := int(rand.NormFloat64()*100 + 300)
 		h.Add(v)
 	}
 
 	for i := 0; i < 100000; i++ {
-		v := int(rand.NormFloat64()*500 + 1000)
-		h.Add(v)
-	}
-	for i := 0; i < 100000; i++ {
-		v := int(rand.NormFloat64()*500 + 5000)
-		h.Add(v)
-	}
-	for i := 0; i < 1000; i++ {
-		v := int(rand.NormFloat64()*500 + 9000)
+		v := int(rand.NormFloat64()*100 + 700)
 		h.Add(v)
 	}
 
-	fmt.Printf("# Average = %d\n", h.Average())
-
-	ps := make([]float64, 100)
-	for p := 0; p < 100; p++ {
-		ps[p] = float64(p) / 100
-	}
-	ps = append(ps, []float64{0.991, 0.992, 0.993, 0.994, 0.995, 0.9955,
-		0.996, 0.9965, 0.997, 0.9975, 0.998, 0.9985, 0.999, 0.9995, 1}...)
+	ps := []float64{0.25, 0.5, 0.75}
 	u := h.Percentils(ps)
-	for i, p := range ps {
-		fmt.Printf("%f %d\n", p, u[i])
+	if len(u) != 3 {
+		t.Errorf("Got %d values back", len(u))
+	}
+
+	if u[0] < 295 || u[0] > 305 ||
+		u[1] < 495 || u[1] > 505 ||
+		u[2] < 695 || u[2] > 705 {
+		t.Errorf("Either math/rand is buggy or we had exeptional "+
+			"bad luck or something is brocken:\nu = %v", u)
 	}
 
 }
