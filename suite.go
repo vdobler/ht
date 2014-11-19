@@ -133,6 +133,7 @@ func (s *Suite) execute(tests []*Test, which string) SuiteResult {
 
 // Execute the whole suite sequentially.
 func (s *Suite) Execute() SuiteResult {
+	println("Executing Suite", s.Name)
 	result := s.ExecuteSetup()
 	if result.Status != Pass {
 		n, k, p, f, e, b := result.Stats()
@@ -141,15 +142,17 @@ func (s *Suite) Execute() SuiteResult {
 	} else {
 		// Setup worked, run real tests.
 		sutr := result.TestResults
-		result := s.ExecuteTests()
-		if result.Status != Pass {
-			n, k, p, f, e, b := result.Stats()
+		mresult := s.ExecuteTests()
+		if mresult.Status != Pass {
+			n, k, p, f, e, b := mresult.Stats()
 			result.Error = fmt.Errorf("Suite failed: N=%d S=%d P=%d F=%d E=%d B=%d",
 				n, k, p, f, e, b)
 		}
 		// Prepend setup results
-		result.TestResults = append(sutr, result.TestResults...)
+		result.TestResults = append(sutr, mresult.TestResults...)
+		println("AAA", len(result.TestResults))
 	}
+	println("BBB", len(result.TestResults))
 
 	// Teardown and append results. Failures/Errors in teardown do not
 	// influence the suite status, but bogus teardown test render the
