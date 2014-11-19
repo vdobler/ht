@@ -6,7 +6,6 @@ package ht
 
 import (
 	"fmt"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -75,48 +74,6 @@ func TestThroughput(t *testing.T) {
 		t.Fatalf("Unexpected error %v", err)
 	}
 	fmt.Printf("Concurrency Test:\n")
-	AnalyseLoadtest(results)
-}
-
-func TestLogHist(t *testing.T) {
-	if testing.Short() {
-		t.Skip("LogHist is skipped in short mode.")
-	}
-	tests := []struct{ v, b int }{
-		{0, 0}, {1, 1}, {19, 19}, {63, 63}, {64, 64}, {65, 64}, {66, 65},
-		{117, 90}, {118, 91}, {127, 95}, {128, 96}, {129, 96}, {130, 96},
-		{131, 96}, {132, 97}, {255, 127}, {256, 128}, {263, 128}, {264, 129},
-		{2047, 223}, {2048, 224},
-	}
-
-	h := NewLogHist(3000)
-
-	for _, tc := range tests {
-		if got := h.bucket(tc.v); got != tc.b {
-			t.Errorf("bucket(%d)=%d, want %d", tc.v, got, tc.b)
-		}
-	}
-
-	peak := []float64{500, 1500, 2500}
-	for i := 0; i < 50000; i++ {
-		p := rand.Intn(3)
-		r := int(rand.NormFloat64()*100 + peak[p])
-		if r < 0 {
-			r = 0
-		} else if r >= 3000 {
-			r = 2999
-		}
-		h.Add(r)
-	}
-
-	fmt.Printf("%d %d %d %d %d %d %d %d %d %d %d %d\n", h.Percentil(0),
-		h.Percentil(0.10), h.Percentil(0.25),
-		h.Percentil(0.50), h.Percentil(0.75), h.Percentil(0.90),
-		h.Percentil(0.95), h.Percentil(0.98), h.Percentil(0.99),
-		h.Percentil(0.998), h.Percentil(0.999), h.Percentil(1))
-
-	h.dump()
-	println()
-	h.dumplin()
-	h.PercentilPlot("xxx.png")
+	ltr := AnalyseLoadtest(results)
+	fmt.Printf("Loadtest Result:\n%s\n", ltr)
 }

@@ -5,24 +5,21 @@
 package ht
 
 import (
-	"bytes"
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/pinterest/bender"
+	"github.com/vdobler/ht/hist"
 )
 
-// makeRequestChannel returns a channel on which the non-disabled main
-// tests of the given suites are sent. The test from the suites are
+// makeTestChannel returns a channel on which the non-disabled main
+// tests of the given suites are sent. The test from the given suites are
 // interweaved. All given suites must have at least one non-disabled
 // main test.
 //
 // At most count tests are sent for at most the given duration.
-func makeRequestChannel(suites []*Suite, count int, duration time.Duration) chan interface{} {
+func makeTestChannel(suites []*Suite, count int, duration time.Duration) chan interface{} {
 	rc := make(chan interface{})
 	go func() {
 		n := 0
@@ -74,20 +71,19 @@ type LoadTestOptions struct {
 	Rate float64
 
 	// Uniform changes to uniform (equaly spaced) distribution of
-	// requests. Fals uses an exponential distribution.
+	// requests. False uses an exponential distribution.
 	Uniform bool
 }
 
 // LoadTest will perform a load test of the main tests of suites, the details
-// of the load test is conctrolled by opts.
-
+// of the load test is controlled by opts.
 // Errors are reported if any suite's Setup failed.
 func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
 	if opts.Type != "throughput" && opts.Type != "concurrency" {
 		return nil, fmt.Errorf("Unknown load tests type %q", opts.Type)
 	}
 	if opts.Timeout == 0 {
-		opts.Timeout = 7 * 24 * time.Hour
+		opts.Timeout = 10 * time.Minute
 	}
 
 	// Setup
@@ -101,7 +97,7 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
 	log.Printf("Running load testwith %+v", opts)
 
 	// rc provides a stream of prepared test taken from suites.
-	rc := makeRequestChannel(suites, opts.Count, opts.Timeout)
+	rc := makeTestChannel(suites, opts.Count, opts.Timeout)
 
 	executor := func(now int64, r interface{}) (interface{}, error) {
 		t := r.(*Test)
@@ -152,8 +148,46 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
 	return allResults, nil
 }
 
-func AnalyseLoadtest(results []TestResult) {
-	p, f, e, s, b := 0, 0, 0, 0, 0
+// LoadtestResult captures aggregated values of a load test.
+type LoadtestResult struct {
+	Started  time.Time
+	Total    int
+	Passed   int
+	Failed   int
+	Errored  int
+	Skipped  int
+	Bogus    int
+	PassHist *hist.LogHist
+	FailHist *hist.LogHist
+	BothHist *hist.LogHist
+}
+
+func (r LoadtestResult) String() string {
+	s := fmt.Sprintf("Total   Passed  Failed  Errored Skipped Bogus\n")
+	s += fmt.Sprintf("%-7d %-7d %-7d %-7d %-7d %-7d \n", r.Total, r.Passed,
+		r.Failed, r.Errored, r.Skipped, r.Bogus)
+	s += fmt.Sprintf("Passed  Failed  Both    (average response time)\n")
+	s += fmt.Sprintf("%-7d %-7d %-7d [ms]\n", r.PassHist.Average(),
+		r.FailHist.Average(), r.BothHist.Average())
+
+	ps := []float64{0, 0.25, 0.50, 0.75, 0.80, 0.85, 0.90, 0.95, 0.97,
+		0.98, 0.99, 0.995, 0.999, 1}
+	cps := make([]float64, len(ps))
+	for i, p := range ps {
+		cps[i] = 100 * p
+	}
+
+	s += fmt.Sprintf("Percentil %4.1f\n", cps)
+	s += fmt.Sprintf("Passed    %4d  [ms]\n", r.PassHist.Percentils(ps))
+	s += fmt.Sprintf("Failed    %4d  [ms]\n", r.FailHist.Percentils(ps))
+
+	return s
+}
+
+// AnalyseLoadtest computes aggregate statistics of the given results.
+func AnalyseLoadtest(results []TestResult) LoadtestResult {
+	result := LoadtestResult{}
+
 	var max, maxp, maxf, maxe time.Duration
 	for _, r := range results {
 		if r.Duration > max {
@@ -161,64 +195,46 @@ func AnalyseLoadtest(results []TestResult) {
 		}
 		switch r.Status {
 		case Pass:
-			p++
+			result.Passed++
 			if r.Duration > maxp {
 				maxp = r.Duration
 			}
 		case Fail:
-			f++
+			result.Failed++
 			if r.Duration > maxf {
 				maxf = r.Duration
 			}
 		case Error:
-			e++
+			result.Errored++
 			if r.Duration > maxe {
 				maxe = r.Duration
 			}
 		case Skipped:
-			s++
+			result.Skipped++
 		case Bogus:
-			b++
+			result.Bogus++
 		}
 	}
-	fmt.Printf("Pass=%d Fail=%d  Error=%d  Skipped=%d  Bogus=%d\n", p, f, e, s, b)
+	result.Total = result.Passed + result.Failed + result.Errored + result.Skipped + result.Bogus
 
-	histAll, histPass, histFail := NewLogHist(int(max/time.Millisecond)),
-		NewLogHist(int(maxp/time.Millisecond)), NewLogHist(int(maxf/time.Millisecond))
+	result.PassHist = hist.NewLogHist(7, int(maxp/time.Millisecond))
+	result.FailHist = hist.NewLogHist(7, int(maxf/time.Millisecond))
+	result.BothHist = hist.NewLogHist(7, int(max/time.Millisecond))
 	for _, r := range results {
-		histAll.Add(int(r.Duration / time.Millisecond))
 		switch r.Status {
 		case Pass:
-			histPass.Add(int(r.Duration / time.Millisecond))
+			result.PassHist.Add(int(r.Duration / time.Millisecond))
+			result.BothHist.Add(int(r.Duration / time.Millisecond))
 		case Fail:
-			histFail.Add(int(r.Duration / time.Millisecond))
+			result.FailHist.Add(int(r.Duration / time.Millisecond))
+			result.BothHist.Add(int(r.Duration / time.Millisecond))
 		}
 	}
 
-	fmt.Printf("All Request: %s\n", histAll)
-	fmt.Printf("Pass Request: %s\n", histPass)
-	fmt.Printf("Fail Request: %s\n", histFail)
-	histAll.PercentilPlot("")
-	histAll.PercentilPlot("percentil.png")
-
+	return result
 }
 
-type LogHist struct {
-	Max      int
-	Count    []int
-	Last     int
-	Overflow int
-}
-
-func NewLogHist(max int) LogHist {
-	lh := LogHist{}
-	last := lh.bucket(max) + 1
-	lh.Max = max
-	lh.Last = last
-	lh.Count = make([]int, last)
-	return lh
-}
-
+/*
 func NewHistogramRecorder(h *LogHist) bender.Recorder {
 	return func(msg interface{}) {
 		switch msg := msg.(type) {
@@ -228,196 +244,4 @@ func NewHistogramRecorder(h *LogHist) bender.Recorder {
 		}
 	}
 }
-
-var (
-	// TODO: generate algoritmicaly
-	defaultPlotPercentils = []float64{0,
-		5, 10, 20, 25, 30, 35, 40, 50, 55, 60, 65, 70, 75, 80, 83, 85,
-		87, 89, 90, 91, 92, 93, 94, 95, 95.5, 96, 96.5, 97.0, 97.5, 97.8, 98, 98.2, 98.4, 98.6,
-		98.7, 98.8, 98.9, 99, 99.1, 99.2, 99.3, 99.4, 99.5, 99.6, 99.7,
-		99.75, 99.78, 99.80, 99.82, 99.84, 99.86, 99.87, 99.89, 99.90, 99.91, 99.92,
-		99.93, 99.94, 99.95, 99.96, 99.97, 99.98, 99.982, 99.984, 99.986, 99.987, 99.988, 99.989, 99.990,
-		99.995, 99.997, 99.998, 99.999, 100}
-
-	defaultPrintPercentils = []float64{0, 25, 50, 75, 80, 85,
-		90, 95, 98, 99, 99.5, 99.8, 99.9, 100}
-)
-
-func (h LogHist) String() string {
-	buf := &bytes.Buffer{}
-	fmt.Fprintf(buf, "Percentils:\n")
-	for _, p := range defaultPrintPercentils {
-		fmt.Fprintf(buf, "  %5.1f %4d\n", p, h.Percentil(p/100))
-	}
-	return buf.String()
-}
-
-// PercentilPlot uses gnuplot to draw latency over percentils.
-// of filename is empty an ascii art is written to stdout.
-func (h LogHist) PercentilPlot(filename string) {
-	buf := &bytes.Buffer{}
-	if filename == "" {
-		fmt.Fprintln(buf, "set term dumb 85,30\n")
-	} else {
-		fmt.Fprintf(buf, "set term png size 800,480; set out %q\n", filename)
-	}
-	fmt.Fprintln(buf, `
-set logscale x
-set xtics ("0" 100, "50" 50, "80" 20, "90" 10, "95" 5, "98" 2, "99" 1, "99.5" 0.5, "99.8" 0.2, "99.9" 0.1, "99.95" 0.05, "99.98" 0.02, "99.99" 0.01)
-set xrange [0.009:100] reverse
-set yrange [0:*]
-set xlab "Percentil"
-set ylab "Latency [ms]"
-set grid
-set style data points
-plot "-" using 1:2 pt 3 notit
-`)
-	// TODO: use only that many percentils as are reachable by the number of
-	// values in h:  500 measurements will cut of the percentilplot at 99.8.
-	for _, p := range defaultPlotPercentils {
-		fmt.Fprintf(buf, "%.3f %d\n", 100-p, h.Percentil(p/100))
-	}
-	fmt.Fprintf(buf, "e\n")
-	gp := &exec.Cmd{
-		Path:   "/usr/bin/gnuplot",
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		Stdin:  buf,
-	}
-	gp.Run()
-}
-
-func (h LogHist) Add(v int) {
-	if v < 0 || v > h.Max {
-		return
-	}
-	b := h.bucket(v)
-	h.Count[b]++
-}
-
-func (h LogHist) MN() (maxCount int, total int) {
-	for b := 0; b < h.Last; b++ {
-		if h.Count[b] > maxCount {
-			maxCount = h.Count[b]
-		}
-		total += h.Count[b]
-	}
-	return maxCount, total
-}
-
-func (h LogHist) dump() {
-	max, n := h.MN()
-
-	fmt.Printf("Total: %d  Max: %d\n", n, max)
-	scale := 50 / float64(max)
-	from, bs := -1, 0
-	r := ""
-	for b := 0; b < h.Last; b++ {
-		from2, bs2 := h.value(b)
-		if from2 != from {
-			from, bs = from2, bs2
-			r = fmt.Sprintf("%4d - %4d", from, from+bs-1)
-		} else {
-			r = "           "
-		}
-		bar := strings.Repeat("#", int(scale*(0.5+float64(h.Count[b]))))
-		fmt.Printf("%s %s\n", r, bar)
-	}
-}
-
-func (h LogHist) dumplin() {
-	max, n := -1, 0
-	for b := 0; b < h.Last; b++ {
-		_, bs := h.value(b)
-		if h.Count[b]/bs > max {
-			max = h.Count[b] / bs
-		}
-		n += h.Count[b]
-	}
-
-	fmt.Printf("Total: %d  Max: %d\n", n, max)
-	for b := 0; b < h.Last; b++ {
-		from, bs := h.value(b)
-		scale := 50 / float64(max)
-		c := h.Count[b]
-		for i := from; i < from+bs; i++ {
-			bar := strings.Repeat("#", int(scale*(0.5+float64(c)/float64(bs))))
-			fmt.Printf("%4d %s\n", i, bar)
-		}
-	}
-}
-
-// TODO: there might be a faster way...
-func (h LogHist) Percentil(p float64) int {
-	_, n := h.MN()
-	target := p * float64(n)
-	max := 0
-	for b := 0; b < h.Last; b++ {
-		from, bs := h.value(b)
-		count := h.Count[b]
-		if count == 0 {
-			continue
-		}
-		c := float64(count) / float64(bs)
-		for i := from; i < from+bs; i++ {
-			target -= c
-			if target < 0 {
-				return i - 1
-			}
-			max = i
-		}
-	}
-	return max
-}
-
-func (_ LogHist) bucketSize(v int) int {
-	if v < 64 {
-		return 1
-	}
-	bs := 2
-	v /= 64
-	for v > 1 {
-		v >>= 1
-		bs <<= 1
-	}
-	return bs
-}
-
-func (_ LogHist) log(b int) int {
-	k := 2
-	for b > 2 {
-		b >>= 1
-		k++
-	}
-	return k
-}
-
-func (h LogHist) bucket(v int) int {
-	if v < 64 {
-		return v
-	}
-	bs := h.bucketSize(v)
-	v -= bs * 32
-	v /= bs
-	return 32*h.log(bs) + v
-}
-
-func ilog(b int) int {
-	return (b - 32) / 32
-}
-
-func ibs(b int) int {
-	return 1 << uint(ilog(b))
-}
-
-func (h LogHist) value(b int) (val int, bs int) {
-	k := (b - 32) / 32
-	bs = 1 << uint(k)
-	v := b - 32 - 32*k
-	v *= bs
-	v += bs * 32
-	if bs <= 0 {
-		bs = 1
-	}
-	return v, bs
-}
+*/
