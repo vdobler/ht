@@ -15,10 +15,13 @@ func TestLogHist(t *testing.T) {
 		for _, max := range []int{3, 30, 300, 3000, 30000} {
 			h := NewLogHist(bits, max)
 			n := 1 << bits
+
+			// Checking max. TODO: corner cases
 			if h.Max < max {
 				t.Errorf("bits=%d Max=%d, want>=%d", bits, h.Max, max)
 			}
 
+			// Check buckets beeing continous and of proper size.
 			lastBucket := 0
 			bs := 1
 			blockstart := 0
@@ -53,6 +56,24 @@ func TestLogHist(t *testing.T) {
 				lastBucket = bucket
 			}
 
+			// Check cover.
+			lb := h.Bucket(h.Max)
+			lastA := 0
+			for bucket := 0; bucket <= lb; bucket++ {
+				a, b := h.Cover(bucket)
+				if a != lastA {
+					t.Errorf("bits=%d max=%d bucket=%d: a=%d want %d",
+						bits, max, bucket, a, lastA)
+				}
+				for v := a; v < b; v++ {
+					b := h.Bucket(v)
+					if b != bucket {
+						t.Errorf("bits=%d max=%d bucket=%d: bucket(%d)=%d, want %d",
+							bits, max, bucket, v, b, bucket)
+					}
+				}
+				lastA = b
+			}
 		}
 	}
 }
