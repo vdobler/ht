@@ -33,7 +33,7 @@ var (
 
 func runExecute(cmd *Command, suites []*ht.Suite) {
 
-	results := make([]ht.Result, len(suites))
+	results := make([]ht.SuiteResult, len(suites))
 
 	var wg sync.WaitGroup
 	for i := range suites {
@@ -63,8 +63,8 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		t := fmt.Sprintf("Suite %d: %s", s+1, suites[s].Name)
 		fmt.Printf("\n%s\nFile %s\nStatus %s\n", ht.BoldBox(t, ""),
 			suites[s].Name, results[s].Status)
-		for k, r := range results[s].Elements {
-			suites[s].Tests[k].PrintReport(os.Stdout, r)
+		for _, r := range results[s].TestResults {
+			r.PrintReport(os.Stdout)
 			switch r.Status {
 			case ht.Pass:
 				totalPass++
@@ -82,4 +82,5 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	}
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
+
 }

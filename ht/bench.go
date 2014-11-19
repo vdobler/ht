@@ -7,10 +7,10 @@ package main
 import (
 	"fmt"
 	"log"
-	"sort"
 	"time"
 
 	"github.com/vdobler/ht"
+	"github.com/vdobler/ht/hist"
 )
 
 var cmdBench = &Command{
@@ -62,23 +62,24 @@ func runBench(cmd *Command, suites []*ht.Suite) {
 	}
 }
 
-func printBenchmarkSummary(results []ht.Result) {
-	durations := []int{}
-	avg := 0
+func printBenchmarkSummary(results []ht.TestResult) {
+	max := 0
 	for _, r := range results {
-		d := int(r.Duration / time.Millisecond)
-		durations = append(durations, d)
-		avg += d
+		if d := int(r.Duration / time.Millisecond); d > max {
+			max = d
+		}
 	}
-	sort.Ints(durations)
-	avg /= len(durations)
-
-	p := func(x float64) int {
-		i := int(x * float64(len(durations)))
-		return durations[i]
+	h := hist.NewLogHist(7, max)
+	for _, r := range results {
+		h.Add(int(r.Duration / time.Millisecond))
 	}
 
-	fmt.Printf("N=%d Min=%d 25%%=%d Med=%d 75%%=%d Max=%d Avg=%d [ms]\n",
-		len(durations), durations[0], p(0.25), p(0.5), p(0.75),
-		durations[len(durations)-1], avg)
+	ps := []float64{0, 0.25, 0.50, 0.75, 0.80, 0.85, 0.90, 0.95, 0.97, 0.98, 0.99, 1}
+	cps := make([]int, len(ps))
+	for i, p := range ps {
+		cps[i] = int(100*p + 0.2)
+	}
+
+	fmt.Printf("Percentil %4d \n", cps)
+	fmt.Printf("Resp.Time %4d  [ms]\n", h.Percentils(ps))
 }
