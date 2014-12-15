@@ -14,15 +14,16 @@ import (
 )
 
 func TestRTHistogram(t *testing.T) {
-	fast := []int{10, 12, 13, 14, 10, 20, 15, 17, 18, 12, 13, 15, 16, 19, 11, 14, 17, 28}
-	slow := []int{34, 35, 30, 37, 38, 40, 42, 43, 41, 34, 36, 38, 33, 32, 32, 44, 43, 45, 45, 49}
+	fast := []int{10, 12, 13, 14, 10, 20, 15, 17, 37, 12, 13, 15, 16, 19, 11, 14, 17, 28}
+	slow := []int{34, 35, 30, 37, 38, 19, 42, 43, 41, 34, 36,
+		38, 33, 32, 32, 44, 43, 45, 45, 49}
 
 	data := map[string][]int{
 		"Fast": fast,
 		"Slow": slow,
 	}
 
-	err := RTHistogram("Commit deadbeaf", data, true, "comparison.png")
+	err := RTHistogram("Commit deadbeef", data, true, "comparison.png")
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}

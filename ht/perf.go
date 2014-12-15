@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -25,11 +26,11 @@ func init() {
 	cmdPerf.Flag.IntVar(&countFlag, "count", 1000,
 		"number of requests to perform")
 	cmdPerf.Flag.DurationVar(&timeoutFlag, "timeout", 5*time.Minute,
-		"maximum time to run the oad test")
+		"maximum time to run the load test")
 	cmdPerf.Flag.BoolVar(&uniformFlag, "uniform", true,
 		"use uniformly distributed requests instead of exponentialy ditrubuted")
 	cmdPerf.Flag.BoolVar(&concFlag, "conc", false,
-		"do a concurrency test instead a througput test")
+		"do a concurrency test instead of a througput test")
 }
 
 var (
@@ -55,5 +56,7 @@ func runPerf(cmd *Command, suites []*ht.Suite) {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	ht.AnalyseLoadtest(results)
+	ltr := ht.AnalyseLoadtest(results)
+
+	fmt.Printf("%s\n", ltr)
 }
