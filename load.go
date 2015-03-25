@@ -5,7 +5,6 @@
 package ht
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/check"
+	"github.com/yosuke-furukawa/json5/encoding/json5"
 
 	"strings"
 )
@@ -144,7 +144,7 @@ func loadSuiteJSON(filename string, paths []string) (s serSuite, dir string, err
 	if err != nil {
 		return s, dir, err
 	}
-	err = json.Unmarshal(all, &s)
+	err = json5.Unmarshal(all, &s)
 	if err != nil {
 		return s, dir, err
 	}
@@ -185,7 +185,7 @@ func loadTestJSON(filename string) (*serTest, error) {
 		return nil, err
 	}
 	t := &serTest{}
-	err = json.Unmarshal(all, t)
+	err = json5.Unmarshal(all, t)
 	if err != nil {
 		return nil, err
 	}

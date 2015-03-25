@@ -7,7 +7,6 @@ package check
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"reflect"
 
 	"github.com/vdobler/ht/response"
+	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
 
 // Check is a single check performed on a Response.
@@ -174,7 +174,7 @@ func (cl CheckList) MarshalJSON() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	buf.WriteRune('[')
 	for i, check := range cl {
-		raw, err := json.Marshal(check)
+		raw, err := json5.Marshal(check)
 		if err != nil {
 			return nil, err
 		}
@@ -195,14 +195,14 @@ func (cl CheckList) MarshalJSON() ([]byte, error) {
 }
 
 func (cl *CheckList) UnmarshalJSON(data []byte) error {
-	raw := []json.RawMessage{}
-	err := json.Unmarshal(data, &raw)
+	raw := []json5.RawMessage{}
+	err := json5.Unmarshal(data, &raw)
 	if err != nil {
 		return err
 	}
 	for _, c := range raw {
 		u := struct{ Check string }{}
-		err = json.Unmarshal(c, &u)
+		err = json5.Unmarshal(c, &u)
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("no such check %s", u.Check)
 		}
 		check := reflect.New(typ)
-		err = json.Unmarshal(c, check.Interface())
+		err = json5.Unmarshal(c, check.Interface())
 		if err != nil {
 			return err
 		}

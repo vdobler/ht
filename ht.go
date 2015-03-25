@@ -6,7 +6,6 @@ package ht
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/vdobler/ht/check"
 	"github.com/vdobler/ht/response"
+	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
 
 var (
@@ -243,7 +243,7 @@ func (t *Test) Run(variables map[string]string) TestResult {
 	result.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
 		result.CheckResults[i].Name = check.NameOf(c)
-		buf, err := json.Marshal(c)
+		buf, err := json5.Marshal(c)
 		if err != nil {
 			buf = []byte(err.Error())
 		}
@@ -378,6 +378,7 @@ func (t *Test) prepare(variables map[string]string) error {
 		to = t.Timeout
 	}
 	if t.ClientPool != nil {
+		t.tracef("Taking client from pool")
 		t.client = t.ClientPool.Get(to, t.Request.FollowRedirects)
 	} else if t.Request.FollowRedirects {
 		t.client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: to}
