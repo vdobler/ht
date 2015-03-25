@@ -74,10 +74,10 @@ Flags:
     -skip <id>,...     skip tests wih the given ids
     -verbosity <n>     force this verbosity on all tests
 
-Tests IDs have the following format <SuiteNo>.<Type><TestNo> with
-<SuiteNo> and <TestNo> the sequential numbers of the suite and the
-test inside the suite. Type is either empty, "u" for setUp test or
-"d" for tearDown tests.
+Tests IDs have the following format <SuiteNo>.<Type><TestNo> with <SuiteNo> and
+<TestNo> the sequential numbers of the suite and the test inside the suite.
+Type is either empty, "u" for setUp test or "d" for tearDown tests. <TestNo>
+maybe a single number like "3" or a range like "3-7".
 `)
 	os.Exit(2)
 }
@@ -254,19 +254,33 @@ func splitTestIDs(f string) (ids map[string]struct{}) {
 		}
 		typ := ""
 		switch t[0] {
-		case 'U', 'u':
+		case 'U', 'u', 'S', 's':
 			typ = "U"
 			t = t[1:]
-		case 'D', 'd':
+		case 'D', 'd', 'T', 't':
 			typ = "D"
 			t = t[1:]
 		default:
 			typ = ""
 		}
 		// TODO: support ranges like "3.1-5"
-		sNo, tNo := mustAtoi(s), mustAtoi(t)
-		id := fmt.Sprintf("%d.%s%d", sNo, typ, tNo)
-		ids[id] = struct{}{}
+		sNo := mustAtoi(s)
+		beg, end := 1, 99
+		if i := strings.Index(t, "-"); i > -1 {
+			if i > 0 {
+				beg = mustAtoi(t[:i])
+			}
+			if i < len(t)-1 {
+				end = mustAtoi(t[i+1:])
+			}
+		} else {
+			beg = mustAtoi(t)
+			end = beg
+		}
+		for tNo := beg; tNo <= end; tNo++ {
+			id := fmt.Sprintf("%d.%s%d", sNo, typ, tNo)
+			ids[id] = struct{}{}
+		}
 	}
 	return ids
 }
