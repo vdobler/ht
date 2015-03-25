@@ -39,7 +39,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	for i := range suites {
 		if serialFlag {
 			results[i] = suites[i].Execute()
-			if results[i].Status != ht.Pass {
+			if results[i].Status > ht.Pass {
 				log.Printf("Suite %d %q failed: %s", i+1,
 					suites[i].Name,
 					results[i].Error.Error())
@@ -48,7 +48,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			wg.Add(1)
 			go func(i int) {
 				results[i] = suites[i].Execute()
-				if results[i].Status != ht.Pass {
+				if results[i].Status > ht.Pass {
 					log.Printf("Suite %d %q failed: %s", i+1,
 						suites[i].Name, results[i].Error.Error())
 				}
