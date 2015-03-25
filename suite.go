@@ -135,7 +135,7 @@ func (s *Suite) execute(tests []*Test, which string) SuiteResult {
 func (s *Suite) Execute() SuiteResult {
 	println("Executing Suite", s.Name)
 	result := s.ExecuteSetup()
-	if result.Status != Pass {
+	if result.Status > Pass {
 		n, k, p, f, e, b := result.Stats()
 		result.Error = fmt.Errorf("Setup failed: N=%d S=%d P=%d F=%d E=%d B=%d",
 			n, k, p, f, e, b)
