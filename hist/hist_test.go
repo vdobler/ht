@@ -149,3 +149,12 @@ func TestPercentils(t *testing.T) {
 	}
 
 }
+
+func BenchmarkHist(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		h := NewLogHist(7, 100000)
+		for v := 0; v < 100000; v++ {
+			h.Add(v)
+		}
+	}
+}
