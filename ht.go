@@ -88,6 +88,33 @@ type Cookie struct {
 	Value string `json:",omitempty"`
 }
 
+// Poll determines if and how to redo a test after a failure or if the
+// test should be skipped alltogether. The zero value of Poll means "Just do
+// the test once."
+type Poll struct {
+	// Maximum number of redos. Both 0 and 1 mean: "Just one try. No redo."
+	// Negative values indicate that the test should be skipped.
+	Max int `json:",omitempty"`
+
+	// Duration to sleep between redos.
+	Sleep time.Duration `json:",omitempty"`
+}
+
+// ClientPool maintains a pool of clients for the given transport
+// and cookie jar. ClientPools must not be copied.
+type ClientPool struct {
+	// Transport will be used a the clients Transport
+	Transport http.RoundTripper
+
+	// Jar will be used as the clients Jar
+	Jar http.CookieJar
+
+	mu sync.Mutex
+	// clients are index by their timeout. Clients which follow redirects
+	// are distinguisehd by a negative timeout.
+	clients map[time.Duration]*http.Client
+}
+
 // ----------------------------------------------------------------------------
 // Test
 
@@ -117,118 +144,124 @@ type Test struct {
 	checks   []check.Check // compiled checks.
 }
 
-// ClientPool maintains a pool of clients for the given transport
-// and cookie jar. ClientPools must not be copied.
-type ClientPool struct {
-	// Transport will be used a the clients Transport
-	Transport http.RoundTripper
-
-	// Jar will be used as the clients Jar
-	Jar http.CookieJar
-
-	mu sync.Mutex
-	// clients are index by their timeout. Clients which follow redirects
-	// are distinguisehd by a negative timeout.
-	clients map[time.Duration]*http.Client
-}
-
-// Get retreives a new or existing http.Client for the given timeout and
-// redirect following policy.
-func (p *ClientPool) Get(timeout time.Duration, followRedirects bool) *http.Client {
-	if timeout == 0 {
-		log.Fatalln("ClientPool.Get called with zero timeout.")
+// mergeRequest implements the merge strategy described in Merge for the Request.
+func mergeRequest(m *Request, r Request) error {
+	allNonemptyMustBeSame := func(m *string, s string) error {
+		if s != "" {
+			if *m != "" && *m != s {
+				return fmt.Errorf("Cannot merge %q into %q", s, *m)
+			}
+			*m = s
+		}
+		return nil
+	}
+	onlyOneMayBeNonempty := func(m *string, s string) error {
+		if s != "" {
+			if *m != "" {
+				return fmt.Errorf("Won't overwrite %q with %q", *m, s)
+			}
+			*m = s
+		}
+		return nil
 	}
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if len(p.clients) == 0 {
-		p.clients = make(map[time.Duration]*http.Client)
+	if err := allNonemptyMustBeSame(&(m.Method), r.Method); err != nil {
+		return err
 	}
 
-	key := timeout
-	if followRedirects {
-		key = -key
+	if err := onlyOneMayBeNonempty(&(m.URL), r.URL); err != nil {
+		return err
 	}
 
-	if client, ok := p.clients[key]; ok {
-		return client
+	for k, v := range r.Params {
+		m.Params[k] = v
 	}
 
-	var client *http.Client
-	if followRedirects {
-		client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: timeout}
-	} else {
-		client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: timeout}
-	}
-	if p.Jar != nil {
-		client.Jar = p.Jar
-	}
-	if p.Transport != nil {
-		client.Transport = p.Transport
+	if err := allNonemptyMustBeSame(&(m.ParamsAs), r.ParamsAs); err != nil {
+		return err
 	}
 
-	p.clients[key] = client
-	return client
-}
-
-func doFollowRedirects(req *http.Request, via []*http.Request) error {
-	if len(via) >= 10 {
-		return errors.New("stopped after 10 redirects")
+	for k, v := range r.Header {
+		m.Header[k] = v
 	}
+
+outer:
+	for _, rc := range r.Cookies {
+		for i := range m.Cookies {
+			if m.Cookies[i].Name == rc.Name {
+				m.Cookies[i].Value = rc.Value
+				continue outer
+			}
+		}
+		m.Cookies = append(m.Cookies, rc)
+	}
+
+	if err := onlyOneMayBeNonempty(&(m.Body), r.Body); err != nil {
+		return err
+	}
+
+	m.FollowRedirects = r.FollowRedirects
 	return nil
 }
 
-func dontFollowRedirects(req *http.Request, via []*http.Request) error {
-	return redirectNofollow
-}
+// Merge merges all tests into one. The individual fields are merged in the
+// following way.
+//     Name         Join all names
+//     Description  Join all descriptions
+//     Request
+//       Method     All nonempty must be the same
+//       URL        Only one may be nonempty
+//       Params     Merge by key
+//       ParamsAs   All nonempty must be the same
+//       Header     Merge by key
+//       Cookies    Merge by cookie name
+//       Body       Only one may be nonempty
+//       FollowRdr  Last wins
+//     Checks       Append all checks
+//     Poll
+//       Max        Use largest
+//       Sleep      Use largest
+//     Timeout      Use largets
+//     Verbosity    Use largets
+//     ClientPool   ignore
+func Merge(tests ...Test) (Test, error) {
+	m := Test{}
 
-// Poll determines if and how to redo a test after a failure or if the
-// test should be skipped alltogether. The zero value of Poll means "Just do
-// the test once."
-type Poll struct {
-	// Maximum number of redos. Both 0 and 1 mean: "Just one try. No redo."
-	// Negative values indicate that the test should be skipped.
-	Max int `json:",omitempty"`
-
-	// Duration to sleep between redos.
-	Sleep time.Duration `json:",omitempty"`
-}
-
-// Skip return whether the test should be skipped.
-func (p Poll) Skip() bool {
-	return p.Max < 0
-}
-
-func (t *Test) errorf(format string, v ...interface{}) {
-	if t.Verbosity >= 0 {
-		format = "ERROR " + format + " [%q]"
-		v = append(v, t.Name)
-		log.Printf(format, v...)
+	// Name and description
+	s := []string{}
+	for _, t := range tests {
+		s = append(s, t.Name)
 	}
-}
-
-func (t *Test) infof(format string, v ...interface{}) {
-	if t.Verbosity >= 1 {
-		format = "INFO " + format + " [%q]"
-		v = append(v, t.Name)
-		log.Printf(format, v...)
+	m.Name = "Merge of " + strings.Join(s, ", ")
+	s = s[:0]
+	for _, t := range tests {
+		s = append(s, t.Description)
 	}
-}
+	m.Description = strings.Join(s, "\n")
 
-func (t *Test) debugf(format string, v ...interface{}) {
-	if t.Verbosity >= 2 {
-		format = "DEBUG " + format + " [%q]"
-		v = append(v, t.Name)
-		log.Printf(format, v...)
+	m.Request.Params = make(url.Values)
+	m.Request.Header = make(http.Header)
+	for _, t := range tests {
+		err := mergeRequest(&m.Request, t.Request)
+		if err != nil {
+			return m, err
+		}
+		m.Checks = append(m.Checks, t.Checks...)
+		if t.Poll.Max > m.Poll.Max {
+			m.Poll.Max = t.Poll.Max
+		}
+		if t.Poll.Sleep > m.Poll.Sleep {
+			m.Poll.Sleep = t.Poll.Sleep
+		}
+		if t.Timeout > m.Timeout {
+			m.Timeout = t.Timeout
+		}
+		if t.Verbosity > m.Verbosity {
+			m.Verbosity = t.Verbosity
+		}
 	}
-}
 
-func (t *Test) tracef(format string, v ...interface{}) {
-	if t.Verbosity >= 3 {
-		format = "TRACE " + format + " [%q]"
-		v = append(v, t.Name)
-		log.Printf(format, v...)
-	}
+	return m, nil
 }
 
 // Run runs the test t. The actual HTTP request is crafted and executed and
@@ -542,10 +575,41 @@ func (t *Test) prepared() bool {
 	return t.request != nil
 }
 
-var skippedError = errors.New("Skipped")
+func (t *Test) errorf(format string, v ...interface{}) {
+	if t.Verbosity >= 0 {
+		format = "ERROR " + format + " [%q]"
+		v = append(v, t.Name)
+		log.Printf(format, v...)
+	}
+}
+
+func (t *Test) infof(format string, v ...interface{}) {
+	if t.Verbosity >= 1 {
+		format = "INFO " + format + " [%q]"
+		v = append(v, t.Name)
+		log.Printf(format, v...)
+	}
+}
+
+func (t *Test) debugf(format string, v ...interface{}) {
+	if t.Verbosity >= 2 {
+		format = "DEBUG " + format + " [%q]"
+		v = append(v, t.Name)
+		log.Printf(format, v...)
+	}
+}
+
+func (t *Test) tracef(format string, v ...interface{}) {
+	if t.Verbosity >= 3 {
+		format = "TRACE " + format + " [%q]"
+		v = append(v, t.Name)
+		log.Printf(format, v...)
+	}
+}
 
 // ----------------------------------------------------------------------------
-// Multipart bodies
+//  Multipart bodies
+
 var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
 
 func escapeQuotes(s string) string {
@@ -615,4 +679,62 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 	mpwriter.Close()
 
 	return ioutil.NopCloser(body), mpwriter.Boundary(), nil
+}
+
+// -------------------------------------------------------------------------
+//  Methods of Poll and ClientPool
+
+// Skip return whether the test should be skipped.
+func (p Poll) Skip() bool {
+	return p.Max < 0
+}
+
+// Get retreives a new or existing http.Client for the given timeout and
+// redirect following policy.
+func (p *ClientPool) Get(timeout time.Duration, followRedirects bool) *http.Client {
+	if timeout == 0 {
+		log.Fatalln("ClientPool.Get called with zero timeout.")
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.clients) == 0 {
+		p.clients = make(map[time.Duration]*http.Client)
+	}
+
+	key := timeout
+	if followRedirects {
+		key = -key
+	}
+
+	if client, ok := p.clients[key]; ok {
+		return client
+	}
+
+	var client *http.Client
+	if followRedirects {
+		client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: timeout}
+	} else {
+		client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: timeout}
+	}
+	if p.Jar != nil {
+		client.Jar = p.Jar
+	}
+	if p.Transport != nil {
+		client.Transport = p.Transport
+	}
+
+	p.clients[key] = client
+	return client
+}
+
+func doFollowRedirects(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	return nil
+}
+
+func dontFollowRedirects(req *http.Request, via []*http.Request) error {
+	return redirectNofollow
 }

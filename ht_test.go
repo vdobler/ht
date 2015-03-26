@@ -360,3 +360,80 @@ func TestMarshalTest(t *testing.T) {
 
 	}
 }
+
+func TestMerge(t *testing.T) {
+	a := Test{}
+	b := Test{}
+	_, err := Merge(a, b)
+	if err != nil {
+		t.Fatalf("Unexpected error %#v", err)
+	}
+
+	a = Test{
+		Name:        "A",
+		Description: "A does a in a very a-ish way.",
+		Request: Request{
+			Method: "POST",
+			URL:    "http://demo.test",
+			Header: http.Header{
+				"User-Agent": []string{"A User Agent"},
+				"Special-A":  []string{"Special A Value"},
+			},
+			Params: url.Values{
+				"q": []string{"foo-A"},
+				"a": []string{"aa", "AA"},
+			},
+			Cookies: []Cookie{
+				{Name: "a", Value: "vaaaaalue"},
+				{Name: "session", Value: "deadbeef"},
+			},
+			FollowRedirects: true,
+		},
+	}
+
+	b = Test{
+		Name:        "B",
+		Description: "B does b in a very b-ish way.",
+		Request: Request{
+			Method: "POST",
+			Header: http.Header{
+				"User-Agent": []string{"B User Agent"},
+				"Special-B":  []string{"Special B Value"},
+			},
+			Params: url.Values{
+				"q": []string{"foo-B"},
+				"b": []string{"bb", "BB"},
+			},
+			Cookies: []Cookie{
+				{Name: "b", Value: "vbbbbblue"},
+				{Name: "session", Value: "othersession"},
+			},
+			FollowRedirects: false,
+		},
+	}
+
+	c, err := Merge(a, b)
+	if err != nil {
+		t.Fatalf("Unexpected error %#v", err)
+	}
+	pretty.Printf("% #v\n", c)
+	if len(c.Request.Params) != 3 ||
+		c.Request.Params["a"][0] != "aa" ||
+		c.Request.Params["b"][0] != "bb" ||
+		c.Request.Params["q"][0] != "foo-B" {
+		t.Errorf("Bad Params. Got %#v", c.Request.Params)
+	}
+	if len(c.Request.Header) != 3 ||
+		c.Request.Header["Special-A"][0] != "Special A Value" ||
+		c.Request.Header["Special-B"][0] != "Special B Value" ||
+		c.Request.Header["User-Agent"][0] != "B User Agent" {
+		t.Errorf("Bad Header. Got %#v", c.Request.Header)
+	}
+	if len(c.Request.Cookies) != 3 ||
+		c.Request.Cookies[0].Value != "vaaaaalue" ||
+		c.Request.Cookies[1].Value != "othersession" ||
+		c.Request.Cookies[2].Value != "vbbbbblue" {
+		t.Errorf("Bad cookies. Got %#v", c.Request.Cookies)
+	}
+
+}
