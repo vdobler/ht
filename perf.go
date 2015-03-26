@@ -13,61 +13,23 @@ import (
 	"github.com/vdobler/ht/hist"
 )
 
-// makeTestChannel returns a channel on which the non-disabled main
-// tests of the given suites are sent. The test from the given suites are
-// interweaved. All given suites must have at least one non-disabled
-// main test.
-//
-// At most count tests are sent for at most the given duration.
-func makeTestChannel(suites []*Suite, count int, duration time.Duration) chan interface{} {
-	rc := make(chan interface{})
-	go func() {
-		n := 0
-		s := 0
-		idx := make([]int, len(suites))
-		start := time.Now()
-	loop:
-		for {
-			suite := suites[s%len(suites)]
-			for {
-				i := idx[s]
-				test := suite.Tests[i%len(suite.Tests)]
-				idx[s]++
-				if test.Poll.Max < 0 {
-					continue // Test is disabled.
-				}
-				err := test.prepare(suite.Variables)
-				if err != nil {
-					log.Printf("Failed to prepare test %q of suite %q: %s", err)
-					continue
-				}
-				rc <- test
-				n++
-				if n >= count || time.Since(start) > duration {
-					break loop
-				}
-			}
-			s++
-		}
-		close(rc)
-	}()
-	return rc
-}
+// -------------------------------------------------------------------------
+//  Load Testing
 
 // LoadTestOptions controls details of a load test.
 type LoadTestOptions struct {
 	// Type determines wether a "throughput" or "concurrency" test is done.
 	Type string
 
-	// Count many request are made during the load test.
+	// Count many request are made during the load test in total.
 	Count int
 
 	// Timout determines how long a test may run: The load test is
 	// terminated if timeout is exeded, even if not Count many requests
-	// heve been made.
+	// heve been made yet.
 	Timeout time.Duration
 
-	// Rate of requests in [request/sec].
+	// Rate is the average rate of requests in [request/sec].
 	Rate float64
 
 	// Uniform changes to uniform (equaly spaced) distribution of
@@ -94,7 +56,7 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
 		}
 	}
 
-	log.Printf("Running load testwith %+v", opts)
+	log.Printf("Running load test with %+v", opts)
 
 	// rc provides a stream of prepared test taken from suites.
 	rc := makeTestChannel(suites, opts.Count, opts.Timeout)
@@ -148,6 +110,47 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
 	return allResults, nil
 }
 
+// makeTestChannel returns a channel on which the non-disabled main
+// tests of the given suites are sent. The test from the given suites are
+// interweaved. All given suites must have at least one non-disabled
+// main test.
+//
+// At most count tests are sent for at most the given duration.
+func makeTestChannel(suites []*Suite, count int, duration time.Duration) chan interface{} {
+	rc := make(chan interface{})
+	go func() {
+		n := 0
+		s := 0
+		idx := make([]int, len(suites))
+		start := time.Now()
+	loop:
+		for {
+			suite := suites[s%len(suites)]
+			for {
+				i := idx[s]
+				test := suite.Tests[i%len(suite.Tests)]
+				idx[s]++
+				if test.Poll.Max < 0 {
+					continue // Test is disabled.
+				}
+				err := test.prepare(suite.Variables)
+				if err != nil {
+					log.Printf("Failed to prepare test %q of suite %q: %s", err)
+					continue
+				}
+				rc <- test
+				n++
+				if n >= count || time.Since(start) > duration {
+					break loop
+				}
+			}
+			s++
+		}
+		close(rc)
+	}()
+	return rc
+}
+
 // LoadtestResult captures aggregated values of a load test.
 type LoadtestResult struct {
 	Started  time.Time
@@ -162,6 +165,7 @@ type LoadtestResult struct {
 	BothHist *hist.LogHist
 }
 
+// String formats r in a useful way.
 func (r LoadtestResult) String() string {
 	s := fmt.Sprintf("Total   Passed  Failed  Errored Skipped Bogus\n")
 	s += fmt.Sprintf("%-7d %-7d %-7d %-7d %-7d %-7d \n", r.Total, r.Passed,
@@ -234,14 +238,51 @@ func AnalyseLoadtest(results []TestResult) LoadtestResult {
 	return result
 }
 
-/*
-func NewHistogramRecorder(h *LogHist) bender.Recorder {
-	return func(msg interface{}) {
-		switch msg := msg.(type) {
-		case *bender.EndRequestEvent:
-			elapsed := int((msg.End - msg.Start) / int64(time.Millisecond))
-			h.Add(elapsed)
+// -------------------------------------------------------------------------
+//  Benchmarking
+
+// Benchmark executes t count many times and reports the outcome.
+// Before doing the measurements warmup many request are made and discarded.
+// Conc determines the concurrency level. If conc==1 the given pause
+// is made between request. A conc > 1 will execute conc many request
+// in paralell (without pauses).
+// TODO: move this into an BenmarkOptions
+func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []TestResult {
+	for n := 0; n < warmup; n++ {
+		if n > 0 {
+			time.Sleep(pause)
 		}
+		t.prepare(variables)
+		t.executeRequest()
 	}
+
+	results := make([]TestResult, count)
+	origPollMax := t.Poll.Max
+	t.Poll.Max = 1
+
+	if conc == 1 {
+		// One request after the other, nicely spaced.
+		for n := 0; n < count; n++ {
+			time.Sleep(pause)
+			results[n] = t.Run(variables)
+		}
+	} else {
+		// Start conc request and restart an other once one finishes.
+		rc := make(chan TestResult, conc)
+		for i := 0; i < conc; i++ {
+			go func() {
+				rc <- t.Run(variables)
+			}()
+		}
+		for j := 0; j < count; j++ {
+			results[j] = <-rc
+			go func() {
+				rc <- t.Run(variables)
+			}()
+		}
+
+	}
+	t.Poll.Max = origPollMax
+
+	return results
 }
-*/

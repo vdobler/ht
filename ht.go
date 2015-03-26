@@ -120,14 +120,19 @@ type Test struct {
 // ClientPool maintains a pool of clients for the given transport
 // and cookie jar. ClientPools must not be copied.
 type ClientPool struct {
+	// Transport will be used a the clients Transport
 	Transport http.RoundTripper
-	Jar       http.CookieJar
 
-	mu      sync.Mutex
+	// Jar will be used as the clients Jar
+	Jar http.CookieJar
+
+	mu sync.Mutex
+	// clients are index by their timeout. Clients which follow redirects
+	// are distinguisehd by a negative timeout.
 	clients map[time.Duration]*http.Client
 }
 
-// get retreives a new or existing http.Client for the given timeout and
+// Get retreives a new or existing http.Client for the given timeout and
 // redirect following policy.
 func (p *ClientPool) Get(timeout time.Duration, followRedirects bool) *http.Client {
 	if timeout == 0 {
@@ -230,6 +235,9 @@ func (t *Test) tracef(format string, v ...interface{}) {
 // the checks are performed on the received response. This whole process
 // is repeated on failure or skipped entirely according to t.Poll.
 //
+// The given variables are subsitutet into the relevant parts of the reuestt
+// and the checks.
+//
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
@@ -292,7 +300,8 @@ func (t *Test) Run(variables map[string]string) TestResult {
 	return result
 }
 
-// execute does a single request and check the response.
+// execute does a single request and check the response, the outcome is put
+// into result.
 func (t *Test) execute(result *TestResult) {
 	response, err := t.executeRequest()
 	if err == nil {
@@ -531,52 +540,6 @@ func (t *Test) executeChecks(response *response.Response, result []CheckResult) 
 
 func (t *Test) prepared() bool {
 	return t.request != nil
-}
-
-// Benchmark executes t count many times and reports the outcome.
-// Before doing the measurements warmup many request are made and discarded.
-// Conc determines the concurrency level. If conc==1 the given pause
-// is made between request. A conc > 1 will execute conc many request
-// in paralell (without pauses).
-// TODO: move this into an BenmarkOptions
-func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []TestResult {
-	for n := 0; n < warmup; n++ {
-		if n > 0 {
-			time.Sleep(pause)
-		}
-		t.prepare(variables)
-		t.executeRequest()
-	}
-
-	results := make([]TestResult, count)
-	origPollMax := t.Poll.Max
-	t.Poll.Max = 1
-
-	if conc == 1 {
-		// One request after the other, nicely spaced.
-		for n := 0; n < count; n++ {
-			time.Sleep(pause)
-			results[n] = t.Run(variables)
-		}
-	} else {
-		// Start conc request and restart an other once one finishes.
-		rc := make(chan TestResult, conc)
-		for i := 0; i < conc; i++ {
-			go func() {
-				rc <- t.Run(variables)
-			}()
-		}
-		for j := 0; j < count; j++ {
-			results[j] = <-rc
-			go func() {
-				rc <- t.Run(variables)
-			}()
-		}
-
-	}
-	t.Poll.Max = origPollMax
-
-	return results
 }
 
 var skippedError = errors.New("Skipped")
