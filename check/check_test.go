@@ -5,7 +5,6 @@
 package check
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -98,7 +97,6 @@ func TestSubstituteVariables(t *testing.T) {
 	g := map[int64]int64{34: 44, 56: 66, 12321: 11, 999: 888}
 	s := SubstituteVariables(sample, r, g)
 	sc, ok := s.(sampleCheck)
-	println("AAAA", sc.Y)
 	if !ok {
 		t.Fatalf("Bad type %T", s)
 	}
@@ -138,13 +136,30 @@ func TestUnmarshalJSON(t *testing.T) {
 {Check: "Body", Prefix: "BEGIN", Contains: "foo", Count: 3},
 ]`)
 
-	cl := &CheckList{}
-	err := cl.UnmarshalJSON(j)
+	cl := CheckList{}
+	err := (&cl).UnmarshalJSON(j)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 
-	for i, c := range *cl {
-		fmt.Printf("%d.\n %T = \n%#v\n", i, c, c)
+	if len(cl) != 2 {
+		t.Fatalf("Wrong len, got %d", len(cl))
 	}
+
+	if rt, ok := cl[0].(*ResponseTime); !ok {
+		t.Errorf("Check 0, got %T, %#v", cl[0], cl[0])
+	} else {
+		if rt.Lower != 3450 {
+			t.Errorf("Got Lower=%d", rt.Lower)
+		}
+	}
+
+	if rt, ok := cl[1].(*Body); !ok {
+		t.Errorf("Check 1, got %T, %#v", cl[1], cl[1])
+	} else {
+		if rt.Contains != "foo" {
+			t.Errorf("Got Contains=%q", rt.Contains)
+		}
+	}
+
 }

@@ -58,24 +58,24 @@ func (c Condition) Fullfilled(s string) error {
 
 	if c.Contains != "" {
 		if c.Count == 0 && strings.Index(s, c.Contains) == -1 {
-			return fmt.Errorf("Missing text")
+			return NotFound
 		} else if c.Count < 0 && strings.Index(s, c.Contains) != -1 {
-			return fmt.Errorf("Forbidden text")
+			return FoundForbidden
 		} else if c.Count > 0 {
 			if cnt := strings.Count(s, c.Contains); cnt != c.Count {
-				return fmt.Errorf("Found %d occurences", cnt)
+				return WrongCount{Got: cnt, Want: c.Count}
 			}
 		}
 	}
 
 	if c.re != nil {
 		if c.Count == 0 && c.re.FindStringIndex(s) == nil {
-			return fmt.Errorf("Missing match")
+			return NotFound
 		} else if c.Count < 0 && c.re.FindStringIndex(s) != nil {
-			return fmt.Errorf("Forbidden match")
+			return FoundForbidden
 		} else if c.Count > 0 {
 			if m := c.re.FindAllString(s, -1); len(m) != c.Count {
-				return fmt.Errorf("Found %d matches", len(m))
+				return WrongCount{Got: len(m), Want: c.Count}
 			}
 		}
 	}

@@ -160,6 +160,9 @@ func (m MalformedCheck) Error() string {
 	return fmt.Sprintf("malformed check: %s", m.Err.Error())
 }
 
+// ----------------------------------------------------------------------------
+// CheckList
+
 // CheckList is a slice of checks with the sole purpose of
 // attaching JSON (un)marshaling methods.
 type CheckList []Check
@@ -205,9 +208,7 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("no such check %s", u.Check)
 		}
-		fmt.Printf("Found check %q, t=%T, typ=%s\n", u.Check, typ, typ.String())
 		if typ.Kind() == reflect.Ptr {
-			fmt.Println("detected pointer type")
 			typ = typ.Elem()
 		}
 		check := reflect.New(typ)

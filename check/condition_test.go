@@ -4,7 +4,10 @@
 
 package check
 
-import "testing"
+import (
+	"regexp"
+	"testing"
+)
 
 var fullfilledTests = []struct {
 	s string
@@ -49,6 +52,9 @@ var fullfilledTests = []struct {
 
 func TestFullfilled(t *testing.T) {
 	for i, tc := range fullfilledTests {
+		if tc.c.Regexp != "" {
+			tc.c.re = regexp.MustCompile(tc.c.Regexp)
+		}
 		err := tc.c.Fullfilled(tc.s)
 		switch {
 		case tc.w == "" && err != nil:
