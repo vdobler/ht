@@ -76,16 +76,16 @@ func TestResponseTime(t *testing.T) {
 
 var bcr = response.Response{Body: []byte("foo bar baz foo foo")}
 var bodyTests = []TC{
-	{bcr, &Body{Condition{Contains: "foo"}}, nil},
-	{bcr, &Body{Condition{Contains: "bar"}}, nil},
-	{bcr, &Body{Condition{Contains: "baz"}}, nil},
-	{bcr, &Body{Condition{Contains: "foo", Count: 3}}, nil},
-	{bcr, &Body{Condition{Contains: "baz", Count: 1}}, nil},
-	{bcr, &Body{Condition{Contains: "wup", Count: -1}}, nil},
-	{bcr, &Body{Condition{Contains: "foo bar", Count: 1}}, nil},
-	{bcr, &Body{Condition{Contains: "sit"}}, NotFound},
-	{bcr, &Body{Condition{Contains: "bar", Count: -1}}, FoundForbidden},
-	{bcr, &Body{Condition{Contains: "bar", Count: 2}}, someError}, // TODO: real error checking
+	{bcr, &Body{Contains: "foo"}, nil},
+	{bcr, &Body{Contains: "bar"}, nil},
+	{bcr, &Body{Contains: "baz"}, nil},
+	{bcr, &Body{Contains: "foo", Count: 3}, nil},
+	{bcr, &Body{Contains: "baz", Count: 1}, nil},
+	{bcr, &Body{Contains: "wup", Count: -1}, nil},
+	{bcr, &Body{Contains: "foo bar", Count: 1}, nil},
+	{bcr, &Body{Contains: "sit"}, NotFound},
+	{bcr, &Body{Contains: "bar", Count: -1}, FoundForbidden},
+	{bcr, &Body{Contains: "bar", Count: 2}, someError}, // TODO: real error checking
 }
 
 func TestBody(t *testing.T) {

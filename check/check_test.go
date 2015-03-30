@@ -46,7 +46,7 @@ func BenchmarkSubstituteVariables(b *testing.B) {
 	r := strings.NewReplacer("a", "X", "e", "Y", "o", "Z")
 	f := map[int64]int64{99: 77}
 	var ck Check
-	ck = &Body{Condition{Contains: "Hallo", Count: 99}}
+	ck = &Body{Contains: "Hallo", Count: 99}
 	for i := 0; i < b.N; i++ {
 		f := SubstituteVariables(ck, r, f)
 		if _, ok := f.(*Body); !ok {
@@ -58,7 +58,7 @@ func BenchmarkSubstituteVariables(b *testing.B) {
 func TestSubstituteVariables(t *testing.T) {
 	r := strings.NewReplacer("a", "X", "e", "Y", "o", "Z")
 	var ck Check
-	ck = &Body{Condition{Contains: "Hallo"}}
+	ck = &Body{Contains: "Hallo"}
 	f := SubstituteVariables(ck, r, nil)
 	if bc, ok := f.(*Body); !ok {
 		t.Errorf("Bad type %T", f)
@@ -133,7 +133,7 @@ func TestSubstituteVariables(t *testing.T) {
 func TestUnmarshalJSON(t *testing.T) {
 	j := []byte(`[
 {Check: "ResponseTime", Lower: 3450},
-{Check: "Body", Prefix: "BEGIN", Contains: "foo", Count: 3},
+{Check: "Body", Prefix: "BEGIN", Regexp: "foo", Count: 3},
 ]`)
 
 	cl := CheckList{}
@@ -157,12 +157,18 @@ func TestUnmarshalJSON(t *testing.T) {
 	if rt, ok := cl[1].(*Body); !ok {
 		t.Errorf("Check 1, got %T, %#v", cl[1], cl[1])
 	} else {
-		if rt.Contains != "foo" {
-			t.Errorf("Got Contains=%q", rt.Contains)
+		if rt.Regexp != "foo" {
+			t.Errorf("Got Reqexp=%q", rt.Regexp)
 		}
 		if rt.Prefix != "BEGIN" {
 			t.Errorf("Got Prefix=%q", rt.Prefix)
 		}
+		ce := rt.Compile()
+		if ce != nil {
+			t.Errorf("Unexpected error: %#v", ce)
+		}
+		if len(rt.re.FindAllString("The foo made foomuh", -1)) != 2 {
+			t.Errorf("Got %v", rt.re.FindAllString("The foo made foomuh", -1))
+		}
 	}
-
 }

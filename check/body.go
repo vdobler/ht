@@ -44,18 +44,16 @@ func (c UTF8Encoded) Okay(response *response.Response) error {
 // ----------------------------------------------------------------------------
 // Body
 
-type Body struct {
-	Condition
-}
+type Body Condition
 
-func (c *Body) Okay(response *response.Response) error {
+func (c Body) Okay(response *response.Response) error {
 	body, err := string(response.Body), response.BodyErr
 	if err != nil {
 		return BadBody
 	}
-	return c.Condition.Fullfilled(body)
+	return Condition(c).Fullfilled(body)
 }
 
 func (c *Body) Compile() (err error) {
-	return c.Condition.Compile()
+	return ((*Condition)(c)).Compile()
 }

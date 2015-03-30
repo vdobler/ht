@@ -111,6 +111,7 @@ func (c Condition) Fullfilled(s string) error {
 }
 
 func (c *Condition) Compile() (err error) {
+	fmt.Printf("Compile called on %#v\n", *c)
 	if c.Regexp != "" {
 		c.re, err = regexp.Compile(c.Regexp)
 		if err != nil {
