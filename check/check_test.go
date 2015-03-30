@@ -160,6 +160,9 @@ func TestUnmarshalJSON(t *testing.T) {
 		if rt.Contains != "foo" {
 			t.Errorf("Got Contains=%q", rt.Contains)
 		}
+		if rt.Prefix != "BEGIN" {
+			t.Errorf("Got Prefix=%q", rt.Prefix)
+		}
 	}
 
 }

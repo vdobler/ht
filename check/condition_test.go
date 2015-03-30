@@ -14,6 +14,9 @@ var fullfilledTests = []struct {
 	c Condition
 	w string
 }{
+	// Equals
+	{"foobar", Condition{Equals: "foobar"}, ``},
+	{"foobar", Condition{Equals: "barfoo"}, `unequal`},
 	// Prefix and Suffix
 	{"foobar", Condition{Prefix: "foo"}, ``},
 	{"foobar", Condition{Prefix: "waz"}, `Bad prefix, got "foo"`},

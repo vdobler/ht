@@ -14,6 +14,10 @@ import (
 // Regexp conditions both use the same Count; most likely one would use either
 // Contains or Regexp but not both.
 type Condition struct {
+	// Equals is the exact value to be expected.
+	// No other tests are performed if Equals is non-zero.
+	Equals string
+
 	Prefix string // Prefix is the required prefix
 	Suffix string // Suffix is the required suffix.
 
@@ -40,6 +44,13 @@ type Condition struct {
 // A nil return value indicates that s matches the defined conditions.
 // A non-nil return indicates missmatch.
 func (c Condition) Fullfilled(s string) error {
+	if c.Equals != "" {
+		if s == c.Equals {
+			return nil
+		}
+		return fmt.Errorf("unequal") // TODO: provide more details
+	}
+
 	if c.Prefix != "" && !strings.HasPrefix(s, c.Prefix) {
 		n := len(c.Prefix)
 		if len(s) < n {
