@@ -46,14 +46,14 @@ func (c UTF8Encoded) Okay(response *response.Response) error {
 
 type Body Condition
 
-func (c Body) Okay(response *response.Response) error {
+func (b Body) Okay(response *response.Response) error {
 	body, err := response.Body, response.BodyErr
 	if err != nil {
 		return BadBody
 	}
-	return Condition(c).FullfilledBytes(body)
+	return Condition(b).FullfilledBytes(body)
 }
 
-func (c *Body) Compile() (err error) {
-	return ((*Condition)(c)).Compile()
+func (b *Body) Compile() error {
+	return ((*Condition)(b)).Compile()
 }
