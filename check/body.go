@@ -47,11 +47,11 @@ func (c UTF8Encoded) Okay(response *response.Response) error {
 type Body Condition
 
 func (c Body) Okay(response *response.Response) error {
-	body, err := string(response.Body), response.BodyErr
+	body, err := response.Body, response.BodyErr
 	if err != nil {
 		return BadBody
 	}
-	return Condition(c).Fullfilled(body)
+	return Condition(c).FullfilledBytes(body)
 }
 
 func (c *Body) Compile() (err error) {

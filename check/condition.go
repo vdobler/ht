@@ -110,8 +110,13 @@ func (c Condition) Fullfilled(s string) error {
 	return nil
 }
 
+// FullfilledBytes provides a optimized version for Fullfilled(string(byteSlice)).
+// TODO: Make this a non-lie.
+func (c Condition) FullfilledBytes(b []byte) error {
+	return c.Fullfilled(string(b))
+}
+
 func (c *Condition) Compile() (err error) {
-	fmt.Printf("Compile called on %#v\n", *c)
 	if c.Regexp != "" {
 		c.re, err = regexp.Compile(c.Regexp)
 		if err != nil {
