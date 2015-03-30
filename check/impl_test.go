@@ -75,6 +75,26 @@ func TestResponseTime(t *testing.T) {
 }
 
 var bcr = response.Response{Body: []byte("foo bar baz foo foo")}
+var bodyTests = []TC{
+	{bcr, &Body{Condition{Contains: "foo"}}, nil},
+	{bcr, &Body{Condition{Contains: "bar"}}, nil},
+	{bcr, &Body{Condition{Contains: "baz"}}, nil},
+	{bcr, &Body{Condition{Contains: "foo", Count: 3}}, nil},
+	{bcr, &Body{Condition{Contains: "baz", Count: 1}}, nil},
+	{bcr, &Body{Condition{Contains: "wup", Count: -1}}, nil},
+	{bcr, &Body{Condition{Contains: "foo bar", Count: 1}}, nil},
+	{bcr, &Body{Condition{Contains: "sit"}}, NotFound},
+	{bcr, &Body{Condition{Contains: "bar", Count: -1}}, FoundForbidden},
+	{bcr, &Body{Condition{Contains: "bar", Count: 2}}, someError}, // TODO: real error checking
+}
+
+func TestBody(t *testing.T) {
+	for i, tc := range bodyTests {
+		tc.c.(Compiler).Compile()
+		runTest(t, i, tc)
+	}
+}
+
 var bodyContainsTests = []TC{
 	{bcr, BodyContains{Text: "foo"}, nil},
 	{bcr, BodyContains{Text: "bar"}, nil},

@@ -5,6 +5,7 @@
 package check
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -129,4 +130,21 @@ func TestSubstituteVariables(t *testing.T) {
 		t.Fatalf("Got %+v", sc)
 	}
 
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	j := []byte(`[
+{Check: "ResponseTime", Lower: 3450},
+{Check: "Body", Prefix: "BEGIN", Contains: "foo", Count: 3},
+]`)
+
+	cl := &CheckList{}
+	err := cl.UnmarshalJSON(j)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	for i, c := range *cl {
+		fmt.Printf("%d.\n %T = \n%#v\n", i, c, c)
+	}
 }

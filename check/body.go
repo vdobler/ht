@@ -19,6 +19,7 @@ func init() {
 	RegisterCheck(UTF8Encoded{})
 	RegisterCheck(BodyContains{})
 	RegisterCheck(&BodyMatch{})
+	RegisterCheck(&Body{})
 }
 
 // ----------------------------------------------------------------------------
@@ -42,6 +43,25 @@ func (c UTF8Encoded) Okay(response *response.Response) error {
 		char++
 	}
 	return nil
+}
+
+// ----------------------------------------------------------------------------
+// Body
+
+type Body struct {
+	Condition
+}
+
+func (c *Body) Okay(response *response.Response) error {
+	body, err := string(response.Body), response.BodyErr
+	if err != nil {
+		return BadBody
+	}
+	return c.Condition.Fullfilled(body)
+}
+
+func (c *Body) Compile() (err error) {
+	return c.Condition.Compile()
 }
 
 // ----------------------------------------------------------------------------

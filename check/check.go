@@ -107,12 +107,7 @@ func deepCopy(dst, src reflect.Value, r *strings.Replacer, f map[int64]int64) {
 // Registry
 
 // CheckRegistry keeps track of all known Checks.
-var CheckRegistry map[string]reflect.Type
-
-func init() {
-	CheckRegistry = make(map[string]reflect.Type)
-	RegisterCheck(StatusCode{})
-}
+var CheckRegistry map[string]reflect.Type = make(map[string]reflect.Type)
 
 // RegisterCheck registers the check. Once a check is registered it may be
 // unmarshaled from its name and marshaled data.
@@ -156,7 +151,7 @@ func (m WrongCount) Error() string {
 }
 
 // MalformedCheck is the error type returned by checks who are badly
-// parametrized, e.g. whoc try to check against a malformed regualr expression.
+// parametrized, e.g. who try to check against a malformed regular expression.
 type MalformedCheck struct {
 	Err error
 }
@@ -210,6 +205,11 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("no such check %s", u.Check)
 		}
+		fmt.Printf("Found check %q, t=%T, typ=%s\n", u.Check, typ, typ.String())
+		if typ.Kind() == reflect.Ptr {
+			fmt.Println("detected pointer type")
+			typ = typ.Elem()
+		}
 		check := reflect.New(typ)
 		err = json5.Unmarshal(c, check.Interface())
 		if err != nil {
@@ -218,43 +218,4 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		*cl = append(*cl, check.Interface().(Check))
 	}
 	return nil
-}
-
-// ----------------------------------------------------------------------------
-// Condition
-
-type Condition int
-
-const (
-	Equal Condition = iota
-	HasPrefix
-	HasSuffix
-	Match
-	LessThan
-	GreaterThan
-	Present
-	Absent
-)
-
-var conditionNames = []string{"Equal", "HasPrefix", "HasSuffix", "Match", "Less", "Greater",
-	"Present", "Absent"}
-
-func (c Condition) String() string {
-	return conditionNames[c]
-}
-func (c Condition) MarshalText() ([]byte, error) {
-	if c < 0 || c > Absent {
-		return []byte(""), fmt.Errorf("No such Condition %d.", c)
-	}
-	return []byte(c.String()), nil
-}
-func (c *Condition) UnmarshalText(text []byte) error {
-	cond := string(text)
-	for i, s := range conditionNames {
-		if s == cond {
-			*c = Condition(i)
-			return nil
-		}
-	}
-	return fmt.Errorf("ht: unknow condition %q", cond)
 }
