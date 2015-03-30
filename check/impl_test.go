@@ -95,38 +95,6 @@ func TestBody(t *testing.T) {
 	}
 }
 
-var bodyContainsTests = []TC{
-	{bcr, BodyContains{Text: "foo"}, nil},
-	{bcr, BodyContains{Text: "bar"}, nil},
-	{bcr, BodyContains{Text: "baz"}, nil},
-	{bcr, BodyContains{Text: "foo", Count: 3}, nil},
-	{bcr, BodyContains{Text: "baz", Count: 1}, nil},
-	{bcr, BodyContains{Text: "wup", Count: -1}, nil},
-	{bcr, BodyContains{Text: "foo bar", Count: 1}, nil},
-	{bcr, BodyContains{Text: "sit"}, NotFound},
-	{bcr, BodyContains{Text: "bar", Count: -1}, FoundForbidden},
-	{bcr, BodyContains{Text: "bar", Count: 2}, someError}, // TODO: real error checking
-}
-
-func TestBodyContains(t *testing.T) {
-	for i, tc := range bodyContainsTests {
-		runTest(t, i, tc)
-	}
-}
-
-var bmr = response.Response{Body: []byte("Hello World!")}
-var bodyMatchTests = []TC{
-	{bmr, &BodyMatch{Regexp: "ll"}, nil},
-	{bmr, &BodyMatch{Regexp: "He.*ld"}, nil},
-	{bmr, &BodyMatch{Regexp: "He...ld"}, NotFound},
-}
-
-func TestBodyMatch(t *testing.T) {
-	for i, tc := range bodyMatchTests {
-		runTest(t, i, tc)
-	}
-}
-
 var imgr = response.Response{Body: []byte(
 	"\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52" +
 		"\x00\x00\x00\x08\x00\x00\x00\x06\x08\x06\x00\x00\x00\xfe\x05\xdf" +

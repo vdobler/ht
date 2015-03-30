@@ -68,6 +68,10 @@ func (c Condition) Fullfilled(s string) error {
 		}
 	}
 
+	if c.Regexp != "" && c.re == nil {
+		c.re = regexp.MustCompile(c.Regexp)
+	}
+
 	if c.re != nil {
 		if c.Count == 0 && c.re.FindStringIndex(s) == nil {
 			return NotFound

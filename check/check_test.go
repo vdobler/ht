@@ -46,10 +46,10 @@ func BenchmarkSubstituteVariables(b *testing.B) {
 	r := strings.NewReplacer("a", "X", "e", "Y", "o", "Z")
 	f := map[int64]int64{99: 77}
 	var ck Check
-	ck = BodyContains{Text: "Hallo", Count: 99}
+	ck = &Body{Condition{Contains: "Hallo", Count: 99}}
 	for i := 0; i < b.N; i++ {
 		f := SubstituteVariables(ck, r, f)
-		if _, ok := f.(BodyContains); !ok {
+		if _, ok := f.(*Body); !ok {
 			b.Fatalf("Bad type %T", f)
 		}
 	}
@@ -58,12 +58,12 @@ func BenchmarkSubstituteVariables(b *testing.B) {
 func TestSubstituteVariables(t *testing.T) {
 	r := strings.NewReplacer("a", "X", "e", "Y", "o", "Z")
 	var ck Check
-	ck = BodyContains{Text: "Hallo"}
+	ck = &Body{Condition{Contains: "Hallo"}}
 	f := SubstituteVariables(ck, r, nil)
-	if bc, ok := f.(BodyContains); !ok {
+	if bc, ok := f.(*Body); !ok {
 		t.Errorf("Bad type %T", f)
-	} else if bc.Text != "HXllZ" {
-		t.Errorf("Got %s", bc.Text)
+	} else if bc.Contains != "HXllZ" {
+		t.Errorf("Got %s", bc.Contains)
 	}
 
 	bar := "bar"
