@@ -5,6 +5,7 @@
 package check
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -169,6 +170,51 @@ func TestUnmarshalJSON(t *testing.T) {
 		}
 		if len(rt.re.FindAllString("The foo made foomuh", -1)) != 2 {
 			t.Errorf("Got %v", rt.re.FindAllString("The foo made foomuh", -1))
+		}
+	}
+}
+
+// ----------------------------------------------------------------------------
+// type TC and runTest: helpers for testing the different checks
+
+type TC struct {
+	r response.Response
+	c Check
+	e error
+}
+
+var someError = fmt.Errorf("any error")
+
+var ms = time.Millisecond
+
+func runTest(t *testing.T, i int, tc TC) {
+	tc.r.BodyReader()
+	got := tc.c.Okay(&tc.r)
+	switch {
+	case got == nil && tc.e == nil:
+		return
+	case got != nil && tc.e == nil:
+		t.Errorf("%d. %s %v: unexpected error %v",
+			i, NameOf(tc.c), tc.c, got)
+	case got == nil && tc.e != nil:
+		t.Errorf("%d. %s %v: missing error, want %v",
+			i, NameOf(tc.c), tc.c, tc.e)
+	case got != nil && tc.e != nil:
+		_, malformed := got.(MalformedCheck)
+		if (tc.e == someError && !malformed) ||
+			(tc.e == NotFound && got == NotFound) ||
+			(tc.e == FoundForbidden && got == FoundForbidden) {
+			return
+		}
+		switch tc.e.(type) {
+		case MalformedCheck:
+			if !malformed {
+				t.Errorf("%d. %s %v:got \"%v\" of type %T, want MalformedCheck",
+					i, NameOf(tc.c), tc.c, got, got)
+			}
+		default:
+			t.Errorf("%d. %s %v: got %T of type \"%v\", want %T",
+				i, NameOf(tc.c), tc.c, got, got, tc.e)
 		}
 	}
 }

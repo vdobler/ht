@@ -6,55 +6,12 @@ package check
 
 import (
 	"encoding/base64"
-	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
 	"testing"
-	"time"
 
 	"github.com/vdobler/ht/response"
 )
-
-type TC struct {
-	r response.Response
-	c Check
-	e error
-}
-
-var someError = fmt.Errorf("any error")
-var ms = time.Millisecond
-
-func runTest(t *testing.T, i int, tc TC) {
-	tc.r.BodyReader()
-	got := tc.c.Okay(&tc.r)
-	switch {
-	case got == nil && tc.e == nil:
-		return
-	case got != nil && tc.e == nil:
-		t.Errorf("%d. %s %v: unexpected error %v",
-			i, NameOf(tc.c), tc.c, got)
-	case got == nil && tc.e != nil:
-		t.Errorf("%d. %s %v: missing error, want %v",
-			i, NameOf(tc.c), tc.c, tc.e)
-	case got != nil && tc.e != nil:
-		_, malformed := got.(MalformedCheck)
-		if (tc.e == someError && !malformed) ||
-			(tc.e == NotFound && got == NotFound) ||
-			(tc.e == FoundForbidden && got == FoundForbidden) {
-			return
-		}
-		switch tc.e.(type) {
-		case MalformedCheck:
-			if !malformed {
-				t.Errorf("%d. %s %v:got \"%v\" of type %T, want MalformedCheck",
-					i, NameOf(tc.c), tc.c, got, got)
-			}
-		default:
-			t.Errorf("%d. %s %v: got %T of type \"%v\", want %T",
-				i, NameOf(tc.c), tc.c, got, got, tc.e)
-		}
-	}
-}
 
 var responseTimeTests = []TC{
 	{response.Response{Duration: 10 * ms}, ResponseTime{Lower: 20 * ms}, nil},
@@ -70,27 +27,6 @@ var responseTimeTests = []TC{
 
 func TestResponseTime(t *testing.T) {
 	for i, tc := range responseTimeTests {
-		runTest(t, i, tc)
-	}
-}
-
-var bcr = response.Response{Body: []byte("foo bar baz foo foo")}
-var bodyTests = []TC{
-	{bcr, &Body{Contains: "foo"}, nil},
-	{bcr, &Body{Contains: "bar"}, nil},
-	{bcr, &Body{Contains: "baz"}, nil},
-	{bcr, &Body{Contains: "foo", Count: 3}, nil},
-	{bcr, &Body{Contains: "baz", Count: 1}, nil},
-	{bcr, &Body{Contains: "wup", Count: -1}, nil},
-	{bcr, &Body{Contains: "foo bar", Count: 1}, nil},
-	{bcr, &Body{Contains: "sit"}, NotFound},
-	{bcr, &Body{Contains: "bar", Count: -1}, FoundForbidden},
-	{bcr, &Body{Contains: "bar", Count: 2}, someError}, // TODO: real error checking
-}
-
-func TestBody(t *testing.T) {
-	for i, tc := range bodyTests {
-		tc.c.(Compiler).Compile()
 		runTest(t, i, tc)
 	}
 }
