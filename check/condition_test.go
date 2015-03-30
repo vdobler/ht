@@ -5,7 +5,6 @@
 package check
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 )
@@ -69,17 +68,5 @@ func TestFullfilled(t *testing.T) {
 			t.Errorf("%d. %s, wrong error %q, want %q", i, tc.s, err, tc.w)
 		}
 
-	}
-}
-
-func TestConditionCompile(t *testing.T) {
-	header := Header{Header: "Content-Type", Condition: Condition{Prefix: "text/html"}}
-
-	var check Check = &header
-
-	cmpl, ok := check.(Compiler)
-	fmt.Println(cmpl, ok)
-	if ok {
-		fmt.Println("Result of Compile: ", cmpl.Compile())
 	}
 }
