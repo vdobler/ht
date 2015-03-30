@@ -224,7 +224,7 @@ outer:
 //     Timeout      Use largets
 //     Verbosity    Use largets
 //     ClientPool   ignore
-func Merge(tests ...Test) (Test, error) {
+func Merge(tests ...*Test) (*Test, error) {
 	m := Test{}
 
 	// Name and description
@@ -244,7 +244,7 @@ func Merge(tests ...Test) (Test, error) {
 	for _, t := range tests {
 		err := mergeRequest(&m.Request, t.Request)
 		if err != nil {
-			return m, err
+			return &m, err
 		}
 		m.Checks = append(m.Checks, t.Checks...)
 		if t.Poll.Max > m.Poll.Max {
@@ -261,7 +261,7 @@ func Merge(tests ...Test) (Test, error) {
 		}
 	}
 
-	return m, nil
+	return &m, nil
 }
 
 // Run runs the test t. The actual HTTP request is crafted and executed and

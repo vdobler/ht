@@ -362,14 +362,14 @@ func TestMarshalTest(t *testing.T) {
 }
 
 func TestMerge(t *testing.T) {
-	a := Test{}
-	b := Test{}
+	a := &Test{}
+	b := &Test{}
 	_, err := Merge(a, b)
 	if err != nil {
 		t.Fatalf("Unexpected error %#v", err)
 	}
 
-	a = Test{
+	a = &Test{
 		Name:        "A",
 		Description: "A does a in a very a-ish way.",
 		Request: Request{
@@ -391,7 +391,7 @@ func TestMerge(t *testing.T) {
 		},
 	}
 
-	b = Test{
+	b = &Test{
 		Name:        "B",
 		Description: "B does b in a very b-ish way.",
 		Request: Request{

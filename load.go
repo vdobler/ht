@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"path"
 	"time"
 
@@ -16,6 +17,76 @@ import (
 
 	"strings"
 )
+
+var (
+	// testPool is a pool of all loaded serialized tests
+	testPool map[string]*rawTest
+)
+
+func init() {
+	testPool = make(map[string]*rawTest)
+}
+
+// rawTest is the raw representation of a test as read from disk.
+type rawTest struct {
+	Name        string
+	Description string   `json:",omitempty"`
+	BasedOn     []string `json:",omitempty"`
+	Request     Request
+	Checks      check.CheckList `json:",omitempty"`
+
+	// Unroll contains values to be used during unrolling the Test
+	// generated from the deserialized data to several real Tests.
+	Unroll map[string][]string `json:",omitempty"`
+
+	Poll      Poll          `json:",omitempty"`
+	Timeout   time.Duration `json:",omitempty"`
+	Verbosity int           `json:",omitempty"`
+}
+
+func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
+	t := &Test{
+		Name:        raw.Name,
+		Description: raw.Description,
+		Request:     raw.Request,
+		Checks:      raw.Checks,
+		Poll:        raw.Poll,
+		Timeout:     raw.Timeout,
+		Verbosity:   raw.Verbosity,
+	}
+	if len(raw.BasedOn) > 0 {
+		base := []*Test{t}
+		for _, name := range raw.BasedOn {
+			rb, err := findRawTest(name, dir)
+			if err != nil {
+				return nil, err
+			}
+			rb.Unroll = nil
+			b, err := rawTestToTests(rb, dir)
+			if err != nil {
+				return nil, err
+			}
+			base = append(base, b...)
+		}
+		t, err = Merge(base...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(raw.Unroll) > 0 {
+		nreps := lcmOf(raw.Unroll)
+		unrolled, err := Repeat(t, nreps, raw.Unroll)
+		if err != nil {
+			return nil, err
+		}
+		tests = append(tests, unrolled...)
+	} else {
+		tests = append(tests, t)
+	}
+
+	return tests, nil
+}
 
 // LoadSuite reads a suite from filename while looking for filename in the
 // filesystem paths.
@@ -46,32 +117,12 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 	appendTests := func(testNames []string) ([]*Test, error) {
 		tests := []*Test{}
 		for _, name := range testNames {
-			st, err := findSerTest(name, s.Tests, dir)
+			st, err := findRawTest(name, dir)
 			if err != nil {
 				return nil, fmt.Errorf("test %q: %s", name, err)
 			}
-			t := &Test{
-				Name:        st.Name,
-				Description: st.Description,
-				Request:     st.Request,
-				Checks:      st.Checks,
-				Poll:        st.Poll,
-				Timeout:     st.Timeout,
-				Verbosity:   st.Verbosity,
-			}
-			if s.Suite.Verbosity > 0 {
-				t.Verbosity = s.Suite.Verbosity
-			}
-			if len(st.Unroll) > 0 {
-				nreps := lcmOf(st.Unroll)
-				unrolled, err := Repeat(t, nreps, st.Unroll)
-				if err != nil {
-					return nil, err
-				}
-				tests = append(tests, unrolled...)
-			} else {
-				tests = append(tests, t)
-			}
+			ts, err := rawTestToTests(st, dir)
+			tests = append(tests, ts...)
 		}
 		return tests, nil
 	}
@@ -96,25 +147,9 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 	return suite, nil
 }
 
-// serTest is used for deserialization of text to Test.
-type serTest struct {
-	Name        string
-	Description string `json:",omitempty"`
-	Request     Request
-	Checks      check.CheckList `json:",omitempty"`
-
-	// Unroll contains values to be used during unrolling the Test
-	// generated from the deserialized data to several real Tests.
-	Unroll map[string][]string `json:",omitempty"`
-
-	Poll      Poll          `json:",omitempty"`
-	Timeout   time.Duration `json:",omitempty"`
-	Verbosity int           `json:",omitempty"`
-}
-
 // serSuite is the struct used to deserialize a Suite.
 type serSuite struct {
-	Tests []*serTest `json:",omitempty"`
+	Tests []*rawTest `json:",omitempty"`
 	Suite struct {
 		Name        string
 		Description string   `json:",omitempty"`
@@ -146,48 +181,63 @@ func loadSuiteJSON(filename string, paths []string) (s serSuite, dir string, err
 	}
 	err = json5.Unmarshal(all, &s)
 	if err != nil {
+		fmt.Printf("loadSuiteJSON error = %#v\n", err)
 		return s, dir, err
+	}
+
+	for _, t := range s.Tests {
+		if _, ok := testPool[t.Name]; ok {
+			log.Fatalf("Duplicate Test name %q", t.Name)
+		}
+		testPool[t.Name] = t
 	}
 	return s, dir, nil
 }
 
-// findSerTest tries to find a test with the given name in the given Suite.
+// findRawTest tries to find a test with the given name in the given Suite.
 // Non-local tests are tried to be loaded from dir.
-func findSerTest(name string, collection []*serTest, dir string) (*serTest, error) {
+func findRawTest(name string, dir string) (*rawTest, error) {
 	if strings.HasPrefix(name, "@") {
 		name = strings.TrimSpace(name[1:])
+		if t, ok := testPool[name]; ok {
+			return t, nil
+		}
 		name = path.Join(dir, name)
 		return loadTestJSON(name)
 	}
 
 	if i := strings.LastIndex(name, "@"); i != -1 {
-		// Load suite only from given dir (possible relative to dir).
 		file := strings.TrimSpace(name[i+1:])
 		name = strings.TrimSpace(name[:i])
-		rs, _, err := loadSuiteJSON(file, []string{dir})
+		if t, ok := testPool[name]; ok {
+			return t, nil
+		}
+		// Load suite only from given dir (possible relative to dir).
+		_, _, err := loadSuiteJSON(file, []string{dir})
 		if err != nil {
 			return nil, err
 		}
-		collection = rs.Tests
 	}
-	for i := range collection {
-		if collection[i].Name == name {
-			return collection[i], nil
-		}
+
+	if t, ok := testPool[name]; ok {
+		return t, nil
 	}
 	return nil, errors.New("not found")
 }
 
-// loadJsonTest loads the file with the given filename and decodes into a Test.
-func loadTestJSON(filename string) (*serTest, error) {
+// loadJsonTest loads the file with the given filename and decodes into
+// a rawTest and stores it in the global pool of raw tests.
+func loadTestJSON(filename string) (*rawTest, error) {
 	all, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	t := &serTest{}
+	t := &rawTest{}
 	err = json5.Unmarshal(all, t)
 	if err != nil {
+		fmt.Printf("loadTestJSON error = %#v\n", err)
 		return nil, err
 	}
+	testPool[t.Name] = t
 	return t, nil
 }
