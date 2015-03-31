@@ -3,5 +3,6 @@ ht.test
 tmp/*
 *.R
 *.png
-ht/ht
+cmd/ht/ht
+cmd/fingerprint/fingerprint
 *.bined.jpg
