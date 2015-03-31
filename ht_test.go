@@ -5,7 +5,6 @@
 package ht
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/kr/pretty"
 	"github.com/vdobler/ht/check"
+	"github.com/vdobler/ht/third_party/json5"
 )
 
 func TestStatusCode(t *testing.T) {
@@ -334,23 +334,23 @@ func TestMarshalTest(t *testing.T) {
 		},
 		Checks: []check.Check{
 			check.StatusCode{200},
-			check.BodyContains{Text: "© 2014 Unic", Count: 1},
+			check.Body{Contains: "© 2014 Unic", Count: 1},
 		},
 	}
 
-	data, err := json.MarshalIndent(test, "", "    ")
+	data, err := json5.MarshalIndent(test, "", "    ")
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 	fmt.Println(string(data))
 
 	recreated := Test{}
-	err = json.Unmarshal(data, &recreated)
+	err = json5.Unmarshal(data, &recreated)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 
-	data2, err := json.MarshalIndent(recreated, "", "    ")
+	data2, err := json5.MarshalIndent(recreated, "", "    ")
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
