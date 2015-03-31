@@ -17,7 +17,7 @@ import (
 	"reflect"
 
 	"github.com/vdobler/ht/response"
-	"github.com/yosuke-furukawa/json5/encoding/json5"
+	"github.com/vdobler/ht/third_party/json5"
 )
 
 // Check is a single check performed on a Response.
