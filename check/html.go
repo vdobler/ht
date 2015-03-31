@@ -9,7 +9,7 @@ package check
 import (
 	"fmt"
 
-	"code.google.com/p/cascadia"
+	"github.com/andybalholm/cascadia"
 	"github.com/vdobler/ht/response"
 	"golang.org/x/net/html"
 )
