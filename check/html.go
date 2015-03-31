@@ -7,7 +7,13 @@
 package check
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/textproto"
+	"strings"
 
 	"github.com/andybalholm/cascadia"
 	"github.com/vdobler/ht/response"
@@ -18,10 +24,11 @@ func init() {
 	RegisterCheck(&HTMLContains{})
 	RegisterCheck(&HTMLContainsText{})
 	RegisterCheck(ValidHTML{})
+	RegisterCheck(W3CValidHTML{})
 }
 
 // ----------------------------------------------------------------------------
-// ValidHTML
+// ValidHTML and W3CValidHTML
 
 // ValidHTML checks for valid HTML 5. Kinda: It never fails. TODO: make it useful.
 type ValidHTML struct{}
@@ -36,6 +43,138 @@ func (c ValidHTML) Okay(response *response.Response) error {
 	}
 
 	return nil
+}
+
+// W3CValidHTML checks for valid HTML but checking the response body via
+// the online checker from W3C which is very strict.
+type W3CValidHTML struct {
+	// AllowedErrors is the number of allowed errors (after ignoring errors).
+	AllowedErrors int
+
+	// IgnoredErrros is a list of error messages to be ignored completely.
+	IgnoredErrors []Condition
+}
+
+func (w W3CValidHTML) Okay(response *response.Response) error {
+	// It would be nice to use a ht.Test here but that would be
+	// a circular dependency, so craft the request by hand.
+
+	// Create a multipart body.
+	var body *bytes.Buffer = &bytes.Buffer{}
+	var mpwriter = multipart.NewWriter(body)
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition",
+		`form-data; name="uploaded_file"; filename="sample.html"`)
+	h.Set("Content-Type", "text/html")
+	fw, err := mpwriter.CreatePart(h)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(fw, response.BodyReader())
+	if err != nil {
+		return err
+	}
+	for _, p := range []struct {
+		name  string
+		value string
+	}{
+		{"charset", "(detect automatically)"},
+		{"fbc", "1"},
+		{"doctype", "Inline"},
+		{"fbd", "1"},
+		{"group", "0"},
+	} {
+		err = mpwriter.WriteField(p.name, p.value)
+		if err != nil {
+			return err
+		}
+	}
+	err = mpwriter.Close()
+	if err != nil {
+		return err
+	}
+
+	// Create and do a request to the W3C validator
+	valReq, err := http.NewRequest("POST", "http://validator.w3.org/check", body)
+	if err != nil {
+		return err
+	}
+	valReq.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+	valReq.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36")
+	// valReq.Header.Set("Accept-Encoding", "gzip, deflate")
+	ct := fmt.Sprintf("multipart/form-data; boundary=%s", mpwriter.Boundary())
+	valReq.Header.Set("Content-Type", ct)
+	valResp, err := http.DefaultClient.Do(valReq)
+	if err != nil {
+		return err
+	}
+	defer valResp.Body.Close()
+
+	// Interprete response from validator
+	for h, vv := range valResp.Header {
+		if !strings.HasPrefix(vv[0], "X-W3c-Validator") {
+			continue
+		}
+		fmt.Printf("%-30s = %s\n", h, vv[0])
+	}
+
+	doc, err := html.Parse(valResp.Body)
+	if err != nil {
+		return err
+	}
+
+	// Errors
+	validationErrors := []ValidationIssue{}
+	noIgnored := 0
+outer:
+	for _, ve := range w3cValidatorErrSel.MatchAll(doc) {
+		vi := extractValidationIssue(ve)
+		for _, c := range w.IgnoredErrors {
+			if c.Fullfilled(vi.Message) == nil {
+				noIgnored++
+				continue outer
+			}
+		}
+		validationErrors = append(validationErrors, vi)
+	}
+	// TODO: maybe warnings too?
+
+	if len(validationErrors) > w.AllowedErrors {
+		errmsg := fmt.Sprintf("Ignored %d errors", noIgnored)
+		for i, e := range validationErrors {
+			errmsg = fmt.Sprintf("%s\nError %d:\n  %s\n  %s\n  %s",
+				errmsg, i, e.Position, e.Message, e.Input)
+		}
+		return fmt.Errorf("%s", errmsg)
+	}
+
+	return nil
+}
+
+// ValidationIssue contains extracted information from the output of
+// a W3C validator run.
+type ValidationIssue struct {
+	Position string
+	Message  string
+	Input    string
+}
+
+var (
+	w3cValidatorErrSel   = cascadia.MustCompile("li.msg_err")
+	w3cValidatorWarnSel  = cascadia.MustCompile("li.msg_warn")
+	w3cValidatorEmSel    = cascadia.MustCompile("em")
+	w3cValidatorMsgSel   = cascadia.MustCompile("span.msg")
+	w3cValidatorInputSel = cascadia.MustCompile("code.input")
+)
+
+func extractValidationIssue(node *html.Node) ValidationIssue {
+	p := textContent(w3cValidatorEmSel.MatchFirst(node))
+	p = strings.Replace(p, "\n     ", "", -1)
+	return ValidationIssue{
+		Position: p,
+		Message:  textContent(w3cValidatorMsgSel.MatchFirst(node)),
+		Input:    textContent(w3cValidatorInputSel.MatchFirst(node)),
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -157,6 +296,9 @@ func (c *HTMLContainsText) Compile() (err error) {
 
 // textContent returns the full text content of n.
 func textContent(n *html.Node) string {
+	if n == nil {
+		return ""
+	}
 	switch n.Type {
 	case html.TextNode:
 		return n.Data

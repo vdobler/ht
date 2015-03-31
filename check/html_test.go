@@ -73,3 +73,52 @@ func TestValidHTML(t *testing.T) {
 		runTest(t, i, tc)
 	}
 }
+
+func TestW3CValidHTML(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping W3C Validator based checks in short mode.")
+	}
+
+	body := `<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <title>This is okay</title>
+</head>
+<body>
+  <h1>Here all good &amp; nice</h1>
+</body>`
+
+	rr := response.Response{Body: []byte(body)}
+	check := W3CValidHTML{
+		AllowedErrors: 0,
+	}
+	runTest(t, 0, TC{rr, check, nil})
+
+	body2 := `<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <title>This is okay</title>
+</head>
+<body>
+  <h1 title="K&K">Here some issues problems</h1>
+  <button role="presentation">Button</button>
+  <span><div>Strangly nested</div></span>
+</body>`
+
+	rr2 := response.Response{Body: []byte(body2)}
+	check2 := W3CValidHTML{
+		AllowedErrors: 1,
+		IgnoredErrors: []Condition{
+			{Prefix: "& did not start a character reference"},
+		},
+	}
+	runTest(t, 1, TC{rr2, check2, someError})
+
+	check3 := W3CValidHTML{
+		AllowedErrors: 3,
+	}
+	runTest(t, 1, TC{rr2, check3, nil})
+
+}
