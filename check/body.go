@@ -24,7 +24,7 @@ func init() {
 // UTF8Encoded checks that the response body is valid UTF-8 without BOMs.
 type UTF8Encoded struct{}
 
-func (c UTF8Encoded) Okay(response *response.Response) error {
+func (c UTF8Encoded) Execute(response *response.Response) error {
 	p := response.Body
 	char := 0
 	for len(p) > 0 {
@@ -41,12 +41,14 @@ func (c UTF8Encoded) Okay(response *response.Response) error {
 	return nil
 }
 
+func (_ UTF8Encoded) Prepare() error { return nil }
+
 // ----------------------------------------------------------------------------
 // Body
 
 type Body Condition
 
-func (b Body) Okay(response *response.Response) error {
+func (b Body) Execute(response *response.Response) error {
 	body, err := response.Body, response.BodyErr
 	if err != nil {
 		return BadBody
@@ -54,6 +56,6 @@ func (b Body) Okay(response *response.Response) error {
 	return Condition(b).FullfilledBytes(body)
 }
 
-func (b *Body) Compile() error {
+func (b *Body) Prepare() error {
 	return ((*Condition)(b)).Compile()
 }

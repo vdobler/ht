@@ -22,14 +22,12 @@ import (
 
 // Check is a single check performed on a Response.
 type Check interface {
-	Okay(response *response.Response) error
-}
+	// Prepare is called to prepare the check, e.g. to compile
+	// regular expressions or that like.
+	Prepare() error
 
-// Compiler is the interface a check may implement to precompile
-// stuff (e.g. regular expressions) during the preparation phase
-// of a test.
-type Compiler interface {
-	Compile() error
+	// Execute executes the check.
+	Execute(response *response.Response) error
 }
 
 // NameOf returns the name of the check.

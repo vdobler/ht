@@ -334,7 +334,7 @@ func TestMarshalTest(t *testing.T) {
 		},
 		Checks: []check.Check{
 			check.StatusCode{200},
-			check.Body{Contains: "© 2014 Unic", Count: 1},
+			&check.Body{Contains: "© 2014 Unic", Count: 1},
 		},
 	}
 

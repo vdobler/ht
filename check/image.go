@@ -54,7 +54,7 @@ type Image struct {
 }
 
 // Okay implements the Check interface.
-func (c Image) Okay(response *response.Response) error {
+func (c Image) Execute(response *response.Response) error {
 	img, format, err := image.Decode(response.BodyReader())
 	if err != nil {
 		fmt.Printf("Image.Okay resp.BodyReader=%#v\n", response.BodyReader())
@@ -103,3 +103,5 @@ func (c Image) Okay(response *response.Response) error {
 
 	return nil
 }
+
+func (_ Image) Prepare() error { return nil }

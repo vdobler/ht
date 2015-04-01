@@ -33,7 +33,7 @@ func init() {
 // ValidHTML checks for valid HTML 5. Kinda: It never fails. TODO: make it useful.
 type ValidHTML struct{}
 
-func (c ValidHTML) Okay(response *response.Response) error {
+func (c ValidHTML) Execute(response *response.Response) error {
 	if response.BodyErr != nil {
 		return BadBody
 	}
@@ -45,6 +45,8 @@ func (c ValidHTML) Okay(response *response.Response) error {
 	return nil
 }
 
+func (_ ValidHTML) Prepare() error { return nil }
+
 // W3CValidHTML checks for valid HTML but checking the response body via
 // the online checker from W3C which is very strict.
 type W3CValidHTML struct {
@@ -55,7 +57,7 @@ type W3CValidHTML struct {
 	IgnoredErrors []Condition
 }
 
-func (w W3CValidHTML) Okay(response *response.Response) error {
+func (w W3CValidHTML) Execute(response *response.Response) error {
 	// It would be nice to use a ht.Test here but that would be
 	// a circular dependency, so craft the request by hand.
 
@@ -151,6 +153,8 @@ outer:
 	return nil
 }
 
+func (_ W3CValidHTML) Prepare() error { return nil }
+
 // ValidationIssue contains extracted information from the output of
 // a W3C validator run.
 type ValidationIssue struct {
@@ -194,9 +198,9 @@ type HTMLContains struct {
 	sel cascadia.Selector
 }
 
-func (c *HTMLContains) Okay(response *response.Response) error {
+func (c *HTMLContains) Execute(response *response.Response) error {
 	if c.sel == nil {
-		if err := c.Compile(); err != nil {
+		if err := c.Prepare(); err != nil {
 			return err
 		}
 	}
@@ -225,7 +229,7 @@ func (c *HTMLContains) Okay(response *response.Response) error {
 	return nil
 }
 
-func (c *HTMLContains) Compile() (err error) {
+func (c *HTMLContains) Prepare() (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
 		c.sel = nil
@@ -251,9 +255,9 @@ type HTMLContainsText struct {
 	sel cascadia.Selector
 }
 
-func (c *HTMLContainsText) Okay(response *response.Response) error {
+func (c *HTMLContainsText) Execute(response *response.Response) error {
 	if c.sel == nil {
-		if err := c.Compile(); err != nil {
+		if err := c.Prepare(); err != nil {
 			return err
 		}
 	}
@@ -285,7 +289,7 @@ func (c *HTMLContainsText) Okay(response *response.Response) error {
 	return nil
 }
 
-func (c *HTMLContainsText) Compile() (err error) {
+func (c *HTMLContainsText) Prepare() (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
 		c.sel = nil

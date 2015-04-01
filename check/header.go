@@ -34,7 +34,7 @@ type Header struct {
 	Absent bool
 }
 
-func (h Header) Okay(response *response.Response) error {
+func (h Header) Execute(response *response.Response) error {
 	key := http.CanonicalHeaderKey(h.Header)
 	values := response.Response.Header[key]
 	if len(values) == 0 && h.Absent {
@@ -47,7 +47,7 @@ func (h Header) Okay(response *response.Response) error {
 	return h.Fullfilled(values[0])
 }
 
-func (h *Header) Compile() error {
+func (h *Header) Prepare() error {
 	return h.Condition.Compile()
 }
 
@@ -72,7 +72,7 @@ type SetCookie struct {
 	// TODO: check httpOnly and secure
 }
 
-func (c SetCookie) Okay(response *response.Response) error {
+func (c SetCookie) Execute(response *response.Response) error {
 	var cookie *http.Cookie
 	for _, cp := range response.Response.Cookies() {
 		if cp.Name == c.Name {
@@ -120,7 +120,7 @@ func (c SetCookie) Okay(response *response.Response) error {
 
 }
 
-func (c *SetCookie) Compile() error {
+func (c *SetCookie) Prepare() error {
 	if err := c.Value.Compile(); err != nil {
 		return err
 	}

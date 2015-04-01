@@ -400,14 +400,12 @@ func (t *Test) prepare(variables map[string]string) error {
 	cfc, cfce := []int{}, []string{}
 	for i := range t.Checks {
 		t.checks[i] = check.SubstituteVariables(t.Checks[i], repl.str, repl.fn)
-		if compiler, ok := t.checks[i].(check.Compiler); ok {
-			e := compiler.Compile()
-			if e != nil {
-				cfc = append(cfc, i)
-				cfce = append(cfce, err.Error())
-				t.errorf("preparing check %d %q: %s",
-					i, check.NameOf(t.Checks[i]), err.Error())
-			}
+		e := t.checks[i].Prepare()
+		if e != nil {
+			cfc = append(cfc, i)
+			cfce = append(cfce, err.Error())
+			t.errorf("preparing check %d %q: %s",
+				i, check.NameOf(t.Checks[i]), err.Error())
 		}
 	}
 	if len(cfc) != 0 {
@@ -544,7 +542,7 @@ func (t *Test) executeRequest() (*response.Response, error) {
 func (t *Test) executeChecks(response *response.Response, result []CheckResult) {
 	for i, ck := range t.Checks {
 		start := time.Now()
-		err := ck.Okay(response)
+		err := ck.Execute(response)
 		result[i].Duration = time.Since(start)
 		result[i].Error = err
 		if err != nil {

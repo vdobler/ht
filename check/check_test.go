@@ -36,7 +36,8 @@ type sampleCheck struct {
 }
 
 // let sampleCheck satisfy Check interface.
-func (s sampleCheck) Okay(response *response.Response) error { return nil }
+func (_ sampleCheck) Execute(response *response.Response) error { return nil }
+func (_ sampleCheck) Prepare() error                            { return nil }
 
 type nested struct {
 	X string
@@ -164,7 +165,7 @@ func TestUnmarshalJSON(t *testing.T) {
 		if rt.Prefix != "BEGIN" {
 			t.Errorf("Got Prefix=%q", rt.Prefix)
 		}
-		ce := rt.Compile()
+		ce := rt.Prepare()
 		if ce != nil {
 			t.Errorf("Unexpected error: %#v", ce)
 		}
@@ -189,7 +190,7 @@ var ms = time.Millisecond
 
 func runTest(t *testing.T, i int, tc TC) {
 	tc.r.BodyReader()
-	got := tc.c.Okay(&tc.r)
+	got := tc.c.Execute(&tc.r)
 	switch {
 	case got == nil && tc.e == nil:
 		return

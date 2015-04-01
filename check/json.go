@@ -30,7 +30,7 @@ type JSON struct {
 	tt *jee.TokenTree
 }
 
-func (c *JSON) Compile() (err error) {
+func (c *JSON) Prepare() (err error) {
 	tokens, err := jee.Lexer(c.Expression)
 	if err != nil {
 		return err
@@ -42,9 +42,9 @@ func (c *JSON) Compile() (err error) {
 	return nil
 }
 
-func (c *JSON) Okay(response *response.Response) error {
+func (c *JSON) Execute(response *response.Response) error {
 	if c.tt == nil {
-		if err := c.Compile(); err != nil {
+		if err := c.Prepare(); err != nil {
 			return MalformedCheck{Err: err}
 		}
 	}

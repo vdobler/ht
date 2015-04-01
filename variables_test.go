@@ -76,7 +76,7 @@ func TestSubstituteVariables(t *testing.T) {
 			FollowRedirects: true,
 		},
 		Checks: []check.Check{
-			check.Body{Contains: "bctext={{x}}", Count: 1},
+			&check.Body{Contains: "bctext={{x}}", Count: 1},
 		},
 	}
 
@@ -86,7 +86,7 @@ func TestSubstituteVariables(t *testing.T) {
 		rt.Request.URL != "url=Y" ||
 		rt.Request.Params["pn={{x}}"][0] != "pv=Y" || // TODO: names too?
 		rt.Request.Header["{{x}}head"][0] != "Yval" || // TODO: header keys too?
-		rt.Checks[0].(check.Body).Contains != "bctext=Y" {
+		rt.Checks[0].(*check.Body).Contains != "bctext=Y" {
 		t.Errorf("%s", pretty.Sprintf("%# v\n", test))
 	}
 
@@ -129,7 +129,7 @@ func TestFindNow(t *testing.T) {
 			FollowRedirects: false,
 		},
 		Checks: []check.Check{
-			check.Body{Contains: "now+5 == {{NOW + 15m}}"},
+			&check.Body{Contains: "now+5 == {{NOW + 15m}}"},
 		},
 	}
 	nv := test.findNowVariables()

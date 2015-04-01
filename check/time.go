@@ -26,7 +26,7 @@ type ResponseTime struct {
 	Higher time.Duration `xml:",attr,omitempty"`
 }
 
-func (c ResponseTime) Okay(response *response.Response) error {
+func (c ResponseTime) Execute(response *response.Response) error {
 	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
 		return MalformedCheck{Err: fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)}
 	}
@@ -40,3 +40,5 @@ func (c ResponseTime) Okay(response *response.Response) error {
 	}
 	return nil
 }
+
+func (_ ResponseTime) Prepare() error { return nil }

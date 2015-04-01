@@ -34,7 +34,7 @@ var bodyTests = []TC{
 
 func TestBody(t *testing.T) {
 	for i, tc := range bodyTests {
-		tc.c.(Compiler).Compile()
+		tc.c.Prepare()
 		runTest(t, i, tc)
 	}
 }
