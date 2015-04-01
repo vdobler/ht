@@ -196,10 +196,35 @@ var htmlTestTmpl = `{{define "TEST"}}
           {{range $i, $c := .CheckResults}}{{template "CHECK" .}}{{end}}
         </div>
       {{end}}{{end}}
+      {{if .Response}}{{template "RESPONSE" .Response}}{{end}}
     </div>
   </div>
 </div>
 {{end}}`
+
+var htmlResponseTmpl = `{{define "RESPONSE"}}
+<div class="toggle2">
+  <div class="expanded2">
+    <h3 class="toggleButton2">HTTP Response ▾</h3>
+    <div class="responseDetails">
+      {{if .Response}}
+        {{range $h, $v := .Response.Header}}
+          {{range $v}}
+            <code>{{printf "%s: %s" $h .}}</code></br>
+          {{end}}
+        {{end}}
+      {{end}}
+      {{if .BodyErr}}Error reading body: {{.BodyErr.Error}}
+      {{else}} Body would go here
+      {{end}}
+    </div>
+  </div>
+  <div class="collapsed2">
+    <h3 class="toggleButton2">HTTP Response ▹</h3>
+  </div>
+</div>
+{{end}}
+`
 
 var defaultSuiteTmpl = `{{Box (printf "%s: %s" (ToUpper .Status.String) .Name) ""}}{{if .Error}}
 Error: {{.Error}}{{end}}
@@ -242,6 +267,8 @@ h3 {
 
 .PASS { color: green; }
 .FAIL { color: red; }
+.ERROR { color: magenta; }
+.NOTRUN { color: grey; }
 </style>
 
   <title>Suite {{.Name}}</title>
@@ -341,6 +368,7 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlSuiteTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlCheckTmpl))
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlResponseTmpl))
 }
 
 func (r TestResult) PrintReport(w io.Writer) error {
