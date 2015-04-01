@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.toggleButton { cursor: pointer; }
+.toggleButton2 { cursor: pointer; }
+
+.toggle .collapsed { display: block; }
+.toggle .expanded { display: none; }
+.toggleVisible .collapsed { display: none; }
+.toggleVisible .expanded { display: block; }
+
+.toggle2 .collapsed2 { display: block; }
+.toggle2 .expanded2 { display: none; }
+.toggleVisible2 .collapsed2 { display: none; }
+.toggleVisible2 .expanded2 { display: block; }
+
+h2 { 
+  margin-top: 0.5em;
+  margin-bottom: 0.2em;
+}
+
+h3 { 
+  font-size: 1em;
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+.testDetails { margin-left: 1em; }
+.checkDetails { margin-left: 2em; }
+.requestDetails { margin-left: 2em; }
+.responseDetails { margin-left: 2em; }
+
+.PASS { color: green; }
+.FAIL { color: red; }
+</style>
+
+  <title>Suite suite.ht</title>
+
+
+</head>
+</body>
+<h1>Results of Suite <code>suite.ht</code></h1>
+
+<div id="summary">
+  Status: Pass <br/>
+  Started: 2015-04-01 12:26:49.161424068 +0200 CEST <br/>
+  Duration: 890.526782ms
+</div>
+
+<div class="toggleVisible">
+  <div class="collapsed">
+    <h2 class="toggleButton">Test 1: <span class="PASS">PASS</span> "<code>Unic: Search</code>" (543.00ms) ▹</h2>
+  </div>
+  <div class="expanded">
+    <h2 class="toggleButton">Test 1: <span class="PASS">PASS</span> "<code>Unic: Search</code>" (543.00ms) ▾</h2>
+    <div class="testDetails">
+      <div id="summary">
+	Started: 2015-04-01 12:26:49.161424068 +0200 CEST <br/>
+	Duration: 267ms
+      </div>
+      <div class="checks">
+	<div class="toggle2">
+	  <div class="collapsed2">
+	    <h3 class="toggleButton2">Check 1: <span class="PASS">PASS</span> <code>StatusCode</code> ▹</h3>
+	  </div>
+	  <div class="expanded2">
+	    <h3 class="toggleButton2">Check 1: <span class="PASS">PASS</span> <code>StatusCode</code> ▾</h3>
+	    <div class="checkDetails">
+	      <div><code>{Expect: 200}</code></div>
+	      <div>-- no error --</div>
+	    </div>
+	  </div>
+	</div>
+	<div class="toggleVisible2">
+	  <div class="collapsed2">
+	    <h3 class="toggleButton2">Check 1: <span class="FAIL">FAIL</span> <code>ResponseTime</code> ▹</h3>
+	  </div>
+	  <div class="expanded2">
+	    <h3 class="toggleButton2">Check 1: <span class="FAIL">FAIL</span> <code>ResponseTime</code> ▾</h3>
+	    <div class="checkDetails">
+	      <div><code>{Lower:2500000000,Higher:0}</code></div>
+	      <div>300ms > 250ms</div>
+	    </div>
+	  </div>
+	</div>
+      </div>
+      <div class="toggle2">
+	<div class="expanded2">
+	  <h3 class="toggleButton2">HTTP Request ▾</h3>
+	  <div class="requestDetails">HTTP1.1 /<br/>Accept: text/html, image/*</div>
+	</div>
+	<div class="collapsed2">
+	  <h3 class="toggleButton2">HTTP Request ▹</h3>
+	</div>
+      </div>
+      <div class="toggle2">
+	<div class="expanded2">
+	  <h3 class="toggleButton2">HTTP Response ▾</h3>
+	  <div class="responseDetails">Host: localhost:9001 /<br/>Content-Type: text/html</div>
+	</div>
+	<div class="collapsed2">
+	  <h3 class="toggleButton2">HTTP Response ▹</h3>
+	</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+
+<script type="text/javascript">
+
+console.log("Start");
+
+(function() {
+'use strict';
+
+function bindToggle(el) {
+  $('.toggleButton', el).click(function() {
+    if ($(el).is('.toggle')) {
+      $(el).addClass('toggleVisible').removeClass('toggle');
+    } else {
+      $(el).addClass('toggle').removeClass('toggleVisible');
+    }
+  });
+}
+function bindToggles(selector) {
+  $(selector).each(function(i, el) {
+    bindToggle(el);
+  });
+}
+
+function bindToggle2(el) {
+  console.log("bindToggle2 for " + el);
+  $('.toggleButton2', el).click(function() {
+    if ($(el).is('.toggle2')) {
+      $(el).addClass('toggleVisible2').removeClass('toggle2');
+    } else {
+      $(el).addClass('toggle2').removeClass('toggleVisible2');
+    }
+  });
+}
+
+function bindToggles2(selector) {
+console.log("bindToggles2("+selector+")");
+  $(selector).each(function(i, el) {
+    bindToggle2(el);
+  });
+}
+
+
+$(document).ready(function() {
+console.log("bindingstuff");
+  bindToggles(".toggle");
+  bindToggles(".toggleVisible");
+  bindToggles2(".toggle2");
+  bindToggles2(".toggleVisible2");
+});
+
+})();
+
+
+
+</script
+</body>
+</html>

@@ -79,6 +79,16 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			}
 			total++
 		}
+
+		htmlReport, err := os.Create(fmt.Sprintf("HtmlReport-%d.html", s))
+		if err != nil {
+			log.Panic(err)
+		}
+		err = results[s].HTMLReport(htmlReport)
+		if err != nil {
+			log.Panic(err)
+		}
+		htmlReport.Close()
 	}
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
