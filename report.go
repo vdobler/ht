@@ -137,7 +137,7 @@ var defaultCheckTmpl = `{{define "CHECK"}}{{printf "%-7s %-15s %s" .Status .Name
 	`{{if eq .Status 3 5}} {{.Error.Error}}{{end}}{{end}}`
 
 var htmlCheckTmpl = `{{define "CHECK"}}
-<div class="toggle{{if ne .Status 2}}Visible{{end}}2">
+<div class="toggle{{if gt .Status 2}}Visible{{end}}2">
   <div class="collapsed2">
     <h3 class="toggleButton2">Check 1:
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span>
@@ -169,7 +169,7 @@ var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{i
 {{end}}{{end}}{{end}}{{end}}`
 
 var htmlTestTmpl = `{{define "TEST"}}
-<div class="toggle{{if ne .Status 2}}Visible{{end}}">
+<div class="toggle{{if gt .Status 2}}Visible{{end}}">
   <div class="collapsed">
     <h2 class="toggleButton">Test 1:
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
