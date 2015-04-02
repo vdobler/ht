@@ -65,13 +65,13 @@ func runBench(cmd *Command, suites []*ht.Suite) {
 func printBenchmarkSummary(results []ht.TestResult) {
 	max := 0
 	for _, r := range results {
-		if d := int(r.Duration / time.Millisecond); d > max {
+		if d := int(r.Duration / 1e6); d > max {
 			max = d
 		}
 	}
 	h := hist.NewLogHist(7, max)
 	for _, r := range results {
-		h.Add(int(r.Duration / time.Millisecond))
+		h.Add(int(r.Duration / 1e6))
 	}
 
 	ps := []float64{0, 0.25, 0.50, 0.75, 0.80, 0.85, 0.90, 0.95, 0.97, 0.98, 0.99, 1}

@@ -107,8 +107,8 @@ type TestResult struct {
 	Request      *http.Request      // The sent request
 	RequestBody  string             // The body of the request
 	Response     *response.Response // The received response.
-	Duration     time.Duration      // A copy of Response.Duration
-	FullDuration time.Duration      // Total time of test execution, including tries.
+	Duration     response.Duration  // A copy of Response.Duration
+	FullDuration response.Duration  // Total time of test execution, including tries.
 	Tries        int                // Number of tries executed.
 	CheckResults []CheckResult      // The individual checks.
 }

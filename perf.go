@@ -11,6 +11,7 @@ import (
 
 	"github.com/pinterest/bender"
 	"github.com/vdobler/ht/hist"
+	"github.com/vdobler/ht/response"
 )
 
 // -------------------------------------------------------------------------
@@ -192,7 +193,7 @@ func (r LoadtestResult) String() string {
 func AnalyseLoadtest(results []TestResult) LoadtestResult {
 	result := LoadtestResult{}
 
-	var max, maxp, maxf, maxe time.Duration
+	var max, maxp, maxf, maxe response.Duration
 	for _, r := range results {
 		if r.Duration > max {
 			max = r.Duration
@@ -221,17 +222,18 @@ func AnalyseLoadtest(results []TestResult) LoadtestResult {
 	}
 	result.Total = result.Passed + result.Failed + result.Errored + result.Skipped + result.Bogus
 
-	result.PassHist = hist.NewLogHist(7, int(maxp/time.Millisecond))
-	result.FailHist = hist.NewLogHist(7, int(maxf/time.Millisecond))
-	result.BothHist = hist.NewLogHist(7, int(max/time.Millisecond))
+	const millisecond = 1e6
+	result.PassHist = hist.NewLogHist(7, int(maxp/millisecond))
+	result.FailHist = hist.NewLogHist(7, int(maxf/millisecond))
+	result.BothHist = hist.NewLogHist(7, int(max/millisecond))
 	for _, r := range results {
 		switch r.Status {
 		case Pass:
-			result.PassHist.Add(int(r.Duration / time.Millisecond))
-			result.BothHist.Add(int(r.Duration / time.Millisecond))
+			result.PassHist.Add(int(r.Duration / millisecond))
+			result.BothHist.Add(int(r.Duration / millisecond))
 		case Fail:
-			result.FailHist.Add(int(r.Duration / time.Millisecond))
-			result.BothHist.Add(int(r.Duration / time.Millisecond))
+			result.FailHist.Add(int(r.Duration / millisecond))
+			result.BothHist.Add(int(r.Duration / millisecond))
 		}
 	}
 

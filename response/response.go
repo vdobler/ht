@@ -22,7 +22,7 @@ type Response struct {
 	Response *http.Response
 
 	// Duration to receive response and read the whole body.
-	Duration time.Duration
+	Duration Duration
 
 	// The received body and the error got while reading it.
 	Body    []byte

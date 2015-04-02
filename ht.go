@@ -319,7 +319,7 @@ func (t *Test) Run(variables map[string]string) TestResult {
 			break
 		}
 	}
-	result.FullDuration = time.Since(start)
+	result.FullDuration = response.Duration(time.Since(start))
 	result.Tries = try + 1
 	if t.Poll.Max > 1 {
 		if result.Status == Pass {
@@ -526,8 +526,8 @@ func (t *Test) executeRequest() (*response.Response, error) {
 		err = nil
 	}
 
-	response := &response.Response{}
-	response.Response = resp
+	rr := &response.Response{}
+	rr.Response = resp
 	msg := "okay"
 	if err == nil {
 		var reader io.ReadCloser
@@ -535,22 +535,22 @@ func (t *Test) executeRequest() (*response.Response, error) {
 		case "gzip":
 			reader, err = gzip.NewReader(resp.Body)
 			if err != nil {
-				response.BodyErr = err
+				rr.BodyErr = err
 			}
 			t.tracef("Unzipping gzip body")
 		default:
 			reader = resp.Body
 		}
-		response.Body, response.BodyErr = ioutil.ReadAll(reader)
+		rr.Body, rr.BodyErr = ioutil.ReadAll(reader)
 		reader.Close()
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())
 	}
-	response.Duration = time.Since(start)
+	rr.Duration = response.Duration(time.Since(start))
 
-	t.debugf("request took %s, %s", response.Duration, msg)
+	t.debugf("request took %s, %s", rr.Duration, msg)
 
-	return response, err
+	return rr, err
 }
 
 // executeChecks applies the checks in t to the HTTP response received during
