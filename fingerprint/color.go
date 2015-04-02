@@ -30,6 +30,10 @@ type ColorHist [24]byte
 func (ch ColorHist) String() string {
 	buf := make([]byte, 0, 24)
 	for _, n := range ch {
+		v := (int64(n) + 7) >> 4 // proper rounding
+		if v > 15 {
+			v = 15
+		}
 		buf = strconv.AppendInt(buf, int64(n>>4), 16)
 	}
 	return string(buf)
