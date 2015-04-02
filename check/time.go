@@ -8,7 +8,6 @@ package check
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/vdobler/ht/response"
 )
@@ -22,21 +21,22 @@ func init() {
 
 // ResponseTime checks the response time.
 type ResponseTime struct {
-	Lower  time.Duration `json:",omitempty"`
-	Higher time.Duration `json:",omitempty"`
+	Lower  response.Duration `json:",omitempty"`
+	Higher response.Duration `json:",omitempty"`
 }
 
-func (c ResponseTime) Execute(response *response.Response) error {
+func (c ResponseTime) Execute(r *response.Response) error {
+	actual := response.Duration(r.Duration)
 	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
 		return MalformedCheck{Err: fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)}
 	}
-	if c.Lower > 0 && c.Lower < response.Duration {
+	if c.Lower > 0 && c.Lower < actual {
 		return fmt.Errorf("Response took %s (allowed max %s).",
-			response.Duration.String(), c.Lower.String())
+			actual.String(), c.Lower.String())
 	}
-	if c.Higher > 0 && c.Higher > response.Duration {
+	if c.Higher > 0 && c.Higher > actual {
 		return fmt.Errorf("Response took %s (required min %s).",
-			response.Duration.String(), c.Higher.String())
+			actual.String(), c.Higher.String())
 	}
 	return nil
 }

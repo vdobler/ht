@@ -40,6 +40,10 @@ func (resp *Response) BodyReader() *bytes.Reader {
 // Duration is a time.Duration but has nicer JSON encoding.
 type Duration time.Duration
 
+func (d Duration) String() string {
+	return time.Duration(d).String()
+}
+
 func (d Duration) MarshalJSON() ([]byte, error) {
 	td := time.Duration(d)
 
