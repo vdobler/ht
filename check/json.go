@@ -25,7 +25,7 @@ func init() {
 type JSON struct {
 	// Expression is a boolean gojee expression which must evaluate
 	// to true for the check to pass.
-	Expression string `xml:",attr"`
+	Expression string
 
 	tt *jee.TokenTree
 }

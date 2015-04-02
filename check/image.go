@@ -36,21 +36,21 @@ func init() {
 // if you want to check PNG images.
 type Image struct {
 	// Format is the format of the image as registered in package image.
-	Format string
+	Format string `json:",omitempty"`
 
 	// If > 0 check width or height of image.
-	Width, Height int
+	Width, Height int `json:",omitempty"`
 
 	// BMV is the 16 hex digit long Block Mean Value hash of the image.
-	BMV string
+	BMV string `json:",omitempty"`
 
 	// ColorHist is the 24 hex digit long Color Histogram hash of
 	// the image.
-	ColorHist string
+	ColorHist string `json:",omitempty"`
 
 	// Threshold is the limit up to which the received image may differ
 	// from the given BMV or ColorHist fingerprint.
-	Threshold float64
+	Threshold float64 `json:",omitempty"`
 }
 
 // Okay implements the Check interface.

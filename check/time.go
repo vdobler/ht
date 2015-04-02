@@ -22,8 +22,8 @@ func init() {
 
 // ResponseTime checks the response time.
 type ResponseTime struct {
-	Lower  time.Duration `xml:",attr,omitempty"`
-	Higher time.Duration `xml:",attr,omitempty"`
+	Lower  time.Duration `json:",omitempty"`
+	Higher time.Duration `json:",omitempty"`
 }
 
 func (c ResponseTime) Execute(response *response.Response) error {

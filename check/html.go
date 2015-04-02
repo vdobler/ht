@@ -51,10 +51,10 @@ func (_ ValidHTML) Prepare() error { return nil }
 // the online checker from W3C which is very strict.
 type W3CValidHTML struct {
 	// AllowedErrors is the number of allowed errors (after ignoring errors).
-	AllowedErrors int
+	AllowedErrors int `json:",omitempty"`
 
 	// IgnoredErrros is a list of error messages to be ignored completely.
-	IgnoredErrors []Condition
+	IgnoredErrors []Condition `json:",omitempty"`
 }
 
 func (w W3CValidHTML) Execute(response *response.Response) error {
@@ -187,13 +187,13 @@ func extractValidationIssue(node *html.Node) ValidationIssue {
 // HTMLContains checks for the existens of HTML elements selected by CSS selectors.
 type HTMLContains struct {
 	// Selector is the CSS selector of the HTML elements.
-	Selector string `xml:",attr"`
+	Selector string
 
 	// Count determines the number of occurences to check for:
 	//     < 0: no occurence
 	//    == 0: one ore more occurences
 	//     > 0: exactly that many occurences
-	Count int `xml:",attr,omitempty"`
+	Count int `json:",omitempty"`
 
 	sel cascadia.Selector
 }
@@ -244,13 +244,13 @@ func (c *HTMLContains) Prepare() (err error) {
 // HTMLContainsText check the text content off HTML elements selected by a CSS rule.
 type HTMLContainsText struct {
 	// Selector is the CSS selector of the HTML elements.
-	Selector string `xml:",attr"`
+	Selector string
 
 	// The plain text content of each selected element.
-	Text []string
+	Text []string `json:",omitempty"`
 
 	// If true: Text contains the all matches of Selector.
-	Complete bool `xml:",attr,omitempty"`
+	Complete bool `json:",omitempty"`
 
 	sel cascadia.Selector
 }

@@ -24,14 +24,14 @@ func init() {
 // Header provides a textual test of single-valued HTTP headers.
 type Header struct {
 	// Header is the HTTP header to check.
-	Header string `xml:",attr"`
+	Header string
 
 	// Condition is applied to the first header value. A zero value checks
 	// for the existence of the given Header only.
-	Condition
+	Condition `json:",omitempty"`
 
 	// Absent indicates that no header Header shall be part of the response.
-	Absent bool
+	Absent bool `json:",omitempty"`
 }
 
 func (h Header) Execute(response *response.Response) error {
@@ -58,16 +58,16 @@ func (h *Header) Prepare() error {
 // Note that the Path and Domain conditions are checked on the received Path
 // and/or Domain and not on the interpreted values according to RFC 6265.
 type SetCookie struct {
-	Name   string    `xml:",attr"` // Name is the cookie name.
-	Value  Condition // Value is applied to the cookie value
-	Path   Condition // Path is applied to the path value
-	Domain Condition // Domain is applied to the domain value
+	Name   string    `json:",omitempty"` // Name is the cookie name.
+	Value  Condition `json:",omitempty"` // Value is applied to the cookie value
+	Path   Condition `json:",omitempty"` // Path is applied to the path value
+	Domain Condition `json:",omitempty"` // Domain is applied to the domain value
 
 	// MinLifetime is the expectetd minimum lifetime of the cookie.
-	MinLifetime time.Duration `xml:",attr,omitempty"`
+	MinLifetime time.Duration `json:",omitempty"`
 
 	// Absent indicates that the cookie with the given Name must not be received.
-	Absent bool
+	Absent bool `json:",omitempty"`
 
 	// TODO: check httpOnly and secure
 }

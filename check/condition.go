@@ -16,26 +16,30 @@ import (
 type Condition struct {
 	// Equals is the exact value to be expected.
 	// No other tests are performed if Equals is non-zero.
-	Equals string
+	Equals string `json:",omitempty"`
 
-	Prefix string // Prefix is the required prefix
-	Suffix string // Suffix is the required suffix.
+	// Prefix is the required prefix
+	Prefix string `json:",omitempty"`
 
-	Contains string // Contains must be contained in the string.
+	// Suffix is the required suffix.
+	Suffix string `json:",omitempty"`
+
+	// Contains must be contained in the string.
+	Contains string `json:",omitempty"`
 
 	// Regexp is a regular expression to look for.
-	Regexp string
+	Regexp string `json:",omitempty"`
 
 	// Count determines how many occurences of Contains or Regexp
 	// are required for a match:
 	//     0: Any positive number of matches is okay
 	//   > 0: Exactly that many matches required
 	//   < 0: No match allowed (invert the condition)
-	Count int
+	Count int `json:",omitempty"`
 
 	// Min and Max are the minimum and maximum length the string may
 	// have. Two zero values disables this test.
-	Min, Max int
+	Min, Max int `json:",omitempty"`
 
 	re *regexp.Regexp
 }
