@@ -83,11 +83,10 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			total++
 		}
 
-		dirname := suites[s].Name
-		// TODO: sanitize dirname
+		dirname := sanitizer.Replace(suites[s].Name)
 
 		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
-		err := os.Mkdir(dirname, 0766)
+		err := os.MkdirAll(dirname, 0766)
 		if err != nil {
 			log.Panic(err)
 		}
