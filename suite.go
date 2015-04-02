@@ -47,8 +47,8 @@ type Suite struct {
 	Log *log.Logger
 }
 
-// Compile prepares all tests in s for execution.
-func (s *Suite) Compile() error {
+// Prepare all tests in s for execution.
+func (s *Suite) Prepare() error {
 	// Create cookie jar if needed.
 	cp := &ClientPool{
 		Transport: &http.Transport{
@@ -65,12 +65,12 @@ func (s *Suite) Compile() error {
 		cp.Jar = jar
 	}
 
-	// Compile all tests and inject jar and logger.
+	// Try to prepare all tests and inject jar and logger.
 	prepare := func(t *Test, which string, omit bool) error {
 		t.ClientPool = cp
-		err := t.prepare(s.Variables)
+		err := t.prepare(s.Variables, &TestResult{})
 		if err != nil {
-			return fmt.Errorf("Suite %q, cannot prepare %s %q: %s",
+			return fmt.Errorf("Suite %q, cannot prepare %s test %q: %s",
 				s.Name, which, t.Name, err)
 		}
 		if omit {
@@ -84,7 +84,7 @@ func (s *Suite) Compile() error {
 		}
 	}
 	for _, t := range s.Tests {
-		if err := prepare(t, "test", s.OmitChecks); err != nil {
+		if err := prepare(t, "main", s.OmitChecks); err != nil {
 			return err
 		}
 	}
@@ -99,7 +99,7 @@ func (s *Suite) Compile() error {
 // Execute the setup tests in s. The tests are executed sequentialy,
 // execution stops on the first error.
 func (s *Suite) ExecuteSetup() SuiteResult {
-	return s.execute(s.Setup, "Main Tests")
+	return s.execute(s.Setup, "Setup")
 }
 
 // ExecuteTeardown runs all teardown tests ignoring all errors.
@@ -109,7 +109,7 @@ func (s *Suite) ExecuteTeardown() SuiteResult {
 
 // Execute all non-setup, non-teardown tests of s sequentialy.
 func (s *Suite) ExecuteTests() SuiteResult {
-	return s.execute(s.Tests, "Setup")
+	return s.execute(s.Tests, "MainTest")
 }
 
 func (s *Suite) execute(tests []*Test, which string) SuiteResult {
@@ -118,13 +118,14 @@ func (s *Suite) execute(tests []*Test, which string) SuiteResult {
 	}
 	start := time.Now()
 	result := SuiteResult{
-		Name:        s.Name + " (" + which + ")",
+		Name:        s.Name,
 		Description: s.Description,
 		Started:     start,
 		TestResults: make([]TestResult, len(tests)),
 	}
 	for i, test := range tests {
 		result.TestResults[i] = test.Run(s.Variables)
+		result.TestResults[i].SeqNo = fmt.Sprintf("%s-%02d", which, i+1)
 	}
 	result.FullDuration = time.Since(start)
 	result.Status = result.CombineTests()
@@ -148,11 +149,10 @@ func (s *Suite) Execute() SuiteResult {
 			result.Error = fmt.Errorf("Suite failed: N=%d S=%d P=%d F=%d E=%d B=%d",
 				n, k, p, f, e, b)
 		}
-		// Prepend setup results
+		// Prepend setup results and update Status
 		result.TestResults = append(sutr, mresult.TestResults...)
-		println("AAA", len(result.TestResults))
+		result.Status = result.CombineTests()
 	}
-	println("BBB", len(result.TestResults))
 
 	// Teardown and append results. Failures/Errors in teardown do not
 	// influence the suite status, but bogus teardown test render the

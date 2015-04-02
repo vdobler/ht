@@ -114,6 +114,8 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 		OmitChecks:  s.Suite.OmitChecks,
 	}
 
+	println("#######", s.Suite.Name, suite.Name)
+
 	appendTests := func(testNames []string) ([]*Test, error) {
 		tests := []*Test{}
 		for _, name := range testNames {

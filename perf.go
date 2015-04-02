@@ -133,7 +133,7 @@ func makeTestChannel(suites []*Suite, count int, duration time.Duration) chan in
 				if test.Poll.Max < 0 {
 					continue // Test is disabled.
 				}
-				err := test.prepare(suite.Variables)
+				err := test.prepare(suite.Variables, &TestResult{})
 				if err != nil {
 					log.Printf("Failed to prepare test %q of suite %q: %s", err)
 					continue
@@ -248,11 +248,12 @@ func AnalyseLoadtest(results []TestResult) LoadtestResult {
 // in paralell (without pauses).
 // TODO: move this into an BenmarkOptions
 func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []TestResult {
+	dummyResult := TestResult{}
 	for n := 0; n < warmup; n++ {
 		if n > 0 {
 			time.Sleep(pause)
 		}
-		t.prepare(variables)
+		t.prepare(variables, &dummyResult)
 		t.executeRequest()
 	}
 

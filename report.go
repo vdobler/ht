@@ -8,7 +8,10 @@ import (
 	"fmt"
 	htmltemplate "html/template"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"path"
 	"text/template"
 	"time"
 
@@ -97,9 +100,12 @@ func (sr SuiteResult) Stats() (notRun int, skipped int, passed int, failed int, 
 type TestResult struct {
 	Name         string             // Name of the test.
 	Description  string             // Copy of the description of the test
+	SeqNo        string             // Sequence number of test in suite
 	Status       Status             // The outcume of the test.
 	Started      time.Time          // Start time
 	Error        error              // Error of bogus and errored tests.
+	Request      *http.Request      // The sent request
+	RequestBody  string             // The body of the request
 	Response     *response.Response // The received response.
 	Duration     time.Duration      // A copy of Response.Duration
 	FullDuration time.Duration      // Total time of test execution, including tries.
@@ -171,14 +177,14 @@ var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{i
 var htmlTestTmpl = `{{define "TEST"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}">
   <div class="collapsed">
-    <h2 class="toggleButton">Test 1:
+    <h2 class="toggleButton">{{.SeqNo}}:
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
       "<code>{{.Name}}</code>"
       ({{.FullDuration}}) ▹
     </h2>
   </div>
   <div class="expanded">
-    <h2 class="toggleButton">Test 1: 
+    <h2 class="toggleButton">{{.SeqNo}}: 
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
       "<code>{{.Name}}</code>"
       ({{.FullDuration}}) ▾
@@ -196,9 +202,20 @@ var htmlTestTmpl = `{{define "TEST"}}
           {{range $i, $c := .CheckResults}}{{template "CHECK" .}}{{end}}
         </div>
       {{end}}{{end}}
-      {{if .Response}}{{template "RESPONSE" .Response}}{{end}}
+      {{if .Request}}{{template "REQUEST" .}}{{end}}
+      {{if .Response}}{{template "RESPONSE" .}}{{end}}
     </div>
   </div>
+</div>
+{{end}}`
+
+var htmlHeaderTmpl = `{{define "HEADER"}}
+<div class="httpheader">
+  {{range $h, $v := .}}
+    {{range $v}}
+      <code><strong>{{printf "%25s: " $h}}</strong> {{.}}</code></br>
+    {{end}}
+  {{end}}
 </div>
 {{end}}`
 
@@ -207,20 +224,34 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
   <div class="expanded2">
     <h3 class="toggleButton2">HTTP Response ▾</h3>
     <div class="responseDetails">
-      {{if .Response}}
-        {{range $h, $v := .Response.Header}}
-          {{range $v}}
-            <code>{{printf "%s: %s" $h .}}</code></br>
-          {{end}}
-        {{end}}
+      {{if .Response.Response}}
+        {{template "HEADER" .Response.Response.Header}}
       {{end}}
-      {{if .BodyErr}}Error reading body: {{.BodyErr.Error}}
-      {{else}} Body would go here
+      {{if .Response.BodyErr}}Error reading body: {{.Response.BodyErr.Error}}
+      {{else}} 
+        <a href="{{.SeqNo}}.ResponseBody" target="_blank">Response Body</a>
       {{end}}
     </div>
   </div>
   <div class="collapsed2">
     <h3 class="toggleButton2">HTTP Response ▹</h3>
+  </div>
+</div>
+{{end}}
+`
+
+var htmlRequestTmpl = `{{define "REQUEST"}}
+<div class="toggle2">
+  <div class="expanded2">
+    <h3 class="toggleButton2">HTTP Request ▾</h3>
+    <div class="requestDetails">
+      <code><strong>{{.Request.Method}}</strong> {{.Request.URL.String}}</code>
+      {{template "HEADER" .Request.Header}}
+<pre>{{.RequestBody}}</pre>
+    </div>
+  </div>
+  <div class="collapsed2">
+    <h3 class="toggleButton2">HTTP Request ▹</h3>
   </div>
 </div>
 {{end}}
@@ -286,7 +317,7 @@ h3 {
   Full Duration: {{.FullDuration}}
 </div>
 
-{{range .TestResults}}{{template "TEST" .}}{{end}}
+{{range $testNo, $testResult := .TestResults}}{{template "TEST" $testResult}}{{end}}
 
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
 <script type="text/javascript">
@@ -369,6 +400,8 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlCheckTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlResponseTmpl))
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlRequestTmpl))
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlHeaderTmpl))
 }
 
 func (r TestResult) PrintReport(w io.Writer) error {
@@ -379,6 +412,24 @@ func (r SuiteResult) PrintReport(w io.Writer) error {
 	return SuiteTmpl.Execute(os.Stdout, r)
 }
 
-func (r SuiteResult) HTMLReport(w io.Writer) error {
-	return HtmlSuiteTmpl.Execute(w, r)
+func (r SuiteResult) HTMLReport(dir string) error {
+	report, err := os.Create(path.Join(dir, "Report.html"))
+	if err != nil {
+		return err
+	}
+	err = HtmlSuiteTmpl.Execute(report, r)
+	if err != nil {
+		return err
+	}
+	for _, tr := range r.TestResults {
+		var body []byte
+		if tr.Response != nil {
+			body = tr.Response.Body
+		}
+		err = ioutil.WriteFile(path.Join(dir, tr.SeqNo+".ResponseBody"), body, 0666)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

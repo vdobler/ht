@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/vdobler/ht"
@@ -29,6 +30,8 @@ func init() {
 
 var (
 	serialFlag bool
+	sanitizer  = strings.NewReplacer(" ", "", ":", "", "@", "_at_", "/", "_",
+		"*", "_", "?", "_", "#", "_", "$", "_", "<", "_", ">", "_")
 )
 
 func runExecute(cmd *Command, suites []*ht.Suite) {
@@ -80,15 +83,18 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			total++
 		}
 
-		htmlReport, err := os.Create(fmt.Sprintf("HtmlReport-%d.html", s))
+		dirname := suites[s].Name
+		// TODO: sanitize dirname
+
+		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
+		err := os.Mkdir(dirname, 0766)
 		if err != nil {
 			log.Panic(err)
 		}
-		err = results[s].HTMLReport(htmlReport)
+		err = results[s].HTMLReport(dirname)
 		if err != nil {
 			log.Panic(err)
 		}
-		htmlReport.Close()
 	}
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)

@@ -20,7 +20,7 @@ func TestLoadSuite(t *testing.T) {
 	}
 
 	suite.Log = log.New(os.Stdout, "", log.LstdFlags)
-	err = suite.Compile()
+	err = suite.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -45,13 +45,16 @@ func TestLoadSuite(t *testing.T) {
 					fmt.Println("  Fail: ", cr.Name, cr.JSON, cr.Status, cr.Error)
 				}
 			}
-			tr.Response.Response.Request.TLS = nil
-			req := pretty.Sprintf("% #v", tr.Response.Response.Request)
-			fmt.Printf("  Request\n%s\n", req)
-			tr.Response.Response.Request = nil
-			tr.Response.Response.TLS = nil
-			resp := pretty.Sprintf("% #v", tr.Response.Response)
-			fmt.Printf("  Response\n%s\n", resp)
+			if tr.Response != nil && tr.Response.Response != nil &&
+				tr.Response.Response.Request != nil {
+				tr.Response.Response.Request.TLS = nil
+				req := pretty.Sprintf("% #v", tr.Response.Response.Request)
+				fmt.Printf("  Request\n%s\n", req)
+				tr.Response.Response.Request = nil
+				tr.Response.Response.TLS = nil
+				resp := pretty.Sprintf("% #v", tr.Response.Response)
+				fmt.Printf("  Response\n%s\n", resp)
+			}
 		}
 	}
 

@@ -192,7 +192,7 @@ func loadSuites(args []string) []*ht.Suite {
 			suite.Variables[varName] = varVal
 		}
 		suite.Log = logger
-		err = suite.Compile()
+		err = suite.Prepare()
 		if err != nil {
 			log.Fatal(err.Error())
 		}

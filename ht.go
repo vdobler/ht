@@ -308,7 +308,7 @@ func (t *Test) Run(variables map[string]string) TestResult {
 		if try > 0 {
 			time.Sleep(t.Poll.Sleep)
 		}
-		err := t.prepare(variables)
+		err := t.prepare(variables, &result)
 		if err != nil {
 			result.Status, result.Error = Bogus, err
 			return result
@@ -354,7 +354,7 @@ func (t *Test) execute(result *TestResult) {
 
 // prepare the test for execution by substituting the given variables and
 // crafting the underlying http request the checks.
-func (t *Test) prepare(variables map[string]string) error {
+func (t *Test) prepare(variables map[string]string, result *TestResult) error {
 	// Create appropriate replace.
 	nowVars := t.nowVariables(time.Now())
 	allVars := mergeVariables(variables, nowVars)
@@ -364,7 +364,7 @@ func (t *Test) prepare(variables map[string]string) error {
 	}
 
 	// Create the request.
-	contentType, err := t.newRequest(repl)
+	contentType, err := t.newRequest(repl, result)
 	if err != nil {
 		err := fmt.Errorf("failed preparing request: %s", err.Error())
 		t.errorf("%s", err.Error())
@@ -394,6 +394,8 @@ func (t *Test) prepare(variables map[string]string) error {
 		cv := repl.str.Replace(cookie.Value)
 		t.request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
 	}
+
+	result.Request = t.request
 
 	// Compile the checks.
 	t.checks = make([]check.Check, len(t.Checks))
@@ -431,7 +433,7 @@ func (t *Test) prepare(variables map[string]string) error {
 // newRequest sets up the request field of t.
 // If a sepcial Content-Type header is needed (e.g. because of a multipart
 // body) it is returned.
-func (t *Test) newRequest(repl replacer) (contentType string, err error) {
+func (t *Test) newRequest(repl replacer, result *TestResult) (contentType string, err error) {
 	// Prepare request method.
 	if t.Request.Method == "" {
 		t.Request.Method = "GET"
@@ -469,13 +471,19 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 		case "body":
 			contentType = "application/x-www-form-urlencoded"
 			encoded := urlValues.Encode()
+			result.RequestBody = encoded
 			body = ioutil.NopCloser(strings.NewReader(encoded))
 		case "multipart":
 			b, boundary, err := multipartBody(t.Request.Params)
 			if err != nil {
 				return "", err
 			}
-			body = b
+			bb, err := ioutil.ReadAll(b)
+			if err != nil {
+				return "", err
+			}
+			result.RequestBody = string(bb)
+			body = ioutil.NopCloser(bytes.NewReader(bb))
 			contentType = "multipart/form-data; boundary=" + boundary
 		default:
 			err := fmt.Errorf("unknown parameter method %q", t.Request.ParamsAs)
@@ -486,6 +494,9 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	// The body.
 	if t.Request.Body != "" {
 		rbody := repl.str.Replace(t.Request.Body)
+		result.RequestBody = rbody
+		fmt.Printf("Setting reuslt.RequestBody to %q on test %s\n",
+			rbody, t.Name)
 		body = ioutil.NopCloser(strings.NewReader(rbody))
 	}
 

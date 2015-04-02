@@ -49,7 +49,7 @@ func TestThroughput(t *testing.T) {
 		// Log: lg,
 	}
 
-	err = suite.Compile()
+	err = suite.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

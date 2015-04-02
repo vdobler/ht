@@ -64,7 +64,7 @@ func TestParameterHandling(t *testing.T) {
 	}}
 
 	// As part of the URL.
-	err := test.prepare(nil)
+	err := test.prepare(nil, &TestResult{})
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -78,7 +78,7 @@ func TestParameterHandling(t *testing.T) {
 
 	// URLencoded in the body.
 	test.Request.ParamsAs = "body"
-	err = test.prepare(nil)
+	err = test.prepare(nil, &TestResult{})
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -92,7 +92,7 @@ func TestParameterHandling(t *testing.T) {
 	test.Request.Body = ""
 
 	test.Request.ParamsAs = "multipart"
-	err = test.prepare(nil)
+	err = test.prepare(nil, &TestResult{})
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -152,7 +152,7 @@ func TestRTStats(t *testing.T) {
 		KeepCookies: true,
 	}
 
-	err := suite.Compile()
+	err := suite.Prepare()
 	if err != nil || len(suite.Tests) != 3 {
 		t.Fatalf("Unexpected error: %v %d", err, len(suite.Tests))
 	}
