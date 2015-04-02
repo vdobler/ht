@@ -134,7 +134,6 @@ func (s *Suite) execute(tests []*Test, which string) SuiteResult {
 
 // Execute the whole suite sequentially.
 func (s *Suite) Execute() SuiteResult {
-	println("Executing Suite", s.Name)
 	result := s.ExecuteSetup()
 	if result.Status > Pass {
 		n, k, p, f, e, b := result.Stats()

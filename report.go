@@ -191,6 +191,7 @@ var htmlTestTmpl = `{{define "TEST"}}
     </h2>
     <div class="testDetails">
       <div id="summary">
+        <div>{{.Description}}</div>
 	Started: {{.Started}}<br/>
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
@@ -264,9 +265,7 @@ Individual tests:
 {{range .TestResults}}{{template "TEST" .}}{{end}}
 `
 
-var htmlSuiteTmpl = `<!DOCTYPE html>
-<html>
-<head>
+var htmlStyleTmpl = `{{define "STYLE"}}
 <style>
 .toggleButton { cursor: pointer; }
 .toggleButton2 { cursor: pointer; }
@@ -301,24 +300,9 @@ h3 {
 .ERROR { color: magenta; }
 .NOTRUN { color: grey; }
 </style>
+{{end}}`
 
-  <title>Suite {{.Name}}</title>
-
-
-</head>
-</body>
-<h1>Results of Suite <code>{{.Name}}</code></h1>
-
-{{.Description}}
-
-<div id="summary">
-  Status: <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> <br/>
-  Started: {{.Started}} <br/>
-  Full Duration: {{.FullDuration}}
-</div>
-
-{{range $testNo, $testResult := .TestResults}}{{template "TEST" $testResult}}{{end}}
-
+var htmlJavascriptTmpl = `{{define "JAVASCRIPT"}}
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
 <script type="text/javascript">
 (function() {
@@ -367,6 +351,28 @@ console.log("bindingstuff");
 
 })();
 </script>
+{{end}}`
+
+var htmlSuiteTmpl = `<!DOCTYPE html>
+<html>
+<head>
+  {{template "STYLE"}}
+  <title>Suite {{.Name}}</title>
+</head>
+</body>
+<h1>Results of Suite <code>{{.Name}}</code></h1>
+
+{{.Description}}
+
+<div id="summary">
+  Status: <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> <br/>
+  Started: {{.Started}} <br/>
+  Full Duration: {{.FullDuration}}
+</div>
+
+{{range $testNo, $testResult := .TestResults}}{{template "TEST" $testResult}}{{end}}
+
+{{template "JAVASCRIPT"}}
 </body>
 </html>
 `
@@ -402,6 +408,8 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlResponseTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlRequestTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlHeaderTmpl))
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlJavascriptTmpl))
 }
 
 func (r TestResult) PrintReport(w io.Writer) error {

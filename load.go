@@ -5,7 +5,6 @@
 package ht
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -55,6 +54,7 @@ func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
 		Verbosity:   raw.Verbosity,
 	}
 	if len(raw.BasedOn) > 0 {
+		origname := t.Name
 		base := []*Test{t}
 		for _, name := range raw.BasedOn {
 			rb, err := findRawTest(name, dir)
@@ -69,6 +69,10 @@ func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
 			base = append(base, b...)
 		}
 		t, err = Merge(base...)
+		// Beautify name and description: BasedOn is not a merge
+		// between equal partners.
+		t.Description = t.Name + "\n" + t.Description
+		t.Name = origname
 		if err != nil {
 			return nil, err
 		}
@@ -114,8 +118,6 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 		OmitChecks:  s.Suite.OmitChecks,
 	}
 
-	println("#######", s.Suite.Name, suite.Name)
-
 	appendTests := func(testNames []string) ([]*Test, error) {
 		tests := []*Test{}
 		for _, name := range testNames {
@@ -124,6 +126,10 @@ func LoadSuite(filename string, paths []string) (*Suite, error) {
 				return nil, fmt.Errorf("test %q: %s", name, err)
 			}
 			ts, err := rawTestToTests(st, dir)
+			if err != nil {
+				fmt.Printf("rawTestToTest failed with %s\n for %#v\n",
+					err, st)
+			}
 			tests = append(tests, ts...)
 		}
 		return tests, nil
@@ -224,7 +230,7 @@ func findRawTest(name string, dir string) (*rawTest, error) {
 	if t, ok := testPool[name]; ok {
 		return t, nil
 	}
-	return nil, errors.New("not found")
+	return nil, fmt.Errorf("raw test %q not found", name)
 }
 
 // loadJsonTest loads the file with the given filename and decodes into
