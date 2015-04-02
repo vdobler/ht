@@ -6,6 +6,7 @@ package ht
 
 import (
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -495,8 +496,6 @@ func (t *Test) newRequest(repl replacer, result *TestResult) (contentType string
 	if t.Request.Body != "" {
 		rbody := repl.str.Replace(t.Request.Body)
 		result.RequestBody = rbody
-		fmt.Printf("Setting reuslt.RequestBody to %q on test %s\n",
-			rbody, t.Name)
 		body = ioutil.NopCloser(strings.NewReader(rbody))
 	}
 
@@ -531,8 +530,19 @@ func (t *Test) executeRequest() (*response.Response, error) {
 	response.Response = resp
 	msg := "okay"
 	if err == nil {
-		response.Body, response.BodyErr = ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
+		var reader io.ReadCloser
+		switch resp.Header.Get("Content-Encoding") {
+		case "gzip":
+			reader, err = gzip.NewReader(resp.Body)
+			if err != nil {
+				response.BodyErr = err
+			}
+			t.tracef("Unzipping gzip body")
+		default:
+			reader = resp.Body
+		}
+		response.Body, response.BodyErr = ioutil.ReadAll(reader)
+		reader.Close()
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())
 	}

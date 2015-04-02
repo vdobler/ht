@@ -57,6 +57,7 @@ func (s *Suite) Prepare() error {
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).Dial,
+			DisableCompression:  true,
 			TLSHandshakeTimeout: 10 * time.Second,
 		},
 	}
