@@ -560,11 +560,11 @@ func (t *Test) executeRequest() (*response.Response, error) {
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) executeChecks(response *response.Response, result []CheckResult) {
+func (t *Test) executeChecks(resp *response.Response, result []CheckResult) {
 	for i, ck := range t.Checks {
 		start := time.Now()
-		err := ck.Execute(response)
-		result[i].Duration = time.Since(start)
+		err := ck.Execute(resp)
+		result[i].Duration = response.Duration(time.Since(start))
 		result[i].Error = err
 		if err != nil {
 			t.debugf("check %d %s failed: %s", i, check.NameOf(ck), err)

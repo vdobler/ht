@@ -54,7 +54,7 @@ type SuiteResult struct {
 	Status       Status
 	Error        error
 	Started      time.Time // Start time
-	FullDuration time.Duration
+	FullDuration response.Duration
 	TestResults  []TestResult
 }
 
@@ -129,11 +129,11 @@ func (tr TestResult) CombineChecks() Status {
 
 // CheckResult captures the outcom of a single check inside a test.
 type CheckResult struct {
-	Name     string        // Name of the check as registered.
-	JSON     string        // JSON serialization of check.
-	Status   Status        // Outcome of check. All status but Error
-	Duration time.Duration // How long the check took.
-	Error    error         // For a Status of Bogus or Fail.
+	Name     string            // Name of the check as registered.
+	JSON     string            // JSON serialization of check.
+	Status   Status            // Outcome of check. All status but Error
+	Duration response.Duration // How long the check took.
+	Error    error             // For a Status of Bogus or Fail.
 }
 
 // ----------------------------------------------------------------------------

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/vdobler/ht/response"
+
 	"log"
 
 	"net"
@@ -117,24 +119,22 @@ func (s *Suite) execute(tests []*Test, which string) SuiteResult {
 	if len(tests) == 0 {
 		return SuiteResult{Status: Pass}
 	}
-	start := time.Now()
 	result := SuiteResult{
 		Name:        s.Name,
 		Description: s.Description,
-		Started:     start,
 		TestResults: make([]TestResult, len(tests)),
 	}
 	for i, test := range tests {
 		result.TestResults[i] = test.Run(s.Variables)
 		result.TestResults[i].SeqNo = fmt.Sprintf("%s-%02d", which, i+1)
 	}
-	result.FullDuration = time.Since(start)
 	result.Status = result.CombineTests()
 	return result
 }
 
 // Execute the whole suite sequentially.
 func (s *Suite) Execute() SuiteResult {
+	start := time.Now()
 	result := s.ExecuteSetup()
 	if result.Status > Pass {
 		n, k, p, f, e, b := result.Stats()
@@ -164,6 +164,8 @@ func (s *Suite) Execute() SuiteResult {
 	}
 	result.TestResults = append(result.TestResults, tdResult.TestResults...)
 
+	result.Started = start
+	result.FullDuration = response.Duration(time.Since(start))
 	return result
 }
 
