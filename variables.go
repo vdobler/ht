@@ -5,6 +5,7 @@
 package ht
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -33,6 +34,9 @@ func Repeat(test *Test, count int, vars map[string][]string) ([]*Test, error) {
 		}
 
 		reps[r] = test.substituteVariables(replacer)
+		for k, v := range curVars {
+			reps[r].Description += fmt.Sprintf("\nVar %s=%q", k, v)
+		}
 	}
 	return reps, nil
 }
