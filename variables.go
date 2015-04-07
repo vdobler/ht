@@ -77,6 +77,10 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 			URL:  repl.str.Replace(t.Request.URL),
 			Body: repl.str.Replace(t.Request.Body),
 		},
+		Poll:       t.Poll,
+		Timeout:    t.Timeout,
+		Verbosity:  t.Verbosity,
+		ClientPool: t.ClientPool,
 	}
 
 	// Apply to request parameters.
