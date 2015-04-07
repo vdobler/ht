@@ -145,18 +145,18 @@ var defaultCheckTmpl = `{{define "CHECK"}}{{printf "%-7s %-15s %s" .Status .Name
 var htmlCheckTmpl = `{{define "CHECK"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}2">
   <div class="collapsed2">
-    <h3 class="toggleButton2">Check 1:
+    <h3 class="toggleButton2">Check:
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span>
       <code>{{.Name}}</code> ▹
     </h3>
   </div>
   <div class="expanded2">
-    <h3 class="toggleButton2">Check 1: 
+    <h3 class="toggleButton2">Check: 
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span>
       <code>{{.Name}}</code> ▾
     </h3>
     <div class="checkDetails">
-      <div>Duration: {{.Duration}}</div>
+      <div>Checking took {{.Duration}}</div>
       <div><code>{{.JSON}}</code></div>
       {{if eq .Status 3 5}}<div>{{.Error.Error}}</div>{{end}}
     </div>
