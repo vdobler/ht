@@ -191,7 +191,7 @@ var htmlTestTmpl = `{{define "TEST"}}
     </h2>
     <div class="testDetails">
       <div id="summary">
-        <div>{{.Description}}</div>
+        <pre class="description">{{.Description}}</pre>
 	Started: {{.Started}}<br/>
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
@@ -299,6 +299,8 @@ h3 {
 .FAIL { color: red; }
 .ERROR { color: magenta; }
 .NOTRUN { color: grey; }
+
+pre.description { font-family: serif; margin: 0px; }
 </style>
 {{end}}`
 
