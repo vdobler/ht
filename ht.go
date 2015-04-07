@@ -306,6 +306,7 @@ func (t *Test) Run(variables map[string]string) TestResult {
 	try := 0
 	start := time.Now()
 	for try = 0; try < maxTries; try++ {
+		result.Tries = try + 1
 		if try > 0 {
 			time.Sleep(t.Poll.Sleep)
 		}
@@ -320,7 +321,6 @@ func (t *Test) Run(variables map[string]string) TestResult {
 		}
 	}
 	result.FullDuration = response.Duration(time.Since(start))
-	result.Tries = try + 1
 	if t.Poll.Max > 1 {
 		if result.Status == Pass {
 			t.debugf("polling succeded after %d tries", try+1)
