@@ -62,7 +62,7 @@ func runBench(cmd *Command, suites []*ht.Suite) {
 	}
 }
 
-func printBenchmarkSummary(results []ht.TestResult) {
+func printBenchmarkSummary(results []ht.Test) {
 	max := 0
 	for _, r := range results {
 		if d := int(r.Duration / 1e6); d > max {
