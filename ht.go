@@ -374,7 +374,6 @@ func (t *Test) execute() {
 	if err == nil {
 		if len(t.Checks) > 0 {
 			t.executeChecks(t.CheckResults)
-			t.Status = t.combineCheckResults()
 		} else {
 			t.Status = Pass
 		}
@@ -625,6 +624,9 @@ func (t *Test) executeChecks(result []CheckResult) {
 		} else {
 			result[i].Status = Pass
 			t.tracef("check %d %s: Pass", i, NameOf(ck))
+		}
+		if result[i].Status > t.Status {
+			t.Status = result[i].Status
 		}
 	}
 }

@@ -50,9 +50,10 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Test, error) {
 
 	// Setup
 	for i, s := range suites {
-		result := s.ExecuteSetup()
-		if result.Status != Pass {
-			return nil, fmt.Errorf("Setup of suite %d failed: %s", i, result.Error)
+		s.Status, s.Error = NotRun, nil
+		s.ExecuteSetup()
+		if s.Status > Pass {
+			return nil, fmt.Errorf("Setup of suite %d failed: %s", i, s.Error)
 		}
 	}
 

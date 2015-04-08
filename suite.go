@@ -42,6 +42,16 @@ type Suite struct {
 
 	// Log is the logger to be used by tests and checks.
 	Log *log.Logger
+
+	// Populated during execution
+	Status   Status
+	Error    error
+	Started  time.Time
+	Duration Duration
+}
+
+func (s Suite) AllTests() []*Test {
+	return append(append(s.Setup, s.Tests...), s.Teardown...)
 }
 
 // Prepare all tests in s for execution.
@@ -97,74 +107,69 @@ func (s *Suite) Prepare() error {
 
 // Execute the setup tests in s. The tests are executed sequentialy,
 // execution stops on the first error.
-func (s *Suite) ExecuteSetup() SuiteResult {
-	return s.execute(s.Setup, "Setup")
+func (s *Suite) ExecuteSetup() {
+	s.execute(s.Setup, "Setup")
 }
 
 // ExecuteTeardown runs all teardown tests ignoring all errors.
-func (s *Suite) ExecuteTeardown() SuiteResult {
-	return s.execute(s.Teardown, "Teardown")
+func (s *Suite) ExecuteTeardown() {
+	s.execute(s.Teardown, "Teardown")
 }
 
 // Execute all non-setup, non-teardown tests of s sequentialy.
-func (s *Suite) ExecuteTests() SuiteResult {
-	return s.execute(s.Tests, "MainTest")
+func (s *Suite) ExecuteTests() {
+	s.execute(s.Tests, "MainTest")
 }
 
-func (s *Suite) execute(tests []*Test, which string) SuiteResult {
+func (s *Suite) execute(tests []*Test, which string) {
 	if len(tests) == 0 {
-		return SuiteResult{Status: Pass}
-	}
-	result := SuiteResult{
-		Name:        s.Name,
-		Description: s.Description,
-		TestResults: make([]Test, len(tests)),
+		return
 	}
 	for i, test := range tests {
 		test.SeqNo = fmt.Sprintf("%s-%02d", which, i+1)
 		test.Run(s.Variables)
-		result.TestResults[i] = *test
-		// result.TestResults[i].SeqNo = fmt.Sprintf("%s-%02d", which, i+1)
+		if test.Status > s.Status {
+			s.Status = test.Status
+			if test.Error != nil {
+				s.Error = test.Error
+			}
+		}
 	}
-	result.Status = result.CombineTests()
-	return result
 }
 
 // Execute the whole suite sequentially.
-func (s *Suite) Execute() SuiteResult {
-	start := time.Now()
-	result := s.ExecuteSetup()
-	if result.Status > Pass {
-		n, k, p, f, e, b := result.Stats()
-		result.Error = fmt.Errorf("Setup failed: N=%d S=%d P=%d F=%d E=%d B=%d",
+func (s *Suite) Execute() {
+	s.Status, s.Error = NotRun, nil
+	s.Started = time.Now()
+	defer func() {
+		s.Duration = Duration(time.Since(s.Started))
+	}()
+
+	s.ExecuteSetup()
+	if s.Status > Pass {
+		n, k, p, f, e, b := s.Stats()
+		s.Error = fmt.Errorf("Setup failed: N=%d S=%d P=%d F=%d E=%d B=%d",
 			n, k, p, f, e, b)
-	} else {
-		// Setup worked, run real tests.
-		sutr := result.TestResults
-		mresult := s.ExecuteTests()
-		if mresult.Status != Pass {
-			n, k, p, f, e, b := mresult.Stats()
-			result.Error = fmt.Errorf("Suite failed: N=%d S=%d P=%d F=%d E=%d B=%d",
-				n, k, p, f, e, b)
-		}
-		// Prepend setup results and update Status
-		result.TestResults = append(sutr, mresult.TestResults...)
-		result.Status = result.CombineTests()
+		return
+	}
+
+	s.ExecuteTests()
+	if s.Status != Pass {
+		n, k, p, f, e, b := s.Stats()
+		s.Error = fmt.Errorf("Suite failed: N=%d S=%d P=%d F=%d E=%d B=%d",
+			n, k, p, f, e, b)
 	}
 
 	// Teardown and append results. Failures/Errors in teardown do not
 	// influence the suite status, but bogus teardown test render the
 	// whole suite bogus
-	tdResult := s.ExecuteTeardown()
-	if tdResult.Status == Bogus && result.Status != Bogus {
-		result.Status = Bogus
-		result.Error = fmt.Errorf("Teardown is bogus.")
+	status := s.Status
+	s.ExecuteTeardown()
+	if s.Status == Bogus && status != Bogus {
+		s.Error = fmt.Errorf("Teardown is bogus.")
+	} else {
+		s.Status = status
 	}
-	result.TestResults = append(result.TestResults, tdResult.TestResults...)
-
-	result.Started = start
-	result.FullDuration = Duration(time.Since(start))
-	return result
 }
 
 // ExecuteConcurrent executes all non-setup, non-teardown tests concurrently.

@@ -35,25 +35,22 @@ var (
 )
 
 func runExecute(cmd *Command, suites []*ht.Suite) {
-
-	results := make([]ht.SuiteResult, len(suites))
-
 	var wg sync.WaitGroup
 	for i := range suites {
 		if serialFlag {
-			results[i] = suites[i].Execute()
-			if results[i].Status > ht.Pass {
+			suites[i].Execute()
+			if suites[i].Status > ht.Pass {
 				log.Printf("Suite %d %q failed: %s", i+1,
 					suites[i].Name,
-					results[i].Error.Error())
+					suites[i].Error.Error())
 			}
 		} else {
 			wg.Add(1)
 			go func(i int) {
-				results[i] = suites[i].Execute()
-				if results[i].Status > ht.Pass {
+				suites[i].Execute()
+				if suites[i].Status > ht.Pass {
 					log.Printf("Suite %d %q failed: %s", i+1,
-						suites[i].Name, results[i].Error.Error())
+						suites[i].Name, suites[i].Error.Error())
 				}
 				wg.Done()
 			}(i)
@@ -65,8 +62,8 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	for s := range suites {
 		t := fmt.Sprintf("Suite %d: %s", s+1, suites[s].Name)
 		fmt.Printf("\n%s\nFile %s\nStatus %s\n", ht.BoldBox(t, ""),
-			suites[s].Name, results[s].Status)
-		for _, r := range results[s].TestResults {
+			suites[s].Name, suites[s].Status)
+		for _, r := range suites[s].AllTests() {
 			r.PrintReport(os.Stdout)
 			switch r.Status {
 			case ht.Pass:
@@ -90,7 +87,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		if err != nil {
 			log.Panic(err)
 		}
-		err = results[s].HTMLReport(dirname)
+		err = suites[s].HTMLReport(dirname)
 		if err != nil {
 			log.Panic(err)
 		}

@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"text/template"
-	"time"
 )
 
 // ----------------------------------------------------------------------------
@@ -41,34 +40,9 @@ func (s Status) MarshalText() ([]byte, error) {
 	return []byte(s.String()), nil
 }
 
-// ----------------------------------------------------------------------------
-// SuiteResult
-
-// SuiteResult captures the outcome of running a whole suite.
-type SuiteResult struct {
-	Name         string
-	Description  string
-	Status       Status
-	Error        error
-	Started      time.Time // Start time
-	FullDuration Duration
-	TestResults  []Test
-}
-
-// CombineTests returns the combined status of the Tests in sr.
-func (sr SuiteResult) CombineTests() Status {
-	status := NotRun
-	for _, r := range sr.TestResults {
-		if r.Status > status {
-			status = r.Status
-		}
-	}
-	return status
-}
-
 // Stats counts the test results of sr.
-func (sr SuiteResult) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
-	for _, tr := range sr.TestResults {
+func (s *Suite) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
+	for _, tr := range append(append(s.Setup, s.Tests...), s.Teardown...) {
 		switch tr.Status {
 		case NotRun:
 			notRun++
@@ -84,7 +58,7 @@ func (sr SuiteResult) Stats() (notRun int, skipped int, passed int, failed int, 
 			bogus++
 		default:
 			panic(fmt.Sprintf("No such Status %d in suite %q test %q",
-				tr.Status, sr.Name, tr.Name))
+				tr.Status, s.Name, tr.Name))
 		}
 	}
 	return
@@ -226,9 +200,11 @@ var htmlRequestTmpl = `{{define "REQUEST"}}
 
 var defaultSuiteTmpl = `{{Box (printf "%s: %s" (ToUpper .Status.String) .Name) ""}}{{if .Error}}
 Error: {{.Error}}{{end}}
-Started: {{.Started}}   Duration: {{.FullDuration}}
+Started: {{.Started}}   Duration: {{.Duration}}
 Individual tests:
-{{range .TestResults}}{{template "TEST" .}}{{end}}
+{{range .Setup}}{{template "TEST" .}}{{end}}
+{{range .Tests}}{{template "TEST" .}}{{end}}
+{{range .Teardown}}{{template "TEST" .}}{{end}}
 `
 
 var htmlStyleTmpl = `{{define "STYLE"}}
@@ -335,10 +311,10 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 <div id="summary">
   Status: <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> <br/>
   Started: {{.Started}} <br/>
-  Full Duration: {{.FullDuration}}
+  Full Duration: {{.Duration}}
 </div>
 
-{{range $testNo, $testResult := .TestResults}}{{template "TEST" $testResult}}{{end}}
+{{range .AllTests}}{{template "TEST" .}}{{end}}
 
 {{template "JAVASCRIPT"}}
 </body>
@@ -384,20 +360,20 @@ func (t Test) PrintReport(w io.Writer) error {
 	return TestTmpl.Execute(os.Stdout, t)
 }
 
-func (r SuiteResult) PrintReport(w io.Writer) error {
+func (r Suite) PrintReport(w io.Writer) error {
 	return SuiteTmpl.Execute(os.Stdout, r)
 }
 
-func (r SuiteResult) HTMLReport(dir string) error {
+func (s Suite) HTMLReport(dir string) error {
 	report, err := os.Create(path.Join(dir, "Report.html"))
 	if err != nil {
 		return err
 	}
-	err = HtmlSuiteTmpl.Execute(report, r)
+	err = HtmlSuiteTmpl.Execute(report, s)
 	if err != nil {
 		return err
 	}
-	for _, tr := range r.TestResults {
+	for _, tr := range append(append(s.Setup, s.Tests...), s.Teardown...) {
 		body := tr.Response.BodyBytes
 		err = ioutil.WriteFile(path.Join(dir, tr.SeqNo+".ResponseBody"), body, 0666)
 		if err != nil {
