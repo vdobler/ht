@@ -186,7 +186,7 @@ type TC struct {
 
 var someError = fmt.Errorf("any error")
 
-var ms = time.Millisecond
+const ms = 1e6
 
 func runTest(t *testing.T, i int, tc TC) {
 	tc.r.BodyReader()
