@@ -36,7 +36,7 @@ var (
 	DefaultAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 
 	// DefaultClientTimeout is the timeout used by the http clients.
-	DefaultClientTimeout = 2 * time.Second
+	DefaultClientTimeout = Duration(2 * time.Second)
 )
 
 // Request is a HTTP request.
@@ -118,7 +118,7 @@ type Poll struct {
 	Max int `json:",omitempty"`
 
 	// Duration to sleep between redos.
-	Sleep time.Duration `json:",omitempty"`
+	Sleep Duration `json:",omitempty"`
 }
 
 // ClientPool maintains a pool of clients for the given transport
@@ -133,7 +133,7 @@ type ClientPool struct {
 	mu sync.Mutex
 	// clients are index by their timeout. Clients which follow redirects
 	// are distinguisehd by a negative timeout.
-	clients map[time.Duration]*http.Client
+	clients map[Duration]*http.Client
 }
 
 // ----------------------------------------------------------------------------
@@ -151,13 +151,13 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
-	Poll      Poll          `json:",omitempty"`
-	Timeout   time.Duration // If zero use DefaultClientTimeout.
-	Verbosity int           // Verbosity level in logging.
+	Poll      Poll     `json:",omitempty"`
+	Timeout   Duration // If zero use DefaultClientTimeout.
+	Verbosity int      // Verbosity level in logging.
 
 	// ClientPool allows to inject special http.Transports or a
 	// cookie jar to be used by this Test.
-	ClientPool *ClientPool
+	ClientPool *ClientPool `json:"-"`
 
 	Response Response
 
@@ -339,7 +339,7 @@ func (t *Test) Run(variables map[string]string) error {
 	for ; try <= maxTries; try++ {
 		t.Tries = try
 		if try > 1 {
-			time.Sleep(t.Poll.Sleep)
+			time.Sleep(time.Duration(t.Poll.Sleep))
 		}
 		err := t.prepare(variables)
 		if err != nil {
@@ -381,17 +381,6 @@ func (t *Test) execute() {
 		t.Status = Error
 		t.Error = err
 	}
-}
-
-// CombineChecks returns the combined status of the Checks in tr.
-func (t *Test) combineCheckResults() Status {
-	status := NotRun
-	for _, r := range t.CheckResults {
-		if r.Status > status {
-			status = r.Status
-		}
-	}
-	return status
 }
 
 // prepare the test for execution by substituting the given variables and
@@ -463,9 +452,9 @@ func (t *Test) prepare(variables map[string]string) error {
 		t.tracef("Taking client from pool")
 		t.client = t.ClientPool.Get(to, t.Request.FollowRedirects)
 	} else if t.Request.FollowRedirects {
-		t.client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: to}
+		t.client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: time.Duration(to)}
 	} else {
-		t.client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: to}
+		t.client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: time.Duration(to)}
 	}
 	return nil
 }
@@ -599,6 +588,7 @@ func (t *Test) executeRequest() error {
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
 func (t *Test) executeChecks(result []CheckResult) {
+	done := false
 	for i, ck := range t.Checks {
 		start := time.Now()
 		err := ck.Execute(t)
@@ -611,6 +601,9 @@ func (t *Test) executeChecks(result []CheckResult) {
 			} else {
 				result[i].Status = Fail
 			}
+			if t.Error == nil {
+				t.Error = err
+			}
 			// Abort needles checking if all went wrong.
 			if sc, ok := ck.(StatusCode); ok && i == 0 && sc.Expect == 200 {
 				t.tracef("skipping remaining tests")
@@ -620,6 +613,7 @@ func (t *Test) executeChecks(result []CheckResult) {
 					result[j].Status = Skipped
 					result[j].Error = nil
 				}
+				done = true
 			}
 		} else {
 			result[i].Status = Pass
@@ -627,6 +621,9 @@ func (t *Test) executeChecks(result []CheckResult) {
 		}
 		if result[i].Status > t.Status {
 			t.Status = result[i].Status
+		}
+		if done {
+			break
 		}
 	}
 }
@@ -751,7 +748,7 @@ func (p Poll) Skip() bool {
 
 // Get retreives a new or existing http.Client for the given timeout and
 // redirect following policy.
-func (p *ClientPool) Get(timeout time.Duration, followRedirects bool) *http.Client {
+func (p *ClientPool) Get(timeout Duration, followRedirects bool) *http.Client {
 	if timeout == 0 {
 		log.Fatalln("ClientPool.Get called with zero timeout.")
 	}
@@ -759,7 +756,7 @@ func (p *ClientPool) Get(timeout time.Duration, followRedirects bool) *http.Clie
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if len(p.clients) == 0 {
-		p.clients = make(map[time.Duration]*http.Client)
+		p.clients = make(map[Duration]*http.Client)
 	}
 
 	key := timeout
@@ -773,9 +770,9 @@ func (p *ClientPool) Get(timeout time.Duration, followRedirects bool) *http.Clie
 
 	var client *http.Client
 	if followRedirects {
-		client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: timeout}
+		client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: time.Duration(timeout)}
 	} else {
-		client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: timeout}
+		client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: time.Duration(timeout)}
 	}
 	if p.Jar != nil {
 		client.Jar = p.Jar

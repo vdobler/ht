@@ -19,7 +19,9 @@ func TestLoadSuite(t *testing.T) {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
 
-	suite.Log = log.New(os.Stdout, "", log.LstdFlags)
+	if testing.Verbose() {
+		suite.Log = log.New(os.Stdout, "", log.LstdFlags)
+	}
 	err = suite.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
@@ -28,10 +30,10 @@ func TestLoadSuite(t *testing.T) {
 		t.Skip("Skipping execution without network in short mode.")
 	}
 
-	result := suite.ExecuteTests()
-	if result.Status != Pass {
-		for _, tr := range result.TestResults {
-			if tr.Status == Pass {
+	suite.ExecuteTests()
+	if suite.Status != Pass {
+		for _, tr := range suite.AllTests() {
+			if tr.Status == Pass || !testing.Verbose() {
 				continue
 			}
 			fmt.Println("Test", tr.Name)
@@ -58,5 +60,7 @@ func TestLoadSuite(t *testing.T) {
 		}
 	}
 
-	result.PrintReport(os.Stdout)
+	if testing.Verbose() {
+		suite.PrintReport(os.Stdout)
+	}
 }

@@ -45,7 +45,9 @@ func TestStatusCode(t *testing.T) {
 		if test.Status != Pass {
 			t.Errorf("Unexpected error for %d: %s", code, t.Error)
 		}
-		test.PrintReport(os.Stdout)
+		if testing.Verbose() {
+			test.PrintReport(os.Stdout)
+		}
 	}
 }
 
@@ -136,7 +138,7 @@ func TestRTStats(t *testing.T) {
 		Checks: []Check{
 			StatusCode{200},
 		},
-		Timeout: 150 * time.Millisecond,
+		Timeout: Duration(150 * time.Millisecond),
 	}
 
 	rtimes := map[string][]string{
@@ -297,7 +299,7 @@ func TestClientTimeout(t *testing.T) {
 		Checks: []Check{
 			StatusCode{200},
 		},
-		Timeout: 40 * time.Millisecond,
+		Timeout: Duration(40 * time.Millisecond),
 	}
 	start := time.Now()
 	test.Run(nil)
@@ -341,8 +343,9 @@ func TestMarshalTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	fmt.Println(string(data))
-
+	if testing.Verbose() {
+		fmt.Println(string(data))
+	}
 	recreated := Test{}
 	err = json5.Unmarshal(data, &recreated)
 	if err != nil {
@@ -416,7 +419,9 @@ func TestMerge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %#v", err)
 	}
-	pretty.Printf("% #v\n", c)
+	if testing.Verbose() {
+		pretty.Printf("% #v\n", c)
+	}
 	if len(c.Request.Params) != 3 ||
 		c.Request.Params["a"][0] != "aa" ||
 		c.Request.Params["b"][0] != "bb" ||

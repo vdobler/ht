@@ -10,7 +10,6 @@ import (
 	"log"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/vdobler/ht/third_party/json5"
 )
@@ -36,9 +35,9 @@ type rawTest struct {
 	// generated from the deserialized data to several real Tests.
 	Unroll map[string][]string `json:",omitempty"`
 
-	Poll      Poll          `json:",omitempty"`
-	Timeout   time.Duration `json:",omitempty"`
-	Verbosity int           `json:",omitempty"`
+	Poll      Poll     `json:",omitempty"`
+	Timeout   Duration `json:",omitempty"`
+	Verbosity int      `json:",omitempty"`
 }
 
 func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {

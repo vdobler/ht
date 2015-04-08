@@ -39,7 +39,7 @@ func TestRepeat(t *testing.T) {
 
 	for i, want := range []string{"q=foo c=1 f=fix", "q=bar c=2 f=fix", "q=foo c=3 f=fix",
 		"q=bar c=1 f=fix", "q=foo c=2 f=fix", "q=bar c=3 f=fix"} {
-		if r[i].Description != want {
+		if !strings.HasPrefix(r[i].Description, want) {
 			t.Errorf("%d got %q, want %q", i, r[i].Description, want)
 		}
 	}
