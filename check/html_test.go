@@ -5,21 +5,33 @@
 package check
 
 import (
+	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/vdobler/ht/response"
 )
 
-var hcr = response.Response{Body: []byte(`<!doctype html>
+var hcr = response.Response{
+	Body: []byte(`<!doctype html>
 <html>
+<link href="/css/base.css">
 <head><title>CSS Selectors</title></head>
 <body>
 <h1 id="mt">FooBar</h1>
 <p class="X">Hello <span class="X">World</span><p>
 <p class="X" id="end">Thanks!</p>
+<a href="#">Link1</a>
+<a href="/foo/bar">Link2</a>
+<a href="../waz#top">Link3</a>
+<a href="http://www.google.com">Link4</a>
+<img src="pic.jpg"><img src="http://www.google.com/logo.png">
+<script src="/js/common.js"></script>
+<script>blob="aaa"</script>
 </body>
 </html>
 `)}
+
 var htmlContainsTests = []TC{
 	{hcr, &HTMLContains{Selector: "h1"}, nil},
 	{hcr, &HTMLContains{Selector: "p.X", Count: 2}, nil},
@@ -120,5 +132,24 @@ func TestW3CValidHTML(t *testing.T) {
 		AllowedErrors: 3,
 	}
 	runTest(t, 1, TC{rr2, check3, nil})
+
+}
+
+func TestHTMLLinks(t *testing.T) {
+	checkA := Links{Which: "a,img,link,script"}
+	baseURL, err := url.Parse("http://www.domain.test/some/path/file.html")
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	hcr.Response = &http.Response{
+		Request: &http.Request{
+			URL: baseURL,
+		},
+	}
+	err = checkA.Prepare()
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	checkA.Execute(&hcr)
 
 }

@@ -13,6 +13,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"net/url"
 	"strings"
 
 	"github.com/andybalholm/cascadia"
@@ -320,4 +321,84 @@ func textContent(n *html.Node) string {
 		return s
 	}
 	return ""
+}
+
+// ----------------------------------------------------------------------------
+// Links
+
+// Links checks links and references in HTML pages for availability
+type Links struct {
+	// Head triggers HEAD request insted of GET requests.
+	Head bool
+
+	// Which links to test; a combination of "a", "img", "link" and "script"
+	Which string
+
+	tags []string
+}
+
+func (c *Links) Execute(response *response.Response) error {
+	if response.BodyErr != nil {
+		return BadBody
+	}
+	doc, err := html.Parse(response.BodyReader())
+	if err != nil {
+		return CantCheck{err}
+	}
+
+	refs := []string{}
+	for _, tag := range c.tags {
+		refs = append(refs, c.linkURL(doc, tag, response.Response.Request.URL)...)
+	}
+	for _, r := range refs {
+		println(r)
+	}
+	return nil
+}
+
+func (_ Links) linkURL(doc *html.Node, tag string, reqURL *url.URL) []string {
+	attr := map[string]string{
+		"a":      "href",
+		"img":    "src",
+		"script": "src",
+		"link":   "href",
+	}
+	href := cascadia.MustCompile(tag)
+	matches := href.MatchAll(doc)
+	ak := attr[tag]
+	refs := []string{}
+	for _, m := range matches {
+		for _, a := range m.Attr {
+			if a.Key != ak || a.Val == "#" {
+				continue
+			}
+			u, err := reqURL.Parse(a.Val)
+			if err != nil {
+				refs = append(refs, "Error: "+err.Error())
+			} else {
+				u.Fragment = "" // easier to clear here
+				refs = append(refs, u.String())
+			}
+		}
+	}
+	return refs
+}
+
+func (c *Links) Prepare() (err error) {
+	c.Which = strings.ToLower(c.Which)
+	c.Which = strings.Replace(c.Which, ", ", ",", -1)
+	c.Which = strings.Replace(c.Which, " ", ",", -1)
+
+	for _, tag := range strings.Split(c.Which, ",") {
+		tag = strings.TrimSpace(tag)
+		switch tag {
+		case "": // ignored
+		case "a", "img", "link", "script":
+			c.tags = append(c.tags, tag)
+		default:
+			return fmt.Errorf("Unknown link tag %q", tag)
+		}
+	}
+	c.Which = strings.Join(c.tags, ", ")
+	return nil
 }
