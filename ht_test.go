@@ -70,7 +70,7 @@ func TestParameterHandling(t *testing.T) {
 	if test.Request.Body != "" {
 		t.Errorf("Expected empty body, got %q", test.Request.Body)
 	}
-	if test.Request.request.URL.String() != "http://www.test.org?file=%40file%3Atestdata%2Fupload.pdf&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
+	if test.Request.Request.URL.String() != "http://www.test.org?file=%40file%3Atestdata%2Fupload.pdf&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
 		t.Errorf("Bad URL, got %s", test.Request.URL)
 	}
 	test.Request.Body = ""
@@ -81,7 +81,7 @@ func TestParameterHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
-	full, err := ioutil.ReadAll(test.Request.request.Body)
+	full, err := ioutil.ReadAll(test.Request.Request.Body)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -95,7 +95,7 @@ func TestParameterHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
-	ct := test.Request.request.Header.Get("Content-Type")
+	ct := test.Request.Request.Header.Get("Content-Type")
 	mt, p, err := mime.ParseMediaType(ct)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
@@ -107,7 +107,7 @@ func TestParameterHandling(t *testing.T) {
 	if !ok {
 		t.Fatalf("No boundary in content type")
 	}
-	r := multipart.NewReader(test.Request.request.Body, boundary)
+	r := multipart.NewReader(test.Request.Request.Body, boundary)
 	f, err := r.ReadForm(1 << 10)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())

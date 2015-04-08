@@ -80,8 +80,8 @@ type Request struct {
 	// redirects should be done.
 	FollowRedirects bool `json:",omitempty"`
 
-	request *http.Request // the 'real' request
-	body    string        // the 'real' body
+	Request  *http.Request // the 'real' request
+	SentBody string        // the 'real' body
 }
 
 // Response captures information about a http response.
@@ -415,27 +415,27 @@ func (t *Test) prepare(variables map[string]string) error {
 	}
 
 	// Make a deep copy of the header and set standard stuff and cookies.
-	t.Request.request.Header = make(http.Header)
+	t.Request.Request.Header = make(http.Header)
 	for h, v := range t.Request.Header {
 		rv := make([]string, len(v))
 		for i := range v {
 			rv[i] = repl.str.Replace(v[i])
 		}
-		t.Request.request.Header[h] = rv
+		t.Request.Request.Header[h] = rv
 
 	}
-	if t.Request.request.Header.Get("Content-Type") == "" && contentType != "" {
-		t.Request.request.Header.Set("Content-Type", contentType)
+	if t.Request.Request.Header.Get("Content-Type") == "" && contentType != "" {
+		t.Request.Request.Header.Set("Content-Type", contentType)
 	}
-	if t.Request.request.Header.Get("Accept") == "" {
-		t.Request.request.Header.Set("Accept", DefaultAccept)
+	if t.Request.Request.Header.Get("Accept") == "" {
+		t.Request.Request.Header.Set("Accept", DefaultAccept)
 	}
-	if t.Request.request.Header.Get("User-Agent") == "" {
-		t.Request.request.Header.Set("User-Agent", DefaultUserAgent)
+	if t.Request.Request.Header.Get("User-Agent") == "" {
+		t.Request.Request.Header.Set("User-Agent", DefaultUserAgent)
 	}
 	for _, cookie := range t.Request.Cookies {
 		cv := repl.str.Replace(cookie.Value)
-		t.Request.request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
+		t.Request.Request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
 	}
 
 	// Compile the checks.
@@ -512,7 +512,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 		case "body":
 			contentType = "application/x-www-form-urlencoded"
 			encoded := urlValues.Encode()
-			t.Request.body = encoded
+			t.Request.SentBody = encoded
 			body = ioutil.NopCloser(strings.NewReader(encoded))
 		case "multipart":
 			b, boundary, err := multipartBody(t.Request.Params)
@@ -523,7 +523,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 			if err != nil {
 				return "", err
 			}
-			t.Request.body = string(bb)
+			t.Request.SentBody = string(bb)
 			body = ioutil.NopCloser(bytes.NewReader(bb))
 			contentType = "multipart/form-data; boundary=" + boundary
 		default:
@@ -535,11 +535,11 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	// The body.
 	if t.Request.Body != "" {
 		rbody := repl.str.Replace(t.Request.Body)
-		t.Request.body = rbody
+		t.Request.SentBody = rbody
 		body = ioutil.NopCloser(strings.NewReader(rbody))
 	}
 
-	t.Request.request, err = http.NewRequest(t.Request.Method, rurl, body)
+	t.Request.Request, err = http.NewRequest(t.Request.Method, rurl, body)
 	if err != nil {
 		return "", err
 	}
@@ -554,12 +554,12 @@ var (
 // executeRequest performs the HTTP request defined in t which must have been
 // prepared by Prepare. Executing an unprepared Test results will panic.
 func (t *Test) executeRequest() error {
-	t.debugf("requesting %q", t.Request.request.URL.String())
+	t.debugf("requesting %q", t.Request.Request.URL.String())
 
 	var err error
 	start := time.Now()
 
-	resp, err := t.client.Do(t.Request.request)
+	resp, err := t.client.Do(t.Request.Request)
 	if ue, ok := err.(*url.Error); ok && ue.Err == redirectNofollow &&
 		!t.Request.FollowRedirects {
 		// Clear err if it is just our redirect non-following policy.
@@ -630,7 +630,7 @@ func (t *Test) executeChecks(result []CheckResult) {
 }
 
 func (t *Test) prepared() bool {
-	return t.Request.request != nil
+	return t.Request.Request != nil
 }
 
 func (t *Test) errorf(format string, v ...interface{}) {

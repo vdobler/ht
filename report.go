@@ -169,8 +169,8 @@ var htmlTestTmpl = `{{define "TEST"}}
           {{range $i, $c := .CheckResults}}{{template "CHECK" .}}{{end}}
         </div>
       {{end}}{{end}}
-      {{if .Request}}{{template "REQUEST" .}}{{end}}
-      {{if .Response}}{{template "RESPONSE" .}}{{end}}
+      {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
+      {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
     </div>
   </div>
 </div>
@@ -212,9 +212,9 @@ var htmlRequestTmpl = `{{define "REQUEST"}}
   <div class="expanded2">
     <h3 class="toggleButton2">HTTP Request ▾</h3>
     <div class="requestDetails">
-      <code><strong>{{.Request.Method}}</strong> {{.Request.URL.String}}</code>
-      {{template "HEADER" .Request.Header}}
-<pre>{{.RequestBody}}</pre>
+      <code><strong>{{.Request.Request.Method}}</strong> {{.Request.Request.URL.String}}</code>
+      {{template "HEADER" .Request.Request.Header}}
+<pre>{{.Request.SentBody}}</pre>
     </div>
   </div>
   <div class="collapsed2">
