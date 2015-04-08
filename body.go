@@ -4,13 +4,11 @@
 
 // body.go contains basic checks on the un-interpreted body of a HTTP response.
 
-package check
+package ht
 
 import (
 	"fmt"
 	"unicode/utf8"
-
-	"github.com/vdobler/ht/response"
 )
 
 func init() {
@@ -24,7 +22,7 @@ func init() {
 // UTF8Encoded checks that the response body is valid UTF-8 without BOMs.
 type UTF8Encoded struct{}
 
-func (c UTF8Encoded) Execute(response *response.Response) error {
+func (c UTF8Encoded) Execute(response *Response) error {
 	p := response.Body
 	char := 0
 	for len(p) > 0 {
@@ -48,7 +46,7 @@ func (_ UTF8Encoded) Prepare() error { return nil }
 
 type Body Condition
 
-func (b Body) Execute(response *response.Response) error {
+func (b Body) Execute(response *Response) error {
 	body, err := response.Body, response.BodyErr
 	if err != nil {
 		return BadBody

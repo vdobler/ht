@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package check
+package ht
 
 import (
 	"fmt"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/vdobler/ht/response"
 )
 
 type sampleCheck struct {
@@ -36,8 +34,8 @@ type sampleCheck struct {
 }
 
 // let sampleCheck satisfy Check interface.
-func (_ sampleCheck) Execute(response *response.Response) error { return nil }
-func (_ sampleCheck) Prepare() error                            { return nil }
+func (_ sampleCheck) Execute(response *Response) error { return nil }
+func (_ sampleCheck) Prepare() error                   { return nil }
 
 type nested struct {
 	X string
@@ -57,7 +55,7 @@ func BenchmarkSubstituteVariables(b *testing.B) {
 	}
 }
 
-func TestSubstituteVariables(t *testing.T) {
+func TestSubstituteCheckVariables(t *testing.T) {
 	r := strings.NewReplacer("a", "X", "e", "Y", "o", "Z")
 	var ck Check
 	ck = &Body{Contains: "Hallo"}
@@ -134,7 +132,7 @@ func TestSubstituteVariables(t *testing.T) {
 
 func TestUnmarshalJSON(t *testing.T) {
 	j := []byte(`[
-{Check: "ResponseTime", Lower: 3450},
+{Check: "ResponseTime", Lower: 1.23},
 {Check: "Body", Prefix: "BEGIN", Regexp: "foo", Count: 3},
 ]`)
 
@@ -151,7 +149,7 @@ func TestUnmarshalJSON(t *testing.T) {
 	if rt, ok := cl[0].(*ResponseTime); !ok {
 		t.Errorf("Check 0, got %T, %#v", cl[0], cl[0])
 	} else {
-		if rt.Lower != 3450 {
+		if rt.Lower != 1.23*1e9 {
 			t.Errorf("Got Lower=%d", rt.Lower)
 		}
 	}
@@ -179,7 +177,7 @@ func TestUnmarshalJSON(t *testing.T) {
 // type TC and runTest: helpers for testing the different checks
 
 type TC struct {
-	r response.Response
+	r Response
 	c Check
 	e error
 }

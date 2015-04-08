@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/kr/pretty"
-	"github.com/vdobler/ht/check"
 )
 
 func TestRepeat(t *testing.T) {
@@ -60,7 +59,7 @@ func TestLCM(t *testing.T) {
 	}
 }
 
-func TestSubstituteVariables(t *testing.T) {
+func TestSubstituteTestVariables(t *testing.T) {
 	test := Test{
 		Name:        "Name={{x}}",
 		Description: "Desc={{x}}",
@@ -75,8 +74,8 @@ func TestSubstituteVariables(t *testing.T) {
 			},
 			FollowRedirects: true,
 		},
-		Checks: []check.Check{
-			&check.Body{Contains: "bctext={{x}}", Count: 1},
+		Checks: []Check{
+			&Body{Contains: "bctext={{x}}", Count: 1},
 		},
 	}
 
@@ -86,7 +85,7 @@ func TestSubstituteVariables(t *testing.T) {
 		rt.Request.URL != "url=Y" ||
 		rt.Request.Params["pn={{x}}"][0] != "pv=Y" || // TODO: names too?
 		rt.Request.Header["{{x}}head"][0] != "Yval" || // TODO: header keys too?
-		rt.Checks[0].(*check.Body).Contains != "bctext=Y" {
+		rt.Checks[0].(*Body).Contains != "bctext=Y" {
 		t.Errorf("%s", pretty.Sprintf("%# v\n", test))
 	}
 
@@ -128,8 +127,8 @@ func TestFindNow(t *testing.T) {
 			Header:          http.Header{"header": []string{"now+4 == {{NOW+4s}}"}},
 			FollowRedirects: false,
 		},
-		Checks: []check.Check{
-			&check.Body{Contains: "now+5 == {{NOW + 15m}}"},
+		Checks: []Check{
+			&Body{Contains: "now+5 == {{NOW + 15m}}"},
 		},
 	}
 	nv := test.findNowVariables()

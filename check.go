@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package check provides useful checks for ht.
-package check
+package ht
 
 import (
 	"bytes"
@@ -16,7 +16,6 @@ import (
 	_ "image/png"
 	"reflect"
 
-	"github.com/vdobler/ht/response"
 	"github.com/vdobler/ht/third_party/json5"
 )
 
@@ -27,7 +26,7 @@ type Check interface {
 	Prepare() error
 
 	// Execute executes the check.
-	Execute(response *response.Response) error
+	Execute(response *Response) error
 }
 
 // NameOf returns the name of the check.

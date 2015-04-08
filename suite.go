@@ -6,18 +6,13 @@ package ht
 
 import (
 	"fmt"
-	"time"
-
-	"github.com/vdobler/ht/response"
-
 	"log"
-
 	"net"
 	"net/http"
 	"net/http/cookiejar"
-
 	"strings"
 	"sync"
+	"time"
 )
 
 // A Suite is a collection of tests which are run together.
@@ -165,7 +160,7 @@ func (s *Suite) Execute() SuiteResult {
 	result.TestResults = append(result.TestResults, tdResult.TestResults...)
 
 	result.Started = start
-	result.FullDuration = response.Duration(time.Since(start))
+	result.FullDuration = Duration(time.Since(start))
 	return result
 }
 

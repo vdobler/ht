@@ -9,8 +9,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-
-	"github.com/vdobler/ht/check"
 )
 
 func TestRTHistogram(t *testing.T) {
@@ -51,8 +49,8 @@ func TestResponseTimeHistogram(t *testing.T) {
 			},
 			FollowRedirects: false,
 		},
-		Checks: []check.Check{
-			check.StatusCode{200},
+		Checks: []Check{
+			StatusCode{200},
 		},
 	}
 

@@ -4,12 +4,10 @@
 
 // time.go contains checks against the response time
 
-package check
+package ht
 
 import (
 	"fmt"
-
-	"github.com/vdobler/ht/response"
 )
 
 func init() {
@@ -21,11 +19,11 @@ func init() {
 
 // ResponseTime checks the response time.
 type ResponseTime struct {
-	Lower  response.Duration `json:",omitempty"`
-	Higher response.Duration `json:",omitempty"`
+	Lower  Duration `json:",omitempty"`
+	Higher Duration `json:",omitempty"`
 }
 
-func (c ResponseTime) Execute(r *response.Response) error {
+func (c ResponseTime) Execute(r *Response) error {
 	actual := r.Duration
 	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
 		return MalformedCheck{Err: fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)}

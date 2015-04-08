@@ -9,12 +9,10 @@ import (
 	"io/ioutil"
 	"log"
 	"path"
+	"strings"
 	"time"
 
-	"github.com/vdobler/ht/check"
 	"github.com/vdobler/ht/third_party/json5"
-
-	"strings"
 )
 
 var (
@@ -32,7 +30,7 @@ type rawTest struct {
 	Description string   `json:",omitempty"`
 	BasedOn     []string `json:",omitempty"`
 	Request     Request
-	Checks      check.CheckList `json:",omitempty"`
+	Checks      CheckList `json:",omitempty"`
 
 	// Unroll contains values to be used during unrolling the Test
 	// generated from the deserialized data to several real Tests.

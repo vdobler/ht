@@ -4,14 +4,13 @@
 
 // json.go contains checks for a JSON body.
 
-package check
+package ht
 
 import (
 	"encoding/json"
 	"fmt"
 
 	"github.com/nytlabs/gojee"
-	"github.com/vdobler/ht/response"
 )
 
 func init() {
@@ -42,7 +41,7 @@ func (c *JSON) Prepare() (err error) {
 	return nil
 }
 
-func (c *JSON) Execute(response *response.Response) error {
+func (c *JSON) Execute(response *Response) error {
 	if c.tt == nil {
 		if err := c.Prepare(); err != nil {
 			return MalformedCheck{Err: err}

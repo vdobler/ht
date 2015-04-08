@@ -23,8 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vdobler/ht/check"
-	"github.com/vdobler/ht/response"
 	"github.com/vdobler/ht/third_party/json5"
 )
 
@@ -83,6 +81,25 @@ type Request struct {
 	FollowRedirects bool `json:",omitempty"`
 }
 
+// Response captures information about a http response.
+type Response struct {
+	// Response is the received HTTP response. Its body has bean read and
+	// closed allready.
+	Response *http.Response
+
+	// Duration to receive response and read the whole body.
+	Duration Duration
+
+	// The received body and the error got while reading it.
+	Body    []byte
+	BodyErr error
+}
+
+// BodyReader returns a reader of the response body.
+func (resp *Response) BodyReader() *bytes.Reader {
+	return bytes.NewReader(resp.Body)
+}
+
 // Cookie.
 type Cookie struct {
 	Name  string
@@ -129,7 +146,7 @@ type Test struct {
 	Request Request
 
 	// Checks contains all checks to perform on the response to the HTTP request.
-	Checks check.CheckList
+	Checks CheckList
 
 	Poll      Poll          `json:",omitempty"`
 	Timeout   time.Duration // If zero use DefaultClientTimeout.
@@ -141,8 +158,8 @@ type Test struct {
 
 	client   *http.Client
 	request  *http.Request
-	response *response.Response
-	checks   []check.Check // compiled checks.
+	response *Response
+	checks   []Check // compiled checks.
 }
 
 // mergeRequest implements the merge strategy described in Merge for the Request.
@@ -284,7 +301,7 @@ func (t *Test) Run(variables map[string]string) TestResult {
 	}
 	result.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
-		result.CheckResults[i].Name = check.NameOf(c)
+		result.CheckResults[i].Name = NameOf(c)
 		buf, err := json5.Marshal(c)
 		if err != nil {
 			buf = []byte(err.Error())
@@ -320,7 +337,7 @@ func (t *Test) Run(variables map[string]string) TestResult {
 			break
 		}
 	}
-	result.FullDuration = response.Duration(time.Since(start))
+	result.FullDuration = Duration(time.Since(start))
 	if t.Poll.Max > 1 {
 		if result.Status == Pass {
 			t.debugf("polling succeded after %d tries", try+1)
@@ -399,16 +416,16 @@ func (t *Test) prepare(variables map[string]string, result *TestResult) error {
 	result.Request = t.request
 
 	// Compile the checks.
-	t.checks = make([]check.Check, len(t.Checks))
+	t.checks = make([]Check, len(t.Checks))
 	cfc, cfce := []int{}, []string{}
 	for i := range t.Checks {
-		t.checks[i] = check.SubstituteVariables(t.Checks[i], repl.str, repl.fn)
+		t.checks[i] = SubstituteVariables(t.Checks[i], repl.str, repl.fn)
 		e := t.checks[i].Prepare()
 		if e != nil {
 			cfc = append(cfc, i)
 			cfce = append(cfce, err.Error())
 			t.errorf("preparing check %d %q: %s",
-				i, check.NameOf(t.Checks[i]), err.Error())
+				i, NameOf(t.Checks[i]), err.Error())
 		}
 	}
 	if len(cfc) != 0 {
@@ -513,7 +530,7 @@ var (
 
 // executeRequest performs the HTTP request defined in t which must have been
 // prepared by Prepare. Executing an unprepared Test results will panic.
-func (t *Test) executeRequest() (*response.Response, error) {
+func (t *Test) executeRequest() (*Response, error) {
 	t.debugf("requesting %q", t.request.URL.String())
 
 	var err error
@@ -526,7 +543,7 @@ func (t *Test) executeRequest() (*response.Response, error) {
 		err = nil
 	}
 
-	rr := &response.Response{}
+	rr := &Response{}
 	rr.Response = resp
 	msg := "okay"
 	if err == nil {
@@ -546,7 +563,7 @@ func (t *Test) executeRequest() (*response.Response, error) {
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())
 	}
-	rr.Duration = response.Duration(time.Since(start))
+	rr.Duration = Duration(time.Since(start))
 
 	t.debugf("request took %s, %s", rr.Duration, msg)
 
@@ -560,21 +577,21 @@ func (t *Test) executeRequest() (*response.Response, error) {
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) executeChecks(resp *response.Response, result []CheckResult) {
+func (t *Test) executeChecks(resp *Response, result []CheckResult) {
 	for i, ck := range t.Checks {
 		start := time.Now()
 		err := ck.Execute(resp)
-		result[i].Duration = response.Duration(time.Since(start))
+		result[i].Duration = Duration(time.Since(start))
 		result[i].Error = err
 		if err != nil {
-			t.debugf("check %d %s failed: %s", i, check.NameOf(ck), err)
-			if _, ok := err.(check.MalformedCheck); ok {
+			t.debugf("check %d %s failed: %s", i, NameOf(ck), err)
+			if _, ok := err.(MalformedCheck); ok {
 				result[i].Status = Bogus
 			} else {
 				result[i].Status = Fail
 			}
 			// Abort needles checking if all went wrong.
-			if sc, ok := ck.(check.StatusCode); ok && i == 0 && sc.Expect == 200 {
+			if sc, ok := ck.(StatusCode); ok && i == 0 && sc.Expect == 200 {
 				t.tracef("skipping remaining tests")
 				// Clear Status and Error field as these might be
 				// populated from a prioer try run of the test.
@@ -585,7 +602,7 @@ func (t *Test) executeChecks(resp *response.Response, result []CheckResult) {
 			}
 		} else {
 			result[i].Status = Pass
-			t.tracef("check %d %s: Pass", i, check.NameOf(ck))
+			t.tracef("check %d %s: Pass", i, NameOf(ck))
 		}
 	}
 }

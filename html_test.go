@@ -2,17 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package check
+package ht
 
 import (
 	"net/http"
 	"net/url"
 	"testing"
-
-	"github.com/vdobler/ht/response"
 )
 
-var hcr = response.Response{
+var hcr = Response{
 	Body: []byte(`<!doctype html>
 <html>
 <link href="/css/base.css">
@@ -101,7 +99,7 @@ func TestW3CValidHTML(t *testing.T) {
   <h1>Here all good &amp; nice</h1>
 </body>`
 
-	rr := response.Response{Body: []byte(body)}
+	rr := Response{Body: []byte(body)}
 	check := W3CValidHTML{
 		AllowedErrors: 0,
 	}
@@ -119,7 +117,7 @@ func TestW3CValidHTML(t *testing.T) {
   <span><div>Strangly nested</div></span>
 </body>`
 
-	rr2 := response.Response{Body: []byte(body2)}
+	rr2 := Response{Body: []byte(body2)}
 	check2 := W3CValidHTML{
 		AllowedErrors: 1,
 		IgnoredErrors: []Condition{

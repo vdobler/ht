@@ -4,7 +4,7 @@
 
 // html.go contains checks on a HTML body.
 
-package check
+package ht
 
 import (
 	"bytes"
@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/andybalholm/cascadia"
-	"github.com/vdobler/ht/response"
 	"golang.org/x/net/html"
 )
 
@@ -34,7 +33,7 @@ func init() {
 // ValidHTML checks for valid HTML 5. Kinda: It never fails. TODO: make it useful.
 type ValidHTML struct{}
 
-func (c ValidHTML) Execute(response *response.Response) error {
+func (c ValidHTML) Execute(response *Response) error {
 	if response.BodyErr != nil {
 		return BadBody
 	}
@@ -58,7 +57,7 @@ type W3CValidHTML struct {
 	IgnoredErrors []Condition `json:",omitempty"`
 }
 
-func (w W3CValidHTML) Execute(response *response.Response) error {
+func (w W3CValidHTML) Execute(response *Response) error {
 	// It would be nice to use a ht.Test here but that would be
 	// a circular dependency, so craft the request by hand.
 
@@ -199,7 +198,7 @@ type HTMLContains struct {
 	sel cascadia.Selector
 }
 
-func (c *HTMLContains) Execute(response *response.Response) error {
+func (c *HTMLContains) Execute(response *Response) error {
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
 			return err
@@ -256,7 +255,7 @@ type HTMLContainsText struct {
 	sel cascadia.Selector
 }
 
-func (c *HTMLContainsText) Execute(response *response.Response) error {
+func (c *HTMLContainsText) Execute(response *Response) error {
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
 			return err
@@ -337,7 +336,7 @@ type Links struct {
 	tags []string
 }
 
-func (c *Links) Execute(response *response.Response) error {
+func (c *Links) Execute(response *Response) error {
 	if response.BodyErr != nil {
 		return BadBody
 	}

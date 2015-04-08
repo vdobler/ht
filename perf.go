@@ -11,7 +11,6 @@ import (
 
 	"github.com/pinterest/bender"
 	"github.com/vdobler/ht/hist"
-	"github.com/vdobler/ht/response"
 )
 
 // -------------------------------------------------------------------------
@@ -193,7 +192,7 @@ func (r LoadtestResult) String() string {
 func AnalyseLoadtest(results []TestResult) LoadtestResult {
 	result := LoadtestResult{}
 
-	var max, maxp, maxf, maxe response.Duration
+	var max, maxp, maxf, maxe Duration
 	for _, r := range results {
 		if r.Duration > max {
 			max = r.Duration

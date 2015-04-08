@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/kr/pretty"
-	"github.com/vdobler/ht/check"
 	"github.com/vdobler/ht/third_party/json5"
 )
 
@@ -37,8 +36,8 @@ func TestStatusCode(t *testing.T) {
 				Params:          url.Values{"status": []string{s}},
 				FollowRedirects: false,
 			},
-			Checks: []check.Check{
-				check.StatusCode{Expect: code},
+			Checks: []Check{
+				StatusCode{Expect: code},
 			},
 		}
 
@@ -134,8 +133,8 @@ func TestRTStats(t *testing.T) {
 			},
 			FollowRedirects: false,
 		},
-		Checks: []check.Check{
-			check.StatusCode{200},
+		Checks: []Check{
+			StatusCode{200},
 		},
 		Timeout: 150 * time.Millisecond,
 	}
@@ -295,8 +294,8 @@ func TestClientTimeout(t *testing.T) {
 			},
 			FollowRedirects: false,
 		},
-		Checks: []check.Check{
-			check.StatusCode{200},
+		Checks: []Check{
+			StatusCode{200},
 		},
 		Timeout: 40 * time.Millisecond,
 	}
@@ -332,9 +331,9 @@ func TestMarshalTest(t *testing.T) {
 				Cookie{Name: "trusted", Value: "true"},
 			},
 		},
-		Checks: []check.Check{
-			check.StatusCode{200},
-			&check.Body{Contains: "© 2014 Unic", Count: 1},
+		Checks: []Check{
+			StatusCode{200},
+			&Body{Contains: "© 2014 Unic", Count: 1},
 		},
 	}
 

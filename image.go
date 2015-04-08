@@ -4,7 +4,7 @@
 
 // image.go contains checks against image data.
 
-package check
+package ht
 
 import (
 	"fmt"
@@ -15,7 +15,6 @@ import (
 	_ "image/png"
 
 	"github.com/vdobler/ht/fingerprint"
-	"github.com/vdobler/ht/response"
 )
 
 func init() {
@@ -54,7 +53,7 @@ type Image struct {
 }
 
 // Okay implements the Check interface.
-func (c Image) Execute(response *response.Response) error {
+func (c Image) Execute(response *Response) error {
 	img, format, err := image.Decode(response.BodyReader())
 	if err != nil {
 		fmt.Printf("Image.Okay resp.BodyReader=%#v\n", response.BodyReader())

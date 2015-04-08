@@ -13,8 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/vdobler/ht/check"
 )
 
 // Repeat returns count copies of test with variables replaced based
@@ -110,9 +108,9 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 	}
 
 	// Apply to checks.
-	c.Checks = make([]check.Check, len(t.Checks))
+	c.Checks = make([]Check, len(t.Checks))
 	for i := range t.Checks {
-		c.Checks[i] = check.SubstituteVariables(t.Checks[i], repl.str, repl.fn)
+		c.Checks[i] = SubstituteVariables(t.Checks[i], repl.str, repl.fn)
 	}
 
 	return c
@@ -156,7 +154,7 @@ func (t *Test) findNowVariables() (v []string) {
 	return v
 }
 
-func findNowVarsInCheck(check check.Check) []string {
+func findNowVarsInCheck(check Check) []string {
 	v := reflect.ValueOf(check)
 	return findNowVarsInCheckRec(v)
 }

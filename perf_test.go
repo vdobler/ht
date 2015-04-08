@@ -11,8 +11,6 @@ import (
 	"net/url"
 	"testing"
 	"time"
-
-	"github.com/vdobler/ht/check"
 )
 
 func TestThroughput(t *testing.T) {
@@ -32,8 +30,8 @@ func TestThroughput(t *testing.T) {
 			},
 			FollowRedirects: false,
 		},
-		Checks: []check.Check{
-			check.StatusCode{200},
+		Checks: []Check{
+			StatusCode{200},
 		},
 		Timeout: 800 * time.Millisecond,
 	}

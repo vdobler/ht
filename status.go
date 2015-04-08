@@ -4,12 +4,10 @@
 
 // status.go provides checks on the status code of a HTTP response.
 
-package check
+package ht
 
 import (
 	"fmt"
-
-	"github.com/vdobler/ht/response"
 )
 
 func init() {
@@ -24,7 +22,7 @@ type StatusCode struct {
 	Expect int `xml:",attr"`
 }
 
-func (c StatusCode) Execute(response *response.Response) error {
+func (c StatusCode) Execute(response *Response) error {
 	if response.Response.StatusCode != c.Expect {
 		return fmt.Errorf("got %d, want %d", response.Response.StatusCode, c.Expect)
 	}
