@@ -34,10 +34,10 @@ func init() {
 type ValidHTML struct{}
 
 func (c ValidHTML) Execute(t *Test) error {
-	if t.response.BodyErr != nil {
+	if t.Response.BodyErr != nil {
 		return BadBody
 	}
-	_, err := html.Parse(t.response.BodyReader())
+	_, err := html.Parse(t.Response.Body())
 	if err != nil {
 		return fmt.Errorf("Invalid HTML: %s", err.Error())
 	}
@@ -72,7 +72,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(fw, t.response.BodyReader())
+	_, err = io.Copy(fw, t.Response.Body())
 	if err != nil {
 		return err
 	}
@@ -204,11 +204,11 @@ func (c *HTMLContains) Execute(t *Test) error {
 			return err
 		}
 	}
-	if t.response.BodyErr != nil {
+	if t.Response.BodyErr != nil {
 		return BadBody
 	}
 
-	doc, err := html.Parse(t.response.BodyReader())
+	doc, err := html.Parse(t.Response.Body())
 	if err != nil {
 		return CantCheck{err}
 	}
@@ -261,10 +261,10 @@ func (c *HTMLContainsText) Execute(t *Test) error {
 			return err
 		}
 	}
-	if t.response.BodyErr != nil {
+	if t.Response.BodyErr != nil {
 		return BadBody
 	}
-	doc, err := html.Parse(t.response.BodyReader())
+	doc, err := html.Parse(t.Response.Body())
 	if err != nil {
 		return CantCheck{err}
 	}
@@ -340,7 +340,7 @@ func (c *Links) Execute(response *Response) error {
 	if response.BodyErr != nil {
 		return BadBody
 	}
-	doc, err := html.Parse(response.BodyReader())
+	doc, err := html.Parse(response.Body())
 	if err != nil {
 		return CantCheck{err}
 	}

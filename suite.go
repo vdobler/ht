@@ -66,7 +66,8 @@ func (s *Suite) Prepare() error {
 	// Try to prepare all tests and inject jar and logger.
 	prepare := func(t *Test, which string, omit bool) error {
 		t.ClientPool = cp
-		err := t.prepare(s.Variables, &TestResult{})
+
+		err := t.prepare(s.Variables)
 		if err != nil {
 			return fmt.Errorf("Suite %q, cannot prepare %s test %q: %s",
 				s.Name, which, t.Name, err)
@@ -117,11 +118,13 @@ func (s *Suite) execute(tests []*Test, which string) SuiteResult {
 	result := SuiteResult{
 		Name:        s.Name,
 		Description: s.Description,
-		TestResults: make([]TestResult, len(tests)),
+		TestResults: make([]Test, len(tests)),
 	}
 	for i, test := range tests {
-		result.TestResults[i] = test.Run(s.Variables)
-		result.TestResults[i].SeqNo = fmt.Sprintf("%s-%02d", which, i+1)
+		test.SeqNo = fmt.Sprintf("%s-%02d", which, i+1)
+		test.Run(s.Variables)
+		result.TestResults[i] = *test
+		// result.TestResults[i].SeqNo = fmt.Sprintf("%s-%02d", which, i+1)
 	}
 	result.Status = result.CombineTests()
 	return result
@@ -180,8 +183,8 @@ func (s *Suite) ExecuteConcurrent(maxConcurrent int) error {
 		go func() {
 			defer wg.Done()
 			for test := range c {
-				result := test.Run(s.Variables) // TODO
-				if result.Status != Pass {
+				test.Run(s.Variables) // TODO
+				if test.Status != Pass {
 					res <- test.Name
 				}
 			}

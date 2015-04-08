@@ -45,7 +45,7 @@ func TestLoadSuite(t *testing.T) {
 					fmt.Println("  Fail: ", cr.Name, cr.JSON, cr.Status, cr.Error)
 				}
 			}
-			if tr.Response != nil && tr.Response.Response != nil &&
+			if tr.Response.Response != nil &&
 				tr.Response.Response.Request != nil {
 				tr.Response.Response.Request.TLS = nil
 				req := pretty.Sprintf("% #v", tr.Response.Response.Request)

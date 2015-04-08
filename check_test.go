@@ -187,8 +187,8 @@ var someError = fmt.Errorf("any error")
 const ms = 1e6
 
 func runTest(t *testing.T, i int, tc TC) {
-	tc.r.BodyReader()
-	fakeTest := Test{response: &tc.r}
+	tc.r.Body()
+	fakeTest := Test{Response: tc.r}
 	got := tc.c.Execute(&fakeTest)
 	switch {
 	case got == nil && tc.e == nil:

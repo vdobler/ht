@@ -11,7 +11,7 @@ import (
 )
 
 var hcr = Response{
-	Body: []byte(`<!doctype html>
+	BodyBytes: []byte(`<!doctype html>
 <html>
 <link href="/css/base.css">
 <head><title>CSS Selectors</title></head>
@@ -99,7 +99,7 @@ func TestW3CValidHTML(t *testing.T) {
   <h1>Here all good &amp; nice</h1>
 </body>`
 
-	rr := Response{Body: []byte(body)}
+	rr := Response{BodyBytes: []byte(body)}
 	check := W3CValidHTML{
 		AllowedErrors: 0,
 	}
@@ -117,7 +117,7 @@ func TestW3CValidHTML(t *testing.T) {
   <span><div>Strangly nested</div></span>
 </body>`
 
-	rr2 := Response{Body: []byte(body2)}
+	rr2 := Response{BodyBytes: []byte(body2)}
 	check2 := W3CValidHTML{
 		AllowedErrors: 1,
 		IgnoredErrors: []Condition{

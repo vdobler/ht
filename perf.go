@@ -40,7 +40,7 @@ type LoadTestOptions struct {
 // LoadTest will perform a load test of the main tests of suites, the details
 // of the load test is controlled by opts.
 // Errors are reported if any suite's Setup failed.
-func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
+func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Test, error) {
 	if opts.Type != "throughput" && opts.Type != "concurrency" {
 		return nil, fmt.Errorf("Unknown load tests type %q", opts.Type)
 	}
@@ -63,15 +63,13 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
 
 	executor := func(now int64, r interface{}) (interface{}, error) {
 		t := r.(*Test)
-		result := TestResult{
-			CheckResults: make([]CheckResult, len(t.Checks)),
-		}
-		t.execute(&result)
+		t.CheckResults = make([]CheckResult, len(t.checks)) // TODO: move elsewhere
+		t.execute()
 		// TODO: result.Response = nil?
-		if result.Status == Pass {
-			return result, nil
+		if t.Status == Pass {
+			return *t, nil
 		}
-		return result, result.Error
+		return *t, t.Error
 	}
 
 	recorder := make(chan interface{}, 128)
@@ -90,11 +88,11 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]TestResult, error) {
 		bender.LoadTestConcurrency(sem, rc, executor, recorder)
 	}
 
-	allResults := make([]TestResult, 0, opts.Count)
+	allResults := make([]Test, 0, opts.Count)
 
 	resultRec := func(msg interface{}) {
 		if ere, ok := msg.(*bender.EndRequestEvent); ok {
-			if result, ok := ere.Response.(TestResult); ok {
+			if result, ok := ere.Response.(Test); ok {
 				allResults = append(allResults, result)
 			}
 		}
@@ -133,7 +131,7 @@ func makeTestChannel(suites []*Suite, count int, duration time.Duration) chan in
 				if test.Poll.Max < 0 {
 					continue // Test is disabled.
 				}
-				err := test.prepare(suite.Variables, &TestResult{})
+				err := test.prepare(suite.Variables)
 				if err != nil {
 					log.Printf("Failed to prepare test %q of suite %q: %s", err)
 					continue
@@ -189,7 +187,7 @@ func (r LoadtestResult) String() string {
 }
 
 // AnalyseLoadtest computes aggregate statistics of the given results.
-func AnalyseLoadtest(results []TestResult) LoadtestResult {
+func AnalyseLoadtest(results []Test) LoadtestResult {
 	result := LoadtestResult{}
 
 	var max, maxp, maxf, maxe Duration
@@ -248,17 +246,16 @@ func AnalyseLoadtest(results []TestResult) LoadtestResult {
 // is made between request. A conc > 1 will execute conc many request
 // in paralell (without pauses).
 // TODO: move this into an BenmarkOptions
-func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []TestResult {
-	dummyResult := TestResult{}
+func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []Test {
 	for n := 0; n < warmup; n++ {
 		if n > 0 {
 			time.Sleep(pause)
 		}
-		t.prepare(variables, &dummyResult)
+		t.prepare(variables)
 		t.executeRequest()
 	}
 
-	results := make([]TestResult, count)
+	results := make([]Test, count)
 	origPollMax := t.Poll.Max
 	t.Poll.Max = 1
 
@@ -266,20 +263,23 @@ func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pau
 		// One request after the other, nicely spaced.
 		for n := 0; n < count; n++ {
 			time.Sleep(pause)
-			results[n] = t.Run(variables)
+			t.Run(variables)
+			results[n] = *t
 		}
 	} else {
 		// Start conc request and restart an other once one finishes.
-		rc := make(chan TestResult, conc)
+		rc := make(chan Test, conc)
 		for i := 0; i < conc; i++ {
 			go func() {
-				rc <- t.Run(variables)
+				t.Run(variables)
+				rc <- *t
 			}()
 		}
 		for j := 0; j < count; j++ {
 			results[j] = <-rc
 			go func() {
-				rc <- t.Run(variables)
+				t.Run(variables)
+				rc <- *t
 			}()
 		}
 

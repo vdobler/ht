@@ -49,7 +49,7 @@ func (c *JSON) Execute(t *Test) error {
 	}
 
 	var bmsg jee.BMsg
-	err := json.Unmarshal(t.response.Body, &bmsg)
+	err := json.Unmarshal(t.Response.BodyBytes, &bmsg)
 	if err != nil {
 		return err
 	}

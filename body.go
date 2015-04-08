@@ -23,7 +23,7 @@ func init() {
 type UTF8Encoded struct{}
 
 func (c UTF8Encoded) Execute(t *Test) error {
-	p := t.response.Body
+	p := t.Response.BodyBytes
 	char := 0
 	for len(p) > 0 {
 		r, size := utf8.DecodeRune(p)
@@ -47,7 +47,7 @@ func (_ UTF8Encoded) Prepare() error { return nil }
 type Body Condition
 
 func (b Body) Execute(t *Test) error {
-	body, err := t.response.Body, t.response.BodyErr
+	body, err := t.Response.BodyBytes, t.Response.BodyErr
 	if err != nil {
 		return BadBody
 	}

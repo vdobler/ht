@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var imgr = Response{Body: []byte(
+var imgr = Response{BodyBytes: []byte(
 	"\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52" +
 		"\x00\x00\x00\x08\x00\x00\x00\x06\x08\x06\x00\x00\x00\xfe\x05\xdf" +
 		"\xfb\x00\x00\x00\x01\x73\x52\x47\x42\x00\xae\xce\x1c\xe9\x00\x00" +
@@ -20,7 +20,7 @@ var imgr = Response{Body: []byte(
 		"\xeb\x73\xe1\x56\xc5\xfa\x68\x00\x8c\x59\x0d\x11\x87\x39\xe4\xc3" +
 		"\x00\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82")}
 
-var imgl = Response{Body: mustDecodeBase64(imglBody64)}
+var imgl = Response{BodyBytes: mustDecodeBase64(imglBody64)}
 var imglBody64 = `/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4p
 LSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09P
 T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCABAAEADASIA

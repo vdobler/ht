@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var jr = Response{Body: []byte(`{"foo": 5, "bar": [1,2,3]}`)}
+var jr = Response{BodyBytes: []byte(`{"foo": 5, "bar": [1,2,3]}`)}
 var jsonTests = []TC{
 	{jr, &JSON{Expression: "(.foo == 5) && ($len(.bar)==3) && (.bar[1]==2)"}, nil},
 	{jr, &JSON{Expression: ".foo == 3"}, someError},

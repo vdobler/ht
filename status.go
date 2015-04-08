@@ -23,8 +23,8 @@ type StatusCode struct {
 }
 
 func (c StatusCode) Execute(t *Test) error {
-	if t.response.Response.StatusCode != c.Expect {
-		return fmt.Errorf("got %d, want %d", t.response.Response.StatusCode, c.Expect)
+	if t.Response.Response.StatusCode != c.Expect {
+		return fmt.Errorf("got %d, want %d", t.Response.Response.StatusCode, c.Expect)
 	}
 	return nil
 }

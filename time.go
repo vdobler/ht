@@ -24,7 +24,7 @@ type ResponseTime struct {
 }
 
 func (c ResponseTime) Execute(t *Test) error {
-	actual := t.response.Duration
+	actual := t.Response.Duration
 	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
 		return MalformedCheck{Err: fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)}
 	}

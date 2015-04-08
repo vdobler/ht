@@ -79,6 +79,9 @@ type Request struct {
 	// FollowRedirects determines if automatic following of
 	// redirects should be done.
 	FollowRedirects bool `json:",omitempty"`
+
+	request *http.Request // the 'real' request
+	body    string        // the 'real' body
 }
 
 // Response captures information about a http response.
@@ -91,13 +94,13 @@ type Response struct {
 	Duration Duration
 
 	// The received body and the error got while reading it.
-	Body    []byte
-	BodyErr error
+	BodyBytes []byte
+	BodyErr   error
 }
 
-// BodyReader returns a reader of the response body.
-func (resp *Response) BodyReader() *bytes.Reader {
-	return bytes.NewReader(resp.Body)
+// Body returns a reader of the response body.
+func (resp *Response) Body() *bytes.Reader {
+	return bytes.NewReader(resp.BodyBytes)
 }
 
 // Cookie.
@@ -156,10 +159,21 @@ type Test struct {
 	// cookie jar to be used by this Test.
 	ClientPool *ClientPool
 
-	client   *http.Client
-	request  *http.Request
-	response *Response
-	checks   []Check // prepared checks.
+	Response Response
+
+	// filled during Run
+	Status       Status        `json:"-"`
+	Started      time.Time     `json:"-"`
+	Error        error         `json:"-"`
+	Duration     Duration      `json:"-"`
+	FullDuration Duration      `json:"-"`
+	Tries        int           `json:"-"`
+	CheckResults []CheckResult `json:"-"` // The individual checks.
+
+	SeqNo string
+
+	client *http.Client
+	checks []Check // prepared checks.
 }
 
 // mergeRequest implements the merge strategy described in Merge for the Request.
@@ -292,21 +306,21 @@ func Merge(tests ...*Test) (*Test, error) {
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) Run(variables map[string]string) TestResult {
-	// Set up a TestResult, prefill static information
-	result := TestResult{
-		Name:        t.Name,
-		Description: t.Description,
-		Started:     time.Now(),
-	}
-	result.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
+//
+// Run returns a non-nil error only if the test is bogus; a failing http
+// request, problems reading the body or any failing checks do not trigger a
+// non-nil return value.
+func (t *Test) Run(variables map[string]string) error {
+	t.Started = time.Now()
+
+	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
-		result.CheckResults[i].Name = NameOf(c)
+		t.CheckResults[i].Name = NameOf(c)
 		buf, err := json5.Marshal(c)
 		if err != nil {
 			buf = []byte(err.Error())
 		}
-		result.CheckResults[i].JSON = string(buf)
+		t.CheckResults[i].JSON = string(buf)
 	}
 
 	maxTries := t.Poll.Max
@@ -315,65 +329,75 @@ func (t *Test) Run(variables map[string]string) TestResult {
 	}
 	if maxTries < 0 {
 		// This test is deliberately skipped. A zero duration is okay.
-		result.Status = Skipped
-		return result
+		t.Status = Skipped
+		return nil
 	}
 
 	// Try until first success.
-	try := 0
 	start := time.Now()
-	for try = 0; try < maxTries; try++ {
-		result.Tries = try + 1
-		if try > 0 {
+	try := 1
+	for ; try <= maxTries; try++ {
+		t.Tries = try
+		if try > 1 {
 			time.Sleep(t.Poll.Sleep)
 		}
-		err := t.prepare(variables, &result)
+		err := t.prepare(variables)
 		if err != nil {
-			result.Status, result.Error = Bogus, err
-			return result
+			t.Status, t.Error = Bogus, err
+			return err
 		}
-		t.execute(&result)
-		if result.Status == Pass {
+		t.execute()
+		if t.Status == Pass {
 			break
 		}
 	}
-	result.FullDuration = Duration(time.Since(start))
+	t.Duration = Duration(time.Since(start))
 	if t.Poll.Max > 1 {
-		if result.Status == Pass {
-			t.debugf("polling succeded after %d tries", try+1)
+		if t.Status == Pass {
+			t.debugf("polling succeded after %d tries", try)
 		} else {
 			t.debugf("polling failed all %d tries", maxTries)
 		}
 	}
 
-	t.infof("test %s (%s %s)", result.Status, result.FullDuration, result.Response.Duration)
+	t.infof("test %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
 
-	return result
+	t.FullDuration = Duration(time.Since(t.Started))
+	return nil
 }
 
 // execute does a single request and check the response, the outcome is put
 // into result.
-func (t *Test) execute(result *TestResult) {
+func (t *Test) execute() {
 	var err error
-	t.response, err = t.executeRequest()
+	err = t.executeRequest()
 	if err == nil {
 		if len(t.Checks) > 0 {
-			t.executeChecks(result.CheckResults)
-			result.Status = result.CombineChecks()
+			t.executeChecks(t.CheckResults)
+			t.Status = t.combineCheckResults()
 		} else {
-			result.Status = Pass
+			t.Status = Pass
 		}
 	} else {
-		result.Status = Error
-		result.Error = err
+		t.Status = Error
+		t.Error = err
 	}
-	result.Response = t.response
-	result.Duration = t.response.Duration
+}
+
+// CombineChecks returns the combined status of the Checks in tr.
+func (t *Test) combineCheckResults() Status {
+	status := NotRun
+	for _, r := range t.CheckResults {
+		if r.Status > status {
+			status = r.Status
+		}
+	}
+	return status
 }
 
 // prepare the test for execution by substituting the given variables and
 // crafting the underlying http request the checks.
-func (t *Test) prepare(variables map[string]string, result *TestResult) error {
+func (t *Test) prepare(variables map[string]string) error {
 	// Create appropriate replace.
 	nowVars := t.nowVariables(time.Now())
 	allVars := mergeVariables(variables, nowVars)
@@ -383,7 +407,7 @@ func (t *Test) prepare(variables map[string]string, result *TestResult) error {
 	}
 
 	// Create the request.
-	contentType, err := t.newRequest(repl, result)
+	contentType, err := t.newRequest(repl)
 	if err != nil {
 		err := fmt.Errorf("failed preparing request: %s", err.Error())
 		t.errorf("%s", err.Error())
@@ -391,30 +415,28 @@ func (t *Test) prepare(variables map[string]string, result *TestResult) error {
 	}
 
 	// Make a deep copy of the header and set standard stuff and cookies.
-	t.request.Header = make(http.Header)
+	t.Request.request.Header = make(http.Header)
 	for h, v := range t.Request.Header {
 		rv := make([]string, len(v))
 		for i := range v {
 			rv[i] = repl.str.Replace(v[i])
 		}
-		t.request.Header[h] = rv
+		t.Request.request.Header[h] = rv
 
 	}
-	if t.request.Header.Get("Content-Type") == "" && contentType != "" {
-		t.request.Header.Set("Content-Type", contentType)
+	if t.Request.request.Header.Get("Content-Type") == "" && contentType != "" {
+		t.Request.request.Header.Set("Content-Type", contentType)
 	}
-	if t.request.Header.Get("Accept") == "" {
-		t.request.Header.Set("Accept", DefaultAccept)
+	if t.Request.request.Header.Get("Accept") == "" {
+		t.Request.request.Header.Set("Accept", DefaultAccept)
 	}
-	if t.request.Header.Get("User-Agent") == "" {
-		t.request.Header.Set("User-Agent", DefaultUserAgent)
+	if t.Request.request.Header.Get("User-Agent") == "" {
+		t.Request.request.Header.Set("User-Agent", DefaultUserAgent)
 	}
 	for _, cookie := range t.Request.Cookies {
 		cv := repl.str.Replace(cookie.Value)
-		t.request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
+		t.Request.request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
 	}
-
-	result.Request = t.request
 
 	// Compile the checks.
 	t.checks = make([]Check, len(t.Checks))
@@ -452,7 +474,7 @@ func (t *Test) prepare(variables map[string]string, result *TestResult) error {
 // newRequest sets up the request field of t.
 // If a sepcial Content-Type header is needed (e.g. because of a multipart
 // body) it is returned.
-func (t *Test) newRequest(repl replacer, result *TestResult) (contentType string, err error) {
+func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	// Prepare request method.
 	if t.Request.Method == "" {
 		t.Request.Method = "GET"
@@ -490,7 +512,7 @@ func (t *Test) newRequest(repl replacer, result *TestResult) (contentType string
 		case "body":
 			contentType = "application/x-www-form-urlencoded"
 			encoded := urlValues.Encode()
-			result.RequestBody = encoded
+			t.Request.body = encoded
 			body = ioutil.NopCloser(strings.NewReader(encoded))
 		case "multipart":
 			b, boundary, err := multipartBody(t.Request.Params)
@@ -501,7 +523,7 @@ func (t *Test) newRequest(repl replacer, result *TestResult) (contentType string
 			if err != nil {
 				return "", err
 			}
-			result.RequestBody = string(bb)
+			t.Request.body = string(bb)
 			body = ioutil.NopCloser(bytes.NewReader(bb))
 			contentType = "multipart/form-data; boundary=" + boundary
 		default:
@@ -513,11 +535,11 @@ func (t *Test) newRequest(repl replacer, result *TestResult) (contentType string
 	// The body.
 	if t.Request.Body != "" {
 		rbody := repl.str.Replace(t.Request.Body)
-		result.RequestBody = rbody
+		t.Request.body = rbody
 		body = ioutil.NopCloser(strings.NewReader(rbody))
 	}
 
-	t.request, err = http.NewRequest(t.Request.Method, rurl, body)
+	t.Request.request, err = http.NewRequest(t.Request.Method, rurl, body)
 	if err != nil {
 		return "", err
 	}
@@ -531,21 +553,20 @@ var (
 
 // executeRequest performs the HTTP request defined in t which must have been
 // prepared by Prepare. Executing an unprepared Test results will panic.
-func (t *Test) executeRequest() (*Response, error) {
-	t.debugf("requesting %q", t.request.URL.String())
+func (t *Test) executeRequest() error {
+	t.debugf("requesting %q", t.Request.request.URL.String())
 
 	var err error
 	start := time.Now()
 
-	resp, err := t.client.Do(t.request)
+	resp, err := t.client.Do(t.Request.request)
 	if ue, ok := err.(*url.Error); ok && ue.Err == redirectNofollow &&
 		!t.Request.FollowRedirects {
 		// Clear err if it is just our redirect non-following policy.
 		err = nil
 	}
 
-	rr := &Response{}
-	rr.Response = resp
+	t.Response.Response = resp
 	msg := "okay"
 	if err == nil {
 		var reader io.ReadCloser
@@ -553,22 +574,22 @@ func (t *Test) executeRequest() (*Response, error) {
 		case "gzip":
 			reader, err = gzip.NewReader(resp.Body)
 			if err != nil {
-				rr.BodyErr = err
+				t.Response.BodyErr = err
 			}
 			t.tracef("Unzipping gzip body")
 		default:
 			reader = resp.Body
 		}
-		rr.Body, rr.BodyErr = ioutil.ReadAll(reader)
+		t.Response.BodyBytes, t.Response.BodyErr = ioutil.ReadAll(reader)
 		reader.Close()
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())
 	}
-	rr.Duration = Duration(time.Since(start))
+	t.Response.Duration = Duration(time.Since(start))
 
-	t.debugf("request took %s, %s", rr.Duration, msg)
+	t.debugf("request took %s, %s", t.Response.Duration, msg)
 
-	return rr, err
+	return err
 }
 
 // executeChecks applies the checks in t to the HTTP response received during
@@ -595,7 +616,7 @@ func (t *Test) executeChecks(result []CheckResult) {
 			if sc, ok := ck.(StatusCode); ok && i == 0 && sc.Expect == 200 {
 				t.tracef("skipping remaining tests")
 				// Clear Status and Error field as these might be
-				// populated from a prioer try run of the test.
+				// populated from a prior try run of the test.
 				for j := 1; j < len(result); j++ {
 					result[j].Status = Skipped
 					result[j].Error = nil
@@ -609,7 +630,7 @@ func (t *Test) executeChecks(result []CheckResult) {
 }
 
 func (t *Test) prepared() bool {
-	return t.request != nil
+	return t.Request.request != nil
 }
 
 func (t *Test) errorf(format string, v ...interface{}) {

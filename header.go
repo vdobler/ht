@@ -34,7 +34,7 @@ type Header struct {
 
 func (h Header) Execute(t *Test) error {
 	key := http.CanonicalHeaderKey(h.Header)
-	values := t.response.Response.Header[key]
+	values := t.Response.Response.Header[key]
 	if len(values) == 0 && h.Absent {
 		return nil
 	} else if len(values) == 0 && !h.Absent {
@@ -72,7 +72,7 @@ type SetCookie struct {
 
 func (c SetCookie) Execute(t *Test) error {
 	var cookie *http.Cookie
-	for _, cp := range t.response.Response.Cookies() {
+	for _, cp := range t.Response.Response.Cookies() {
 		if cp.Name == c.Name {
 			cookie = cp
 			break

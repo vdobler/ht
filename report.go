@@ -9,7 +9,6 @@ import (
 	htmltemplate "html/template"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 	"text/template"
@@ -53,7 +52,7 @@ type SuiteResult struct {
 	Error        error
 	Started      time.Time // Start time
 	FullDuration Duration
-	TestResults  []TestResult
+	TestResults  []Test
 }
 
 // CombineTests returns the combined status of the Tests in sr.
@@ -89,37 +88,6 @@ func (sr SuiteResult) Stats() (notRun int, skipped int, passed int, failed int, 
 		}
 	}
 	return
-}
-
-// ----------------------------------------------------------------------------
-// TestResult
-
-// TestResult captures the outcome of a single test run.
-type TestResult struct {
-	Name         string        // Name of the test.
-	Description  string        // Copy of the description of the test
-	SeqNo        string        // Sequence number of test in suite
-	Status       Status        // The outcume of the test.
-	Started      time.Time     // Start time
-	Error        error         // Error of bogus and errored tests.
-	Request      *http.Request // The sent request
-	RequestBody  string        // The body of the request
-	Response     *Response     // The received response.
-	Duration     Duration      // A copy of Response.Duration
-	FullDuration Duration      // Total time of test execution, including tries.
-	Tries        int           // Number of tries executed.
-	CheckResults []CheckResult // The individual checks.
-}
-
-// CombineChecks returns the combined status of the Checks in tr.
-func (tr TestResult) CombineChecks() Status {
-	status := NotRun
-	for _, r := range tr.CheckResults {
-		if r.Status > status {
-			status = r.Status
-		}
-	}
-	return status
 }
 
 // ----------------------------------------------------------------------------
@@ -412,8 +380,8 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlJavascriptTmpl))
 }
 
-func (r TestResult) PrintReport(w io.Writer) error {
-	return TestTmpl.Execute(os.Stdout, r)
+func (t Test) PrintReport(w io.Writer) error {
+	return TestTmpl.Execute(os.Stdout, t)
 }
 
 func (r SuiteResult) PrintReport(w io.Writer) error {
@@ -430,10 +398,7 @@ func (r SuiteResult) HTMLReport(dir string) error {
 		return err
 	}
 	for _, tr := range r.TestResults {
-		var body []byte
-		if tr.Response != nil {
-			body = tr.Response.Body
-		}
+		body := tr.Response.BodyBytes
 		err = ioutil.WriteFile(path.Join(dir, tr.SeqNo+".ResponseBody"), body, 0666)
 		if err != nil {
 			return err

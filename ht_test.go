@@ -41,11 +41,11 @@ func TestStatusCode(t *testing.T) {
 			},
 		}
 
-		result := test.Run(nil)
-		if result.Status != Pass {
-			t.Errorf("Unexpected error for %d: %s", code, result.Error)
+		test.Run(nil)
+		if test.Status != Pass {
+			t.Errorf("Unexpected error for %d: %s", code, t.Error)
 		}
-		result.PrintReport(os.Stdout)
+		test.PrintReport(os.Stdout)
 	}
 }
 
@@ -63,25 +63,25 @@ func TestParameterHandling(t *testing.T) {
 	}}
 
 	// As part of the URL.
-	err := test.prepare(nil, &TestResult{})
+	err := test.prepare(nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
 	if test.Request.Body != "" {
 		t.Errorf("Expected empty body, got %q", test.Request.Body)
 	}
-	if test.request.URL.String() != "http://www.test.org?file=%40file%3Atestdata%2Fupload.pdf&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
+	if test.Request.request.URL.String() != "http://www.test.org?file=%40file%3Atestdata%2Fupload.pdf&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
 		t.Errorf("Bad URL, got %s", test.Request.URL)
 	}
 	test.Request.Body = ""
 
 	// URLencoded in the body.
 	test.Request.ParamsAs = "body"
-	err = test.prepare(nil, &TestResult{})
+	err = test.prepare(nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
-	full, err := ioutil.ReadAll(test.request.Body)
+	full, err := ioutil.ReadAll(test.Request.request.Body)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -91,11 +91,11 @@ func TestParameterHandling(t *testing.T) {
 	test.Request.Body = ""
 
 	test.Request.ParamsAs = "multipart"
-	err = test.prepare(nil, &TestResult{})
+	err = test.prepare(nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
-	ct := test.request.Header.Get("Content-Type")
+	ct := test.Request.request.Header.Get("Content-Type")
 	mt, p, err := mime.ParseMediaType(ct)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
@@ -107,7 +107,7 @@ func TestParameterHandling(t *testing.T) {
 	if !ok {
 		t.Fatalf("No boundary in content type")
 	}
-	r := multipart.NewReader(test.request.Body, boundary)
+	r := multipart.NewReader(test.Request.request.Body, boundary)
 	f, err := r.ReadForm(1 << 10)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
@@ -264,16 +264,16 @@ func cookieHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // expectCheckFailures checks that each check failed.
-func expectCheckFailures(t *testing.T, descr string, result TestResult, test Test) {
-	if result.Status != Fail {
-		t.Fatalf("%s: Expected Fail, got %s", descr, result.Status)
+func expectCheckFailures(t *testing.T, descr string, test Test) {
+	if test.Status != Fail {
+		t.Fatalf("%s: Expected Fail, got %s", descr, test.Status)
 	}
-	if len(result.CheckResults) != len(test.Checks) {
+	if len(test.CheckResults) != len(test.Checks) {
 		t.Fatalf("%s: Expected %d entries, got %d: %#v",
-			descr, len(test.Checks), len(result.CheckResults), result)
+			descr, len(test.Checks), len(test.CheckResults), test)
 	}
 
-	for i, r := range result.CheckResults {
+	for i, r := range test.CheckResults {
 		if r.Status != Fail {
 			t.Errorf("%s check %d: Expect Fail, got %s", descr, i, r.Status)
 		}
@@ -300,13 +300,13 @@ func TestClientTimeout(t *testing.T) {
 		Timeout: 40 * time.Millisecond,
 	}
 	start := time.Now()
-	result := test.Run(nil)
+	test.Run(nil)
 	if d := time.Since(start); d > 99*time.Millisecond {
 		t.Errorf("Took too long: %s", d)
 	}
 
-	if result.Status != Error {
-		t.Errorf("Got status %s, want Error", result.Status)
+	if test.Status != Error {
+		t.Errorf("Got status %s, want Error", test.Status)
 	}
 }
 
@@ -346,7 +346,8 @@ func TestMarshalTest(t *testing.T) {
 	recreated := Test{}
 	err = json5.Unmarshal(data, &recreated)
 	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
+		w := err.(*json5.UnmarshalTypeError)
+		t.Fatalf("Unexpected error: %#v\n%s\n%#v", err, w, recreated)
 	}
 
 	data2, err := json5.MarshalIndent(recreated, "", "    ")

@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-var br = Response{Body: []byte("foo bar baz foo foo")}
+var br = Response{BodyBytes: []byte("foo bar baz foo foo")}
 var bodyTests = []TC{
 	{br, &Body{Contains: "foo"}, nil},
 	{br, &Body{Contains: "bar"}, nil},
@@ -38,9 +38,9 @@ func TestBody(t *testing.T) {
 }
 
 var utf8Tests = []TC{
-	{Response{Body: []byte("All fine!")}, UTF8Encoded{}, nil},
-	{Response{Body: []byte("BOMs \ufeff sucks!")}, UTF8Encoded{}, someError},
-	{Response{Body: []byte("Strange \xbd\xb2\x3d\xbc")}, UTF8Encoded{}, someError},
+	{Response{BodyBytes: []byte("All fine!")}, UTF8Encoded{}, nil},
+	{Response{BodyBytes: []byte("BOMs \ufeff sucks!")}, UTF8Encoded{}, someError},
+	{Response{BodyBytes: []byte("Strange \xbd\xb2\x3d\xbc")}, UTF8Encoded{}, someError},
 }
 
 func TestUTF8Encoded(t *testing.T) {
