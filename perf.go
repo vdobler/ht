@@ -63,14 +63,14 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Test, error) {
 	rc := makeTestChannel(suites, opts.Count, opts.Timeout)
 
 	executor := func(now int64, r interface{}) (interface{}, error) {
-		t := r.(*Test)
+		t := r.(Test)
 		t.CheckResults = make([]CheckResult, len(t.checks)) // TODO: move elsewhere
 		t.execute()
 		// TODO: result.Response = nil?
 		if t.Status == Pass {
-			return *t, nil
+			return t, nil
 		}
-		return *t, t.Error
+		return t, t.Error
 	}
 
 	recorder := make(chan interface{}, 128)
@@ -106,6 +106,10 @@ func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Test, error) {
 		s.ExecuteTeardown()
 	}
 
+	// for i, r := range allResults {
+	// fmt.Printf("%d. %s %s %s %s\n", i, r.Status, r.Response.Duration, r.Name, r.Error)
+	// }
+
 	return allResults, nil
 }
 
@@ -137,7 +141,7 @@ func makeTestChannel(suites []*Suite, count int, duration time.Duration) chan in
 					log.Printf("Failed to prepare test %q of suite %q: %s", err)
 					continue
 				}
-				rc <- test
+				rc <- *test
 				n++
 				if n >= count || time.Since(start) > duration {
 					break loop
@@ -173,7 +177,7 @@ func (r LoadtestResult) String() string {
 	s += fmt.Sprintf("%-7d %-7d %-7d [ms]\n", r.PassHist.Average(),
 		r.FailHist.Average(), r.BothHist.Average())
 
-	ps := []float64{0, 0.25, 0.50, 0.75, 0.80, 0.85, 0.90, 0.95, 0.97,
+	ps := []float64{0, 0.25, 0.50, 0.75, 0.90, 0.95, 0.97,
 		0.98, 0.99, 0.995, 0.999, 1}
 	cps := make([]float64, len(ps))
 	for i, p := range ps {
@@ -193,24 +197,24 @@ func AnalyseLoadtest(results []Test) LoadtestResult {
 
 	var max, maxp, maxf, maxe Duration
 	for _, r := range results {
-		if r.Duration > max {
-			max = r.Duration
+		if r.Response.Duration > max {
+			max = r.Response.Duration
 		}
 		switch r.Status {
 		case Pass:
 			result.Passed++
-			if r.Duration > maxp {
-				maxp = r.Duration
+			if r.Response.Duration > maxp {
+				maxp = r.Response.Duration
 			}
 		case Fail:
 			result.Failed++
-			if r.Duration > maxf {
-				maxf = r.Duration
+			if r.Response.Duration > maxf {
+				maxf = r.Response.Duration
 			}
 		case Error:
 			result.Errored++
-			if r.Duration > maxe {
-				maxe = r.Duration
+			if r.Response.Duration > maxe {
+				maxe = r.Response.Duration
 			}
 		case Skipped:
 			result.Skipped++
@@ -227,11 +231,11 @@ func AnalyseLoadtest(results []Test) LoadtestResult {
 	for _, r := range results {
 		switch r.Status {
 		case Pass:
-			result.PassHist.Add(int(r.Duration / millisecond))
-			result.BothHist.Add(int(r.Duration / millisecond))
+			result.PassHist.Add(int(r.Response.Duration / millisecond))
+			result.BothHist.Add(int(r.Response.Duration / millisecond))
 		case Fail:
-			result.FailHist.Add(int(r.Duration / millisecond))
-			result.BothHist.Add(int(r.Duration / millisecond))
+			result.FailHist.Add(int(r.Response.Duration / millisecond))
+			result.BothHist.Add(int(r.Response.Duration / millisecond))
 		}
 	}
 

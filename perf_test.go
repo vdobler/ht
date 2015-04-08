@@ -6,16 +6,17 @@ package ht
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 )
 
-func TestThroughput(t *testing.T) {
+func setupPerfSuites(t *testing.T) ([]*Suite, *httptest.Server) {
 	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
-	defer ts.Close()
 	// lg := log.New(os.Stdout, "ht ", log.LstdFlags)
 
 	test := &Test{
@@ -33,45 +34,71 @@ func TestThroughput(t *testing.T) {
 		Checks: []Check{
 			StatusCode{200},
 		},
-		Timeout: 800 * time.Millisecond,
+		Timeout:   Duration(400 * time.Millisecond),
+		Verbosity: 1,
 	}
 	unroll := map[string][]string{
 		"SMIN": []string{"1", "40", "200", "1", "40"},
-		"SMAX": []string{"30", "90", "300", "30", "90"},
+		"SMAX": []string{"30", "90", "400", "30", "90"},
 	}
 	tests, err := Repeat(test, 5, unroll)
 
 	suite := &Suite{
 		Name:  "Throughput",
 		Tests: tests,
-		// Log: lg,
+		Log:   log.New(os.Stdout, "", 0),
 	}
 
 	err = suite.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
+
+	return []*Suite{suite}, ts
+}
+
+func TestThroughputLoadTest(t *testing.T) {
+	suites, ts := setupPerfSuites(t)
+	defer ts.Close()
+
 	options := LoadTestOptions{
 		Type:    "throughput",
 		Rate:    100,
 		Count:   1000,
 		Uniform: true,
 	}
-	results, err := LoadTest([]*Suite{suite}, options)
+	if testing.Short() {
+		options.Count = 200
+	}
+	results, err := LoadTest(suites, options)
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}
 	fmt.Printf("Throughput Test:\n")
-	AnalyseLoadtest(results)
+	ltr := AnalyseLoadtest(results)
+	fmt.Println(ltr)
+}
 
-	options.Type = "concurrency"
-	options.Count = 400
+func TestConcurrencyLoadTest(t *testing.T) {
+	suites, ts := setupPerfSuites(t)
+	defer ts.Close()
 
-	results, err = LoadTest([]*Suite{suite}, options)
+	options := LoadTestOptions{
+		Type:    "concurrency",
+		Rate:    100,
+		Count:   1000,
+		Uniform: true,
+	}
+	if testing.Short() {
+		options.Count = 200
+	}
+
+	results, err := LoadTest(suites, options)
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}
+
 	fmt.Printf("Concurrency Test:\n")
 	ltr := AnalyseLoadtest(results)
-	fmt.Printf("Loadtest Result:\n%s\n", ltr)
+	fmt.Println(ltr)
 }
