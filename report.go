@@ -42,7 +42,7 @@ func (s Status) MarshalText() ([]byte, error) {
 
 // Stats counts the test results of sr.
 func (s *Suite) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
-	for _, tr := range append(append(s.Setup, s.Tests...), s.Teardown...) {
+	for _, tr := range s.AllTests() {
 		switch tr.Status {
 		case NotRun:
 			notRun++
@@ -373,7 +373,7 @@ func (s Suite) HTMLReport(dir string) error {
 	if err != nil {
 		return err
 	}
-	for _, tr := range append(append(s.Setup, s.Tests...), s.Teardown...) {
+	for _, tr := range s.AllTests() {
 		body := tr.Response.BodyBytes
 		err = ioutil.WriteFile(path.Join(dir, tr.SeqNo+".ResponseBody"), body, 0666)
 		if err != nil {
