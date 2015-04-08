@@ -41,7 +41,7 @@ func (c *JSON) Prepare() (err error) {
 	return nil
 }
 
-func (c *JSON) Execute(response *Response) error {
+func (c *JSON) Execute(t *Test) error {
 	if c.tt == nil {
 		if err := c.Prepare(); err != nil {
 			return MalformedCheck{Err: err}
@@ -49,7 +49,7 @@ func (c *JSON) Execute(response *Response) error {
 	}
 
 	var bmsg jee.BMsg
-	err := json.Unmarshal(response.Body, &bmsg)
+	err := json.Unmarshal(t.response.Body, &bmsg)
 	if err != nil {
 		return err
 	}

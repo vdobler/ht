@@ -159,7 +159,7 @@ type Test struct {
 	client   *http.Client
 	request  *http.Request
 	response *Response
-	checks   []Check // compiled checks.
+	checks   []Check // prepared checks.
 }
 
 // mergeRequest implements the merge strategy described in Merge for the Request.
@@ -354,10 +354,11 @@ func (t *Test) Run(variables map[string]string) TestResult {
 // execute does a single request and check the response, the outcome is put
 // into result.
 func (t *Test) execute(result *TestResult) {
-	response, err := t.executeRequest()
+	var err error
+	t.response, err = t.executeRequest()
 	if err == nil {
 		if len(t.Checks) > 0 {
-			t.executeChecks(response, result.CheckResults)
+			t.executeChecks(result.CheckResults)
 			result.Status = result.CombineChecks()
 		} else {
 			result.Status = Pass
@@ -366,8 +367,8 @@ func (t *Test) execute(result *TestResult) {
 		result.Status = Error
 		result.Error = err
 	}
-	result.Response = response
-	result.Duration = response.Duration
+	result.Response = t.response
+	result.Duration = t.response.Duration
 }
 
 // prepare the test for execution by substituting the given variables and
@@ -577,10 +578,10 @@ func (t *Test) executeRequest() (*Response, error) {
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) executeChecks(resp *Response, result []CheckResult) {
+func (t *Test) executeChecks(result []CheckResult) {
 	for i, ck := range t.Checks {
 		start := time.Now()
-		err := ck.Execute(resp)
+		err := ck.Execute(t)
 		result[i].Duration = Duration(time.Since(start))
 		result[i].Error = err
 		if err != nil {

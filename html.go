@@ -33,11 +33,11 @@ func init() {
 // ValidHTML checks for valid HTML 5. Kinda: It never fails. TODO: make it useful.
 type ValidHTML struct{}
 
-func (c ValidHTML) Execute(response *Response) error {
-	if response.BodyErr != nil {
+func (c ValidHTML) Execute(t *Test) error {
+	if t.response.BodyErr != nil {
 		return BadBody
 	}
-	_, err := html.Parse(response.BodyReader())
+	_, err := html.Parse(t.response.BodyReader())
 	if err != nil {
 		return fmt.Errorf("Invalid HTML: %s", err.Error())
 	}
@@ -57,7 +57,7 @@ type W3CValidHTML struct {
 	IgnoredErrors []Condition `json:",omitempty"`
 }
 
-func (w W3CValidHTML) Execute(response *Response) error {
+func (w W3CValidHTML) Execute(t *Test) error {
 	// It would be nice to use a ht.Test here but that would be
 	// a circular dependency, so craft the request by hand.
 
@@ -72,7 +72,7 @@ func (w W3CValidHTML) Execute(response *Response) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(fw, response.BodyReader())
+	_, err = io.Copy(fw, t.response.BodyReader())
 	if err != nil {
 		return err
 	}
@@ -198,17 +198,17 @@ type HTMLContains struct {
 	sel cascadia.Selector
 }
 
-func (c *HTMLContains) Execute(response *Response) error {
+func (c *HTMLContains) Execute(t *Test) error {
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
 			return err
 		}
 	}
-	if response.BodyErr != nil {
+	if t.response.BodyErr != nil {
 		return BadBody
 	}
 
-	doc, err := html.Parse(response.BodyReader())
+	doc, err := html.Parse(t.response.BodyReader())
 	if err != nil {
 		return CantCheck{err}
 	}
@@ -255,16 +255,16 @@ type HTMLContainsText struct {
 	sel cascadia.Selector
 }
 
-func (c *HTMLContainsText) Execute(response *Response) error {
+func (c *HTMLContainsText) Execute(t *Test) error {
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
 			return err
 		}
 	}
-	if response.BodyErr != nil {
+	if t.response.BodyErr != nil {
 		return BadBody
 	}
-	doc, err := html.Parse(response.BodyReader())
+	doc, err := html.Parse(t.response.BodyReader())
 	if err != nil {
 		return CantCheck{err}
 	}

@@ -22,9 +22,9 @@ type StatusCode struct {
 	Expect int `xml:",attr"`
 }
 
-func (c StatusCode) Execute(response *Response) error {
-	if response.Response.StatusCode != c.Expect {
-		return fmt.Errorf("got %d, want %d", response.Response.StatusCode, c.Expect)
+func (c StatusCode) Execute(t *Test) error {
+	if t.response.Response.StatusCode != c.Expect {
+		return fmt.Errorf("got %d, want %d", t.response.Response.StatusCode, c.Expect)
 	}
 	return nil
 }

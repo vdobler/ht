@@ -34,8 +34,8 @@ type sampleCheck struct {
 }
 
 // let sampleCheck satisfy Check interface.
-func (_ sampleCheck) Execute(response *Response) error { return nil }
-func (_ sampleCheck) Prepare() error                   { return nil }
+func (_ sampleCheck) Execute(t *Test) error { return nil }
+func (_ sampleCheck) Prepare() error        { return nil }
 
 type nested struct {
 	X string
@@ -188,7 +188,8 @@ const ms = 1e6
 
 func runTest(t *testing.T, i int, tc TC) {
 	tc.r.BodyReader()
-	got := tc.c.Execute(&tc.r)
+	fakeTest := Test{response: &tc.r}
+	got := tc.c.Execute(&fakeTest)
 	switch {
 	case got == nil && tc.e == nil:
 		return

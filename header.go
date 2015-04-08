@@ -32,9 +32,9 @@ type Header struct {
 	Absent bool `json:",omitempty"`
 }
 
-func (h Header) Execute(response *Response) error {
+func (h Header) Execute(t *Test) error {
 	key := http.CanonicalHeaderKey(h.Header)
-	values := response.Response.Header[key]
+	values := t.response.Response.Header[key]
 	if len(values) == 0 && h.Absent {
 		return nil
 	} else if len(values) == 0 && !h.Absent {
@@ -70,9 +70,9 @@ type SetCookie struct {
 	// TODO: check httpOnly and secure
 }
 
-func (c SetCookie) Execute(response *Response) error {
+func (c SetCookie) Execute(t *Test) error {
 	var cookie *http.Cookie
-	for _, cp := range response.Response.Cookies() {
+	for _, cp := range t.response.Response.Cookies() {
 		if cp.Name == c.Name {
 			cookie = cp
 			break

@@ -11,9 +11,6 @@ import (
 	"fmt"
 	"strings"
 
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"reflect"
 
 	"github.com/vdobler/ht/third_party/json5"
@@ -26,7 +23,7 @@ type Check interface {
 	Prepare() error
 
 	// Execute executes the check.
-	Execute(response *Response) error
+	Execute(*Test) error
 }
 
 // NameOf returns the name of the check.

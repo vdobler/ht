@@ -23,8 +23,8 @@ type ResponseTime struct {
 	Higher Duration `json:",omitempty"`
 }
 
-func (c ResponseTime) Execute(r *Response) error {
-	actual := r.Duration
+func (c ResponseTime) Execute(t *Test) error {
+	actual := t.response.Duration
 	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
 		return MalformedCheck{Err: fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)}
 	}

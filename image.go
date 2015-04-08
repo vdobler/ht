@@ -53,10 +53,10 @@ type Image struct {
 }
 
 // Okay implements the Check interface.
-func (c Image) Execute(response *Response) error {
-	img, format, err := image.Decode(response.BodyReader())
+func (c Image) Execute(t *Test) error {
+	img, format, err := image.Decode(t.response.BodyReader())
 	if err != nil {
-		fmt.Printf("Image.Okay resp.BodyReader=%#v\n", response.BodyReader())
+		fmt.Printf("Image.Okay resp.BodyReader=%#v\n", t.response.BodyReader())
 		return CantCheck{err}
 	}
 	// TODO: Do not abort on first failure.
