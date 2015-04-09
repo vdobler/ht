@@ -98,7 +98,7 @@ var htmlCheckTmpl = `{{define "CHECK"}}
     <div class="checkDetails">
       <div>Checking took {{.Duration}}</div>
       <div><code>{{.JSON}}</code></div>
-      {{if eq .Status 3 5}}<div>{{.Error.Error}}</div>{{end}}
+      {{if eq .Status 3 5}}<pre class="description">{{.Error.Error}}</pre>{{end}}
     </div>
   </div>
 </div>
