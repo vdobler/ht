@@ -14,7 +14,8 @@ import (
 	"time"
 )
 
-// A Suite is a collection of tests which are run together.
+// A Suite is a collection of tests which are run together. A Suite must be prepared
+// before it can be executed or Executes concurrently.
 type Suite struct {
 	Name        string
 	Description string
@@ -53,7 +54,8 @@ func (s Suite) AllTests() []*Test {
 	return append(append(s.Setup, s.Tests...), s.Teardown...)
 }
 
-// Prepare all tests in s for execution.
+// Prepare all tests in s for execution. This will also prepare all tests to
+// detect bogus tests early.
 func (s *Suite) Prepare() error {
 	// Create cookie jar if needed.
 	cp := &ClientPool{
@@ -82,6 +84,7 @@ func (s *Suite) Prepare() error {
 				s.Name, which, t.Name, err)
 		}
 		if omit {
+			t.Checks = nil
 			t.checks = nil
 		}
 		return nil

@@ -8,7 +8,7 @@
 // performing various checks on the returned response. The type Test captures
 // this idea. Each Test may contain an arbitrary list of Checks which
 // perform the actual validation work. Tests can be grouped into Suites
-// which provide a common cookie jar for their tests and may execute setup
+// which may provide a common cookie jar for their tests and may execute setup
 // and teardown actions.
 //
 // All elements like Checks, Request, Tests and Suites are organized in
@@ -20,9 +20,9 @@
 // A typical check validates a certain property of the received response.
 // E.g.
 //     StatusCode{Expect: 302}
-//     BodyContains{Text: "foobar"}
-//     BodyContains{Text: "foobar", Count: 1}
-//     BodyContains{Text: "illegal", Count: -1}
+//     Body{Contains: "foobar"}
+//     Body{Contains: "foobar", Count: 2}
+//     Body{Contains: "illegal", Count: -1}
 // The last three examples show how zero values of optional fields are
 // commonly used: The zero value of Count means "any number of occurences".
 // Forbidding the occurenc of "foobar" thus requires a negative Count.
@@ -30,18 +30,17 @@
 // The following checks are provided
 //     * StatusCode        checks the received http status code
 //     * ResponseTime      provides lower and higer bounds on the response time
-//     * BodyContains      checks for textual occurences in the HTTP body
-//     * BodyMatch         regular expression matching of the HTTP body
-//     * ValidHTML         checks if body parses as HTML5
+//     * Body              text lookup in the HTTP body
+//     * W3CValidHTML      checks if body parses as HTML5
 //     * HTMLContains      checks occurence HTML elements choosen via CSS-selectors
 //     * HTMLContainsText  checks text content of CSS-selected elements
-//     * Image             checks image format and size
+//     * Image             checks image format, size and content
 //     * Header            checks presence and values of received HTTP header
 //     * SetCookie         checks properties of received cookies
 //     * JSON              checks structure and content of a JSON body
+//     * Links             make sure hrefs and srcs in HTML are accesible
 // Upcomming checks (TODO):
 //     * XML               some kind of XML checking
-//     * LinkValidation    make sure hrefs and srcs in HTML are accesible
 //     * LogFile           limit grows and check content of log output
 //
 // Requests
@@ -80,7 +79,7 @@
 //
 // A Test is basically just a Request combined with a list of Checks.
 // Running a Test is executing the request and validating the response
-// according to the Checks. Before a test can be run the variable substutution
+// according to the Checks. Before a test can be run the variable substitution
 // in the Request and the Checks have to happen, a real HTTP request
 // has to be crafted and checks have to be set up. This is done by compiling
 // the test, a step wich may fail: a) if the Request is malformed (e.g. uses
