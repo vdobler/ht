@@ -708,13 +708,14 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 			basename = filename[1:i]
 			file = strings.NewReader(filename[i+1:])
 		} else {
-			file, err := os.Open(filename)
+			fsfile, err := os.Open(filename)
 			if err != nil {
 				return nil, "", fmt.Errorf(
 					"Unable to read file %q for multipart parameter %q: %s",
 					filename, n, err.Error())
 			}
-			defer file.Close()
+			defer fsfile.Close()
+			file = fsfile
 			basename = path.Base(filename)
 		}
 
