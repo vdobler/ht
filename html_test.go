@@ -134,6 +134,11 @@ func TestW3CValidHTML(t *testing.T) {
 }
 
 func TestHTMLLinks(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping HTMLLinks test in short mode.")
+	}
+	// TODO: make a test which doesn't require network
+
 	bodyOkay := `<!doctype html>
 <html>
 <head>
@@ -164,7 +169,7 @@ func TestHTMLLinks(t *testing.T) {
 		Verbosity: 1,
 	}
 
-	checkA := Links{Which: "a,img,link,script", Concurrency: 2}
+	checkA := Links{Which: "a img link script", Concurrency: 2}
 	err = checkA.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
