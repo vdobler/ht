@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
-	"strings"
 	"sync"
 	"time"
 )
@@ -175,11 +174,14 @@ func (s *Suite) Execute() {
 // ExecuteConcurrent executes all non-setup, non-teardown tests concurrently.
 // But at most maxConcurrent tests of s are executed concurrently.
 func (s *Suite) ExecuteConcurrent(maxConcurrent int) error {
+	s.Status = NotRun
+	s.Error = nil
 	if maxConcurrent > len(s.Tests) {
 		maxConcurrent = len(s.Tests)
 	}
-	s.Log.Printf("Running %d test concurrently", maxConcurrent)
-	res := make(chan string, len(s.Tests))
+	if s.Log != nil {
+		s.Log.Printf("Running %d test concurrently", maxConcurrent)
+	}
 
 	c := make(chan *Test, maxConcurrent)
 	wg := sync.WaitGroup{}
@@ -189,9 +191,6 @@ func (s *Suite) ExecuteConcurrent(maxConcurrent int) error {
 			defer wg.Done()
 			for test := range c {
 				test.Run(s.Variables) // TODO
-				if test.Status != Pass {
-					res <- test.Name
-				}
 			}
 		}()
 	}
@@ -200,15 +199,18 @@ func (s *Suite) ExecuteConcurrent(maxConcurrent int) error {
 	}
 	close(c)
 	wg.Wait()
-	close(res)
 
-	var failures []string
-	for ft := range res {
-		failures = append(failures, ft)
+	for _, test := range s.Tests {
+		if test.Status > s.Status {
+			s.Status = test.Status
+		}
 	}
-	if len(failures) > 0 {
-		return fmt.Errorf("Failes %d of %d test: %s", len(failures),
-			len(s.Tests), strings.Join(failures, ", "))
+
+	if s.Status > Pass {
+		n, k, p, f, e, b := s.Stats()
+		s.Error = fmt.Errorf("Suite failed: N=%d S=%d P=%d F=%d E=%d B=%d",
+			n, k, p, f, e, b)
+		return s.Error
 	}
 	return nil
 }
