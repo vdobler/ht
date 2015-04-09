@@ -52,8 +52,10 @@ type Request struct {
 	// the request.
 	//
 	// If the parameters are sent as multipart it is possible to include
-	// files: If a parameter values starts with "@file:" the rest of
-	// the value is interpreted as as filename and this file is sent.
+	// files by letting the parameter values start with "@file:". Two
+	// version are possible "@file:path/to/file" will send a file read
+	// from the given filesystem path while "@file:@name:the-file-data"
+	// will use the-file-data as the content.
 	Params url.Values `json:",omitempty"`
 
 	// ParamsAs determines how the parameters in the Param field are sent:
@@ -699,14 +701,22 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 			continue // allready written
 		}
 		filename := v[0][6:]
-		file, err := os.Open(filename)
-		if err != nil {
-			return nil, "", fmt.Errorf(
-				"Unable to read file %q for multipart parameter %q: %s",
-				filename, n, err.Error())
+		var file io.Reader
+		var basename string
+		if filename[0] == '@' {
+			i := strings.Index(filename, ":")
+			basename = filename[1:i]
+			file = strings.NewReader(filename[i+1:])
+		} else {
+			file, err := os.Open(filename)
+			if err != nil {
+				return nil, "", fmt.Errorf(
+					"Unable to read file %q for multipart parameter %q: %s",
+					filename, n, err.Error())
+			}
+			defer file.Close()
+			basename = path.Base(filename)
 		}
-		defer file.Close()
-		basename := path.Base(filename)
 
 		// Doing fw, err := mpwriter.CreateFormFile(n, basename) would
 		// be much simpler but would fix the content type to
@@ -716,8 +726,8 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 			fmt.Sprintf(`form-data; name="%s"; filename="%s"`,
 				escapeQuotes(n), escapeQuotes(basename)))
 		var ct string = "application/octet-stream"
-		if i := strings.LastIndex(filename, "."); i != -1 {
-			ct = mime.TypeByExtension(filename[i:])
+		if i := strings.LastIndex(basename, "."); i != -1 {
+			ct = mime.TypeByExtension(basename[i:])
 			if ct == "" {
 				ct = "application/octet-stream"
 			}

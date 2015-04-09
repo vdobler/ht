@@ -7,14 +7,11 @@
 package ht
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
-	"net/textproto"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/andybalholm/cascadia"
 	"golang.org/x/net/html"
@@ -58,71 +55,53 @@ type W3CValidHTML struct {
 }
 
 func (w W3CValidHTML) Execute(t *Test) error {
-	// It would be nice to use a ht.Test here but that would be
-	// a circular dependency, so craft the request by hand.
-
-	// Create a multipart body.
-	var body *bytes.Buffer = &bytes.Buffer{}
-	var mpwriter = multipart.NewWriter(body)
-	h := make(textproto.MIMEHeader)
-	h.Set("Content-Disposition",
-		`form-data; name="uploaded_file"; filename="sample.html"`)
-	h.Set("Content-Type", "text/html")
-	fw, err := mpwriter.CreatePart(h)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(fw, t.Response.Body())
-	if err != nil {
-		return err
-	}
-	for _, p := range []struct {
-		name  string
-		value string
-	}{
-		{"charset", "(detect automatically)"},
-		{"fbc", "1"},
-		{"doctype", "Inline"},
-		{"fbd", "1"},
-		{"group", "0"},
-	} {
-		err = mpwriter.WriteField(p.name, p.value)
-		if err != nil {
-			return err
-		}
-	}
-	err = mpwriter.Close()
-	if err != nil {
-		return err
+	file := "@file:@sample.html:" + string(t.Response.BodyBytes)
+	test := &Test{
+		Name: "W3CValidHTML",
+		Request: Request{
+			Method: "POST",
+			URL:    "http://validator.w3.org/check",
+			Params: url.Values{
+				"charset":       {"(detect automatically)"},
+				"fbc":           {"1"},
+				"doctype":       {"Inline"},
+				"fbd":           {"1"},
+				"group":         {"0"},
+				"uploaded_file": {file},
+			},
+			ParamsAs: "multipart",
+			Header: http.Header{
+				"Accept":     {"text/html,application/xhtml+xml"},
+				"User-Agent": {"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36"},
+			},
+		},
+		Checks: CheckList{
+			StatusCode{Expect: 200},
+		},
 	}
 
-	// Create and do a request to the W3C validator
-	valReq, err := http.NewRequest("POST", "http://validator.w3.org/check", body)
+	// TODO: properly limit gloabl rate at which we fire to W3C validator
+	time.Sleep(100 * time.Millisecond)
+
+	err := test.Run(nil)
 	if err != nil {
-		return err
+		return CantCheck{err}
 	}
-	valReq.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-	valReq.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36")
-	// valReq.Header.Set("Accept-Encoding", "gzip, deflate")
-	ct := fmt.Sprintf("multipart/form-data; boundary=%s", mpwriter.Boundary())
-	valReq.Header.Set("Content-Type", ct)
-	valResp, err := http.DefaultClient.Do(valReq)
-	if err != nil {
-		return err
+	if test.Status != Pass {
+		return CantCheck{test.Error}
 	}
-	defer valResp.Body.Close()
 
 	// Interprete response from validator
-	for h, vv := range valResp.Header {
-		if !strings.HasPrefix(vv[0], "X-W3c-Validator") {
-			continue
-		}
-		fmt.Printf("%-30s = %s\n", h, vv[0])
+	valStat := test.Response.Response.Header.Get("X-W3C-Validator-Status")
+	if valStat == "Abort" {
+		return CantCheck{fmt.Errorf("validator service sent Abort")}
+	} else if valStat == "Valid" {
+		return nil
 	}
 
-	doc, err := html.Parse(valResp.Body)
+	doc, err := html.Parse(test.Response.Body())
 	if err != nil {
-		return err
+		return CantCheck{err}
 	}
 
 	// Errors
