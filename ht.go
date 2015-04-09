@@ -436,9 +436,9 @@ func (t *Test) prepare(variables map[string]string) error {
 		e := t.checks[i].Prepare()
 		if e != nil {
 			cfc = append(cfc, i)
-			cfce = append(cfce, err.Error())
+			cfce = append(cfce, e.Error())
 			t.errorf("preparing check %d %q: %s",
-				i, NameOf(t.Checks[i]), err.Error())
+				i, NameOf(t.Checks[i]), e.Error())
 		}
 	}
 	if len(cfc) != 0 {
@@ -591,7 +591,7 @@ func (t *Test) executeRequest() error {
 // the tests are skipped.
 func (t *Test) executeChecks(result []CheckResult) {
 	done := false
-	for i, ck := range t.Checks {
+	for i, ck := range t.checks {
 		start := time.Now()
 		err := ck.Execute(t)
 		result[i].Duration = Duration(time.Since(start))
