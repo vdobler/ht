@@ -30,6 +30,9 @@ func TestLoadSuite(t *testing.T) {
 		t.Skip("Skipping execution without network in short mode.")
 	}
 
+	if testing.Short() {
+		return
+	}
 	suite.ExecuteTests()
 	if suite.Status != Pass {
 		for _, tr := range suite.AllTests() {
