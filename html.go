@@ -328,8 +328,33 @@ func (c *Links) Execute(response *Response) error {
 	for _, tag := range c.tags {
 		refs = append(refs, c.linkURL(doc, tag, response.Response.Request.URL)...)
 	}
+
+	suite := &Suite{}
 	for _, r := range refs {
-		println(r)
+		test := &Test{
+			Name: fmt.Sprintf("Link %q", r),
+			Request: Request{
+				Method:          "HEAD",
+				URL:             r,
+				FollowRedirects: true,
+			},
+			ClientPool: nil, // t.ClientPool
+			Checks: CheckList{
+				StatusCode{Expect: 200},
+			},
+			Verbosity: 3,
+		}
+		suite.Tests = append(suite.Tests, test)
+	}
+
+	err = suite.Prepare()
+	println("Suite contains tests", len(suite.Tests))
+	if err != nil {
+		return CantCheck{fmt.Errorf("Constructed meta test are bad: %s", err)}
+	}
+	suite.Execute()
+	if suite.Status != Pass {
+		return suite.Error
 	}
 	return nil
 }
