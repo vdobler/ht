@@ -22,6 +22,7 @@ func init() {
 	RegisterCheck(&HTMLContainsText{})
 	RegisterCheck(ValidHTML{})
 	RegisterCheck(W3CValidHTML{})
+	RegisterCheck(&Links{})
 }
 
 // ----------------------------------------------------------------------------
@@ -306,55 +307,95 @@ func textContent(n *html.Node) string {
 
 // Links checks links and references in HTML pages for availability
 type Links struct {
-	// Head triggers HEAD request insted of GET requests.
+	// Head triggers HEAD request instead of GET requests.
 	Head bool
 
-	// Which links to test; a combination of "a", "img", "link" and "script"
+	// Which links to test; a combination of "a", "img", "link" and "script".
+	// E.g. use "a img" to check the href of all a-tags and src of all img-tags.
 	Which string
+
+	// Concurrency determines how many of the found links are checked
+	// concurrently. A zero value indicats sequential checking.
+	Concurrency int `json:",omitempty"`
+
+	// Timeout if different from main test.
+	Timeout Duration `json:",omitempty"`
+
+	IgnoredLinks []Condition `json:",omitempty"`
 
 	tags []string
 }
 
-func (c *Links) Execute(response *Response) error {
-	if response.BodyErr != nil {
+func (c *Links) Execute(t *Test) error {
+	if t.Response.BodyErr != nil {
 		return BadBody
 	}
-	doc, err := html.Parse(response.Body())
+	doc, err := html.Parse(t.Response.Body())
 	if err != nil {
 		return CantCheck{err}
 	}
 
 	refs := []string{}
 	for _, tag := range c.tags {
-		refs = append(refs, c.linkURL(doc, tag, response.Response.Request.URL)...)
+		refs = append(refs, c.linkURL(doc, tag, t.Request.Request.URL)...)
 	}
 
 	suite := &Suite{}
+	method := "GET"
+	if c.Head {
+		method = "HEAD"
+	}
+	timeout := t.Timeout
+	if c.Timeout > 0 {
+		timeout = c.Timeout
+	}
+
+outer:
 	for _, r := range refs {
+		for _, cond := range c.IgnoredLinks {
+			if cond.Fullfilled(r) == nil {
+				continue outer
+			}
+		}
 		test := &Test{
-			Name: fmt.Sprintf("Link %q", r),
+			Name: r,
 			Request: Request{
-				Method:          "HEAD",
+				Method:          method,
 				URL:             r,
 				FollowRedirects: true,
 			},
-			ClientPool: nil, // t.ClientPool
+			ClientPool: t.ClientPool,
 			Checks: CheckList{
 				StatusCode{Expect: 200},
 			},
-			Verbosity: 3,
+			Verbosity: t.Verbosity - 1,
+			Timeout:   timeout,
 		}
 		suite.Tests = append(suite.Tests, test)
 	}
 
 	err = suite.Prepare()
-	println("Suite contains tests", len(suite.Tests))
 	if err != nil {
 		return CantCheck{fmt.Errorf("Constructed meta test are bad: %s", err)}
 	}
-	suite.Execute()
+	conc := 1
+	if c.Concurrency > 1 {
+		conc = c.Concurrency
+	}
+	suite.ExecuteConcurrent(conc)
 	if suite.Status != Pass {
-		return suite.Error
+		broken := []string{}
+		for _, test := range suite.Tests {
+			if test.Status == Error || test.Status == Bogus {
+				broken = append(broken, fmt.Sprintf("%s  -->  %s",
+					test.Request.URL, test.Error))
+			} else if test.Status == Fail {
+				broken = append(broken, fmt.Sprintf("%s  -->  %d",
+					test.Request.URL,
+					test.Response.Response.StatusCode))
+			}
+		}
+		return fmt.Errorf("%s", strings.Join(broken, "\n"))
 	}
 	return nil
 }
@@ -372,7 +413,8 @@ func (_ Links) linkURL(doc *html.Node, tag string, reqURL *url.URL) []string {
 	refs := []string{}
 	for _, m := range matches {
 		for _, a := range m.Attr {
-			if a.Key != ak || a.Val == "#" {
+			if a.Key != ak || a.Val == "#" ||
+				strings.HasPrefix(a.Val, "mailto:") {
 				continue
 			}
 			u, err := reqURL.Parse(a.Val)
@@ -388,20 +430,22 @@ func (_ Links) linkURL(doc *html.Node, tag string, reqURL *url.URL) []string {
 }
 
 func (c *Links) Prepare() (err error) {
-	c.Which = strings.ToLower(c.Which)
-	c.Which = strings.Replace(c.Which, ", ", ",", -1)
-	c.Which = strings.Replace(c.Which, " ", ",", -1)
-
-	for _, tag := range strings.Split(c.Which, ",") {
+	// TODO: compile IgnoredLinks
+	c.tags = nil
+	for _, tag := range strings.Split(c.Which, " ") {
 		tag = strings.TrimSpace(tag)
 		switch tag {
 		case "": // ignored
 		case "a", "img", "link", "script":
 			c.tags = append(c.tags, tag)
 		default:
+			fmt.Println("Bad", tag)
 			return fmt.Errorf("Unknown link tag %q", tag)
 		}
 	}
-	c.Which = strings.Join(c.tags, ", ")
+
+	if len(c.tags) == 0 {
+		return fmt.Errorf("Bad or missing value for Which: %q", c.Which)
+	}
 	return nil
 }

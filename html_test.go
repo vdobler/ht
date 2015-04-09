@@ -134,20 +134,74 @@ func TestW3CValidHTML(t *testing.T) {
 }
 
 func TestHTMLLinks(t *testing.T) {
-	checkA := Links{Which: "a,img,link,script"}
-	baseURL, err := url.Parse("http://www.domain.test/some/path/file.html")
+	bodyOkay := `<!doctype html>
+<html>
+<head>
+  <title>CSS Selectors</title>
+  <link rel="copyright" title="Copyright" href="/impressum.html" />
+  <script type="text/javascript" src="/js/jquery/jquery-1.7.1.min.js"></script>
+</head>
+<body>
+  <img src="//www.heise.de/icons/ho/heise_online_logo_top.gif">
+  <a href="http://www.google.com">Link4</a>
+</body>
+</html>`
+
+	baseURL, err := url.Parse("http://www.heise.de")
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	hcr.Response = &http.Response{
-		Request: &http.Request{
-			URL: baseURL,
+
+	test := &Test{
+		Request: Request{
+			Request: &http.Request{
+				URL: baseURL,
+			},
 		},
+		Response: Response{
+			BodyBytes: []byte(bodyOkay),
+		},
+		Verbosity: 1,
 	}
+
+	checkA := Links{Which: "a,img,link,script", Concurrency: 2}
 	err = checkA.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	checkA.Execute(&hcr)
+	err = checkA.Execute(test)
+	if err != nil {
+		t.Errorf("Unexpected errors %#v", err)
+	}
+
+	// Now all links broken
+	bodyBad := `<!doctype html>
+<html>
+<head>
+  <title>CSS Selectors</title>
+  <link rel="copyright" title="Copyright" href="/impressum404.html" />
+  <script type="text/javascript" src="/js/jquery/jquery-9.9.9.min.js"></script>
+</head>
+<body>
+  <img src="//www.heise.de/icons/ho/heise_online_logo_todownother.gif">
+  <a href="http://www.google.com/fobbar">Link4</a>
+</body>
+</html>`
+	test.Response.BodyBytes = []byte(bodyBad)
+	err = checkA.Prepare()
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	err = checkA.Execute(test)
+	if err == nil {
+		t.Fatalf("Expected errors")
+	}
+
+	if err.Error() != `http://www.google.com/fobbar  -->  404
+http://www.heise.de/icons/ho/heise_online_logo_todownother.gif  -->  404
+http://www.heise.de/impressum404.html  -->  404
+http://www.heise.de/js/jquery/jquery-9.9.9.min.js  -->  404` {
+		t.Errorf("Got wrong error:\n%s", err.Error())
+	}
 
 }
