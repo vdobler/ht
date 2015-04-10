@@ -24,13 +24,13 @@ after doing warmup many requests which are not measured.
 
 func init() {
 	cmdBench.Flag.IntVar(&bcountFlag, "count", 17,
-		"number of requests to measure")
+		"measure `n` requests")
 	cmdBench.Flag.IntVar(&concurrentFlag, "concurrent", 1,
-		"concurrency level")
+		"run `conc` many request in parallel")
 	cmdBench.Flag.IntVar(&warmupFlag, "warmup", 3,
-		"number of request to do before actual mesurement")
+		"warmup system with `n` unmeasured requests")
 	cmdBench.Flag.DurationVar(&pauseFlag, "pause", 10*time.Millisecond,
-		"duration to pause between requests")
+		"sleep `duration` between requests")
 }
 
 var (
