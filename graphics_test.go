@@ -7,7 +7,6 @@ package ht
 import (
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 )
 
@@ -40,7 +39,7 @@ func TestResponseTimeHistogram(t *testing.T) {
 		Request: Request{
 			Method: "GET",
 			URL:    ts.URL + "/",
-			Params: url.Values{
+			Params: URLValues{
 				"text": {"Hello World!"},
 				"smin": {"20"},
 				"smax": {"75"},

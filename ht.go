@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +41,63 @@ var (
 	DefaultClientTimeout = Duration(2 * time.Second)
 )
 
+// URLValues is a url.Values with a fancier JSON unmarshalling.
+type URLValues url.Values
+
+// UnmarshalJSON produces a map[string][]string from various JSON5 representations. E.g.
+//    {
+//      a: 12,
+//      b: "foo",
+//      c: [ 23, "bar"]
+//    }
+// can be unmarshaled with the expected result.
+func (v *URLValues) UnmarshalJSON(data []byte) error {
+	vals := make(url.Values)
+	raw := map[string]json5.RawMessage{}
+	err := json5.Unmarshal(data, &raw)
+	if err != nil {
+		return err
+	}
+	for name, r := range raw {
+		var generic interface{}
+		err := json5.Unmarshal(r, &generic)
+		if err != nil {
+			return err
+		}
+		switch g := generic.(type) {
+		case float64:
+			vals[name] = []string{float64ToString(g)}
+		case string:
+			vals[name] = []string{g}
+		case []interface{}:
+			vals[name] = []string{}
+			for _, sub := range g {
+				switch gg := sub.(type) {
+				case float64:
+					vals[name] = append(vals[name], float64ToString(gg))
+				case string:
+					vals[name] = append(vals[name], gg)
+				default:
+					return fmt.Errorf("ht: illegal url query value %v of type %T for query parameter %s", sub, gg, name)
+				}
+			}
+		default:
+			return fmt.Errorf("ht: illegal url query value %v of type %T for query parameter %s", generic, g, name)
+		}
+	}
+
+	*v = URLValues(vals)
+	return nil
+}
+
+func float64ToString(f float64) string {
+	t := math.Trunc(f)
+	if math.Abs(t-f) < 1e-6 {
+		return strconv.Itoa(int(t))
+	}
+	return fmt.Sprintf("%g", f)
+}
+
 // Request is a HTTP request.
 type Request struct {
 	// Method is the HTTP method to use.
@@ -56,7 +115,7 @@ type Request struct {
 	// version are possible "@file:path/to/file" will send a file read
 	// from the given filesystem path while "@file:@name:the-file-data"
 	// will use the-file-data as the content.
-	Params url.Values `json:",omitempty"`
+	Params URLValues `json:",omitempty"`
 
 	// ParamsAs determines how the parameters in the Param field are sent:
 	//   "URL" or "": append properly encoded to URL
@@ -273,7 +332,7 @@ func Merge(tests ...*Test) (*Test, error) {
 	}
 	m.Description = strings.Join(s, "\n")
 
-	m.Request.Params = make(url.Values)
+	m.Request.Params = make(URLValues)
 	m.Request.Header = make(http.Header)
 	for _, t := range tests {
 		err := mergeRequest(&m.Request, t.Request)
@@ -471,7 +530,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	}
 
 	rurl := repl.str.Replace(t.Request.URL)
-	urlValues := make(url.Values)
+	urlValues := make(URLValues)
 	for param, vals := range t.Request.Params {
 		rv := make([]string, len(vals))
 		for i, v := range vals {
@@ -495,13 +554,13 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 		switch t.Request.ParamsAs {
 		case "URL", "":
 			if strings.Index(rurl, "?") != -1 {
-				rurl += "&" + urlValues.Encode()
+				rurl += "&" + url.Values(urlValues).Encode()
 			} else {
-				rurl += "?" + urlValues.Encode()
+				rurl += "?" + url.Values(urlValues).Encode()
 			}
 		case "body":
 			contentType = "application/x-www-form-urlencoded"
-			encoded := urlValues.Encode()
+			encoded := url.Values(urlValues).Encode()
 			t.Request.SentBody = encoded
 			body = ioutil.NopCloser(strings.NewReader(encoded))
 		case "multipart":

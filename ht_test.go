@@ -12,7 +12,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"strconv"
 	"testing"
@@ -33,7 +32,7 @@ func TestStatusCode(t *testing.T) {
 			Request: Request{
 				Method:          "GET",
 				URL:             ts.URL + "/",
-				Params:          url.Values{"status": []string{s}},
+				Params:          URLValues{"status": []string{s}},
 				FollowRedirects: false,
 			},
 			Checks: []Check{
@@ -55,7 +54,7 @@ func TestParameterHandling(t *testing.T) {
 	test := Test{Request: Request{
 		Method: "POST",
 		URL:    "http://www.test.org",
-		Params: url.Values{
+		Params: URLValues{
 			"single":  []string{"abc"},
 			"multi":   []string{"1", "2"},
 			"special": []string{"A%+& &?/Z"},
@@ -128,7 +127,7 @@ func TestRTStats(t *testing.T) {
 		Request: Request{
 			Method: "GET",
 			URL:    ts.URL + "/",
-			Params: url.Values{
+			Params: URLValues{
 				"smin": []string{"{{SMIN}}"},
 				"smax": []string{"{{SMAX}}"},
 				"fail": {"5"},
@@ -291,7 +290,7 @@ func TestClientTimeout(t *testing.T) {
 		Request: Request{
 			Method: "GET",
 			URL:    ts.URL + "/",
-			Params: url.Values{
+			Params: URLValues{
 				"smin": {"100"}, "smax": {"110"},
 			},
 			FollowRedirects: false,
@@ -318,7 +317,7 @@ func TestMarshalTest(t *testing.T) {
 		Description: "Some searches",
 		Request: Request{
 			URL: "https://{{HOST}}/de/tools/suche.html",
-			Params: url.Values{
+			Params: URLValues{
 				"q": []string{"{{QUERY}}"},
 				"w": []string{"AB", "XZ"},
 			},
@@ -382,7 +381,7 @@ func TestMerge(t *testing.T) {
 				"User-Agent": []string{"A User Agent"},
 				"Special-A":  []string{"Special A Value"},
 			},
-			Params: url.Values{
+			Params: URLValues{
 				"q": []string{"foo-A"},
 				"a": []string{"aa", "AA"},
 			},
@@ -403,7 +402,7 @@ func TestMerge(t *testing.T) {
 				"User-Agent": []string{"B User Agent"},
 				"Special-B":  []string{"Special B Value"},
 			},
-			Params: url.Values{
+			Params: URLValues{
 				"q": []string{"foo-B"},
 				"b": []string{"bb", "BB"},
 			},
@@ -441,4 +440,76 @@ func TestMerge(t *testing.T) {
 		t.Errorf("Bad cookies. Got %#v", c.Request.Cookies)
 	}
 
+}
+
+func TestUnmarshalURLValues(t *testing.T) {
+	j := []byte(`{
+    q: 7,
+    w: "foo",
+    z: [ 3, 1, 4, 1 ],
+    x: [ "bar", "quz" ],
+    y: [ 2, "waz", 9 ],
+    v: [ 1.2, -1.2, 4.00001, -4.00001, 3.999999, -3.99999 ]
+}`)
+
+	var uv URLValues
+	err := json5.Unmarshal(j, &uv)
+	if err != nil {
+		t.Fatalf("Unexpected error %#v", err)
+	}
+
+	s, err := json5.MarshalIndent(uv, "", "    ")
+	if err != nil {
+		t.Fatalf("Unexpected error %#v", err)
+	}
+
+	if string(s) != `{
+    q: [
+        "7"
+    ],
+    v: [
+        "1.2",
+        "-1.2",
+        "4.00001",
+        "-4.00001",
+        "3.999999",
+        "-3.99999"
+    ],
+    w: [
+        "foo"
+    ],
+    x: [
+        "bar",
+        "quz"
+    ],
+    y: [
+        "2",
+        "waz",
+        "9"
+    ],
+    z: [
+        "3",
+        "1",
+        "4",
+        "1"
+    ]
+}` {
+		t.Errorf("Got unexpected value:\n%s", s)
+	}
+
+}
+
+func TestUnmarshalURLValuesError(t *testing.T) {
+	for i, tc := range []string{
+		`{q: {a:1, b:2}}`,
+		`{q: [ [1,2], [3,4] ] }`,
+		`{q: [ 1, 2, {a:7, b:8}, 3 ] }`,
+	} {
+
+		var uv URLValues
+		err := json5.Unmarshal([]byte(tc), &uv)
+		if err == nil {
+			t.Errorf("%d. missing error on %s", i, tc)
+		}
+	}
 }

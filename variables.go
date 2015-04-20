@@ -7,7 +7,6 @@ package ht
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -82,7 +81,7 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 	}
 
 	// Apply to request parameters.
-	c.Request.Params = make(url.Values)
+	c.Request.Params = make(URLValues)
 	for param, vals := range t.Request.Params {
 		rv := make([]string, len(vals))
 		for i, v := range vals {

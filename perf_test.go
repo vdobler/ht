@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -24,7 +23,7 @@ func setupPerfSuites(t *testing.T) ([]*Suite, *httptest.Server) {
 		Request: Request{
 			Method: "GET",
 			URL:    ts.URL + "/",
-			Params: url.Values{
+			Params: URLValues{
 				"smin": []string{"{{SMIN}}"},
 				"smax": []string{"{{SMAX}}"},
 				"bad":  {"5"},

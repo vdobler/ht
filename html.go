@@ -62,7 +62,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 		Request: Request{
 			Method: "POST",
 			URL:    "http://validator.w3.org/check",
-			Params: url.Values{
+			Params: URLValues{
 				"charset":       {"(detect automatically)"},
 				"fbc":           {"1"},
 				"doctype":       {"Inline"},

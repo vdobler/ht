@@ -7,7 +7,6 @@ package ht
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -66,7 +65,7 @@ func TestSubstituteTestVariables(t *testing.T) {
 		Request: Request{
 			Method: "GET",
 			URL:    "url={{x}}",
-			Params: url.Values{
+			Params: URLValues{
 				"pn={{x}}": []string{"pv={{x}}"},
 			},
 			Header: http.Header{
@@ -122,7 +121,7 @@ func TestFindNow(t *testing.T) {
 		Request: Request{
 			Method: "GET",
 			URL:    "now+2 == {{NOW + 2s}}",
-			Params: url.Values{
+			Params: URLValues{
 				"text": []string{`now+3 == {{NOW+3s | "2006-Jan-02"}}`}},
 			Header:          http.Header{"header": []string{"now+4 == {{NOW+4s}}"}},
 			FollowRedirects: false,
