@@ -52,7 +52,6 @@ type Image struct {
 	Threshold float64 `json:",omitempty"`
 }
 
-// Okay implements the Check interface.
 func (c Image) Execute(t *Test) error {
 	img, format, err := image.Decode(t.Response.Body())
 	if err != nil {
