@@ -189,6 +189,10 @@ const ms = 1e6
 func runTest(t *testing.T, i int, tc TC) {
 	tc.r.Body()
 	fakeTest := Test{Response: tc.r}
+	if err := tc.c.Prepare(); err != nil {
+		t.Errorf("%d. %s %v: unexpected error during Prepare %v",
+			i, NameOf(tc.c), tc.c, err)
+	}
 	got := tc.c.Execute(&fakeTest)
 	switch {
 	case got == nil && tc.e == nil:
