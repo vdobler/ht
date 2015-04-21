@@ -28,11 +28,6 @@ func init() {
 // a field skipps the check of that property.
 // Image fingerprinting is done via github.com/vdobler/ht/fingerprint.
 // Only one of BMV or ColorHist should be used as there is just one threshold.
-//
-// Note that you have to register the apropriate image decoder functions
-// with package image, e.g. by
-//     import _ "image/png"
-// if you want to check PNG images.
 type Image struct {
 	// Format is the format of the image as registered in package image.
 	Format string `json:",omitempty"`
