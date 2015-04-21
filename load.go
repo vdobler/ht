@@ -5,6 +5,7 @@
 package ht
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -168,6 +169,25 @@ type serSuite struct {
 	Variables map[string]string `json:",omitempty"`
 }
 
+func beautifyJSONError(err error, jsonData []byte, filename string) string {
+	se, ok := err.(*json5.SyntaxError)
+	if !ok {
+		return err.Error()
+	}
+
+	off := int(se.Offset)
+	lines := bytes.Split(jsonData, []byte("\n"))
+	total := 0
+	lineNo := 0
+	for total+len(lines[lineNo]) < off {
+		total += len(lines[lineNo]) + 1 // +1 for the \n removed in splitting
+		lineNo++
+	}
+	ch := off - total - 1
+	return fmt.Sprintf("%s:%d: %s\n... %s ...\n    %s^",
+		filename, lineNo+1, err, lines[lineNo], strings.Repeat(" ", ch))
+}
+
 // loadSuiteJSON loads the file with the given filename and decodes into
 // a serSuite. It will try to find filename in all paths and will report
 // the dir path back in which the suite was found.
@@ -186,7 +206,7 @@ func loadSuiteJSON(filename string, paths []string) (s serSuite, dir string, err
 	}
 	err = json5.Unmarshal(all, &s)
 	if err != nil {
-		fmt.Printf("loadSuiteJSON error = %#v\n", err)
+		err = fmt.Errorf(beautifyJSONError(err, all, filename))
 		return s, dir, err
 	}
 
@@ -240,7 +260,7 @@ func loadTestJSON(filename string) (*rawTest, error) {
 	t := &rawTest{}
 	err = json5.Unmarshal(all, t)
 	if err != nil {
-		fmt.Printf("loadTestJSON error = %#v\n", err)
+		err := fmt.Errorf(beautifyJSONError(err, all, filename))
 		return nil, err
 	}
 	testPool[t.Name] = t
