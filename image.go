@@ -35,12 +35,9 @@ type Image struct {
 	// If > 0 check width or height of image.
 	Width, Height int `json:",omitempty"`
 
-	// BMV is the 16 hex digit long Block Mean Value hash of the image.
-	BMV string `json:",omitempty"`
-
-	// ColorHist is the 24 hex digit long Color Histogram hash of
-	// the image.
-	ColorHist string `json:",omitempty"`
+	// Fingerprint is either the 16 hex digit long Block Mean Value hash or
+	// the 24 hex digit long Color Histogram hash of the image.
+	Fingerprint string `json:",omitempty"`
 
 	// Threshold is the limit up to which the received image may differ
 	// from the given BMV or ColorHist fingerprint.
@@ -70,8 +67,8 @@ func (c Image) Execute(t *Test) error {
 
 	}
 
-	if c.BMV != "" {
-		targetBMV, err := fingerprint.BMVHashFromString(c.BMV)
+	if len(c.Fingerprint) == 16 {
+		targetBMV, err := fingerprint.BMVHashFromString(c.Fingerprint)
 		if err != nil {
 			return CantCheck{fmt.Errorf("bad BMV hash: %s", err)}
 		}
@@ -81,9 +78,8 @@ func (c Image) Execute(t *Test) error {
 				imgBMV.String(), targetBMV.String(), d)
 		}
 
-	}
-	if c.ColorHist != "" {
-		targetCH, err := fingerprint.ColorHistFromString(c.ColorHist)
+	} else if len(c.Fingerprint) == 24 {
+		targetCH, err := fingerprint.ColorHistFromString(c.Fingerprint)
 		if err != nil {
 			return CantCheck{fmt.Errorf("bad ColorHist hash: %s", err)}
 		}
@@ -97,4 +93,14 @@ func (c Image) Execute(t *Test) error {
 	return nil
 }
 
-func (_ Image) Prepare() error { return nil }
+func (i Image) Prepare() error {
+	switch len(i.Fingerprint) {
+	case 0:
+		return nil
+	case 16, 24:
+		// TODO check for hex digits only
+		return nil
+	default:
+		return fmt.Errorf("ht: image fingerprint has illegal length %d", len(i.Fingerprint))
+	}
+}

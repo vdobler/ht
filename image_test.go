@@ -61,14 +61,14 @@ var imageTests = []TC{
 	{imgr, Image{Format: "png", Width: 12}, someError},
 	{imgr, Image{Format: "png", Height: 8}, someError},
 	{imgr, Image{Format: "png",
-		ColorHist: "000000000000000000f00007", Threshold: 0.01}, nil},
-	{imgl, Image{Format: "jpeg", ColorHist: "4f000000f400006010040004", Threshold: 0.01}, nil},
-	{imgl, Image{Format: "jpeg", BMV: "b698bd890b0b8f8c", Threshold: 0.01,
+		Fingerprint: "000000000000000000f00007", Threshold: 0.01}, nil},
+	{imgl, Image{Format: "jpeg", Fingerprint: "4f000000f400006010040004", Threshold: 0.01}, nil},
+	{imgl, Image{Format: "jpeg", Fingerprint: "b698bd890b0b8f8c", Threshold: 0.01,
 		Width: 64, Height: 64}, nil},
-	{imgl, Image{ColorHist: "bababuba"}, someError},
-	{imgl, Image{ColorHist: "4f000000f40000601004000"}, someError},
-	{imgl, Image{ColorHist: "4f000000f40000601004000ff"}, someError},
-	{imgl, Image{BMV: "strange"}, someError},
+	{imgl, Image{Fingerprint: "bababuba"}, prepareError},
+	{imgl, Image{Fingerprint: "4f000000f40000601004000"}, prepareError},
+	{imgl, Image{Fingerprint: "4f000000f40000601004000ff"}, prepareError},
+	{imgl, Image{Fingerprint: "strange"}, prepareError},
 }
 
 func TestImage(t *testing.T) {
