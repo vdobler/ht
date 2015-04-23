@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/vdobler/ht"
 )
@@ -26,15 +27,24 @@ the tests and executes them.
 func init() {
 	cmdExec.Flag.BoolVar(&serialFlag, "serial", false,
 		"run suites one after the other instead of concurrently")
+	cmdExec.Flag.StringVar(&outputDir, "output", "",
+		"save results to `dirname` instead of timestamp")
 }
 
 var (
 	serialFlag bool
-	sanitizer  = strings.NewReplacer(" ", "", ":", "", "@", "_at_", "/", "_",
-		"*", "_", "?", "_", "#", "_", "$", "_", "<", "_", ">", "_")
+	outputDir  string
+	sanitizer  = strings.NewReplacer(" ", "_", ":", "_", "@", "_at_", "/", "_",
+		"*", "_", "?", "_", "#", "_", "$", "_", "<", "_", ">", "_", "~", "_",
+		"ä", "ae", "ö", "oe", "ü", "ue", "Ä", "Ae", "Ö", "Oe", "Ü", "Ue",
+		"%", "_", "&", "+", "(", "_", ")", "_", "'", "_", "`", "_", "^", "_")
 )
 
 func runExecute(cmd *Command, suites []*ht.Suite) {
+	if outputDir == "" {
+		outputDir = time.Now().Format("2006-01-02_15h04m05s")
+	}
+	os.MkdirAll(outputDir, 0766)
 	var wg sync.WaitGroup
 	for i := range suites {
 		if serialFlag {
@@ -80,7 +90,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			total++
 		}
 
-		dirname := sanitizer.Replace(suites[s].Name)
+		dirname := outputDir + "/" + sanitizer.Replace(suites[s].Name)
 
 		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
 		err := os.MkdirAll(dirname, 0766)
