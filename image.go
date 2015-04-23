@@ -97,10 +97,18 @@ func (i Image) Prepare() error {
 	switch len(i.Fingerprint) {
 	case 0:
 		return nil
-	case 16, 24:
-		// TODO check for hex digits only
-		return nil
+	case 16:
+		_, err := fingerprint.BMVHashFromString(i.Fingerprint)
+		if err != nil {
+			return MalformedCheck{err}
+		}
+	case 24:
+		_, err := fingerprint.ColorHistFromString(i.Fingerprint)
+		if err != nil {
+			return MalformedCheck{err}
+		}
 	default:
 		return fmt.Errorf("ht: image fingerprint has illegal length %d", len(i.Fingerprint))
 	}
+	return nil
 }
