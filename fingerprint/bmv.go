@@ -25,7 +25,7 @@ import (
 //   *  The image is converted to a 8-bit gray scale image
 //   *  The image is devided into 8x8 non-overlapping blocks, for each block
 //      the mean gray value is calculated
-//   *  The average and medain of the 64 blocks is calculated.
+//   *  The average and median of the 64 blocks is calculated.
 //      If the median is >= 250 than the limit is set to the average
 //      else to the median.
 //   *  If the mean value of a block is higher than the limit, the
@@ -35,7 +35,7 @@ import (
 // may result in slight different inclusion of pixels in a block which
 // can switch this blocks value. This is an artefact of integer rounding
 // and not a difference in the image.  Using fractional block boundaries
-// make the hash value a much better fingerprint: It will be identical
+// makes the hash value a much better fingerprint: It will be identical
 // more often and if it misguided produces a bit difference, the Hamming
 // distance is much lower. This increase in quality justifies the increased
 // complexity and running time of the algorithm.
