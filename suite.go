@@ -136,6 +136,19 @@ func (s *Suite) execute(tests []*Test, which string) {
 				s.Error = test.Error
 			}
 		}
+		if test.Status == Pass {
+			fmt.Printf("XXXXXXXXXX\n")
+			for varname, value := range test.Extract() {
+				if old, ok := s.Variables[varname]; ok {
+					fmt.Printf("Updating variable %q from %q to %q\n",
+						varname, old, value)
+				} else {
+					fmt.Printf("Setting new variable %q to %q\n",
+						varname, value)
+				}
+				s.Variables[varname] = value
+			}
+		}
 	}
 }
 

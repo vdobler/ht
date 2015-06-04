@@ -44,7 +44,8 @@ var (
 // URLValues is a url.Values with a fancier JSON unmarshalling.
 type URLValues url.Values
 
-// UnmarshalJSON produces a map[string][]string from various JSON5 representations. E.g.
+// UnmarshalJSON produces a url.Values (i.e. a map[string][]string) from
+// various JSON5 representations. E.g.
 //    {
 //      a: 12,
 //      b: "foo",
@@ -212,6 +213,9 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
+	// VarEx may be used to popultate variables from the response.
+	VarEx map[string]Extractor
+
 	Poll      Poll     `json:",omitempty"`
 	Timeout   Duration // If zero use DefaultClientTimeout.
 	Verbosity int      // Verbosity level in logging.
@@ -222,7 +226,7 @@ type Test struct {
 
 	Response Response
 
-	// filled during Run
+	// The following results are filled during Run.
 	Status       Status        `json:"-"`
 	Started      time.Time     `json:"-"`
 	Error        error         `json:"-"`
@@ -311,6 +315,7 @@ outer:
 //       Body       Only one may be nonempty
 //       FollowRdr  Last wins
 //     Checks       Append all checks
+//     VarEx        TODO
 //     Poll
 //       Max        Use largest
 //       Sleep      Use largest
@@ -334,6 +339,7 @@ func Merge(tests ...*Test) (*Test, error) {
 
 	m.Request.Params = make(URLValues)
 	m.Request.Header = make(http.Header)
+	m.VarEx = make(map[string]Extractor)
 	for _, t := range tests {
 		err := mergeRequest(&m.Request, t.Request)
 		if err != nil {
@@ -351,6 +357,12 @@ func Merge(tests ...*Test) (*Test, error) {
 		}
 		if t.Verbosity > m.Verbosity {
 			m.Verbosity = t.Verbosity
+		}
+		for name, value := range t.VarEx {
+			if old, ok := m.VarEx[name]; ok && old != value {
+				return &m, fmt.Errorf("wont overwrite extractor for %s", name)
+			}
+			m.VarEx[name] = value
 		}
 	}
 

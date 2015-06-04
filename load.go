@@ -31,6 +31,7 @@ type rawTest struct {
 	BasedOn     []string `json:",omitempty"`
 	Request     Request
 	Checks      CheckList `json:",omitempty"`
+	VarEx       map[string]Extractor
 
 	// Unroll contains values to be used during unrolling the Test
 	// generated from the deserialized data to several real Tests.
@@ -42,11 +43,13 @@ type rawTest struct {
 }
 
 func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
+	fmt.Printf("rawTest = \n%#v\n", raw)
 	t := &Test{
 		Name:        raw.Name,
 		Description: raw.Description,
 		Request:     raw.Request,
 		Checks:      raw.Checks,
+		VarEx:       raw.VarEx,
 		Poll:        raw.Poll,
 		Timeout:     raw.Timeout,
 		Verbosity:   raw.Verbosity,

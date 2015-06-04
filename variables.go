@@ -78,6 +78,7 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 		Timeout:    t.Timeout,
 		Verbosity:  t.Verbosity,
 		ClientPool: t.ClientPool,
+		VarEx:      t.VarEx,
 	}
 
 	// Apply to request parameters.
