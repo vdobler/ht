@@ -78,13 +78,12 @@ func (c SetCookie) Execute(t *Test) error {
 			break
 		}
 	}
-	fmt.Printf("cookie=%#v  absent=%v\n", cookie, c.Absent)
 
 	if cookie == nil {
 		if c.Absent {
-			return fmt.Errorf("Missing cookie %s", c.Name)
+			return nil
 		}
-		return nil
+		return fmt.Errorf("Missing cookie %s", c.Name)
 	}
 	if c.Absent {
 		return fmt.Errorf("Found cookie %s=%s", c.Name, cookie.Value)
