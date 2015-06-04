@@ -43,7 +43,6 @@ type rawTest struct {
 }
 
 func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
-	fmt.Printf("rawTest = \n%#v\n", raw)
 	t := &Test{
 		Name:        raw.Name,
 		Description: raw.Description,
