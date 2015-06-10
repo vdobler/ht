@@ -326,20 +326,37 @@ type Links struct {
 	tags []string
 }
 
-func (c *Links) Execute(t *Test) error {
+func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 	if t.Response.BodyErr != nil {
-		return BadBody
+		return nil, BadBody
 	}
 	doc, err := html.Parse(t.Response.Body())
 	if err != nil {
-		return CantCheck{err}
+		return nil, CantCheck{err}
 	}
 
-	refs := []string{}
+	// Collect all non-ignored URL as map keys (for automatic deduplication).
+	refs := make(map[string]struct{})
+outer:
 	for _, tag := range c.tags {
-		refs = append(refs, c.linkURL(doc, tag, t.Request.Request.URL)...)
+		for _, u := range c.linkURL(doc, tag, t.Request.Request.URL) {
+			for _, cond := range c.IgnoredLinks {
+				if cond.Fullfilled(u) == nil {
+					continue outer
+				}
+			}
+			refs[u] = struct{}{}
+		}
 	}
 
+	return refs, nil
+}
+
+func (c *Links) Execute(t *Test) error {
+	refs, err := c.collectURLs(t)
+	if err != nil {
+		return err
+	}
 	suite := &Suite{}
 	method := "GET"
 	if c.Head {
@@ -350,13 +367,7 @@ func (c *Links) Execute(t *Test) error {
 		timeout = c.Timeout
 	}
 
-outer:
-	for _, r := range refs {
-		for _, cond := range c.IgnoredLinks {
-			if cond.Fullfilled(r) == nil {
-				continue outer
-			}
-		}
+	for r, _ := range refs {
 		test := &Test{
 			Name: r,
 			Request: Request{
