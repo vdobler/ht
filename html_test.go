@@ -5,8 +5,11 @@
 package ht
 
 import (
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -133,26 +136,39 @@ func TestW3CValidHTML(t *testing.T) {
 
 }
 
-func TestHTMLLinks(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping HTMLLinks test in short mode.")
+func htmlLinksHandler(w http.ResponseWriter, r *http.Request) {
+	status := 200
+	if strings.Index(r.URL.Path, "/404/") != -1 {
+		status = 404
+	} else if strings.Index(r.URL.Path, "/302/") != -1 {
+		status = 302
 	}
-	// TODO: make a test which doesn't require network
+	fmt.Printf("Request: %s %s\n", r.Host, r.URL.String())
+	http.Error(w, "Link Handler", status)
+}
 
-	bodyOkay := `<!doctype html>
+func TestHTMLLinks(t *testing.T) {
+	ts1 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
+	defer ts1.Close()
+	ts2 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
+	defer ts2.Close()
+
+	bodyOkay := fmt.Sprintf(`<!doctype html>
 <html>
 <head>
   <title>CSS Selectors</title>
-  <link rel="copyright" title="Copyright" href="/impressum.html" />
-  <script type="text/javascript" src="/js/jquery/jquery-1.7.1.min.js"></script>
+  <link rel="copyright" title="Copyright" href="/impressum.html#top" />
+  <script type="text/javascript" src="/js/jquery.js"></script>
 </head>
 <body>
-  <img src="//www.heise.de/icons/ho/heise_online_logo_top.gif">
-  <a href="http://www.google.com">Link4</a>
+  <a href="%s/foo">Link4</a>
+  <img src="%s/supertoll/bild.gif">
+  <a href="%s/foo">Link5</a>
+  <a href="%s/waz">LinkWAZ</a>
 </body>
-</html>`
+</html>`, ts1.URL, ts1.URL, ts1.URL, ts2.URL)
 
-	baseURL, err := url.Parse("http://www.heise.de")
+	baseURL, err := url.Parse(ts1.URL)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
@@ -174,10 +190,31 @@ func TestHTMLLinks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
+	urls, err := checkA.collectURLs(test)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	if len(urls) != 5 {
+		t.Fatalf("len(urls)=%d, want 5\nurls = %v", len(urls), urls)
+	}
+	for _, u := range []string{
+		ts1.URL + "/impressum.html",
+		ts1.URL + "/js/jquery.js",
+		ts1.URL + "/foo",
+		ts1.URL + "/supertoll/bild.gif",
+		ts2.URL + "/waz",
+	} {
+		if _, ok := urls[u]; !ok {
+			t.Fatalf("Missing URL %q in urls = %v", u, urls)
+		}
+	}
+
 	err = checkA.Execute(test)
 	if err != nil {
 		t.Errorf("Unexpected errors %#v", err)
 	}
+
+	return
 
 	// Now all links broken
 	bodyBad := `<!doctype html>
