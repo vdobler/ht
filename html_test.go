@@ -143,17 +143,14 @@ func htmlLinksHandler(w http.ResponseWriter, r *http.Request) {
 	} else if strings.Index(r.URL.Path, "/302/") != -1 {
 		status = 302
 	}
-	fmt.Printf("Request: %s %s\n", r.Host, r.URL.String())
+	linksHandlerCalls <- r.Host + r.URL.String()
 	http.Error(w, "Link Handler", status)
 }
 
-func TestHTMLLinks(t *testing.T) {
-	ts1 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
-	defer ts1.Close()
-	ts2 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
-	defer ts2.Close()
+var linksHandlerCalls chan string
 
-	bodyOkay := fmt.Sprintf(`<!doctype html>
+func TestHTMLLinksExtraction(t *testing.T) {
+	body := `<!doctype html>
 <html>
 <head>
   <title>CSS Selectors</title>
@@ -161,12 +158,76 @@ func TestHTMLLinks(t *testing.T) {
   <script type="text/javascript" src="/js/jquery.js"></script>
 </head>
 <body>
-  <a href="%s/foo">Link4</a>
-  <img src="%s/supertoll/bild.gif">
-  <a href="%s/foo">Link5</a>
-  <a href="%s/waz">LinkWAZ</a>
+  <a href="/path/link4">Link4</a>
+  <img src="/some/image.gif">
+  <a href="/path/link4#nav">Link4</a>
+  <a href="http://www.google.com">Google</a>
+  <a href="rel/path">Page</a>
+  <img src="http://www.amazon.com/logo.png">
 </body>
-</html>`, ts1.URL, ts1.URL, ts1.URL, ts2.URL)
+</html>`
+
+	baseURL, err := url.Parse("http://www.example.org/foo/bar.html")
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	test := &Test{
+		Request: Request{
+			Request: &http.Request{URL: baseURL},
+		},
+		Response: Response{BodyBytes: []byte(body)},
+	}
+
+	for i, tc := range []struct{ which, want string }{
+		{"img", "http://www.example.org/some/image.gif http://www.amazon.com/logo.png"},
+		{"link", "http://www.example.org/impressum.html"},
+		{"a", "http://www.example.org/path/link4 http://www.google.com http://www.example.org/foo/rel/path"},
+		{"script", "http://www.example.org/js/jquery.js"},
+	} {
+
+		check := Links{Which: tc.which}
+		err = check.Prepare()
+		if err != nil {
+			t.Fatalf("%d: unexpected error: %#v", i, err)
+		}
+		urls, err := check.collectURLs(test)
+		if err != nil {
+			t.Fatalf("%d: Unexpected error: %#v", i, err)
+		}
+		expectedURLs := strings.Split(tc.want, " ")
+		for _, expected := range expectedURLs {
+			if _, ok := urls[expected]; !ok {
+				t.Errorf("%d: Missing expected URL %q", i, expected)
+			}
+		}
+		if len(urls) > len(expectedURLs) {
+			t.Errorf("%d: Extracted too many URLs: Want %d, got %v",
+				i, len(expectedURLs), urls)
+		}
+	}
+}
+
+func testHTMLLinks(t *testing.T, urls []string) (called []string, err error) {
+	ts1 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
+	defer ts1.Close()
+	ts2 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
+	defer ts2.Close()
+
+	body := fmt.Sprintf(`<!doctype html>
+<html>
+<head>
+  <title>CSS Selectors</title>
+  <link rel="copyright" title="Copyright" href="%s#top" />
+  <script type="text/javascript" src="%s"></script>
+</head>
+<body>
+  <a href="%s">Link4</a>
+  <img src="%s">
+  <a href="%s#nav">Link5</a>
+  <a href="%s">LinkWAZ</a>
+</body>
+</html>`, urls[0], urls[1], ts1.URL+urls[2], ts1.URL+urls[3], ts1.URL+urls[4], ts2.URL+urls[5])
 
 	baseURL, err := url.Parse(ts1.URL)
 	if err != nil {
@@ -174,76 +235,60 @@ func TestHTMLLinks(t *testing.T) {
 	}
 
 	test := &Test{
-		Request: Request{
-			Request: &http.Request{
-				URL: baseURL,
-			},
-		},
-		Response: Response{
-			BodyBytes: []byte(bodyOkay),
-		},
+		Request:   Request{Request: &http.Request{URL: baseURL}},
+		Response:  Response{BodyBytes: []byte(body)},
 		Verbosity: 1,
 	}
 
-	checkA := Links{Which: "a img link script", Concurrency: 2}
-	err = checkA.Prepare()
+	check := Links{Which: "a img link script", Concurrency: 2}
+	err = check.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	urls, err := checkA.collectURLs(test)
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-	if len(urls) != 5 {
-		t.Fatalf("len(urls)=%d, want 5\nurls = %v", len(urls), urls)
-	}
-	for _, u := range []string{
-		ts1.URL + "/impressum.html",
-		ts1.URL + "/js/jquery.js",
-		ts1.URL + "/foo",
-		ts1.URL + "/supertoll/bild.gif",
-		ts2.URL + "/waz",
-	} {
-		if _, ok := urls[u]; !ok {
-			t.Fatalf("Missing URL %q in urls = %v", u, urls)
-		}
+
+	linksHandlerCalls = make(chan string, 10)
+	err = check.Execute(test)
+	close(linksHandlerCalls)
+
+	for c := range linksHandlerCalls {
+		called = append(called, c)
 	}
 
-	err = checkA.Execute(test)
-	if err != nil {
-		t.Errorf("Unexpected errors %#v", err)
-	}
+	return called, err
+}
 
-	return
-
-	// Now all links broken
-	bodyBad := `<!doctype html>
-<html>
-<head>
-  <title>CSS Selectors</title>
-  <link rel="copyright" title="Copyright" href="/impressum404.html" />
-  <script type="text/javascript" src="/js/jquery/jquery-9.9.9.min.js"></script>
-</head>
-<body>
-  <img src="//www.heise.de/icons/ho/heise_online_logo_todownother.gif">
-  <a href="http://www.google.com/fobbar">Link4</a>
-</body>
-</html>`
-	test.Response.BodyBytes = []byte(bodyBad)
-	err = checkA.Prepare()
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
+func TestHTMLLinksOkay(t *testing.T) {
+	urls := []string{
+		"/impressum.html",
+		"/js/jquery.js",
+		"/foo",
+		"/supertoll/bild.gif",
+		"/foo",
+		"/waz",
 	}
-	err = checkA.Execute(test)
+	called, err := testHTMLLinks(t, urls)
+	if err != nil {
+		t.Errorf("Unexpected error: %#v", err)
+	}
+	if len(called) != 5 {
+		t.Errorf("Unexpected error: %v", called)
+	}
+}
+
+func TestHTMLLinksBroken(t *testing.T) {
+	urls := []string{
+		"/404/impressum.html",
+		"/404/js/jquery.js",
+		"/404/foo",
+		"/404/supertoll/bild.gif",
+		"/404/foo",
+		"/404/waz",
+	}
+	called, err := testHTMLLinks(t, urls)
 	if err == nil {
-		t.Fatalf("Expected errors")
+		t.Fatalf("Missing error: %#v", err)
 	}
-
-	if err.Error() != `http://www.google.com/fobbar  -->  404
-http://www.heise.de/icons/ho/heise_online_logo_todownother.gif  -->  404
-http://www.heise.de/impressum404.html  -->  404
-http://www.heise.de/js/jquery/jquery-9.9.9.min.js  -->  404` {
-		t.Errorf("Got wrong error:\n%s", err.Error())
+	if len(called) != 5 {
+		t.Errorf("Unexpected error: %v", called)
 	}
-
 }
