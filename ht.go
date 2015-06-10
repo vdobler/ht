@@ -315,7 +315,7 @@ outer:
 //       Body       Only one may be nonempty
 //       FollowRdr  Last wins
 //     Checks       Append all checks
-//     VarEx        TODO
+//     VarEx        Merge, same keys must have same value
 //     Poll
 //       Max        Use largest
 //       Sleep      Use largest
