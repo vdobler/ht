@@ -18,11 +18,16 @@ func init() {
 // ----------------------------------------------------------------------------
 // Identity
 
-// Identity checks the value of the response body by its sha1 hash
+// Identity checks the value of the response body by comparing its SHA1 hash
+// to the expacted has value.
 type Identity struct {
-	SHA1 string // The expected SHA1 has as shown by sha1sum of the whole body."
+	// SHA1 is the expected hash as shown by sha1sum of the whole body.
+	// E.g. 2ef7bde608ce5404e97d5f042f95f89f1c232871 for a "Hello World!"
+	// body (no newline).
+	SHA1 string
 }
 
+// Execute implements Checks Execute method.
 func (i Identity) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return CantCheck{t.Response.BodyErr}
@@ -35,4 +40,5 @@ func (i Identity) Execute(t *Test) error {
 	return fmt.Errorf("Got %s", s)
 }
 
+// Prepare implements Checks Prepare method.
 func (_ Identity) Prepare() error { return nil }
