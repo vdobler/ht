@@ -30,18 +30,18 @@
 // The following checks are provided
 //     * StatusCode        checks the received http status code
 //     * ResponseTime      provides lower and higer bounds on the response time
-//     * Body              text lookup in the HTTP body
-//     * W3CValidHTML      checks if body parses as HTML5
-//     * HTMLContains      checks occurence HTML elements choosen via CSS-selectors
-//     * HTMLContainsText  checks text content of CSS-selected elements
-//     * Image             checks image format, size and content
 //     * Header            checks presence and values of received HTTP header
 //     * SetCookie         checks properties of received cookies
+//     * Identity          checks the SHA1 hash of the body
+//     * UTF8Encoded       checks that the body is UTF-8 encoded
+//     * Body              text lookup in the HTTP body
+//     * HTMLContains      checks occurence HTML elements choosen via CSS-selectors
+//     * HTMLContainsText  checks text content of CSS-selected elements
+//     * W3CValidHTML      checks if body parses as valid HTML5
+//     * Links             make sure hrefs and srcs in HTML are accessible
+//     * Image             checks image format, size and content
 //     * JSON              checks structure and content of a JSON body
-//     * Links             make sure hrefs and srcs in HTML are accesible
-// Upcomming checks (TODO):
-//     * XML               some kind of XML checking
-//     * LogFile           limit grows and check content of log output
+//     * XML               checks elements of a XML body
 //
 // Requests
 //
