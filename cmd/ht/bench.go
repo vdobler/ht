@@ -9,8 +9,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/vdobler/ht"
 	"github.com/vdobler/ht/hist"
+	"github.com/vdobler/ht/ht"
 )
 
 var cmdBench = &Command{

@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/vdobler/ht"
+	"github.com/vdobler/ht/ht"
 )
 
 var cmdPerf = &Command{

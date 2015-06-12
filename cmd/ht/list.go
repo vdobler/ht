@@ -7,7 +7,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/vdobler/ht"
+	"github.com/vdobler/ht/ht"
 )
 
 var cmdList = &Command{

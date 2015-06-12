@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vdobler/ht"
+	"github.com/vdobler/ht/ht"
 )
 
 // A Command is one of the subcommands of ht.
