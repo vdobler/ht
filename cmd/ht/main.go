@@ -106,18 +106,15 @@ func (i *cmdlIncl) Set(s string) error {
 }
 
 // Most of the flags.
-var variablesFlag cmdlVar = make(cmdlVar)    // flag -D
-var includeFlag cmdlIncl = make(cmdlIncl, 0) // flag -I
+var variablesFlag cmdlVar = make(cmdlVar) // flag -D
 var onlyFlag = flag.String("only", "", "run only these tests, e.g. -only 3,4,9")
 var skipFlag = flag.String("skip", "", "skip these tests, e.g. -skip 2,5")
 var verbosity = flag.Int("verbosity", -99, "force this verbosity level")
 
 func main() {
 	flag.Var(variablesFlag, "D", "set/overwrite a parameter e.g. '-D HOST=test.domain.org'")
-	flag.Var(&includeFlag, "I", "add path to include paths")
 	flag.Usage = usage
 	flag.Parse()
-	addCWD(&includeFlag)
 
 	args := flag.Args()
 	if len(args) < 1 {
@@ -184,7 +181,7 @@ func loadSuites(args []string) []*ht.Suite {
 	// Input and setup suites from command line arguments.
 	for _, s := range args {
 		// Prepend "current" dir. Ugly, inefficent, works.
-		suite, err := ht.LoadSuite(s, includeFlag)
+		suite, err := ht.LoadSuite(s)
 		if err != nil {
 			log.Fatalf("Cannot read suite %q: %s", s, err)
 		}
