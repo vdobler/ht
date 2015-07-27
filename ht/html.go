@@ -79,6 +79,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 		Checks: CheckList{
 			StatusCode{Expect: 200},
 		},
+		Timeout: Duration(20 * time.Second),
 	}
 
 	// TODO: properly limit gloabl rate at which we fire to W3C validator

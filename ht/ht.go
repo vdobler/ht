@@ -38,7 +38,7 @@ var (
 	DefaultAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 
 	// DefaultClientTimeout is the timeout used by the http clients.
-	DefaultClientTimeout = Duration(2 * time.Second)
+	DefaultClientTimeout = Duration(10 * time.Second)
 )
 
 // URLValues is a url.Values with a fancier JSON unmarshalling.
