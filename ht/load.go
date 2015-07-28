@@ -11,7 +11,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/vdobler/ht/third_party/json5"
+	"github.com/vdobler/ht/internal/json5"
 )
 
 var (
