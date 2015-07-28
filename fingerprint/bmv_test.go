@@ -4,7 +4,11 @@
 
 package fingerprint
 
-import "testing"
+import (
+	"image/jpeg"
+	"os"
+	"testing"
+)
 
 func TestHammingDistance(t *testing.T) {
 	a := BMVHash(0x99) // 10011001
@@ -27,4 +31,30 @@ func TestHammingDistance(t *testing.T) {
 	if c.HammingDistance(d) != 3 {
 		t.Fail()
 	}
+}
+
+func TestBMVImage(t *testing.T) {
+	for _, file := range []string{"boat", "clock", "lena", "baboon", "pepper"} {
+		img := readImage("testdata/" + file + ".jpg")
+		h := NewBMVHash(img)
+		reconstructed := h.Image(64, 64)
+		out, err := os.Create("testdata/" + file + ".reconstr.jpg")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		err = jpeg.Encode(out, reconstructed, nil)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		out.Close()
+	}
+}
+
+func TestBMVImageSpecial(t *testing.T) {
+	bmv, err := BMVHashFromString("0f0f0f0f0f0f0f0f")
+	if err != nil {
+		t.Fatalf("Ooops: %v", err)
+	}
+
+	bmv.Image(8, 8)
 }

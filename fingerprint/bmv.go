@@ -2,19 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package fingerprint
-
-import (
-	"fmt"
-	"image"
-	_ "image/jpeg"
-	"sort"
-	"strconv"
-)
-
-// ----------------------------------------------------------------------------
 // Block Mean Value Fingerprinting
-
+//
 // blockMeanValue calculates the 64bit block mean value hash of img.
 // It uses an algorithm accoring to Di Wu, Xuebing Zhou, and Xiamu Niu. 2009.
 // A novel image hash algorithm resistant to print-scan. Signal Process. 89,
@@ -42,6 +31,17 @@ import (
 // Switching to the average value if the median is too high is necessary
 // as otherwise half-white (or half-black images cannot be fingerprinted
 // properly.
+//
+package fingerprint
+
+import (
+	"fmt"
+	"image"
+	"image/color"
+	_ "image/jpeg"
+	"sort"
+	"strconv"
+)
 
 // BMVHash is the 64 bit block mean value hash of an image.
 type BMVHash uint64
@@ -49,6 +49,33 @@ type BMVHash uint64
 // String returns h in hexadecimal form.
 func (h BMVHash) String() string {
 	return fmt.Sprintf("%016x", uint64(h))
+}
+
+func (h BMVHash) ASCII(zero, one string) string {
+	s := ""
+	for b := uint(0); b < 64; b++ {
+	}
+	return s
+}
+
+// Image "reconstructs" the original image through gray panels.
+// The generated image has dimensions width x height. Both dimensions
+// must be at least 8.
+func (h BMVHash) Image(width, height int) *image.Gray {
+	i := image.NewGray(image.Rect(0, 0, width, height))
+	dark, light := color.Gray{0x20}, color.Gray{0xdf}
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			bit := 63 - (y*8)/height*8 - (x*8)/width
+			v := (h >> uint(bit)) & 1
+			if v == 1 {
+				i.SetGray(x, y, light)
+			} else {
+				i.SetGray(x, y, dark)
+			}
+		}
+	}
+	return i
 }
 
 // NewBMVHashFromString parses the hexadecimal number in s and panics
