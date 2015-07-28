@@ -1,0 +1,45 @@
+{
+// This is almost a JSON5 document. Almost because comments are not
+// allowed everywhere a real JSON5 would allow comments.
+
+    // This Suite shows some features doable with ht.
+
+    Name: "Sample Suite",  // The name or title of this suite.                  
+    Description: "Optional verbose details",
+    KeepCookies: true,   // The tests in this suite share a common cookie jar
+    OmitCheck: false,    // Do not skip the interesting stuff
+
+    // Setup contains stuff which has to happen before the actual
+    // testing happens. If any setup test fails the whole process
+    // isaborted an no oher tests are executed.
+    Setup: [
+      "reddit-homepage.ht"
+    ],
+
+    // Tests is just a list of test (names) to execute
+    Tests: [
+        "unic-search.ht",
+	"google-homepage.ht",
+        "unic-logo.ht",
+	"unic-homepage.ht",
+	"heise-homepage.ht",
+	"sz-homepage.ht",
+	"amazon-autocomplete.ht"
+    ],
+
+    // Teardown tests are executed afterwords, the may fail without
+    // consequence.
+    Teardown: [
+       "reddit-golang.ht",
+       "reddit-programming.ht",
+    ],
+
+    Verbosity: 2,  
+
+    // These variables get substituted during execution. Using
+    // different values is possible via command line options.
+    Variables: {
+       HOST: "www.unic.com",
+       FOOBAR: "Something else here"
+    }
+}

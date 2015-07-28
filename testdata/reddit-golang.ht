@@ -1,0 +1,8 @@
+{
+  Name: "Reddit: Golang",
+  Request: {
+    URL: "http://www.reddit.com/r/golang",
+    Body: "Das ist der Body\nmal sehen was unser Server dazu sagt."
+  },
+  Checks: [{Check: "StatusCode", Expect: 200}],
+}

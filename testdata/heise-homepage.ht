@@ -1,0 +1,14 @@
+{
+    Name: "Heise Homepage",
+    Description: "The homepage of heise",
+    BasedOn: [
+        "german-chrome.mixin",
+        "default-webpage.mixin"
+    ],
+    Request: { URL: "http://www.heise.de/" },
+    Checks: [    // These checks are added to checks brought by the mixins.
+        { Check: "StatusCode", Expect: 200 },
+        { Check: "Header", Header: "X-Clacks-Overhead", Equals: "GNU Terry Pratchett" },
+    ],
+    Verbosity: 1
+}

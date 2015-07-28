@@ -1,0 +1,23 @@
+{
+    Name: "Amazon Autocompletion",  // Name is the title of this test.
+    Description: "Autocompletion in the main search field of the Amazon web page.",  // Optional verbose description.
+    BasedOn: [ "German-Chrome"],      // BasedOn allows to merge other tests or partial tests. 
+    Request: {
+        URL: "http://completion.amazon.co.uk/search/complete",  // The URL (must include the protocol)
+        Params: {
+            q: "jo nesbo", 
+            search-alias: "aps" ,
+            mkt: 4,
+            fb: 1,
+            xcat: 0,
+        }
+    },
+    Timeout: "1.5s",
+    Checks: [
+        { Check: "StatusCode", Expect: 200 },
+        { Check: "ResponseTime", Lower: "800ms"},
+	{ Check: "JSON", Expression: "$len(.) == 4"},
+	{ Check: "JSON", Expression: ".[0] == \"jo nesbo\""},
+	{ Check: "JSON", Expression: ".[1][6] == \"jo nesbo pupspulver\""},
+    ],
+}

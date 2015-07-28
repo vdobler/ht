@@ -1,0 +1,10 @@
+{
+    Name: "Google Homepage",
+    Description: "Well, the Googel homepage",
+    Request: { URL: "https://www.google.com/" },
+    Checks: [
+        { Check: "StatusCode", Expect: 302 },
+        { Check: "ResponseTime", Lower: 0.33 }
+    ],
+    "Verbosity": 2
+}

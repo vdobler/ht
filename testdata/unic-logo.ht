@@ -1,0 +1,15 @@
+{
+    Name: "Unic Logo",
+    Description: "The logo image on the website",
+    BasedOn: [ "german-chrome.mixin" ],
+    Request: { URL: "https://www.unic.com/img/unic-logo.png" },
+    Checks: [ 
+        { Check: "StatusCode", Expect: 200 },
+        { Check: "Image",
+          Format: "png",
+          Threshold: 0.001, 
+          // Check image identity based on color histogram
+          ColorHist: "0000000000f0000000100000" },   
+    ],
+    Verbosity: 1
+}

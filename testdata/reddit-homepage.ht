@@ -1,0 +1,5 @@
+{
+  Name: "Reddit: Homepage",
+  Request: { URL: "http://www.reddit.com" },
+  Checks: [{Check: "StatusCode", Expect: 200}],
+}

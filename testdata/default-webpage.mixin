@@ -1,0 +1,13 @@
+{
+    // Mixins work for checks too: Default-Webpage defines some basic checks
+    // on a generic web (HTML) page.
+    Name: "Default-Webpage",
+    Description: "Make sure this is a normal page",
+    Checks: [
+        { Check: "StatusCode", Expect: 200 },
+        { Check: "ResponseTime", Lower: "5s" },
+        { Check: "ValidHTML" },
+        // { Check: "IncludedCSS", MaxFiles: 5 }
+        { Check: "UTF8Encoded" },
+    ]
+}
