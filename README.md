@@ -27,8 +27,8 @@ Installation
 
 Installing ht should be simple if Go 1.5 (pre beta is okay) and
 git is already installed:
-* Run `go get github.com/vdobler/ht/cmd/ht` which should download,
-  compile and install everything.
+* Run `GO15VENDOREXPERIMENT=1 go get github.com/vdobler/ht/cmd/ht`
+  which should download, compile and install everything.
 * Run `GOPATH/bin/ht help` to get you started.
 
 Documentation
