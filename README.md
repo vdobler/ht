@@ -35,12 +35,13 @@ Documentation
 -------------
 
 The documentation is a bit sparse but you should be able to
-extract almost everything from the godoc
+extract almost everything from the godoc:
 
-    https://godoc.org/github.com/vdobler/ht/ht
-
-    https://godoc.org/github.com/vdobler/ht/condition
-
-    https://godoc.org/github.com/vdobler/ht/fingerprint
-
-    https://godoc.org/github.com/vdobler/ht/cmd/ht
+* Tests, Checks and their options:
+  https://godoc.org/github.com/vdobler/ht/ht
+* Details to Conditions used in Checks:
+  https://godoc.org/github.com/vdobler/ht/condition
+* Image fingerprinting:
+  https://godoc.org/github.com/vdobler/ht/fingerprint
+* The ht command:
+  https://godoc.org/github.com/vdobler/ht/cmd/ht
