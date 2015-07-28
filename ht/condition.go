@@ -15,7 +15,8 @@ import (
 // Contains or Regexp but not both.
 type Condition struct {
 	// Equals is the exact value to be expected.
-	// No other tests are performed if Equals is non-zero.
+	// No other tests are performed if Equals is non-zero as these
+	// other tests would be redundant.
 	Equals string `json:",omitempty"`
 
 	// Prefix is the required prefix

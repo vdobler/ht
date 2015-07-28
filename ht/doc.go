@@ -28,12 +28,12 @@
 // Forbidding the occurenc of "foobar" thus requires a negative Count.
 //
 // The following checks are provided
-//     * StatusCode        checks the received http status code
+//     * StatusCode        checks the received HTTP status code
 //     * ResponseTime      provides lower and higer bounds on the response time
 //     * Header            checks presence and values of received HTTP header
 //     * SetCookie         checks properties of received cookies
-//     * Identity          checks the SHA1 hash of the body
-//     * UTF8Encoded       checks that the body is UTF-8 encoded
+//     * Identity          checks the SHA1 hash of the HTTP body
+//     * UTF8Encoded       checks that the HTTP body is UTF-8 encoded
 //     * Body              text lookup in the HTTP body
 //     * HTMLContains      checks occurence HTML elements choosen via CSS-selectors
 //     * HTMLContainsText  checks text content of CSS-selected elements
