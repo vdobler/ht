@@ -58,7 +58,7 @@ func usage() {
 
 Usage:
 
-    ht <command> [flags] <suite.ht>...
+    ht <command> [flags...] <suite>...
 
 The commands are
     * help  Print help command
@@ -67,16 +67,11 @@ The commands are
     * perf  Run a load test
     * bench Benchmark the tests
 
-Flags:
-    -D <name>=<value>  set parameter exapnsion of <name> to <value>  
-    -I <path>          add <path> to the search path for suites/tests
-    -only <id>,...     run only test with the given ids
-    -skip <id>,...     skip tests wih the given ids
-    -verbosity <n>     force this verbosity on all tests
+Run  ht help <command> to display the usage of <command>.
 
-Tests IDs have the following format <SuiteNo>.<Type><TestNo> with <SuiteNo> and
-<TestNo> the sequential numbers of the suite and the test inside the suite.
-Type is either empty, "u" for setUp test or "d" for tearDown tests. <TestNo>
+Tests IDs have the following format <suite>.<type><test> with <suite> and
+<test> the sequential numbers of the suite and the test inside the suite.
+Type is either empty, "u" for setUp test or "d" for tearDown tests. <test>
 maybe a single number like "3" or a range like "3-7".
 `)
 	os.Exit(2)
