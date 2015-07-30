@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"os"
 	"testing"
 )
@@ -167,4 +168,30 @@ func TestNewColorHist(t *testing.T) {
 		fmt.Println()
 	}
 
+}
+
+func TestColorImage(t *testing.T) {
+	for _, file := range []string{"boat", "clock", "lena", "baboon", "pepper"} {
+		img := readImage("testdata/" + file + ".jpg")
+		ch := NewColorHist(img)
+		reconstructed := ch.Image(64, 64)
+		out, err := os.Create("testdata/" + file + ".colrec.png")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		err = png.Encode(out, reconstructed)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		out.Close()
+	}
+}
+
+func TestColorImageSpecial(t *testing.T) {
+	ch, err := ColorHistFromString("3102000000f002e000021006")
+	if err != nil {
+		t.Fatalf("Ooops: %v", err)
+	}
+
+	rec := ch.Image(64, 64)
 }

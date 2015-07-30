@@ -5,7 +5,7 @@
 package fingerprint
 
 import (
-	"image/jpeg"
+	"image/png"
 	"os"
 	"testing"
 )
@@ -38,11 +38,11 @@ func TestBMVImage(t *testing.T) {
 		img := readImage("testdata/" + file + ".jpg")
 		h := NewBMVHash(img)
 		reconstructed := h.Image(64, 64)
-		out, err := os.Create("testdata/" + file + ".reconstr.jpg")
+		out, err := os.Create("testdata/" + file + ".bmvrec.png")
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		err = jpeg.Encode(out, reconstructed, nil)
+		err = png.Encode(out, reconstructed)
 		if err != nil {
 			t.Fatal(err.Error())
 		}

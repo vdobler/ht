@@ -10,6 +10,7 @@ import (
 	"image"
 	"image/color"
 	_ "image/jpeg"
+	"sort"
 	"strconv"
 )
 
@@ -38,6 +39,77 @@ func (ch ColorHist) String() string {
 	}
 	return string(buf)
 }
+
+// Image reconstructs the original image from the color histogram.
+func (ch ColorHist) Image(width, height int) *image.RGBA {
+	cbs := make(colorBinSlice, 24)
+	total := 0
+	for i, cnt := range ch {
+		cbs[i].count = int(cnt)
+		cbs[i].cidx = i
+		total += int(cnt)
+	}
+	sort.Sort(cbs)
+
+	for i := range cbs {
+		cbs[i].fraction = float64(cbs[i].count) / float64(total)
+		total -= cbs[i].count
+		if total <= 0 {
+			break
+		}
+	}
+
+	remaining := image.Rect(0, 0, width, height)
+	img := image.NewRGBA(remaining)
+
+	left := true
+	for _, e := range cbs {
+		if e.fraction == 0 {
+			break
+		}
+		if left {
+			x := remaining.Min.X + int(e.fraction*float64(remaining.Dx()))
+			fill := remaining
+			fill.Max.X = x
+			fillRect(img, fill, e.cidx)
+			remaining.Min.X = x
+			left = false
+		} else {
+			y := remaining.Min.Y + int(e.fraction*float64(remaining.Dy()))
+			fill := remaining
+			fill.Max.Y = y
+			fillRect(img, fill, e.cidx)
+			remaining.Min.Y = y
+			left = true
+		}
+	}
+
+	return img
+}
+
+// fill r of img with Mac Beth color no idx.
+func fillRect(img *image.RGBA, r image.Rectangle, idx int) {
+	mb := macbeth[idx]
+	col := color.RGBA{uint8(mb[0]), uint8(mb[1]), uint8(mb[2]), 0xff}
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		for x := r.Min.X; x < r.Max.X; x++ {
+			img.SetRGBA(x, y, col)
+		}
+	}
+}
+
+type cBin struct {
+	count    int // count of this bin
+	cidx     int // the color, i.e. the index into macbeth table
+	fraction float64
+}
+
+// colorBinSlice is a sortable slice of colorBins
+type colorBinSlice []cBin
+
+func (p colorBinSlice) Len() int           { return len(p) }
+func (p colorBinSlice) Less(i, j int) bool { return p[i].count > p[j].count }
+func (p colorBinSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 // ColorHistDelta returns the difference between the two color histograms
 // h and g.  The difference is in the range [0,1] with 0 for identical
