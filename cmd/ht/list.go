@@ -12,21 +12,12 @@ import (
 
 var cmdList = &Command{
 	Run:   runList,
-	Usage: "list [-raw] <suite.ht>...",
+	Usage: "list <suite.ht>...",
 	Help: `
 List loads the given suites, unrolls the tests, prepares
 the tests and prints the list of tests.
 	`,
 }
-
-func init() {
-	cmdList.Flag.BoolVar(&rawFlag, "raw", false,
-		"list the raw (i.e. not unrolled) tests")
-}
-
-var (
-	rawFlag bool
-)
 
 func runList(cmd *Command, suites []*ht.Suite) {
 	// TODO: provide templated output
