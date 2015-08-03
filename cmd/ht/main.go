@@ -230,13 +230,13 @@ func loadSuites(args []string) []*ht.Suite {
 	// Disable tests based on the -only and -skip flags.
 	for sNo, suite := range suites {
 		for tNo, test := range suite.Setup {
-			shouldRun(test, fmt.Sprintf("%d.u%d", sNo+1, tNo+1), only, skip)
+			shouldRun(test, fmt.Sprintf("%d.U%d", sNo+1, tNo+1), only, skip)
 		}
 		for tNo, test := range suite.Tests {
 			shouldRun(test, fmt.Sprintf("%d.%d", sNo+1, tNo+1), only, skip)
 		}
 		for tNo, test := range suite.Teardown {
-			shouldRun(test, fmt.Sprintf("%d.d%d", sNo+1, tNo+1), only, skip)
+			shouldRun(test, fmt.Sprintf("%d.D%d", sNo+1, tNo+1), only, skip)
 		}
 	}
 
