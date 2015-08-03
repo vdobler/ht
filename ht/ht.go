@@ -636,6 +636,7 @@ func (t *Test) executeRequest() error {
 			reader, err = gzip.NewReader(resp.Body)
 			if err != nil {
 				t.Response.BodyErr = err
+				goto done
 			}
 			t.tracef("Unzipping gzip body")
 		default:
@@ -646,6 +647,8 @@ func (t *Test) executeRequest() error {
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())
 	}
+
+done:
 	t.Response.Duration = Duration(time.Since(start))
 
 	t.debugf("request took %s, %s", t.Response.Duration, msg)
