@@ -59,7 +59,8 @@ func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
 		origname := t.Name
 		base := []*Test{t}
 		for _, name := range raw.BasedOn {
-			rb, err := findRawTest(name, dir)
+			name = path.Join(dir, name)
+			rb, err := findRawTest(name)
 			if err != nil {
 				return nil, err
 			}
@@ -95,12 +96,11 @@ func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
 }
 
 // findRawTest tries to find a test with the given name: If the name has been loaded
-// already it is returned from the pool otherwise it is read from directory.
-func findRawTest(name string, directory string) (*rawTest, error) {
+// already it is returned from the pool otherwise it is read from the filesystem.
+func findRawTest(name string) (*rawTest, error) {
 	if t, ok := testPool[name]; ok {
 		return t, nil
 	}
-	name = path.Join(directory, name)
 	return loadRawTest(name)
 }
 
@@ -117,8 +117,19 @@ func loadRawTest(filename string) (*rawTest, error) {
 		err := fmt.Errorf(beautifyJSONError(err, all, filename))
 		return nil, err
 	}
-	testPool[t.Name] = t
+	testPool[filename] = t
 	return t, nil
+}
+
+// LoadTest reads a test from filename. Tests and mixins are read relative
+// to the directory the test lives in. Unrolling is performed.
+func LoadTest(filename string) ([]*Test, error) {
+	dir := path.Dir(filename)
+	raw, err := findRawTest(filename)
+	if err != nil {
+		return nil, err
+	}
+	return rawTestToTests(raw, dir)
 }
 
 // LoadSuite reads a suite from filename. Tests and mixins are read relative
@@ -140,14 +151,14 @@ func LoadSuite(filename string) (*Suite, error) {
 	appendTests := func(testNames []string) ([]*Test, error) {
 		tests := []*Test{}
 		for _, name := range testNames {
-			st, err := findRawTest(name, dir)
+			name = path.Join(dir, name)
+			st, err := findRawTest(name)
 			if err != nil {
 				return nil, fmt.Errorf("test %q: %s", name, err)
 			}
 			ts, err := rawTestToTests(st, dir)
 			if err != nil {
-				fmt.Printf("rawTestToTest failed with %s\n for %#v\n",
-					err, st)
+				return nil, err
 			}
 			tests = append(tests, ts...)
 		}
