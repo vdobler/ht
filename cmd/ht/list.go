@@ -11,8 +11,9 @@ import (
 )
 
 var cmdList = &Command{
-	Run:   runList,
-	Usage: "list <suite.ht>...",
+	Run:         runList,
+	Usage:       "list <suite.ht>...",
+	Description: "list tests in suits",
 	Help: `
 List loads the given suites, unrolls the tests, prepares
 the tests and prints the list of tests.

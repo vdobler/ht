@@ -23,9 +23,10 @@ type Command struct {
 	// The args are the arguments after the command name.
 	Run func(cmd *Command, suites []*ht.Suite)
 
-	Usage string       // must start with command name
-	Help  string       // the output of 'ht help'
-	Flag  flag.FlagSet // the flags for this command
+	Usage       string       // must start with command name
+	Description string       // short description for ' go help'
+	Help        string       // the output of 'ht help <cmd>'
+	Flag        flag.FlagSet // the flags for this command
 }
 
 // Name returns the command's name: the first word in the usage line.
@@ -49,31 +50,33 @@ func (c *Command) usage() {
 var commands = []*Command{
 	cmdList,
 	cmdExec,
-	cmdPerf,
 	cmdBench,
+	cmdPerf,
 }
 
 func usage() {
-	fmt.Println(`ht is a tool to generate http request and test the response.
+	formatedCmdList := ""
+
+	for _, cmd := range commands {
+		formatedCmdList += fmt.Sprintf("    %-8s %s\n",
+			cmd.Name(), cmd.Description)
+	}
+
+	fmt.Printf(`Ht is a tool to generate http request and test the response.
 
 Usage:
 
     ht <command> [flags...] <suite>...
 
-The commands are
-    * help  Print help command
-    * list  List the tests found in suite.ht
-    * exec  Execute the tests found in suite.ht
-    * perf  Run a load test
-    * bench Benchmark the tests
-
+The commands are:
+%s
 Run  ht help <command> to display the usage of <command>.
 
 Tests IDs have the following format <suite>.<type><test> with <suite> and
 <test> the sequential numbers of the suite and the test inside the suite.
 Type is either empty, "u" for setUp test or "d" for tearDown tests. <test>
 maybe a single number like "3" or a range like "3-7".
-`)
+`, formatedCmdList)
 	os.Exit(2)
 }
 

@@ -14,8 +14,9 @@ import (
 )
 
 var cmdBench = &Command{
-	Run:   runBench,
-	Usage: "bench [-warmup n] [-count n] [-pause d] [-concurrent n] <suite.ht>...",
+	Run:         runBench,
+	Usage:       "bench [-warmup n] [-count n] [-pause d] [-concurrent n] <suite.ht>...",
+	Description: "benchmark requests",
 	Help: `
 Benchmark the tests by running count many requests seperated by pause
 after doing warmup many requests which are not measured.
