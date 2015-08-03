@@ -14,7 +14,7 @@ import (
 )
 
 func TestLoadSuite(t *testing.T) {
-	suite, err := LoadSuite("testdata/suite.ht")
+	suite, err := LoadSuite("../testdata/suite.ht")
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}

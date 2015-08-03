@@ -58,7 +58,7 @@ func TestParameterHandling(t *testing.T) {
 			"single":  []string{"abc"},
 			"multi":   []string{"1", "2"},
 			"special": []string{"A%+& &?/Z"},
-			"file":    []string{"@file:testdata/upload.pdf"},
+			"file":    []string{"@file:../testdata/upload.pdf"},
 		},
 		ParamsAs: "URL",
 	}}
@@ -71,8 +71,8 @@ func TestParameterHandling(t *testing.T) {
 	if test.Request.Body != "" {
 		t.Errorf("Expected empty body, got %q", test.Request.Body)
 	}
-	if test.Request.Request.URL.String() != "http://www.test.org?file=%40file%3Atestdata%2Fupload.pdf&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
-		t.Errorf("Bad URL, got %s", test.Request.URL)
+	if got := test.Request.Request.URL.String(); got != "http://www.test.org?file=%40file%3A..%2Ftestdata%2Fupload.pdf&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
+		t.Errorf("Bad URL, got %s", got)
 	}
 	test.Request.Body = ""
 
@@ -86,7 +86,7 @@ func TestParameterHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
-	if string(full) != "file=%40file%3Atestdata%2Fupload.pdf&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
+	if string(full) != "file=%40file%3A..%2Ftestdata%2Fupload.pdf&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
 		t.Errorf("Bad body, got %s", full)
 	}
 	test.Request.Body = ""
