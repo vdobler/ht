@@ -193,5 +193,5 @@ func TestColorImageSpecial(t *testing.T) {
 		t.Fatalf("Ooops: %v", err)
 	}
 
-	rec := ch.Image(64, 64)
+	ch.Image(64, 64)
 }
