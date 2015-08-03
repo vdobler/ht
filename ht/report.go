@@ -109,8 +109,7 @@ var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{i
   {{printf "(after %d tries)" .Tries}}{{end}}
   Started: {{.Started}}   Duration: {{.FullDuration}}   Request: {{.Duration}}{{if .Error}}
   Error: {{.Error}}{{end}}
-{{if eq .Status 2 3 4 5}}
-  {{if .CheckResults}}Checks:
+{{if eq .Status 2 3 4 5}}  {{if .CheckResults}}Checks:
 {{range $i, $c := .CheckResults}}{{printf "    %2d. " $i}}{{template "CHECK" .}}
 {{end}}{{end}}{{end}}{{end}}`
 
@@ -201,10 +200,13 @@ var htmlRequestTmpl = `{{define "REQUEST"}}
 var defaultSuiteTmpl = `{{Box (printf "%s: %s" (ToUpper .Status.String) .Name) ""}}{{if .Error}}
 Error: {{.Error}}{{end}}
 Started: {{.Started}}   Duration: {{.Duration}}
-Individual tests:
-{{range .Setup}}{{template "TEST" .}}{{end}}
-{{range .Tests}}{{template "TEST" .}}{{end}}
-{{range .Teardown}}{{template "TEST" .}}{{end}}
+
+{{range .Setup}}{{template "TEST" .}}
+{{end}}
+{{range .Tests}}{{template "TEST" .}}
+{{end}}
+{{range .Teardown}}{{template "TEST" .}}
+{{end}}
 `
 
 var htmlStyleTmpl = `{{define "STYLE"}}
