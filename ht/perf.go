@@ -37,10 +37,10 @@ type LoadTestOptions struct {
 	Uniform bool
 }
 
-// LoadTest will perform a load test of the main tests of suites, the details
+// PerformanceLoadTest will perform a load test of the main tests of suites, the details
 // of the load test is controlled by opts.
 // Errors are reported if any suite's Setup failed.
-func LoadTest(suites []*Suite, opts LoadTestOptions) ([]Test, error) {
+func PerformanceLoadTest(suites []*Suite, opts LoadTestOptions) ([]Test, error) {
 	if opts.Type != "throughput" && opts.Type != "concurrency" {
 		return nil, fmt.Errorf("Unknown load tests type %q", opts.Type)
 	}

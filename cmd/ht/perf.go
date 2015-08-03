@@ -53,7 +53,7 @@ func runPerf(cmd *Command, suites []*ht.Suite) {
 	if concFlag {
 		opts.Type = "concurrency"
 	}
-	results, err := ht.LoadTest(suites, opts)
+	results, err := ht.PerformanceLoadTest(suites, opts)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

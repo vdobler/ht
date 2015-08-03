@@ -69,7 +69,7 @@ func TestThroughputLoadTest(t *testing.T) {
 	if testing.Short() {
 		options.Count = 200
 	}
-	results, err := LoadTest(suites, options)
+	results, err := PerformanceLoadTest(suites, options)
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}
@@ -92,7 +92,7 @@ func TestConcurrencyLoadTest(t *testing.T) {
 		options.Count = 200
 	}
 
-	results, err := LoadTest(suites, options)
+	results, err := PerformanceLoadTest(suites, options)
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}
