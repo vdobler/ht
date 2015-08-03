@@ -61,14 +61,9 @@ func (w W3CValidHTML) Execute(t *Test) error {
 		Name: "W3CValidHTML",
 		Request: Request{
 			Method: "POST",
-			URL:    "http://validator.w3.org/check",
+			URL:    "http://validator.w3.org/nu/",
 			Params: URLValues{
-				"charset":       {"(detect automatically)"},
-				"fbc":           {"1"},
-				"doctype":       {"Inline"},
-				"fbd":           {"1"},
-				"group":         {"0"},
-				"uploaded_file": {file},
+				"file": {file},
 			},
 			ParamsAs: "multipart",
 			Header: http.Header{
@@ -145,15 +140,15 @@ type ValidationIssue struct {
 }
 
 var (
-	w3cValidatorErrSel   = cascadia.MustCompile("li.msg_err")
+	w3cValidatorErrSel   = cascadia.MustCompile("li.error")
 	w3cValidatorWarnSel  = cascadia.MustCompile("li.msg_warn")
-	w3cValidatorEmSel    = cascadia.MustCompile("em")
-	w3cValidatorMsgSel   = cascadia.MustCompile("span.msg")
-	w3cValidatorInputSel = cascadia.MustCompile("code.input")
+	w3cValidatorLocSel   = cascadia.MustCompile("p.location")
+	w3cValidatorMsgSel   = cascadia.MustCompile("p span")
+	w3cValidatorInputSel = cascadia.MustCompile("p.extract")
 )
 
 func extractValidationIssue(node *html.Node) ValidationIssue {
-	p := textContent(w3cValidatorEmSel.MatchFirst(node))
+	p := textContent(w3cValidatorLocSel.MatchFirst(node))
 	p = strings.Replace(p, "\n     ", "", -1)
 	return ValidationIssue{
 		Position: p,
