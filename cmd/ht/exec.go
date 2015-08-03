@@ -75,26 +75,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
 	for s := range suites {
-		t := fmt.Sprintf("Suite %d: %s", s+1, suites[s].Name)
-		fmt.Printf("\n%s\nFile %s\nStatus %s\n", ht.BoldBox(t, ""),
-			suites[s].Name, suites[s].Status)
-		for _, r := range suites[s].AllTests() {
-			r.PrintReport(os.Stdout)
-			switch r.Status {
-			case ht.Pass:
-				totalPass++
-			case ht.Error:
-				totalError++
-			case ht.Skipped:
-				totalSkiped++
-			case ht.Fail:
-				totalFailed++
-			case ht.Bogus:
-				totalBogus++
-			}
-			total++
-		}
-
+		suites[s].PrintReport(os.Stdout)
 		dirname := outputDir + "/" + sanitizer.Replace(suites[s].Name)
 
 		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
