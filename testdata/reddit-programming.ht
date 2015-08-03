@@ -1,5 +1,5 @@
 {
   Name: "Reddit: Programming",
-  Request: { URL: "http://www.reddit.com/r/programming" },
+  Request: { URL: "https://www.reddit.com/r/programming" },
   Checks: [{Check: "StatusCode", Expect: 200}],
 }
