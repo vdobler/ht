@@ -104,14 +104,31 @@ func (i *cmdlIncl) Set(s string) error {
 	return nil
 }
 
-// Most of the flags.
-var variablesFlag cmdlVar = make(cmdlVar) // flag -D
-var onlyFlag = flag.String("only", "", "run only these tests, e.g. -only 3,4,9")
-var skipFlag = flag.String("skip", "", "skip these tests, e.g. -skip 2,5")
-var verbosity = flag.Int("verbosity", -99, "force this verbosity level")
+// The common flags.
+var (
+	variablesFlag cmdlVar = make(cmdlVar) // flag -D
+	onlyFlag      string
+	skipFlag      string
+	verbosity     int
+)
+
+func addVariablesFlag(fs *flag.FlagSet) {
+	fs.Var(variablesFlag, "D", "set `parameter=value`")
+}
+
+func addOnlyFlag(fs *flag.FlagSet) {
+	fs.StringVar(&onlyFlag, "only", "", "run only tests given by `testID`")
+}
+
+func addSkipFlag(fs *flag.FlagSet) {
+	fs.StringVar(&skipFlag, "skip", "", "skip tests identified by `testID`")
+}
+
+func addVerbosityFlag(fs *flag.FlagSet) {
+	fs.IntVar(&verbosity, "verbosity", -99, "verbosity to `level`")
+}
 
 func main() {
-	flag.Var(variablesFlag, "D", "set/overwrite a parameter e.g. '-D HOST=test.domain.org'")
 	flag.Usage = usage
 	flag.Parse()
 
@@ -180,7 +197,7 @@ func loadSuites(args []string) []*ht.Suite {
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 
 	// Handle -only and -skip flags.
-	only, skip := splitTestIDs(*onlyFlag), splitTestIDs(*skipFlag)
+	only, skip := splitTestIDs(onlyFlag), splitTestIDs(skipFlag)
 
 	// Input and setup suites from command line arguments.
 	for _, s := range args {
@@ -196,15 +213,15 @@ func loadSuites(args []string) []*ht.Suite {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		if *verbosity != -99 {
+		if verbosity != -99 {
 			for i := range suite.Setup {
-				suite.Setup[i].Verbosity = *verbosity
+				suite.Setup[i].Verbosity = verbosity
 			}
 			for i := range suite.Tests {
-				suite.Tests[i].Verbosity = *verbosity
+				suite.Tests[i].Verbosity = verbosity
 			}
 			for i := range suite.Teardown {
-				suite.Teardown[i].Verbosity = *verbosity
+				suite.Teardown[i].Verbosity = verbosity
 			}
 		}
 		suites = append(suites, suite)
@@ -249,9 +266,9 @@ func loadTests(args []string) []*ht.Suite {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	if *verbosity != -99 {
+	if verbosity != -99 {
 		for i := range suite.Tests {
-			suite.Tests[i].Verbosity = *verbosity
+			suite.Tests[i].Verbosity = verbosity
 		}
 	}
 

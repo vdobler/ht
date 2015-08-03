@@ -30,6 +30,10 @@ func init() {
 		"run suites one after the other instead of concurrently")
 	cmdExec.Flag.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
+	addVariablesFlag(&cmdExec.Flag)
+	addOnlyFlag(&cmdExec.Flag)
+	addSkipFlag(&cmdExec.Flag)
+	addVerbosityFlag(&cmdExec.Flag)
 }
 
 var (

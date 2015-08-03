@@ -23,15 +23,20 @@ Perf performs a load test
 
 func init() {
 	cmdPerf.Flag.Float64Var(&rateFlag, "rate", 20,
-		"average rate of requests per second")
+		"set average `rate` of requests per second")
 	cmdPerf.Flag.IntVar(&countFlag, "count", 1000,
-		"number of requests to perform")
+		"perform `num` requests")
 	cmdPerf.Flag.DurationVar(&timeoutFlag, "timeout", 5*time.Minute,
-		"maximum time to run the load test")
+		"set `maximum` duration to to run the load test")
 	cmdPerf.Flag.BoolVar(&uniformFlag, "uniform", true,
-		"use uniformly distributed requests instead of exponentialy ditrubuted")
+		"use uniformly distributed requests instead of exponentialy distributed")
 	cmdPerf.Flag.BoolVar(&concFlag, "conc", false,
-		"do a concurrency test instead of a througput test")
+		"do a concurrency test instead of a throughput test")
+	addVariablesFlag(&cmdPerf.Flag)
+	addOnlyFlag(&cmdPerf.Flag)
+	addSkipFlag(&cmdPerf.Flag)
+	addVerbosityFlag(&cmdPerf.Flag)
+
 }
 
 var (

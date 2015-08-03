@@ -32,6 +32,11 @@ func init() {
 		"warmup system with `n` unmeasured requests")
 	cmdBench.Flag.DurationVar(&pauseFlag, "pause", 10*time.Millisecond,
 		"sleep `duration` between requests")
+	addVariablesFlag(&cmdBench.Flag)
+	addOnlyFlag(&cmdBench.Flag)
+	addSkipFlag(&cmdBench.Flag)
+	addVerbosityFlag(&cmdBench.Flag)
+
 }
 
 var (
