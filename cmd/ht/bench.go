@@ -50,7 +50,7 @@ func runBench(cmd *Command, suites []*ht.Suite) {
 	println(warmupFlag, bcountFlag, concurrentFlag)
 	for s, suite := range suites {
 		suite.ExecuteSetup()
-		if suite.Status != ht.Pass {
+		if suite.Status != ht.Pass && suite.Status != ht.Skipped {
 			log.Printf("Suite %d %q: Setup failure %q", s, suite.Name,
 				suite.Error.Error())
 			continue
