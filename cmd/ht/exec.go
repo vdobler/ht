@@ -17,7 +17,7 @@ import (
 
 var cmdExec = &Command{
 	Run:         runExecute,
-	Usage:       "exec [-serial] <suite.ht>...",
+	Usage:       "exec [-serial] <suite>...",
 	Description: "generate request and test response",
 	Help: `
 Exec loads the given suites, unrolls the tests, prepares

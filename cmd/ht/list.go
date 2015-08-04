@@ -12,7 +12,7 @@ import (
 
 var cmdList = &Command{
 	Run:         runList,
-	Usage:       "list <suite.ht>...",
+	Usage:       "list <suite>...",
 	Description: "list tests in suits",
 	Help: `
 List loads the given suites, unrolls the tests, prepares

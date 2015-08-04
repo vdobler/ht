@@ -14,7 +14,7 @@ import (
 
 var cmdPerf = &Command{
 	Run:         runPerf,
-	Usage:       "perf [-conc] [-rate rps] [-timeout t] [-count n] [-uniform] <suite.ht>...",
+	Usage:       "perf [flags] <suite>...",
 	Description: "run a performance/load test",
 	Help: `
 Perf performs a load test

@@ -16,7 +16,7 @@ import (
 
 var cmdRun = &Command{
 	Run:         runRun,
-	Usage:       "run <test.ht>...",
+	Usage:       "run <test>...",
 	Description: "run a single test",
 	Help: `
 Run loads the single test, unrolls it and prepares it
