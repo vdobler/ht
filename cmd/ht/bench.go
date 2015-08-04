@@ -23,6 +23,14 @@ after doing warmup many requests which are not measured.
 `,
 }
 
+var (
+	bcountFlag     int
+	warmupFlag     int
+	pauseFlag      time.Duration
+	concurrentFlag int
+	runTests       bool
+)
+
 func init() {
 	cmdBench.Flag.IntVar(&bcountFlag, "count", 17,
 		"measure `n` requests")
@@ -32,19 +40,14 @@ func init() {
 		"warmup system with `n` unmeasured requests")
 	cmdBench.Flag.DurationVar(&pauseFlag, "pause", 10*time.Millisecond,
 		"sleep `duration` between requests")
+	cmdBench.Flag.BoolVar(&runTests, "check", false,
+		"execute checks defined in test")
 	addVariablesFlag(&cmdBench.Flag)
 	addOnlyFlag(&cmdBench.Flag)
 	addSkipFlag(&cmdBench.Flag)
 	addVerbosityFlag(&cmdBench.Flag)
 
 }
-
-var (
-	bcountFlag     int
-	warmupFlag     int
-	pauseFlag      time.Duration
-	concurrentFlag int
-)
 
 func runBench(cmd *Command, suites []*ht.Suite) {
 	println(warmupFlag, bcountFlag, concurrentFlag)
@@ -58,6 +61,9 @@ func runBench(cmd *Command, suites []*ht.Suite) {
 		for _, test := range suite.Tests {
 			if test.Poll.Max < 0 {
 				continue
+			}
+			if !runTests {
+				test.Checks = nil
 			}
 			results := test.Benchmark(suite.Variables,
 				warmupFlag, bcountFlag, pauseFlag, concurrentFlag)
