@@ -52,7 +52,7 @@ var commands = []*Command{
 	cmdRun,
 	cmdExec,
 	cmdBench,
-	cmdPerf,
+	// cmdPerf,
 }
 
 func usage() {
