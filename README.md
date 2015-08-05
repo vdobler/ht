@@ -1,7 +1,7 @@
 HTTP Testing Made Easy
 ======================
 
-End-to-end testing of HTTP request/responses is easy with Go.
+End-to-end testing of HTTP requests/responses is easy with Go.
 
 Writing and maintaining high level test is even easier with ht.
 
@@ -26,10 +26,10 @@ Installation
 ------------
 
 Installing ht should be simple if Go 1.5 (pre beta is okay) and
-git is already installed:
+git are available and working:
 * Run `GO15VENDOREXPERIMENT=1 go get github.com/vdobler/ht/cmd/ht`
   which should download, compile and install everything.
-* Run `GOPATH/bin/ht help` to get you started.
+* Run `$GOPATH/bin/ht help` to get you started.
 
 Documentation
 -------------
@@ -43,5 +43,8 @@ extract almost everything from the godoc:
   https://godoc.org/github.com/vdobler/ht/condition
 * Image fingerprinting:
   https://godoc.org/github.com/vdobler/ht/fingerprint
-* The ht command:
+* The ht command itself:
   https://godoc.org/github.com/vdobler/ht/cmd/ht
+  Run `ht help` for details
+* An example test suite can be found in
+  https://github.com/vdobler/ht/blob/master/testdata/sample.suite
