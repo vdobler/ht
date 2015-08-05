@@ -9,8 +9,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/vdobler/ht/hist"
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/loghist"
 )
 
 var cmdBench = &Command{
@@ -81,7 +81,7 @@ func printBenchmarkSummary(results []ht.Test) {
 			max = d
 		}
 	}
-	h := hist.NewLogHist(7, max)
+	h := loghist.New(7, max)
 	for _, r := range results {
 		h.Add(int(r.Duration / 1e6))
 	}
@@ -93,5 +93,5 @@ func printBenchmarkSummary(results []ht.Test) {
 	}
 
 	fmt.Printf("Percentil %4d \n", cps)
-	fmt.Printf("Resp.Time %4d  [ms]\n", h.Percentils(ps))
+	fmt.Printf("Resp.Time %4d  [ms]\n", h.Quantiles(ps))
 }

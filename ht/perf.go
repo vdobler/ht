@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pinterest/bender"
-	"github.com/vdobler/ht/hist"
+	"github.com/vdobler/ht/loghist"
 )
 
 // -------------------------------------------------------------------------
@@ -163,9 +163,9 @@ type LoadtestResult struct {
 	Errored  int
 	Skipped  int
 	Bogus    int
-	PassHist *hist.LogHist
-	FailHist *hist.LogHist
-	BothHist *hist.LogHist
+	PassHist *loghist.Hist
+	FailHist *loghist.Hist
+	BothHist *loghist.Hist
 }
 
 // String formats r in a useful way.
@@ -185,8 +185,8 @@ func (r LoadtestResult) String() string {
 	}
 
 	s += fmt.Sprintf("Percentil %4.1f\n", cps)
-	s += fmt.Sprintf("Passed    %4d  [ms]\n", r.PassHist.Percentils(ps))
-	s += fmt.Sprintf("Failed    %4d  [ms]\n", r.FailHist.Percentils(ps))
+	s += fmt.Sprintf("Passed    %4d  [ms]\n", r.PassHist.Quantiles(ps))
+	s += fmt.Sprintf("Failed    %4d  [ms]\n", r.FailHist.Quantiles(ps))
 
 	return s
 }
@@ -225,9 +225,9 @@ func AnalyseLoadtest(results []Test) LoadtestResult {
 	result.Total = result.Passed + result.Failed + result.Errored + result.Skipped + result.Bogus
 
 	const millisecond = 1e6
-	result.PassHist = hist.NewLogHist(7, int(maxp/millisecond))
-	result.FailHist = hist.NewLogHist(7, int(maxf/millisecond))
-	result.BothHist = hist.NewLogHist(7, int(max/millisecond))
+	result.PassHist = loghist.New(7, int(maxp/millisecond))
+	result.FailHist = loghist.New(7, int(maxf/millisecond))
+	result.BothHist = loghist.New(7, int(max/millisecond))
 	for _, r := range results {
 		switch r.Status {
 		case Pass:
