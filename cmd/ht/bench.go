@@ -50,7 +50,6 @@ func init() {
 }
 
 func runBench(cmd *Command, suites []*ht.Suite) {
-	println(warmupFlag, bcountFlag, concurrentFlag)
 	for s, suite := range suites {
 		suite.ExecuteSetup()
 		if suite.Status != ht.Pass && suite.Status != ht.Skipped {
@@ -67,7 +66,8 @@ func runBench(cmd *Command, suites []*ht.Suite) {
 			}
 			results := test.Benchmark(suite.Variables,
 				warmupFlag, bcountFlag, pauseFlag, concurrentFlag)
-			fmt.Printf("Suite: %s; Test: %s\n", suite.Name, test.Name)
+			fmt.Printf("%s: %s (%d request, %d ||)\n",
+				suite.Name, test.Name, bcountFlag, concurrentFlag)
 			printBenchmarkSummary(results)
 		}
 		suite.ExecuteTeardown()
@@ -93,5 +93,5 @@ func printBenchmarkSummary(results []ht.Test) {
 	}
 
 	fmt.Printf("Percentil %4d \n", cps)
-	fmt.Printf("Resp.Time %4d  [ms]\n", h.Quantiles(ps))
+	fmt.Printf("Resp.Time %4d  Avg %d ms\n", h.Quantiles(ps), h.Average())
 }
