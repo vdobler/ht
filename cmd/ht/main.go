@@ -317,7 +317,7 @@ func splitTestIDs(f string) (ids map[string]struct{}) {
 		default:
 			typ = ""
 		}
-		// TODO: support ranges like "3.1-5"
+
 		sNo := mustAtoi(s)
 		beg, end := 1, 99
 		if i := strings.Index(t, "-"); i > -1 {
