@@ -233,6 +233,9 @@ func beautifyJSONError(err error, jsonData []byte, file string) string {
 		lineNo++
 	}
 	ch := off - total - 1
+	if ch < 0 {
+		ch = 0
+	}
 	return fmt.Sprintf("%s:%d: %s\n... %s ...\n    %s^",
 		file, lineNo+1, err, lines[lineNo], strings.Repeat(" ", ch))
 }
