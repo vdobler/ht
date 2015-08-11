@@ -396,7 +396,7 @@ func (s Suite) HTMLReport(dir string) error {
 // reported as an individual testcase.
 // NotRun checks are reported as Skipped and Bogus checks are counted as
 // Errored tests.
-func (s *Suite) JUnit4XML(props map[string]string) (string, error) {
+func (s *Suite) JUnit4XML() (string, error) {
 	// Local types used for XML encoding
 	type SysOut struct {
 		XMLName xml.Name `xml:"system-out"`
@@ -494,7 +494,7 @@ func (s *Suite) JUnit4XML(props map[string]string) (string, error) {
 		Testcase:  testcases,
 		SystemOut: SysOut{Data: "\n" + sysout},
 	}
-	for k, v := range props {
+	for k, v := range s.Variables {
 		ts.Properties = append(ts.Properties, Property{Name: k, Value: v})
 	}
 
