@@ -417,9 +417,8 @@ func (s *Suite) JUnit4XML(props map[string]string) (string, error) {
 		SystemOut string    `xml:"system-out,omitempty"`
 	}
 	type Property struct {
-		XMLName xml.Name `xml:"property"`
-		Name    string   `xml:"name,attr"`
-		Value   string   `xml:"value,attr"`
+		Name  string `xml:"name,attr"`
+		Value string `xml:"value,attr"`
 	}
 	type Testsuite struct {
 		XMLName xml.Name `xml:"testsuite"`
@@ -430,7 +429,7 @@ func (s *Suite) JUnit4XML(props map[string]string) (string, error) {
 		Skipped    int        `xml:"skipped,attr"`
 		Time       float64    `xml:"time,attr"`
 		Timestamp  string     `xml:"timestamp,attr"`
-		Properties []Property `xml:"properties"`
+		Properties []Property `xml:"properties>property"`
 		Testcase   []Testcase
 		SystemOut  SysOut
 	}
