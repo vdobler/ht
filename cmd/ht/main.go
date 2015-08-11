@@ -157,7 +157,7 @@ func main() {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "go: unknown subcommand %q\nRun 'go help' for usage.\n",
+	fmt.Fprintf(os.Stderr, "ht: unknown subcommand %q\nRun 'ht help' for usage.\n",
 		args[0])
 	os.Exit(2)
 }
