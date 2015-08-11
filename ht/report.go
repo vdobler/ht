@@ -360,11 +360,11 @@ func init() {
 }
 
 func (t Test) PrintReport(w io.Writer) error {
-	return TestTmpl.Execute(os.Stdout, t)
+	return TestTmpl.Execute(w, t)
 }
 
 func (r Suite) PrintReport(w io.Writer) error {
-	return SuiteTmpl.Execute(os.Stdout, r)
+	return SuiteTmpl.Execute(w, r)
 }
 
 func (s Suite) HTMLReport(dir string) error {
