@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -87,6 +88,11 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		if err != nil {
 			log.Panic(err)
 		}
+		junit, err := suites[s].JUnit4XML()
+		if err != nil {
+			log.Panic(err)
+		}
+		err = ioutil.WriteFile(dirname+"/junit-report.xml", []byte(junit), 0666)
 	}
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
