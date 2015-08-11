@@ -33,7 +33,7 @@ func TestLoadSuite(t *testing.T) {
 	if testing.Short() {
 		return
 	}
-	suite.ExecuteTests()
+	suite.Execute()
 	if suite.Status != Pass {
 		for _, tr := range suite.AllTests() {
 			if tr.Status == Pass || !testing.Verbose() {
@@ -64,6 +64,13 @@ func TestLoadSuite(t *testing.T) {
 	}
 
 	if testing.Verbose() {
+		fmt.Printf("\nDefault Text Output:\n")
 		suite.PrintReport(os.Stdout)
+		junit, err := suite.JUnit4XML(map[string]string{"HOST": "foo.bar.com"})
+		if err != nil {
+			t.Fatalf("Unexpected error: %+v", err)
+		}
+		fmt.Printf("\nJUnit 4 XML Output:\n%s", junit)
+
 	}
 }
