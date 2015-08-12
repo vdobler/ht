@@ -697,15 +697,19 @@ func (t *Test) executeChecks(result []CheckResult) {
 				t.Error = err
 			}
 			// Abort needles checking if all went wrong.
-			if sc, ok := ck.(StatusCode); ok && i == 0 && sc.Expect == 200 {
-				t.tracef("skipping remaining tests")
-				// Clear Status and Error field as these might be
-				// populated from a prior try run of the test.
-				for j := 1; j < len(result); j++ {
-					result[j].Status = Skipped
-					result[j].Error = nil
+			if i == 0 { // only first check is checked against StatusCode/200.
+				sc, ok := ck.(StatusCode)
+				psc, pok := ck.(*StatusCode)
+				if (ok && sc.Expect == 200) || (pok && psc.Expect == 200) {
+					t.tracef("skipping remaining tests")
+					// Clear Status and Error field as these might be
+					// populated from a prior try run of the test.
+					for j := 1; j < len(result); j++ {
+						result[j].Status = Skipped
+						result[j].Error = nil
+					}
+					done = true
 				}
-				done = true
 			}
 		} else {
 			result[i].Status = Pass

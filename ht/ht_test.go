@@ -50,6 +50,60 @@ func TestStatusCode(t *testing.T) {
 	}
 }
 
+func TestSkippingChecks(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
+	defer ts.Close()
+
+	for i, tc := range []struct {
+		code, first, second int
+		fstatus, sstatus    Status
+		pointer             bool
+	}{
+		{code: 200, first: 200, second: 200, fstatus: Pass, sstatus: Pass, pointer: false},
+		{code: 200, first: 200, second: 400, fstatus: Pass, sstatus: Fail, pointer: false},
+		{code: 500, first: 200, second: 400, fstatus: Fail, sstatus: Skipped, pointer: false},
+		{code: 400, first: 400, second: 400, fstatus: Pass, sstatus: Pass, pointer: false},
+		{code: 400, first: 400, second: 200, fstatus: Pass, sstatus: Fail, pointer: false},
+		{code: 400, first: 300, second: 200, fstatus: Fail, sstatus: Fail, pointer: false},
+
+		{code: 200, first: 200, second: 200, fstatus: Pass, sstatus: Pass, pointer: true},
+		{code: 200, first: 200, second: 400, fstatus: Pass, sstatus: Fail, pointer: true},
+		{code: 500, first: 200, second: 400, fstatus: Fail, sstatus: Skipped, pointer: true},
+		{code: 400, first: 400, second: 400, fstatus: Pass, sstatus: Pass, pointer: true},
+		{code: 400, first: 400, second: 200, fstatus: Pass, sstatus: Fail, pointer: true},
+		{code: 400, first: 300, second: 200, fstatus: Fail, sstatus: Fail, pointer: true},
+	} {
+		test := Test{
+			Request: Request{
+				Method: "GET",
+				URL:    ts.URL + "/",
+				Params: URLValues{
+					"status": []string{fmt.Sprintf("%d", tc.code)}},
+			},
+			Checks: []Check{
+				StatusCode{Expect: tc.first},
+				StatusCode{Expect: tc.second},
+			},
+		}
+		if tc.pointer {
+			// StatusCode as well as *StatusCode satisfy the Check interface.
+			sc0 := test.Checks[0].(StatusCode)
+			sc1 := test.Checks[1].(StatusCode)
+			test.Checks[0] = &sc0
+			test.Checks[1] = &sc1
+		}
+		test.Run(nil)
+		if test.CheckResults[0].Status != tc.fstatus ||
+			test.CheckResults[1].Status != tc.sstatus {
+			t.Errorf("%d,%t: %d against %d/%d, got %s/%s want %s/%s", i, tc.pointer, tc.code,
+				tc.first, tc.second,
+				test.CheckResults[0].Status, test.CheckResults[1].Status,
+				tc.fstatus, tc.sstatus)
+		}
+	}
+
+}
+
 func TestParameterHandling(t *testing.T) {
 	test := Test{Request: Request{
 		Method: "POST",
