@@ -11,5 +11,8 @@
           // Check image identity based on 12 byte color histogram
           Fingerprint: "0000000000f0000000100000" },   
     ],
-    Verbosity: 1
+    Verbosity: 1,
+    PreSleep: 0.2,
+    InterSleep: 0.3,
+    PostSleep: 0.4,
 }

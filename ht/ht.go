@@ -220,6 +220,11 @@ type Test struct {
 	Timeout   Duration // If zero use DefaultClientTimeout.
 	Verbosity int      // Verbosity level in logging.
 
+	// Pre-, Inter- and PostSleep are the sleep durations made
+	// before the request, between request and the checks and
+	// after the checks.
+	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
+
 	// ClientPool allows to inject special http.Transports or a
 	// cookie jar to be used by this Test.
 	ClientPool *ClientPool `json:"-"`
@@ -321,6 +326,7 @@ outer:
 //       Sleep      Use largest
 //     Timeout      Use largets
 //     Verbosity    Use largets
+//     PreSleep     Summ of all;  same for InterSleep and PostSleep
 //     ClientPool   ignore
 func Merge(tests ...*Test) (*Test, error) {
 	m := Test{}
@@ -358,6 +364,9 @@ func Merge(tests ...*Test) (*Test, error) {
 		if t.Verbosity > m.Verbosity {
 			m.Verbosity = t.Verbosity
 		}
+		m.PreSleep += t.PreSleep
+		m.InterSleep += t.InterSleep
+		m.PostSleep += t.PostSleep
 		for name, value := range t.VarEx {
 			if old, ok := m.VarEx[name]; ok && old != value {
 				return &m, fmt.Errorf("wont overwrite extractor for %s", name)
@@ -385,6 +394,8 @@ func Merge(tests ...*Test) (*Test, error) {
 // non-nil return value.
 func (t *Test) Run(variables map[string]string) error {
 	t.Started = time.Now()
+
+	time.Sleep(time.Duration(t.PreSleep))
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
@@ -435,6 +446,8 @@ func (t *Test) Run(variables map[string]string) error {
 
 	t.infof("test %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
 
+	time.Sleep(time.Duration(t.PostSleep))
+
 	t.FullDuration = Duration(time.Since(t.Started))
 	return nil
 }
@@ -446,6 +459,7 @@ func (t *Test) execute() {
 	err = t.executeRequest()
 	if err == nil {
 		if len(t.Checks) > 0 {
+			time.Sleep(time.Duration(t.InterSleep))
 			t.executeChecks(t.CheckResults)
 		} else {
 			t.Status = Pass

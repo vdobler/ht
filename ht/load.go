@@ -40,6 +40,8 @@ type rawTest struct {
 	Poll      Poll     `json:",omitempty"`
 	Timeout   Duration `json:",omitempty"`
 	Verbosity int      `json:",omitempty"`
+
+	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
 }
 
 // rawTestToTest creates a list of real Tests by unrolling a rawTest
@@ -54,6 +56,9 @@ func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
 		Poll:        raw.Poll,
 		Timeout:     raw.Timeout,
 		Verbosity:   raw.Verbosity,
+		PreSleep:    raw.PreSleep,
+		InterSleep:  raw.InterSleep,
+		PostSleep:   raw.PostSleep,
 	}
 	if len(raw.BasedOn) > 0 {
 		origname := t.Name

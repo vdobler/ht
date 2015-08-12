@@ -391,6 +391,9 @@ func TestMerge(t *testing.T) {
 			},
 			FollowRedirects: true,
 		},
+		PreSleep:   Duration(100),
+		InterSleep: Duration(120),
+		PostSleep:  Duration(140),
 	}
 
 	b = &Test{
@@ -412,6 +415,7 @@ func TestMerge(t *testing.T) {
 			},
 			FollowRedirects: false,
 		},
+		InterSleep: Duration(300),
 	}
 
 	c, err := Merge(a, b)
@@ -438,6 +442,11 @@ func TestMerge(t *testing.T) {
 		c.Request.Cookies[1].Value != "othersession" ||
 		c.Request.Cookies[2].Value != "vbbbbblue" {
 		t.Errorf("Bad cookies. Got %#v", c.Request.Cookies)
+	}
+
+	if c.PreSleep != 100 || c.InterSleep != 420 || c.PostSleep != 140 {
+		t.Errorf("Bad sleep times. Got pre=%s, inter=%s, post=%s",
+			c.PreSleep, c.InterSleep, c.PostSleep)
 	}
 
 }
