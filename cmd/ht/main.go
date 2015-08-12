@@ -47,6 +47,7 @@ func (c *Command) usage() {
 // Commands lists the available commands and help topics.
 // The order here is the order in which they are printed by 'go help'.
 var commands = []*Command{
+	cmdVersion,
 	cmdList,
 	cmdRun,
 	cmdExec,
