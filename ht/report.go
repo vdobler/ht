@@ -438,37 +438,55 @@ func (s *Suite) JUnit4XML() (string, error) {
 	skipped, passed, failed, errored := 0, 0, 0, 0
 	testcases := []Testcase{}
 	for _, test := range s.Tests {
-		for _, cr := range test.CheckResults {
-			tc := Testcase{
-				Name:      cr.Name,
-				Classname: test.Name,
-				Time:      float64(cr.Duration) / 1e9,
-				SystemOut: cr.JSON,
-			}
-
-			switch cr.Status {
-			case NotRun, Skipped:
-				tc.Skipped = &struct{}{}
-				skipped++
-			case Pass:
-				passed++
-			case Fail:
-				tc.Failure = &ErrorMsg{
-					Message: test.Error.Error(),
-					Typ:     fmt.Sprintf("%T", test.Error),
+		if test.Status >= Error {
+			// report all checks as errored but with special message
+			for _, cr := range test.CheckResults {
+				tc := Testcase{
+					Name:      cr.Name,
+					Classname: test.Name,
+					SystemOut: cr.JSON,
 				}
-				failed++
-			case Error, Bogus:
 				tc.Error = &ErrorMsg{
 					Message: test.Error.Error(),
-					Typ:     fmt.Sprintf("%T", test.Error),
+					Typ:     fmt.Sprintf("main test error, check not run"),
 				}
 				errored++
-			default:
-				panic(cr.Status)
+				testcases = append(testcases, tc)
 			}
 
-			testcases = append(testcases, tc)
+		} else {
+			for _, cr := range test.CheckResults {
+				tc := Testcase{
+					Name:      cr.Name,
+					Classname: test.Name,
+					Time:      float64(cr.Duration) / 1e9,
+					SystemOut: cr.JSON,
+				}
+
+				switch cr.Status {
+				case NotRun, Skipped:
+					tc.Skipped = &struct{}{}
+					skipped++
+				case Pass:
+					passed++
+				case Fail:
+					tc.Failure = &ErrorMsg{
+						Message: cr.Error.Error(),
+						Typ:     fmt.Sprintf("%T", test.Error),
+					}
+					failed++
+				case Error, Bogus:
+					tc.Error = &ErrorMsg{
+						Message: test.Error.Error(),
+						Typ:     fmt.Sprintf("%T", test.Error),
+					}
+					errored++
+				default:
+					panic(cr.Status)
+				}
+
+				testcases = append(testcases, tc)
+			}
 		}
 	}
 
