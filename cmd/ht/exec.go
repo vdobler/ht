@@ -77,8 +77,25 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
 	for s := range suites {
 		suites[s].PrintReport(os.Stdout)
-		dirname := outputDir + "/" + sanitizer.Replace(suites[s].Name)
 
+		// Statistics
+		for _, r := range suites[s].AllTests() {
+			switch r.Status {
+			case ht.Pass:
+				totalPass++
+			case ht.Error:
+				totalError++
+			case ht.Skipped:
+				totalSkiped++
+			case ht.Fail:
+				totalFailed++
+			case ht.Bogus:
+				totalBogus++
+			}
+			total++
+		}
+
+		dirname := outputDir + "/" + sanitizer.Replace(suites[s].Name)
 		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
 		err := os.MkdirAll(dirname, 0766)
 		if err != nil {
