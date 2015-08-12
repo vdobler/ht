@@ -430,7 +430,8 @@ func (t *Test) Run(variables map[string]string) error {
 			t.Status, t.Error = Bogus, err
 			return err
 		}
-		t.Status = NotRun // Clear status; is updated in executeChecks
+		// Clear status and error; is updated in executeChecks.
+		t.Status, t.Error = NotRun, nil
 		t.execute()
 		if t.Status == Pass {
 			break

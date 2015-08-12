@@ -358,6 +358,9 @@ func TestPolling(t *testing.T) {
 		if got := test.Status; got != tc.want {
 			t.Errorf("%d: got %s, want %s", i, got, tc.want)
 		}
+		if tc.want == Pass && test.Error != nil {
+			t.Errorf("%d: got non-nil eror: %+v", i, test.Error)
+		}
 	}
 }
 
