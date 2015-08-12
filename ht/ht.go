@@ -631,7 +631,7 @@ var (
 // executeRequest performs the HTTP request defined in t which must have been
 // prepared by Prepare. Executing an unprepared Test results will panic.
 func (t *Test) executeRequest() error {
-	t.infof("requesting %q", t.Request.Request.URL.String())
+	t.infof("%s %q", t.Request.Request.Method, t.Request.Request.URL.String())
 
 	var err error
 	start := time.Now()
