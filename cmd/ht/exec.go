@@ -21,8 +21,11 @@ var cmdExec = &Command{
 	Usage:       "exec [-serial] <suite>...",
 	Description: "generate request and test response",
 	Help: `
-Exec loads the given suites, unrolls the tests, prepares
-the tests and executes them.
+Exec loads the given suites, unrolls the tests, prepares the tests and
+executes them. The flags -skip and -only allow to fine controll which
+tests in the suite(s) are executed.
+The exit code is 3 if bogus tests or checks are found, 2 if test errors
+are present, 1 if only check failures occured and 0 if everything passed.
 	`,
 }
 
@@ -114,4 +117,13 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
 
+	if totalBogus > 0 {
+		os.Exit(3)
+	} else if totalError > 0 {
+		os.Exit(2)
+	} else if totalFailed > 0 {
+		os.Exit(2)
+	}
+
+	os.Exit(0)
 }

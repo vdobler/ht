@@ -41,7 +41,6 @@ func (c *Command) Name() string {
 func (c *Command) usage() {
 	fmt.Fprintf(os.Stderr, "usage: %s\n\n", c.Usage)
 	fmt.Fprintf(os.Stderr, "%s\n", c.Help)
-	os.Exit(2)
 }
 
 // Commands lists the available commands and help topics.
@@ -55,6 +54,7 @@ var commands = []*Command{
 	// cmdPerf,
 }
 
+// usage prints usage information.
 func usage() {
 	formatedCmdList := ""
 
@@ -78,7 +78,6 @@ Tests IDs have the following format <suite>.<type><test> with <suite> and
 Type is either empty, "u" for setUp test or "d" for tearDown tests. <test>
 maybe a single number like "3" or a range like "3-7".
 `, formatedCmdList)
-	os.Exit(2)
 }
 
 // Variables which can be set via the command line. Statisfied flag.Value interface.
@@ -135,6 +134,7 @@ func main() {
 	args := flag.Args()
 	if len(args) < 1 {
 		usage()
+		os.Exit(9)
 	}
 
 	if args[0] == "help" {
@@ -159,17 +159,18 @@ func main() {
 
 	fmt.Fprintf(os.Stderr, "ht: unknown subcommand %q\nRun 'ht help' for usage.\n",
 		args[0])
-	os.Exit(2)
+	os.Exit(9)
 }
 
 // The help command.
 func help(args []string) {
 	if len(args) == 0 {
-		usage() // TODO: this is not a failure
+		usage()
+		os.Exit(9)
 	}
 	if len(args) != 1 {
 		fmt.Fprintf(os.Stderr, "usage: ht help <command>\n\nToo many arguments given.\n")
-		os.Exit(2)
+		os.Exit(9)
 	}
 
 	arg := args[0]
@@ -183,12 +184,12 @@ func help(args []string) {
 Flags:
 `, cmd.Usage, cmd.Help)
 			cmd.Flag.PrintDefaults()
-			return
+			os.Exit(0)
 		}
 	}
 
 	fmt.Fprintf(os.Stderr, "Unknown help topic %#q.  Run 'ht help'.\n", arg)
-	os.Exit(2) // failed at 'go help cmd'
+	os.Exit(9) // failed at 'go help cmd'
 }
 
 func loadSuites(args []string) []*ht.Suite {
