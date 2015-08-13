@@ -53,7 +53,18 @@ func (c Condition) Fullfilled(s string) error {
 		if s == c.Equals {
 			return nil
 		}
-		return fmt.Errorf("unequal") // TODO: provide more details
+		ls, le := len(s), len(c.Equals)
+		if ls <= (15*le)/10 {
+			// Show full value if not 50% longer.
+			return fmt.Errorf("Unequal, was %q", s)
+		}
+		// Show 10 more characters
+		end := le + 10
+		if end > ls {
+			end = ls
+			return fmt.Errorf("Unequal, was %q", s)
+		}
+		return fmt.Errorf("Unequal, was %q...", s[:end])
 	}
 
 	if c.Prefix != "" && !strings.HasPrefix(s, c.Prefix) {
