@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/vdobler/ht/ht"
@@ -14,6 +15,7 @@ var cmdVersion = &Command{
 	Run:         runVersion,
 	Usage:       "version",
 	Description: "print version information",
+	Flag:        flag.NewFlagSet("version", flag.ContinueOnError),
 	Help: `
 Version prints version information about ht.
 	`,
