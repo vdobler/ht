@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -20,6 +21,7 @@ var cmdExec = &Command{
 	Run:         runExecute,
 	Usage:       "exec [-serial] <suite>...",
 	Description: "generate request and test response",
+	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
 Exec loads the given suites, unrolls the tests, prepares the tests and
 executes them. The flags -skip and -only allow to fine controll which
@@ -34,10 +36,10 @@ func init() {
 		"run suites one after the other instead of concurrently")
 	cmdExec.Flag.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
-	addVariablesFlag(&cmdExec.Flag)
-	addOnlyFlag(&cmdExec.Flag)
-	addSkipFlag(&cmdExec.Flag)
-	addVerbosityFlag(&cmdExec.Flag)
+	addVariablesFlag(cmdExec.Flag)
+	addOnlyFlag(cmdExec.Flag)
+	addSkipFlag(cmdExec.Flag)
+	addVerbosityFlag(cmdExec.Flag)
 }
 
 var (

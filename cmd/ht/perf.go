@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -16,6 +17,7 @@ var cmdPerf = &Command{
 	Run:         runPerf,
 	Usage:       "perf [flags] <suite>...",
 	Description: "run a performance/load test",
+	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
 Perf performs a load test
 	`,
@@ -32,10 +34,10 @@ func init() {
 		"use uniformly distributed requests instead of exponentialy distributed")
 	cmdPerf.Flag.BoolVar(&concFlag, "conc", false,
 		"do a concurrency test instead of a throughput test")
-	addVariablesFlag(&cmdPerf.Flag)
-	addOnlyFlag(&cmdPerf.Flag)
-	addSkipFlag(&cmdPerf.Flag)
-	addVerbosityFlag(&cmdPerf.Flag)
+	addVariablesFlag(cmdPerf.Flag)
+	addOnlyFlag(cmdPerf.Flag)
+	addSkipFlag(cmdPerf.Flag)
+	addVerbosityFlag(cmdPerf.Flag)
 
 }
 

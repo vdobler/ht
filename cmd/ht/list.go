@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/vdobler/ht/ht"
@@ -14,6 +15,7 @@ var cmdList = &Command{
 	Run:         runList,
 	Usage:       "list <suite>...",
 	Description: "list tests in suits",
+	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
 List loads the given suites, unrolls the tests, prepares
 the tests and prints the list of tests.

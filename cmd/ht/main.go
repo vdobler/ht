@@ -22,10 +22,10 @@ type Command struct {
 	// Run the command.
 	Run func(cmd *Command, suites []*ht.Suite)
 
-	Usage       string       // must start with command name
-	Description string       // short description for 'ht help'
-	Help        string       // the output of 'ht help <cmd>'
-	Flag        flag.FlagSet // the flags for this command
+	Usage       string        // must start with command name
+	Description string        // short description for 'ht help'
+	Help        string        // the output of 'ht help <cmd>'
+	Flag        *flag.FlagSet // the flags for this command
 }
 
 // Name returns the command's name: the first word in the usage line.
@@ -98,7 +98,10 @@ func main() {
 	for _, cmd := range commands {
 		if cmd.Name() == args[0] {
 			cmd.Flag.Usage = func() { cmd.usage() }
-			cmd.Flag.Parse(args[1:])
+			err := cmd.Flag.Parse(args[1:])
+			if err != nil {
+				os.Exit(9)
+			}
 			args = cmd.Flag.Args()
 			if cmd.Name() == "run" {
 				suites = []*ht.Suite{loadTests(args)}
