@@ -16,7 +16,17 @@ var fullfilledTests = []struct {
 }{
 	// Equals
 	{"foobar", Condition{Equals: "foobar"}, ``},
-	{"foobar", Condition{Equals: "barfoo"}, `unequal`},
+	{"foobar", Condition{Equals: "barfoo"}, `Unequal, was "foobar"`},
+	{"foobarX", Condition{Equals: "foobar"}, `Unequal, was "foobarX"`},
+	{"foobarXY", Condition{Equals: "foobar"}, `Unequal, was "foobarXY"`},
+	{"foobarXYZ", Condition{Equals: "foobar"}, `Unequal, was "foobarXYZ"`},
+	{"foobarbazwazturpot", Condition{Equals: "foobar"}, `Unequal, was "foobarbazwazturp"...`},
+	// Corner cases of Equals
+	{"A", Condition{Equals: "A"}, ``},
+	{"", Condition{Equals: "A"}, `Unequal, was ""`},
+	{"B", Condition{Equals: "A"}, `Unequal, was "B"`},
+	{"BB", Condition{Equals: "A"}, `Unequal, was "BB"`},
+
 	// Prefix and Suffix
 	{"foobar", Condition{Prefix: "foo"}, ``},
 	{"foobar", Condition{Prefix: "waz"}, `Bad prefix, got "foo"`},

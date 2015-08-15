@@ -7,12 +7,51 @@ package ht
 import (
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/kr/pretty"
+	"github.com/vdobler/ht/internal/json5"
 )
+
+var exampleTest = Test{
+	Name:        "Name",
+	Description: "Description",
+	Request: Request{
+		Method: "GET",
+		URL:    "http://example.org",
+		Params: URLValues{
+			"param": {"val1", "val2"},
+		},
+		ParamsAs: "multipart",
+		Header: http.Header{
+			"header": {"head1", "head2"},
+		},
+		Cookies: []Cookie{
+			{Name: "cname", Value: "cvalue"},
+		},
+		Body:            "body",
+		FollowRedirects: true,
+	},
+	Checks: CheckList{},
+	VarEx: map[string]Extractor{
+		"extract": Extractor{
+			HTMLElementSelector:  "elemSel",
+			HTMLElementAttribute: "elemAttr",
+		},
+	},
+	Poll: Poll{
+		Max:   106,
+		Sleep: Duration(107),
+	},
+	Timeout:    Duration(101),
+	Verbosity:  102,
+	PreSleep:   Duration(103),
+	InterSleep: Duration(104),
+	PostSleep:  Duration(105),
+}
 
 func TestRepeat(t *testing.T) {
 	test := &Test{Description: "q={{query}} c={{count}} f={{f}}"}
@@ -42,6 +81,24 @@ func TestRepeat(t *testing.T) {
 			t.Errorf("%d got %q, want %q", i, r[i].Description, want)
 		}
 	}
+}
+
+func TestRepeatNoSubst(t *testing.T) {
+	orig := exampleTest
+	reps, err := Repeat(&orig, 3, nil)
+
+	if len(reps) != 3 || err != nil {
+		t.Fatalf("len(resp)=%d, err=%v", len(reps), err)
+	}
+
+	for i := 0; i < 3; i++ {
+		if !reflect.DeepEqual(orig, *(reps[i])) {
+			origpp, _ := json5.MarshalIndent(orig, "", "  ")
+			copypp, _ := json5.MarshalIndent(*(reps[i]), "", "  ")
+			t.Errorf("Original:\n%s\nCopy %d\n%s", origpp, i, copypp)
+		}
+	}
+
 }
 
 func TestLCM(t *testing.T) {

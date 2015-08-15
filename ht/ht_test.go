@@ -50,6 +50,60 @@ func TestStatusCode(t *testing.T) {
 	}
 }
 
+func TestSkippingChecks(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
+	defer ts.Close()
+
+	for i, tc := range []struct {
+		code, first, second int
+		fstatus, sstatus    Status
+		pointer             bool
+	}{
+		{code: 200, first: 200, second: 200, fstatus: Pass, sstatus: Pass, pointer: false},
+		{code: 200, first: 200, second: 400, fstatus: Pass, sstatus: Fail, pointer: false},
+		{code: 500, first: 200, second: 400, fstatus: Fail, sstatus: Skipped, pointer: false},
+		{code: 400, first: 400, second: 400, fstatus: Pass, sstatus: Pass, pointer: false},
+		{code: 400, first: 400, second: 200, fstatus: Pass, sstatus: Fail, pointer: false},
+		{code: 400, first: 300, second: 200, fstatus: Fail, sstatus: Fail, pointer: false},
+
+		{code: 200, first: 200, second: 200, fstatus: Pass, sstatus: Pass, pointer: true},
+		{code: 200, first: 200, second: 400, fstatus: Pass, sstatus: Fail, pointer: true},
+		{code: 500, first: 200, second: 400, fstatus: Fail, sstatus: Skipped, pointer: true},
+		{code: 400, first: 400, second: 400, fstatus: Pass, sstatus: Pass, pointer: true},
+		{code: 400, first: 400, second: 200, fstatus: Pass, sstatus: Fail, pointer: true},
+		{code: 400, first: 300, second: 200, fstatus: Fail, sstatus: Fail, pointer: true},
+	} {
+		test := Test{
+			Request: Request{
+				Method: "GET",
+				URL:    ts.URL + "/",
+				Params: URLValues{
+					"status": []string{fmt.Sprintf("%d", tc.code)}},
+			},
+			Checks: []Check{
+				StatusCode{Expect: tc.first},
+				StatusCode{Expect: tc.second},
+			},
+		}
+		if tc.pointer {
+			// StatusCode as well as *StatusCode satisfy the Check interface.
+			sc0 := test.Checks[0].(StatusCode)
+			sc1 := test.Checks[1].(StatusCode)
+			test.Checks[0] = &sc0
+			test.Checks[1] = &sc1
+		}
+		test.Run(nil)
+		if test.CheckResults[0].Status != tc.fstatus ||
+			test.CheckResults[1].Status != tc.sstatus {
+			t.Errorf("%d,%t: %d against %d/%d, got %s/%s want %s/%s", i, tc.pointer, tc.code,
+				tc.first, tc.second,
+				test.CheckResults[0].Status, test.CheckResults[1].Status,
+				tc.fstatus, tc.sstatus)
+		}
+	}
+
+}
+
 func TestParameterHandling(t *testing.T) {
 	test := Test{Request: Request{
 		Method: "POST",
@@ -235,6 +289,11 @@ func echoHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, text, status)
 }
 
+var (
+	pollingHandlerFailCnt  = 0
+	pollingHandlerErrorCnt = 0
+)
+
 // cookieHandler
 func cookieHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
@@ -277,6 +336,84 @@ func expectCheckFailures(t *testing.T, descr string, test Test) {
 	for i, r := range test.CheckResults {
 		if r.Status != Fail {
 			t.Errorf("%s check %d: Expect Fail, got %s", descr, i, r.Status)
+		}
+	}
+}
+
+// pollingHandler
+//     /?t=faile&n=7   returns a 500 for 6 times and a 200 on the 7th request
+//     /?t=error&n=4   waits for 100ms for 4 times and responds with 200 on the 5th request
+func pollingHandler(w http.ResponseWriter, r *http.Request) {
+	n, err := strconv.Atoi(r.FormValue("n"))
+	if err != nil {
+		panic(err.Error())
+	}
+
+	switch what := r.FormValue("t"); what {
+	case "fail":
+		pollingHandlerFailCnt++
+		if n < pollingHandlerFailCnt {
+			http.Error(w, "All good", http.StatusOK)
+			return
+		}
+		http.Error(w, "ooops", http.StatusInternalServerError)
+	case "error":
+		pollingHandlerErrorCnt++
+		if n < pollingHandlerErrorCnt {
+			http.Error(w, "All good", http.StatusOK)
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+		http.Error(w, "sorry, busy", http.StatusInternalServerError)
+	default:
+		panic("Unknown type " + what)
+	}
+}
+
+func TestPolling(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(pollingHandler))
+	defer ts.Close()
+
+	for i, tc := range []struct {
+		max  int
+		typ  string
+		want Status
+	}{
+		{max: 2, typ: "fail", want: Fail},
+		{max: 4, typ: "fail", want: Pass},
+		{max: 1, typ: "fail", want: Fail},
+		{max: 5, typ: "fail", want: Pass},
+		{max: 2, typ: "error", want: Error},
+		{max: 4, typ: "error", want: Pass},
+		{max: 1, typ: "error", want: Error},
+		{max: 5, typ: "error", want: Pass},
+	} {
+		pollingHandlerFailCnt, pollingHandlerErrorCnt = 0, 0
+		test := Test{
+			Name: "Polling",
+			Request: Request{
+				Method: "GET",
+				URL:    ts.URL + "/",
+				Params: URLValues{
+					"n": {"3"},
+					"t": {tc.typ},
+				},
+			},
+			Checks: []Check{
+				StatusCode{200},
+			},
+			Poll: Poll{
+				Max:   tc.max,
+				Sleep: Duration(200),
+			},
+			Timeout: Duration(50 * time.Millisecond),
+		}
+		test.Run(nil)
+		if got := test.Status; got != tc.want {
+			t.Errorf("%d: got %s, want %s", i, got, tc.want)
+		}
+		if tc.want == Pass && test.Error != nil {
+			t.Errorf("%d: got non-nil eror: %+v", i, test.Error)
 		}
 	}
 }
@@ -391,6 +528,9 @@ func TestMerge(t *testing.T) {
 			},
 			FollowRedirects: true,
 		},
+		PreSleep:   Duration(100),
+		InterSleep: Duration(120),
+		PostSleep:  Duration(140),
 	}
 
 	b = &Test{
@@ -412,6 +552,7 @@ func TestMerge(t *testing.T) {
 			},
 			FollowRedirects: false,
 		},
+		InterSleep: Duration(300),
 	}
 
 	c, err := Merge(a, b)
@@ -438,6 +579,11 @@ func TestMerge(t *testing.T) {
 		c.Request.Cookies[1].Value != "othersession" ||
 		c.Request.Cookies[2].Value != "vbbbbblue" {
 		t.Errorf("Bad cookies. Got %#v", c.Request.Cookies)
+	}
+
+	if c.PreSleep != 100 || c.InterSleep != 420 || c.PostSleep != 140 {
+		t.Errorf("Bad sleep times. Got pre=%s, inter=%s, post=%s",
+			c.PreSleep, c.InterSleep, c.PostSleep)
 	}
 
 }

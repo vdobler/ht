@@ -5,8 +5,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"os"
+	"sort"
 	"time"
 
 	"github.com/vdobler/ht/ht"
@@ -17,6 +20,7 @@ var cmdBench = &Command{
 	Run:         runBench,
 	Usage:       "bench [flags] <suite>...",
 	Description: "benchmark requests",
+	Flag:        flag.NewFlagSet("bench", flag.ContinueOnError),
 	Help: `
 Benchmark the tests by running count many requests seperated by pause
 after doing warmup many requests which are not measured.
@@ -42,14 +46,16 @@ func init() {
 		"sleep `duration` between requests")
 	cmdBench.Flag.BoolVar(&runTests, "check", false,
 		"execute checks defined in test")
-	addVariablesFlag(&cmdBench.Flag)
-	addOnlyFlag(&cmdBench.Flag)
-	addSkipFlag(&cmdBench.Flag)
-	addVerbosityFlag(&cmdBench.Flag)
+	addVariablesFlag(cmdBench.Flag)
+	addLimitFlag(cmdBench.Flag)
+	addOnlyFlag(cmdBench.Flag)
+	addSkipFlag(cmdBench.Flag)
+	addVerbosityFlag(cmdBench.Flag)
 
 }
 
 func runBench(cmd *Command, suites []*ht.Suite) {
+	failed := false
 	for s, suite := range suites {
 		suite.ExecuteSetup()
 		if suite.Status != ht.Pass && suite.Status != ht.Skipped {
@@ -68,13 +74,22 @@ func runBench(cmd *Command, suites []*ht.Suite) {
 				warmupFlag, bcountFlag, pauseFlag, concurrentFlag)
 			fmt.Printf("%s: %s (%d request, %d ||)\n",
 				suite.Name, test.Name, bcountFlag, concurrentFlag)
-			printBenchmarkSummary(results)
+			if f := analyseBenchmark(results); f {
+				failed = true
+			}
 		}
 		suite.ExecuteTeardown()
 	}
+	if failed {
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
 
-func printBenchmarkSummary(results []ht.Test) {
+// analyseBenchmark prints informative output of the benchmark results
+// and compares them to the defined limits in rtLimits. It returns true
+// if any limit wasn't reached.
+func analyseBenchmark(results []ht.Test) bool {
 	max := 0
 	for _, r := range results {
 		if d := int(r.Duration / 1e6); d > max {
@@ -94,4 +109,31 @@ func printBenchmarkSummary(results []ht.Test) {
 
 	fmt.Printf("Percentil %4d \n", cps)
 	fmt.Printf("Resp.Time %4d  Avg %d ms\n", h.Quantiles(ps), h.Average())
+
+	if len(rtLimits) == 0 {
+		return false
+	}
+	probs := []float64{}
+	for quant, _ := range rtLimits {
+		probs = append(probs, quant)
+	}
+	sort.Float64s(probs)
+	quantiles := h.Quantiles(probs)
+	failed := false
+	fmt.Printf("Actual RT data      Limit    Status\n")
+	for i, p := range probs {
+		status := "PASS"
+		if quantiles[i] > rtLimits[p] {
+			status = "FAIL"
+			failed = true
+		}
+		fmt.Printf("%5.1f%% <= %4d ms   %4d ms   %s\n",
+			100*p, quantiles[i], rtLimits[p], status)
+	}
+	if failed {
+		fmt.Println("Status: FAIL")
+	} else {
+		fmt.Println("Status: PASS")
+	}
+	return failed
 }

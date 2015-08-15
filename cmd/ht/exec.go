@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -20,9 +21,13 @@ var cmdExec = &Command{
 	Run:         runExecute,
 	Usage:       "exec [-serial] <suite>...",
 	Description: "generate request and test response",
+	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
-Exec loads the given suites, unrolls the tests, prepares
-the tests and executes them.
+Exec loads the given suites, unrolls the tests, prepares the tests and
+executes them. The flags -skip and -only allow to fine controll which
+tests in the suite(s) are executed.
+The exit code is 3 if bogus tests or checks are found, 2 if test errors
+are present, 1 if only check failures occured and 0 if everything passed.
 	`,
 }
 
@@ -31,10 +36,10 @@ func init() {
 		"run suites one after the other instead of concurrently")
 	cmdExec.Flag.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
-	addVariablesFlag(&cmdExec.Flag)
-	addOnlyFlag(&cmdExec.Flag)
-	addSkipFlag(&cmdExec.Flag)
-	addVerbosityFlag(&cmdExec.Flag)
+	addVariablesFlag(cmdExec.Flag)
+	addOnlyFlag(cmdExec.Flag)
+	addSkipFlag(cmdExec.Flag)
+	addVerbosityFlag(cmdExec.Flag)
 }
 
 var (
@@ -77,8 +82,25 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
 	for s := range suites {
 		suites[s].PrintReport(os.Stdout)
-		dirname := outputDir + "/" + sanitizer.Replace(suites[s].Name)
 
+		// Statistics
+		for _, r := range suites[s].AllTests() {
+			switch r.Status {
+			case ht.Pass:
+				totalPass++
+			case ht.Error:
+				totalError++
+			case ht.Skipped:
+				totalSkiped++
+			case ht.Fail:
+				totalFailed++
+			case ht.Bogus:
+				totalBogus++
+			}
+			total++
+		}
+
+		dirname := outputDir + "/" + sanitizer.Replace(suites[s].Name)
 		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
 		err := os.MkdirAll(dirname, 0766)
 		if err != nil {
@@ -97,4 +119,13 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
 
+	if totalBogus > 0 {
+		os.Exit(3)
+	} else if totalError > 0 {
+		os.Exit(2)
+	} else if totalFailed > 0 {
+		os.Exit(2)
+	}
+
+	os.Exit(0)
 }

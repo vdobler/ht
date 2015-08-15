@@ -66,7 +66,7 @@ func TestLoadSuite(t *testing.T) {
 	if testing.Verbose() {
 		fmt.Printf("\nDefault Text Output:\n")
 		suite.PrintReport(os.Stdout)
-		junit, err := suite.JUnit4XML(map[string]string{"HOST": "foo.bar.com"})
+		junit, err := suite.JUnit4XML()
 		if err != nil {
 			t.Fatalf("Unexpected error: %+v", err)
 		}
