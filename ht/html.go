@@ -148,12 +148,12 @@ var (
 )
 
 func extractValidationIssue(node *html.Node) ValidationIssue {
-	p := textContent(w3cValidatorLocSel.MatchFirst(node))
+	p := textContent(w3cValidatorLocSel.MatchFirst(node), false)
 	p = strings.Replace(p, "\n     ", "", -1)
 	return ValidationIssue{
 		Position: p,
-		Message:  textContent(w3cValidatorMsgSel.MatchFirst(node)),
-		Input:    textContent(w3cValidatorInputSel.MatchFirst(node)),
+		Message:  textContent(w3cValidatorMsgSel.MatchFirst(node), false),
+		Input:    textContent(w3cValidatorInputSel.MatchFirst(node), false),
 	}
 }
 
@@ -217,7 +217,22 @@ func (c *HTMLContains) Prepare() (err error) {
 // ----------------------------------------------------------------------------
 // HTMLContainsText
 
-// HTMLContainsText check the text content off HTML elements selected by a CSS rule.
+// HTMLContainsText check the text content off HTML elements selected by
+// a CSS rule.
+//
+// The text content found in the HTML document is normalized by roughly the
+// following procedure:
+//   1.  Newlines are inserted around HTML block elements
+//       (actuall any non-inline element)
+//   2.  Newlines and tabs are replaced by spaces.
+//   3.  Multiple spaces are replaced by one space.
+//   4.  Leading and trailing spaces are trimmed of.
+// As an example consider the following HTML:
+//   <html><body>
+//     <ul class="fancy"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>
+//   </body></html>
+// The normalized text selected by a Selector of "ul.fancy" would be
+//    "One Second Three"
 type HTMLContainsText struct {
 	// Selector is the CSS selector of the HTML elements.
 	Selector string
@@ -225,7 +240,11 @@ type HTMLContainsText struct {
 	// The plain text content of each selected element.
 	Text []string `json:",omitempty"`
 
-	// If true: Text contains the all matches of Selector.
+	// Raw turns of white space normalization and returns the unprocessed
+	// text content.
+	Raw bool `json:",omitempty"`
+
+	// If true: Text contains all matches of Selector.
 	Complete bool `json:",omitempty"`
 
 	sel cascadia.Selector
@@ -252,7 +271,8 @@ func (c *HTMLContainsText) Execute(t *Test) error {
 			return WrongCount{Got: len(matches), Want: len(c.Text)}
 		}
 
-		got := textContent(matches[i])
+		got := textContent(matches[i], c.Raw)
+		got = normalizeWhitespace(got)
 		if want != got {
 			return fmt.Errorf("found %q, want %q", got, want)
 		}
@@ -274,8 +294,70 @@ func (c *HTMLContainsText) Prepare() (err error) {
 	return nil
 }
 
-// textContent returns the full text content of n.
-func textContent(n *html.Node) string {
+// textContent returns the full text content of n. With raw processing the
+// unprocessed content is returned. If raw==false then whitespace is
+// normalized.
+func textContent(n *html.Node, raw bool) string {
+	tc := textContentRec(n, raw)
+	if !raw {
+		tc = normalizeWhitespace(tc)
+	}
+	return tc
+}
+
+// normalizeWhitespace replaces newlines and tabs with spaces, collapses
+// multiple spaces to one and trims s on both ends from spaces.
+func normalizeWhitespace(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.Replace(strings.Replace(s, "\n", " ", -1), "\t", " ", -1)
+	for strings.Index(s, "  ") != -1 {
+		// TODO: speedup
+		s = strings.Replace(s, "  ", " ", -1)
+	}
+	return s
+}
+
+// inlineElement contains the inline span HTML tags. Taken from
+// https://developer.mozilla.org/de/docs/Web/HTML/Inline_elemente
+var inlineElement = map[string]bool{
+	"b":        true,
+	"big":      true,
+	"i":        true,
+	"small":    true,
+	"tt":       true,
+	"abbr":     true,
+	"acronym":  true,
+	"cite":     true,
+	"code":     true,
+	"dfn":      true,
+	"em":       true,
+	"kbd":      true,
+	"strong":   true,
+	"samp":     true,
+	"var":      true,
+	"a":        true,
+	"bdo":      true,
+	"br":       true,
+	"img":      true,
+	"map":      true,
+	"object":   true,
+	"q":        true,
+	"script":   true,
+	"span":     true,
+	"sub":      true,
+	"sup":      true,
+	"button":   true,
+	"input":    true,
+	"label":    true,
+	"select":   true,
+	"true":     true,
+	"textarea": true,
+}
+
+// textContentRec serializes the text content of n. In raw mode the text
+// content is completely unprocessed. If raw == false then content of block
+// elements is surrounded by additional newlines.
+func textContentRec(n *html.Node, raw bool) string {
 	if n == nil {
 		return ""
 	}
@@ -285,13 +367,12 @@ func textContent(n *html.Node) string {
 	case html.ElementNode:
 		s := ""
 		for child := n.FirstChild; child != nil; child = child.NextSibling {
-			cs := textContent(child)
-			if cs != "" {
-				if s != "" && s[len(s)-1] != ' ' {
-					s += " "
-				}
-				s += cs
+			cs := textContentRec(child, raw)
+			if !raw && child.Type == html.ElementNode &&
+				!inlineElement[child.Data] {
+				cs = "\n" + cs + "\n"
 			}
+			s += cs
 		}
 		return s
 	}

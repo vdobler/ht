@@ -29,6 +29,16 @@ var hcr = Response{
 <img src="pic.jpg"><img src="http://www.google.com/logo.png">
 <script src="/js/common.js"></script>
 <script>blob="aaa"</script>
+<div class="WS">
+  <p class="em">Inter<em>word</em>emphasis</p>
+  <p class="strong">
+	Some
+	<strong> important </strong>
+	things.
+  </p>
+  <ul class="items"><li>Foo</li><li>Bar</li><li>Waz</li></ul>
+  <ul class="fancy"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>
+</div>
 </body>
 </html>
 `)}
@@ -65,6 +75,14 @@ var htmlContainsTextTests = []TC{
 		Text: []string{"Hello World"}, Complete: true}, someError},
 	{hcr, &HTMLContainsText{Selector: "p.X",
 		Text: []string{"Hello World", "Thanks!", "ZZZ"}}, someError},
+	{hcr, &HTMLContainsText{Selector: "div.WS p.em",
+		Text: []string{"Interwordemphasis"}}, nil},
+	{hcr, &HTMLContainsText{Selector: "div.WS p.strong",
+		Text: []string{"Some important things."}}, nil},
+	{hcr, &HTMLContainsText{Selector: "ul.items",
+		Text: []string{"Foo Bar Waz"}}, nil},
+	{hcr, &HTMLContainsText{Selector: "ul.fancy",
+		Text: []string{"One Second Three"}}, nil},
 }
 
 func TestHTMLContainsText(t *testing.T) {

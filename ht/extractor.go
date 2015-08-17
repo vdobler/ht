@@ -26,13 +26,13 @@ type Extractor struct {
 	//     div.token > span
 	HTMLElementSelector string
 
-	// HTMLElementAttribte is the name of the attribute from which the
+	// HTMLElementAttribute is the name of the attribute from which the
 	// value should be extracted.  The magic value "~text~" refers to the
 	// text content of the element. E.g. in the examples above the following
 	// should be sensible:
 	//     content
 	//     value
-	//     ~inner~
+	//     ~text~
 	HTMLElementAttribute string
 }
 
@@ -52,7 +52,7 @@ func (e Extractor) Extract(t *Test) (string, error) {
 			return "", fmt.Errorf("could not find node '%s'", e.HTMLElementSelector)
 		}
 		if e.HTMLElementAttribute == "~text~" {
-			return textContent(node), nil
+			return textContent(node, true), nil
 		}
 		for _, a := range node.Attr {
 			if a.Key == e.HTMLElementAttribute {
