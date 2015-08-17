@@ -42,6 +42,7 @@
 //     * Image             checks image format, size and content
 //     * JSON              checks structure and content of a JSON body
 //     * XML               checks elements of a XML body
+//     * Logfile           checks growth and content of log files
 //
 // Requests
 //
