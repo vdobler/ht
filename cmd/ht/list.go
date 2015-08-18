@@ -9,17 +9,27 @@ import (
 	"fmt"
 
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/internal/json5"
 )
 
 var cmdList = &Command{
 	Run:         runList,
-	Usage:       "list <suite>...",
+	Usage:       "list [flags] <suite>...",
 	Description: "list tests in suits",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
 List loads the given suites, unrolls the tests, prepares
 the tests and prints the list of tests.
 	`,
+}
+
+var (
+	checkFlag bool
+)
+
+func init() {
+	cmdList.Flag.BoolVar(&checkFlag, "check", false,
+		"including checks inlisting")
 }
 
 func runList(cmd *Command, suites []*ht.Suite) {
@@ -29,15 +39,31 @@ func runList(cmd *Command, suites []*ht.Suite) {
 		fmt.Printf("%s\n", ht.Underline(stitle, "-", ""))
 		for tNo, test := range suite.Setup {
 			id := fmt.Sprintf("%d.u%d", sNo+1, tNo+1)
-			fmt.Printf("%-6s %s\n", id, test.Name)
+			displayTest(id, test)
 		}
 		for tNo, test := range suite.Tests {
 			id := fmt.Sprintf("%d.%d", sNo+1, tNo+1)
-			fmt.Printf("%-6s %s\n", id, test.Name)
+			displayTest(id, test)
 		}
 		for tNo, test := range suite.Teardown {
 			id := fmt.Sprintf("%d.d%d", sNo+1, tNo+1)
-			fmt.Printf("%-6s %s\n", id, test.Name)
+			displayTest(id, test)
 		}
 	}
+}
+
+func displayTest(id string, test *ht.Test) {
+	fmt.Printf("%-6s %s\n", id, test.Name)
+	if !checkFlag {
+		return
+	}
+	for _, check := range test.Checks {
+		name := ht.NameOf(check)
+		buf, err := json5.Marshal(check)
+		if err != nil {
+			buf = []byte(err.Error())
+		}
+		fmt.Printf("           %-14s %s\n", name, buf)
+	}
+	fmt.Println()
 }
