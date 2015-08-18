@@ -25,11 +25,14 @@ the tests and prints the list of tests.
 
 var (
 	checkFlag bool
+	fullFlag  bool
 )
 
 func init() {
 	cmdList.Flag.BoolVar(&checkFlag, "check", false,
 		"including checks inlisting")
+	cmdList.Flag.BoolVar(&fullFlag, "full", false,
+		"print complete tests")
 }
 
 func runList(cmd *Command, suites []*ht.Suite) {
@@ -54,16 +57,22 @@ func runList(cmd *Command, suites []*ht.Suite) {
 
 func displayTest(id string, test *ht.Test) {
 	fmt.Printf("%-6s %s\n", id, test.Name)
-	if !checkFlag {
-		return
-	}
-	for _, check := range test.Checks {
-		name := ht.NameOf(check)
-		buf, err := json5.Marshal(check)
+	if fullFlag {
+		buf, err := json5.MarshalIndent(test, "         ", "    ")
 		if err != nil {
 			buf = []byte(err.Error())
 		}
-		fmt.Printf("           %-14s %s\n", name, buf)
+		fmt.Println("        ", string(buf))
+		fmt.Println()
+	} else if checkFlag {
+		for _, check := range test.Checks {
+			name := ht.NameOf(check)
+			buf, err := json5.Marshal(check)
+			if err != nil {
+				buf = []byte(err.Error())
+			}
+			fmt.Printf("           %-14s %s\n", name, buf)
+		}
+		fmt.Println()
 	}
-	fmt.Println()
 }

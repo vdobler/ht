@@ -142,15 +142,15 @@ type Request struct {
 	// redirects should be done.
 	FollowRedirects bool `json:",omitempty"`
 
-	Request  *http.Request // the 'real' request
-	SentBody string        // the 'real' body
+	Request  *http.Request `json:"-"` // the 'real' request
+	SentBody string        `json:"-"` // the 'real' body
 }
 
 // Response captures information about a http response.
 type Response struct {
 	// Response is the received HTTP response. Its body has bean read and
 	// closed allready.
-	Response *http.Response
+	Response *http.Response `json:",omitempty"`
 
 	// Duration to receive response and read the whole body.
 	Duration Duration
@@ -205,7 +205,7 @@ type ClientPool struct {
 // a number of Checks on the recieved Response.
 type Test struct {
 	Name        string
-	Description string
+	Description string `json:",omitempty"`
 
 	// Request is the HTTP request.
 	Request Request
@@ -214,11 +214,11 @@ type Test struct {
 	Checks CheckList
 
 	// VarEx may be used to popultate variables from the response.
-	VarEx map[string]Extractor
+	VarEx map[string]Extractor `json:",omitempty"`
 
 	Poll      Poll     `json:",omitempty"`
-	Timeout   Duration // If zero use DefaultClientTimeout.
-	Verbosity int      // Verbosity level in logging.
+	Timeout   Duration `json:",omitempty"` // If zero use DefaultClientTimeout.
+	Verbosity int      `json:",omitempty"` // Verbosity level in logging.
 
 	// Pre-, Inter- and PostSleep are the sleep durations made
 	// before the request, between request and the checks and
@@ -229,7 +229,7 @@ type Test struct {
 	// cookie jar to be used by this Test.
 	ClientPool *ClientPool `json:"-"`
 
-	Response Response
+	Response Response `json:",omitempty"`
 
 	// The following results are filled during Run.
 	Status       Status        `json:"-"`
@@ -239,8 +239,7 @@ type Test struct {
 	FullDuration Duration      `json:"-"`
 	Tries        int           `json:"-"`
 	CheckResults []CheckResult `json:"-"` // The individual checks.
-
-	SeqNo string
+	SeqNo        string        `json:"-"`
 
 	client *http.Client
 	checks []Check // prepared checks.
