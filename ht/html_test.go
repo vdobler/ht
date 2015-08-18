@@ -44,48 +44,48 @@ var hcr = Response{
 `)}
 
 var htmlContainsTests = []TC{
-	{hcr, &HTMLContains{Selector: "h1"}, nil},
-	{hcr, &HTMLContains{Selector: "p.X", Count: 2}, nil},
-	{hcr, &HTMLContains{Selector: "#mt", Count: 1}, nil},
-	{hcr, &HTMLContains{Selector: "h2"}, NotFound},
-	{hcr, &HTMLContains{Selector: "h1", Count: 2}, someError},
-	{hcr, &HTMLContains{Selector: "h1", Count: -1}, FoundForbidden},
-	{hcr, &HTMLContains{Selector: "p.z"}, NotFound},
-	{hcr, &HTMLContains{Selector: "#nil"}, NotFound},
+	{hcr, &HTMLTag{Selector: "h1"}, nil},
+	{hcr, &HTMLTag{Selector: "p.X", Count: 2}, nil},
+	{hcr, &HTMLTag{Selector: "#mt", Count: 1}, nil},
+	{hcr, &HTMLTag{Selector: "h2"}, NotFound},
+	{hcr, &HTMLTag{Selector: "h1", Count: 2}, someError},
+	{hcr, &HTMLTag{Selector: "h1", Count: -1}, FoundForbidden},
+	{hcr, &HTMLTag{Selector: "p.z"}, NotFound},
+	{hcr, &HTMLTag{Selector: "#nil"}, NotFound},
 }
 
-func TestHTMLContains(t *testing.T) {
+func TestHTMLTag(t *testing.T) {
 	for i, tc := range htmlContainsTests {
 		runTest(t, i, tc)
 	}
 }
 
 var htmlContainsTextTests = []TC{
-	{hcr, &HTMLContainsText{Selector: "p.X",
+	{hcr, &HTMLContains{Selector: "p.X",
 		Text: []string{"Hello World", "Thanks!"}}, nil},
-	{hcr, &HTMLContainsText{Selector: "#mt",
+	{hcr, &HTMLContains{Selector: "#mt",
 		Text: []string{"FooBar"}, Complete: true}, nil},
-	{hcr, &HTMLContainsText{Selector: "span",
+	{hcr, &HTMLContains{Selector: "span",
 		Text: []string{"World"}}, nil},
-	{hcr, &HTMLContainsText{Selector: "span",
+	{hcr, &HTMLContains{Selector: "span",
 		Text: []string{"World"}, Complete: true}, nil},
-	{hcr, &HTMLContainsText{Selector: "p.X",
+	{hcr, &HTMLContains{Selector: "p.X",
 		Text: []string{"Hello World", "FooBar"}}, someError},
-	{hcr, &HTMLContainsText{Selector: "p.X",
+	{hcr, &HTMLContains{Selector: "p.X",
 		Text: []string{"Hello World"}, Complete: true}, someError},
-	{hcr, &HTMLContainsText{Selector: "p.X",
+	{hcr, &HTMLContains{Selector: "p.X",
 		Text: []string{"Hello World", "Thanks!", "ZZZ"}}, someError},
-	{hcr, &HTMLContainsText{Selector: "div.WS p.em",
+	{hcr, &HTMLContains{Selector: "div.WS p.em",
 		Text: []string{"Interwordemphasis"}}, nil},
-	{hcr, &HTMLContainsText{Selector: "div.WS p.strong",
+	{hcr, &HTMLContains{Selector: "div.WS p.strong",
 		Text: []string{"Some important things."}}, nil},
-	{hcr, &HTMLContainsText{Selector: "ul.items",
+	{hcr, &HTMLContains{Selector: "ul.items",
 		Text: []string{"Foo Bar Waz"}}, nil},
-	{hcr, &HTMLContainsText{Selector: "ul.fancy",
+	{hcr, &HTMLContains{Selector: "ul.fancy",
 		Text: []string{"One Second Three"}}, nil},
 }
 
-func TestHTMLContainsText(t *testing.T) {
+func TestHTMLContains(t *testing.T) {
 	for i, tc := range htmlContainsTextTests {
 		runTest(t, i, tc)
 	}

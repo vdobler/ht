@@ -18,8 +18,8 @@ import (
 )
 
 func init() {
+	RegisterCheck(&HTMLTag{})
 	RegisterCheck(&HTMLContains{})
-	RegisterCheck(&HTMLContainsText{})
 	RegisterCheck(ValidHTML{})
 	RegisterCheck(W3CValidHTML{})
 	RegisterCheck(&Links{})
@@ -158,10 +158,10 @@ func extractValidationIssue(node *html.Node) ValidationIssue {
 }
 
 // ----------------------------------------------------------------------------
-// HTMLContains
+// HTMLTag
 
-// HTMLContains checks for the existens of HTML elements selected by CSS selectors.
-type HTMLContains struct {
+// HTMLTag checks for the existens of HTML elements selected by CSS selectors.
+type HTMLTag struct {
 	// Selector is the CSS selector of the HTML elements.
 	Selector string
 
@@ -174,7 +174,7 @@ type HTMLContains struct {
 	sel cascadia.Selector
 }
 
-func (c *HTMLContains) Execute(t *Test) error {
+func (c *HTMLTag) Execute(t *Test) error {
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
 			return err
@@ -205,7 +205,7 @@ func (c *HTMLContains) Execute(t *Test) error {
 	return nil
 }
 
-func (c *HTMLContains) Prepare() (err error) {
+func (c *HTMLTag) Prepare() (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
 		c.sel = nil
@@ -215,9 +215,9 @@ func (c *HTMLContains) Prepare() (err error) {
 }
 
 // ----------------------------------------------------------------------------
-// HTMLContainsText
+// HTMLContains
 
-// HTMLContainsText check the text content off HTML elements selected by
+// HTMLContains check the text content off HTML elements selected by
 // a CSS rule.
 //
 // The text content found in the HTML document is normalized by roughly the
@@ -233,7 +233,7 @@ func (c *HTMLContains) Prepare() (err error) {
 //   </body></html>
 // The normalized text selected by a Selector of "ul.fancy" would be
 //    "One Second Three"
-type HTMLContainsText struct {
+type HTMLContains struct {
 	// Selector is the CSS selector of the HTML elements.
 	Selector string
 
@@ -250,7 +250,7 @@ type HTMLContainsText struct {
 	sel cascadia.Selector
 }
 
-func (c *HTMLContainsText) Execute(t *Test) error {
+func (c *HTMLContains) Execute(t *Test) error {
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
 			return err
@@ -285,7 +285,7 @@ func (c *HTMLContainsText) Execute(t *Test) error {
 	return nil
 }
 
-func (c *HTMLContainsText) Prepare() (err error) {
+func (c *HTMLContains) Prepare() (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
 		c.sel = nil

@@ -28,21 +28,21 @@
 // Forbidding the occurenc of "foobar" thus requires a negative Count.
 //
 // The following checks are provided
-//     * StatusCode        checks the received HTTP status code
-//     * ResponseTime      provides lower and higer bounds on the response time
-//     * Header            checks presence and values of received HTTP header
-//     * SetCookie         checks properties of received cookies
-//     * Identity          checks the SHA1 hash of the HTTP body
-//     * UTF8Encoded       checks that the HTTP body is UTF-8 encoded
-//     * Body              text lookup in the HTTP body
-//     * HTMLContains      checks occurence HTML elements choosen via CSS-selectors
-//     * HTMLContainsText  checks text content of CSS-selected elements
-//     * W3CValidHTML      checks if body parses as valid HTML5
-//     * Links             make sure hrefs and srcs in HTML are accessible
-//     * Image             checks image format, size and content
-//     * JSON              checks structure and content of a JSON body
-//     * XML               checks elements of a XML body
-//     * Logfile           checks growth and content of log files
+//     * StatusCode      checks the received HTTP status code
+//     * ResponseTime    provides lower and higer bounds on the response time
+//     * Header          checks presence and values of received HTTP header
+//     * SetCookie       checks properties of received cookies
+//     * Identity        checks the SHA1 hash of the HTTP body
+//     * UTF8Encoded     checks that the HTTP body is UTF-8 encoded
+//     * Body            text lookup in the HTTP body
+//     * HTMLTag         checks occurence HTML elements choosen via CSS-selectors
+//     * HTMLContains    checks text content of CSS-selected elements
+//     * W3CValidHTML    checks if body parses as valid HTML5
+//     * Links           make sure hrefs and srcs in HTML are accessible
+//     * Image           checks image format, size and content
+//     * JSON            checks structure and content of a JSON body
+//     * XML             checks elements of a XML body
+//     * Logfile         checks growth and content of log files
 //
 // Requests
 //
