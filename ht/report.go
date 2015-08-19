@@ -110,7 +110,8 @@ var htmlCheckTmpl = `{{define "CHECK"}}
 
 var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{if gt .Tries 1}}
   {{printf "(after %d tries)" .Tries}}{{end}}
-  Started: {{.Started}}   Duration: {{.FullDuration}}   Request: {{.Duration}}{{if .Error}}
+  Started: {{.Started}}   Duration: {{.FullDuration}}   Request: {{.Duration}}{{if .Request.Request}}
+  {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{end}}{{if .Error}}
   Error: {{.Error}}{{end}}
 {{if eq .Status 2 3 4 5}}  {{if .CheckResults}}Checks:
 {{range $i, $c := .CheckResults}}{{printf "    %2d. " $i}}{{template "CHECK" .}}
