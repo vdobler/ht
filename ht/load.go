@@ -43,16 +43,6 @@ import (
 	"github.com/vdobler/ht/internal/json5"
 )
 
-var (
-	// testPool is the collection of all loaded raw tests and raw mixins,
-	// it maps relative filenames to rawTests.
-	testPool map[string]*rawTest
-)
-
-func init() {
-	testPool = make(map[string]*rawTest)
-}
-
 // rawTest is the raw representation of a test as read from disk.
 type rawTest struct {
 	Name        string
@@ -75,7 +65,7 @@ type rawTest struct {
 
 // rawTestToTest creates a list of real Tests by unrolling a rawTest
 // after loading and merging al mixins.
-func rawTestToTests(dir string, raw *rawTest) (tests []*Test, err error) {
+func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tests []*Test, err error) {
 	t := &Test{
 		Name:        raw.Name,
 		Description: raw.Description,
@@ -93,12 +83,12 @@ func rawTestToTests(dir string, raw *rawTest) (tests []*Test, err error) {
 		origname := t.Name
 		base := []*Test{t}
 		for _, name := range raw.BasedOn {
-			rb, basedir, err := findRawTest(dir, name)
+			rb, basedir, err := findRawTest(dir, name, testPool)
 			if err != nil {
 				return nil, err
 			}
 			rb.Unroll = nil // Mixins are not unroled.
-			b, err := rawTestToTests(basedir, rb)
+			b, err := rawTestToTests(basedir, rb, testPool)
 			if err != nil {
 				return nil, err
 			}
@@ -132,7 +122,7 @@ func rawTestToTests(dir string, raw *rawTest) (tests []*Test, err error) {
 // The name is interpreted as a relative path from curdir. If that file has been
 // loaded already it is returned from the pool otherwise it is read from the
 // filesystem. The directory the file was found is returned as basedir.
-func findRawTest(curdir string, name string) (raw *rawTest, basedir string, err error) {
+func findRawTest(curdir string, name string, testPool map[string]*rawTest) (raw *rawTest, basedir string, err error) {
 	name = path.Join(curdir, name)
 	basedir = path.Dir(name)
 	if t, ok := testPool[name]; ok {
@@ -168,11 +158,12 @@ func loadRawTest(filename string) (*rawTest, error) {
 func LoadTest(filename string) ([]*Test, error) {
 	dir := path.Dir(filename)
 	name := path.Base(filename)
-	raw, basedir, err := findRawTest(dir, name)
+	testPool := make(map[string]*rawTest)
+	raw, basedir, err := findRawTest(dir, name, testPool)
 	if err != nil {
 		return nil, err
 	}
-	return rawTestToTests(basedir, raw)
+	return rawTestToTests(basedir, raw, testPool)
 }
 
 // LoadSuite reads a suite from filename. Tests and mixins are read relative
@@ -191,14 +182,16 @@ func LoadSuite(filename string) (*Suite, error) {
 		OmitChecks:  raw.OmitChecks,
 	}
 
+	testPool := make(map[string]*rawTest)
+
 	appendTests := func(testNames []string) ([]*Test, error) {
 		tests := []*Test{}
 		for _, name := range testNames {
-			raw, base, err := findRawTest(curdir, name)
+			raw, base, err := findRawTest(curdir, name, testPool)
 			if err != nil {
 				return nil, fmt.Errorf("test %q: %s", name, err)
 			}
-			ts, err := rawTestToTests(base, raw)
+			ts, err := rawTestToTests(base, raw, testPool)
 			if err != nil {
 				return nil, fmt.Errorf("test %q: %s", name, err)
 			}
