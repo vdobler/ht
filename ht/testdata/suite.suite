@@ -1,0 +1,20 @@
+{
+    Name: "Suite for Testing Load",
+    KeepCookies: true,
+    OmitCheck: false,
+    Setup: [
+        "a.ht"
+    ],
+    Tests: [
+        "a.ht",
+        "b.ht",
+	"c/d.ht",
+    ],
+    Teardown: [
+       "b.ht",
+    ],
+    Verbosity: 2,  
+    Variables: {
+       VARNAME: "varvalue",
+    }
+}

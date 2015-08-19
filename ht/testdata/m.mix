@@ -1,0 +1,15 @@
+{
+    Name: "Mixin M",
+    Request: {
+        Params: {
+            bparam: [ "betaM" ],
+            cparam: [ "gammaM" ],
+        },
+        Header: {
+            Multi: [ "M" ],
+        },
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 400},
+    ],
+}

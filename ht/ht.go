@@ -275,7 +275,7 @@ func mergeRequest(m *Request, r Request) error {
 	}
 
 	for k, v := range r.Params {
-		m.Params[k] = v
+		m.Params[k] = append(m.Params[k], v...)
 	}
 
 	if err := allNonemptyMustBeSame(&(m.ParamsAs), r.ParamsAs); err != nil {
@@ -283,7 +283,7 @@ func mergeRequest(m *Request, r Request) error {
 	}
 
 	for k, v := range r.Header {
-		m.Header[k] = v
+		m.Header[k] = append(m.Header[k], v...)
 	}
 
 outer:
@@ -340,7 +340,7 @@ func Merge(tests ...*Test) (*Test, error) {
 	for _, t := range tests {
 		s = append(s, t.Description)
 	}
-	m.Description = strings.Join(s, "\n")
+	m.Description = strings.TrimSpace(strings.Join(s, "\n"))
 
 	m.Request.Params = make(URLValues)
 	m.Request.Header = make(http.Header)

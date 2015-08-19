@@ -74,3 +74,23 @@ func TestLoadSuite(t *testing.T) {
 
 	}
 }
+
+func TestLoadSuiteComplicated(t *testing.T) {
+	suite, err := LoadSuite("testdata/suite.suite")
+	if err != nil {
+		t.Fatalf("Unexpected error %s", err.Error())
+	}
+
+	if n := len(suite.Setup); n != 1 {
+		t.Errorf("Got %d setup tests, want 1", n)
+	}
+
+	if n := len(suite.Tests); n != 3 {
+		t.Errorf("Got %d setup tests, want 1. Got %+v", n, suite.Tests)
+	}
+
+	if n := len(suite.Teardown); n != 1 {
+		t.Errorf("Got %d teardown tests, want 1", n)
+	}
+
+}

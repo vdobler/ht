@@ -2,6 +2,35 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+/*
+
+Loading via (relative) file name
+
+Suites have a dir they live in, this dir is the staring base dir for all
+subsequent actions.
+
+    basedir/some.suite       references "a.ht", "../b.ht", and "folder/c.ht"
+
+so loading happens like this:
+
+    a: basedir/a.ht
+    b: basedir/../b.ht
+    c: basedir/folder/c.ht
+
+each of a, b and c reference a mixin "m.h". This should be loaded as
+
+    a: basedir/m.ht
+    b: basedir/../m.ht
+    c: basedir/folder/m.ht
+
+if the mixin m.ht itself is based on a mixin "../r.ht" then r.ht should be loaded as
+
+    a: basedir/../r.ht
+    b: basedir/../../r.ht
+    c: basedir/folder/../r.ht
+
+*/
+
 package ht
 
 import (
@@ -46,7 +75,7 @@ type rawTest struct {
 
 // rawTestToTest creates a list of real Tests by unrolling a rawTest
 // after loading and merging al mixins.
-func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
+func rawTestToTests(dir string, raw *rawTest) (tests []*Test, err error) {
 	t := &Test{
 		Name:        raw.Name,
 		Description: raw.Description,
@@ -64,13 +93,12 @@ func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
 		origname := t.Name
 		base := []*Test{t}
 		for _, name := range raw.BasedOn {
-			name = path.Join(dir, name)
-			rb, err := findRawTest(name)
+			rb, basedir, err := findRawTest(dir, name)
 			if err != nil {
 				return nil, err
 			}
 			rb.Unroll = nil // Mixins are not unroled.
-			b, err := rawTestToTests(rb, dir)
+			b, err := rawTestToTests(basedir, rb)
 			if err != nil {
 				return nil, err
 			}
@@ -100,17 +128,26 @@ func rawTestToTests(raw *rawTest, dir string) (tests []*Test, err error) {
 	return tests, nil
 }
 
-// findRawTest tries to find a test with the given name: If the name has been loaded
-// already it is returned from the pool otherwise it is read from the filesystem.
-func findRawTest(name string) (*rawTest, error) {
+// findRawTest tries to find a test with the given name.
+// The name is interpreted as a relative path from curdir. If that file has been
+// loaded already it is returned from the pool otherwise it is read from the
+// filesystem. The directory the file was found is returned as basedir.
+func findRawTest(curdir string, name string) (raw *rawTest, basedir string, err error) {
+	name = path.Join(curdir, name)
+	basedir = path.Dir(name)
 	if t, ok := testPool[name]; ok {
-		return t, nil
+		return t, basedir, nil
 	}
-	return loadRawTest(name)
+	raw, err = loadRawTest(name)
+	if err != nil {
+		return nil, basedir, err
+	}
+	testPool[name] = raw
+	return raw, basedir, nil
 }
 
 // loadRawTest loads the file with the given filename and decodes into
-// a rawTest and stores it in the global pool of raw tests.
+// a rawTest.
 func loadRawTest(filename string) (*rawTest, error) {
 	all, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -122,19 +159,20 @@ func loadRawTest(filename string) (*rawTest, error) {
 		err := fmt.Errorf(beautifyJSONError(err, all, filename))
 		return nil, err
 	}
-	testPool[filename] = t
 	return t, nil
 }
 
 // LoadTest reads a test from filename. Tests and mixins are read relative
 // to the directory the test lives in. Unrolling is performed.
+// TODO
 func LoadTest(filename string) ([]*Test, error) {
 	dir := path.Dir(filename)
-	raw, err := findRawTest(filename)
+	name := path.Base(filename)
+	raw, basedir, err := findRawTest(dir, name)
 	if err != nil {
 		return nil, err
 	}
-	return rawTestToTests(raw, dir)
+	return rawTestToTests(basedir, raw)
 }
 
 // LoadSuite reads a suite from filename. Tests and mixins are read relative
@@ -144,7 +182,7 @@ func LoadSuite(filename string) (*Suite, error) {
 	if err != nil {
 		return nil, err
 	}
-	dir := path.Dir(filename)
+	curdir := path.Dir(filename)
 
 	suite := &Suite{
 		Name:        raw.Name,
@@ -156,14 +194,13 @@ func LoadSuite(filename string) (*Suite, error) {
 	appendTests := func(testNames []string) ([]*Test, error) {
 		tests := []*Test{}
 		for _, name := range testNames {
-			name = path.Join(dir, name)
-			st, err := findRawTest(name)
+			raw, base, err := findRawTest(curdir, name)
 			if err != nil {
 				return nil, fmt.Errorf("test %q: %s", name, err)
 			}
-			ts, err := rawTestToTests(st, dir)
+			ts, err := rawTestToTests(base, raw)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("test %q: %s", name, err)
 			}
 			tests = append(tests, ts...)
 		}
