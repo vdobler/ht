@@ -51,6 +51,7 @@ var commands = []*Command{
 	cmdRun,
 	cmdExec,
 	cmdBench,
+	cmdMonitor,
 	// cmdPerf,
 }
 
