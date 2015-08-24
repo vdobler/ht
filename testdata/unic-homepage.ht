@@ -16,5 +16,6 @@
 	    ]
         },
     ],
-    Verbosity: 2
+    Verbosity: 2,
+    Criticality: "Error",
 }

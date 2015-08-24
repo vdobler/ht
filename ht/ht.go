@@ -216,9 +216,10 @@ type Test struct {
 	// VarEx may be used to popultate variables from the response.
 	VarEx map[string]Extractor `json:",omitempty"`
 
-	Poll      Poll     `json:",omitempty"`
-	Timeout   Duration `json:",omitempty"` // If zero use DefaultClientTimeout.
-	Verbosity int      `json:",omitempty"` // Verbosity level in logging.
+	Poll        Poll        `json:",omitempty"`
+	Timeout     Duration    `json:",omitempty"` // If zero use DefaultClientTimeout.
+	Verbosity   int         `json:",omitempty"` // Verbosity level in logging.
+	Criticality Criticality `json:",omitempty"` // Business criticality of this test
 
 	// Pre-, Inter- and PostSleep are the sleep durations made
 	// before the request, between request and the checks and
@@ -243,6 +244,69 @@ type Test struct {
 
 	client *http.Client
 	checks []Check // prepared checks.
+}
+
+// Criticality is the business criticality of this tests. Package ht does not
+// interpret or use the business criticality of the tests.
+type Criticality int
+
+const (
+	CritDefault Criticality = iota
+	CritIgnore
+	CritInfo
+	CritWarn
+	CritError
+	CritFatal
+)
+
+var DefaultCriticality Criticality = CritError
+
+const _Criticality_name = "CritDefaultCritIgnoreCritInfoCritWarnCritErrorCritFatal"
+
+var _Criticality_index = [...]uint8{0, 11, 21, 29, 37, 46, 55}
+
+func (i Criticality) String() string {
+	if i < 0 || i >= Criticality(len(_Criticality_index)-1) {
+		return fmt.Sprintf("Criticality(%d)", i)
+	}
+	return _Criticality_name[_Criticality_index[i]:_Criticality_index[i+1]]
+}
+
+// UnmarshalJSON allows to unmarshal the following JSON values to CritInfo:
+//     "CritInfo"
+//     "Info"
+//     1
+func (c *Criticality) UnmarshalJSON(data []byte) error {
+	s := string(data)
+	if strings.HasPrefix(s, `"`) {
+		s = s[1 : len(s)-1]
+		if !strings.HasSuffix(s, "Crit") {
+			s = "Crit" + s
+		}
+		i := strings.Index(_Criticality_name, s)
+
+		if i >= 0 {
+			for crit, index := range _Criticality_index {
+				if int(index) == i {
+					*c = Criticality(crit)
+					return nil
+				}
+			}
+		}
+		return fmt.Errorf("ht: unknown Criticality %q", string(data[1:len(data)-1]))
+	} else {
+		crit, err := strconv.Atoi(s)
+		if err != nil {
+			return err
+		}
+		*c = Criticality(crit)
+	}
+
+	return nil
+}
+
+func (c Criticality) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + c.String() + `"`), nil
 }
 
 // mergeRequest implements the merge strategy described in Merge for the Request.
@@ -327,6 +391,7 @@ outer:
 //     Verbosity    Use largets
 //     PreSleep     Summ of all;  same for InterSleep and PostSleep
 //     ClientPool   ignore
+//     Criticality  Largest wins
 func Merge(tests ...*Test) (*Test, error) {
 	m := Test{}
 
@@ -366,6 +431,9 @@ func Merge(tests ...*Test) (*Test, error) {
 		m.PreSleep += t.PreSleep
 		m.InterSleep += t.InterSleep
 		m.PostSleep += t.PostSleep
+		if t.Criticality > m.Criticality {
+			m.Criticality = t.Criticality
+		}
 		for name, value := range t.VarEx {
 			if old, ok := m.VarEx[name]; ok && old != value {
 				return &m, fmt.Errorf("wont overwrite extractor for %s", name)
@@ -395,6 +463,9 @@ func (t *Test) Run(variables map[string]string) error {
 	t.Started = time.Now()
 
 	time.Sleep(time.Duration(t.PreSleep))
+	if t.Criticality == CritDefault {
+		t.Criticality = DefaultCriticality
+	}
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {

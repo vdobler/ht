@@ -15,4 +15,5 @@
     PreSleep: 0.2,
     InterSleep: 0.3,
     PostSleep: 0.4,
+    Criticality: "Warn",
 }

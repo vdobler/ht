@@ -77,14 +77,15 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 			Body:            repl.str.Replace(t.Request.Body),
 			FollowRedirects: t.Request.FollowRedirects,
 		},
-		Poll:       t.Poll,
-		Timeout:    t.Timeout,
-		Verbosity:  t.Verbosity,
-		PreSleep:   t.PreSleep,
-		InterSleep: t.InterSleep,
-		PostSleep:  t.PostSleep,
-		ClientPool: t.ClientPool,
-		VarEx:      t.VarEx,
+		Poll:        t.Poll,
+		Timeout:     t.Timeout,
+		Verbosity:   t.Verbosity,
+		PreSleep:    t.PreSleep,
+		InterSleep:  t.InterSleep,
+		PostSleep:   t.PostSleep,
+		ClientPool:  t.ClientPool,
+		VarEx:       t.VarEx,
+		Criticality: t.Criticality,
 	}
 
 	// Apply to request parameters.

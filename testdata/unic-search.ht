@@ -23,5 +23,6 @@
 	// for the variable {{QUERY}}: What you see here is unrolled 3 times.
         QUERY: [ "design", "hybris", "kiesabbau" ],
     },
-    Verbosity: 2
+    Verbosity: 2,
+    Criticality: "Info",
 }

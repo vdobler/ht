@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"text/template"
+	"time"
 	"unicode/utf8"
 )
 
@@ -77,6 +78,135 @@ type CheckResult struct {
 	Status   Status   // Outcome of check. All status but Error
 	Duration Duration // How long the check took.
 	Error    error    // For a Status of Bogus or Fail.
+}
+
+// ----------------------------------------------------------------------------
+// SuiteResult
+
+// SuiteResult allows to accumulate statistics of executed suites
+type SuiteResult struct {
+	Started  time.Time // Start time of earliest suite.
+	Duration Duration  // Cummulated duration of all accounted suites.
+
+	// Count is the histogram of test results indexed by (status x criticality)
+	// Row and column sums are provided.
+	Count [][]int
+
+	Suites []*Suite // Suites contains references to all accounted suites.
+}
+
+// NewSuiteResult returns an empty SuiteResult.
+func NewSuiteResult() *SuiteResult {
+	r := &SuiteResult{}
+	r.Count = make([][]int, int(Bogus)+2)
+	for s := NotRun; s <= Bogus+1; s++ {
+		r.Count[s] = make([]int, int(CritFatal)+2)
+	}
+	return r
+}
+
+// Account updates the SuiteResult r with the results from s.
+// Setup and teardown control whether the setup and teardown tests of s are
+// included in the accounting.
+func (r *SuiteResult) Account(s *Suite, setup bool, teardown bool) {
+	if r.Started.IsZero() || s.Started.Before(r.Started) {
+		r.Started = s.Started
+	}
+	r.Duration += s.Duration
+	r.Suites = append(r.Suites, s)
+
+	account := func(tests []*Test) {
+		critSum, statSum := CritFatal+1, Bogus+1
+		for _, test := range tests {
+			r.Count[test.Status][test.Criticality]++
+			r.Count[test.Status][critSum]++
+			r.Count[statSum][test.Criticality]++
+			r.Count[statSum][critSum]++
+		}
+	}
+
+	if setup {
+		account(s.Setup)
+	}
+	account(s.Tests)
+	if teardown {
+		account(s.Teardown)
+	}
+}
+
+// PenaltyFunc is a function to calculate a penalty for a given test status and
+// criticality combination.
+type PenaltyFunc func(s Status, c Criticality) float64
+
+// DefaultPenaltyFunc penalises higher criticalities much more than lower ones.
+func DefaultPenaltyFunc(s Status, c Criticality) float64 {
+	return defaultStatusPenalty[s] * defaultCriticalityPenalty[c]
+}
+
+// BinaryPenaltyFunc returns 1 for the (status,criticality)-pairs (fail,error),
+// (fail,fatal), (error,error) and (error,fatal) and 0 for all other.  Note that
+// Bogus tests yield 0.
+func BinaryPenaltyFunc(s Status, c Criticality) float64 {
+	return binaryStatusPenalty[s] * binaryCriticalityPenalty[c]
+}
+
+// FailIsFailPenaltyFunc ignores the criticality and returns 1 for all tests with
+// status NotRun (as this happens only if the test wasn't executed due to failing
+// setup tests), Fail, Error and Bogus.
+func FailIsFailPenaltyFunc(s Status, c Criticality) float64 {
+	return failIsFailStatusPenalty[s] * failIsFailCriticalityPenalty[c]
+}
+
+var (
+	defaultStatusPenalty      = []float64{1, 0, 0, 1, 1, 2} // NotRun is bad: happens only if Setup failed
+	defaultCriticalityPenalty = []float64{0, 0, 1, 4, 10, 22}
+
+	binaryStatusPenalty      = []float64{0, 0, 0, 1, 1, 0}
+	binaryCriticalityPenalty = []float64{0, 0, 0, 0, 1, 1}
+
+	failIsFailStatusPenalty      = []float64{1, 0, 0, 1, 1, 1} // See above.
+	failIsFailCriticalityPenalty = []float64{1, 1, 1, 1, 1, 1}
+)
+
+// KPI condeses the results of the accumulated suites of r into one single
+// float number by averaging the results after sending through the given penalty
+// function.
+func (r *SuiteResult) KPI(pf PenaltyFunc) float64 {
+	n := 0
+	penalty := 0.0
+	for s := NotRun; s <= Bogus; s++ {
+		for c := CritIgnore; c <= CritFatal; c++ {
+			cnt := r.Count[s][c]
+			n += cnt
+			penalty += float64(cnt) * pf(s, c)
+		}
+	}
+	return penalty / float64(n)
+}
+
+func (r *SuiteResult) String() string {
+	s := "SUMMARY\n"
+
+	s += "        | Ignore  Info  Warn Error Fatal | Total\n"
+	s += "--------+--------------------------------+------\n"
+	for status := NotRun; status <= Bogus; status++ {
+		c := r.Count[status]
+		s += fmt.Sprintf("%-7s |  %5d %5d %5d %5d %5d | %5d\n",
+			status.String(), c[CritIgnore], c[CritInfo], c[CritWarn],
+			c[CritError], c[CritFatal], c[CritFatal+1])
+	}
+	s += "--------+--------------------------------+------\n"
+	c := r.Count[Bogus+1]
+	s += fmt.Sprintf("%-7s |  %5d %5d %5d %5d %5d | %5d\n",
+		"Total", c[CritIgnore], c[CritInfo], c[CritWarn],
+		c[CritError], c[CritFatal], c[CritFatal+1])
+	s += "Contains the following suites:\n"
+	for _, z := range r.Suites {
+		s += "  " + z.Name + "\n"
+	}
+	s += "Started at " + r.Started.Format(time.RFC1123) + " took " + r.Duration.String()
+
+	return s
 }
 
 // ----------------------------------------------------------------------------
