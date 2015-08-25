@@ -73,7 +73,7 @@ func TestLoadSuite(t *testing.T) {
 		fmt.Printf("\nJUnit 4 XML Output:\n%s", junit)
 		sr := NewSuiteResult()
 		sr.Account(suite, true, true)
-		fmt.Println(sr.String())
+		fmt.Println(sr.Matrix())
 		fmt.Printf("Default KPI: %.3f   Binary KPI: %.3f   Fail is Fail KPI: %.3f\n",
 			sr.KPI(DefaultPenaltyFunc), sr.KPI(BinaryPenaltyFunc),
 			sr.KPI(FailIsFailPenaltyFunc))

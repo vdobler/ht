@@ -56,28 +56,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		outputDir = time.Now().Format("2006-01-02_15h04m05s")
 	}
 	os.MkdirAll(outputDir, 0766)
-	var wg sync.WaitGroup
-	for i := range suites {
-		if serialFlag {
-			suites[i].Execute()
-			if suites[i].Status > ht.Pass {
-				log.Printf("Suite %d %q failed: %s", i+1,
-					suites[i].Name,
-					suites[i].Error.Error())
-			}
-		} else {
-			wg.Add(1)
-			go func(i int) {
-				suites[i].Execute()
-				if suites[i].Status > ht.Pass {
-					log.Printf("Suite %d %q failed: %s", i+1,
-						suites[i].Name, suites[i].Error.Error())
-				}
-				wg.Done()
-			}(i)
-		}
-	}
-	wg.Wait()
+	executeSuites(suites)
 
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
 	for s := range suites {
@@ -128,4 +107,29 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	}
 
 	os.Exit(0)
+}
+
+func executeSuites(suites []*ht.Suite) {
+	var wg sync.WaitGroup
+	for i := range suites {
+		if serialFlag {
+			suites[i].Execute()
+			if suites[i].Status > ht.Pass {
+				log.Printf("Suite %d %q failed: %s", i+1,
+					suites[i].Name,
+					suites[i].Error.Error())
+			}
+		} else {
+			wg.Add(1)
+			go func(i int) {
+				suites[i].Execute()
+				if suites[i].Status > ht.Pass {
+					log.Printf("Suite %d %q failed: %s", i+1,
+						suites[i].Name, suites[i].Error.Error())
+				}
+				wg.Done()
+			}(i)
+		}
+	}
+	wg.Wait()
 }

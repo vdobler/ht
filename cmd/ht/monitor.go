@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -29,6 +30,7 @@ var (
 	everyFlag    time.Duration
 	httpFlag     string
 	templateFlag string
+	averageFlag  int
 )
 
 func init() {
@@ -42,6 +44,8 @@ func init() {
 		"run suites one after the other instead of concurrently")
 	cmdMonitor.Flag.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
+	cmdMonitor.Flag.IntVar(&averageFlag, "average", 5,
+		"calculate running average over `n` runs")
 	addVariablesFlag(cmdMonitor.Flag)
 	addOnlyFlag(cmdMonitor.Flag)
 	addSkipFlag(cmdMonitor.Flag)
@@ -52,16 +56,49 @@ func init() {
 }
 
 type monitorResult struct {
-	Date                                            time.Time
-	NSuites                                         int
-	NotRun, Skipped, Passed, Failed, Errored, Bogus int
+	sync.Mutex
+
+	data []*ht.SuiteResult
+}
+
+func (m *monitorResult) update(sr *ht.SuiteResult) {
+	m.data = append(m.data, sr)
+	n := averageFlag
+	if len(m.data) > n {
+		shift := len(m.data) - n
+		for i := 0; i < n; i++ {
+			m.data[i] = m.data[i+shift]
+		}
+		m.data = m.data[:n]
+	}
+}
+
+func (m *monitorResult) Last() *ht.SuiteResult {
+	if i := len(m.data); i > 0 {
+		return m.data[i-1]
+	}
+	return ht.NewSuiteResult()
+}
+
+func (m *monitorResult) LastN(n int) *ht.SuiteResult {
+	last := len(m.data)
+	if n > last {
+		n = last
+	}
+	if n == 0 {
+		return ht.NewSuiteResult()
+	}
+
+	sr := ht.NewSuiteResult()
+	for i := last - n; i < last; i++ {
+		sr.Merge(m.data[i])
+	}
+	return sr
 }
 
 var (
+	result     monitorResult
 	reportTmpl *template.Template
-
-	mu         sync.Mutex
-	lastResult monitorResult
 )
 
 func runMonitor(cmd *Command, suites []*ht.Suite) {
@@ -83,16 +120,29 @@ Date    {{.Date}}
 `
 
 func showReports(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	defer mu.Unlock()
+	result.Lock()
+	defer result.Unlock()
 
-	// TODO: err handling is broken as resp is sent
 	r.Header.Set("Content-Type", "text/plain")
-	err := reportTmpl.Execute(w, lastResult)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+
+	last := result.Last()
+	lastN := result.LastN(averageFlag)
+
+	fmt.Fprintf(w, "Latest run from %s, took %s for %d tests:\n",
+		last.Started.Format(time.RFC1123), last.Duration.String(),
+		last.Tests())
+	fmt.Fprintf(w, "%s\n", last.Matrix())
+	fmt.Fprintf(w, "Default KPI: %.4f    Binary KPI: %.4f    Fail is Fail KPI: %.4f\n\n\n",
+		last.KPI(ht.DefaultPenaltyFunc), last.KPI(ht.BinaryPenaltyFunc),
+		last.KPI(ht.FailIsFailPenaltyFunc))
+
+	fmt.Fprintf(w, "Average over last %d runs from %s, took in total %s for %d tests:\n",
+		len(result.data), lastN.Started.Format(time.RFC1123),
+		lastN.Duration.String(), lastN.Tests())
+	fmt.Fprintf(w, "%s\n", lastN.Matrix())
+	fmt.Fprintf(w, "Default KPI: %.4f    Binary KPI: %.4f    Fail is Fail KPI: %.4f\n\n\n",
+		lastN.KPI(ht.DefaultPenaltyFunc), lastN.KPI(ht.BinaryPenaltyFunc),
+		lastN.KPI(ht.FailIsFailPenaltyFunc))
 
 }
 
@@ -104,53 +154,12 @@ func monitor(suites []*ht.Suite) {
 }
 
 func updateResult(suites []*ht.Suite) {
-	result := monitorResult{Date: time.Now()}
-	for s := range suites {
-		// Statistics
-		for _, r := range suites[s].AllTests() {
-			switch r.Status {
-			case ht.Pass:
-				result.Passed++
-			case ht.Error:
-				result.Errored++
-			case ht.Skipped:
-				result.Skipped++
-			case ht.Fail:
-				result.Failed++
-			case ht.Bogus:
-				result.Bogus++
-			}
-		}
+	result.Lock()
+	defer result.Unlock()
 
+	sr := ht.NewSuiteResult()
+	for _, s := range suites {
+		sr.Account(s, true, false) // TODO: expose bools?
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	lastResult = result
-	// TODO: keep running average
-}
-
-func executeSuites(suites []*ht.Suite) {
-	// TODO: same code as exec
-	var wg sync.WaitGroup
-	for i := range suites {
-		if serialFlag {
-			suites[i].Execute()
-			if suites[i].Status > ht.Pass {
-				log.Printf("Suite %d %q failed: %s", i+1,
-					suites[i].Name,
-					suites[i].Error.Error())
-			}
-		} else {
-			wg.Add(1)
-			go func(i int) {
-				suites[i].Execute()
-				if suites[i].Status > ht.Pass {
-					log.Printf("Suite %d %q failed: %s", i+1,
-						suites[i].Name, suites[i].Error.Error())
-				}
-				wg.Done()
-			}(i)
-		}
-	}
-	wg.Wait()
+	result.update(sr)
 }

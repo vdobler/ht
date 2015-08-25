@@ -134,6 +134,23 @@ func (r *SuiteResult) Account(s *Suite, setup bool, teardown bool) {
 	}
 }
 
+func (r *SuiteResult) Merge(o *SuiteResult) {
+	if r.Started.IsZero() || o.Started.Before(r.Started) {
+		r.Started = o.Started
+	}
+	r.Duration += o.Duration
+	r.Suites = append(r.Suites, o.Suites...)
+	for s := NotRun; s <= Bogus+1; s++ {
+		for c := CritDefault; c <= CritFatal+1; c++ {
+			r.Count[s][c] += o.Count[s][c]
+		}
+	}
+}
+
+func (r *SuiteResult) Tests() int {
+	return r.Count[Bogus+1][CritFatal+1]
+}
+
 // PenaltyFunc is a function to calculate a penalty for a given test status and
 // criticality combination.
 type PenaltyFunc func(s Status, c Criticality) float64
@@ -184,10 +201,8 @@ func (r *SuiteResult) KPI(pf PenaltyFunc) float64 {
 	return penalty / float64(n)
 }
 
-func (r *SuiteResult) String() string {
-	s := "SUMMARY\n"
-
-	s += "        | Ignore  Info  Warn Error Fatal | Total\n"
+func (r *SuiteResult) Matrix() string {
+	s := "        | Ignore  Info  Warn Error Fatal | Total\n"
 	s += "--------+--------------------------------+------\n"
 	for status := NotRun; status <= Bogus; status++ {
 		c := r.Count[status]
@@ -200,11 +215,6 @@ func (r *SuiteResult) String() string {
 	s += fmt.Sprintf("%-7s |  %5d %5d %5d %5d %5d | %5d\n",
 		"Total", c[CritIgnore], c[CritInfo], c[CritWarn],
 		c[CritError], c[CritFatal], c[CritFatal+1])
-	s += "Contains the following suites:\n"
-	for _, z := range r.Suites {
-		s += "  " + z.Name + "\n"
-	}
-	s += "Started at " + r.Started.Format(time.RFC1123) + " took " + r.Duration.String()
 
 	return s
 }
