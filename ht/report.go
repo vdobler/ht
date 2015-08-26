@@ -155,34 +155,35 @@ func (r *SuiteResult) Tests() int {
 // criticality combination.
 type PenaltyFunc func(s Status, c Criticality) float64
 
-// DefaultPenaltyFunc penalises higher criticalities much more than lower ones.
+// DefaultPenaltyFunc penalises higher criticalities more than lower ones.
 func DefaultPenaltyFunc(s Status, c Criticality) float64 {
 	return defaultStatusPenalty[s] * defaultCriticalityPenalty[c]
 }
 
-// BinaryPenaltyFunc returns 1 for the (status,criticality)-pairs (fail,error),
-// (fail,fatal), (error,error) and (error,fatal) and 0 for all other.  Note that
-// Bogus tests yield 0.
-func BinaryPenaltyFunc(s Status, c Criticality) float64 {
-	return binaryStatusPenalty[s] * binaryCriticalityPenalty[c]
+// JustBadPenaltyFunc returns 1 for the (status,criticality)-pairs in
+// {NotRun, Fail, Error} X {CritError, CritFatal}.
+// Note that Bogus tests yield 0.
+func JustBadPenaltyFunc(s Status, c Criticality) float64 {
+	return justBadStatusPenalty[s] * justBadCriticalityPenalty[c]
 }
 
-// FailIsFailPenaltyFunc ignores the criticality and returns 1 for all tests with
+// AllWrongPenaltyFunc ignores the criticality and returns 1 for all tests with
 // status NotRun (as this happens only if the test wasn't executed due to failing
-// setup tests), Fail, Error and Bogus.
-func FailIsFailPenaltyFunc(s Status, c Criticality) float64 {
-	return failIsFailStatusPenalty[s] * failIsFailCriticalityPenalty[c]
+// setup tests), Fail, Error or Bogus.
+func AllWrongPenaltyFunc(s Status, c Criticality) float64 {
+	return allWrongStatusPenalty[s] * allWrongCriticalityPenalty[c]
 }
 
 var (
-	defaultStatusPenalty      = []float64{1, 0, 0, 1, 1, 2} // NotRun is bad: happens only if Setup failed
-	defaultCriticalityPenalty = []float64{0, 0, 1, 4, 10, 22}
+	// NotRun is bad: happens only if Setup failed
+	defaultStatusPenalty      = []float64{1, 0, 0, 1, 1, 2}
+	defaultCriticalityPenalty = []float64{0, 0, 0.25, 0.5, 1, 2}
 
-	binaryStatusPenalty      = []float64{0, 0, 0, 1, 1, 0}
-	binaryCriticalityPenalty = []float64{0, 0, 0, 0, 1, 1}
+	justBadStatusPenalty      = []float64{1, 0, 0, 1, 1, 0}
+	justBadCriticalityPenalty = []float64{0, 0, 0, 0, 1, 1}
 
-	failIsFailStatusPenalty      = []float64{1, 0, 0, 1, 1, 1} // See above.
-	failIsFailCriticalityPenalty = []float64{1, 1, 1, 1, 1, 1}
+	allWrongStatusPenalty      = []float64{1, 0, 0, 1, 1, 1}
+	allWrongCriticalityPenalty = []float64{1, 1, 1, 1, 1, 1}
 )
 
 // KPI condeses the results of the accumulated suites of r into one single
@@ -201,6 +202,7 @@ func (r *SuiteResult) KPI(pf PenaltyFunc) float64 {
 	return penalty / float64(n)
 }
 
+// Matrix returns the histogram data as a formated string.
 func (r *SuiteResult) Matrix() string {
 	s := "        | Ignore  Info  Warn Error Fatal | Total\n"
 	s += "--------+--------------------------------+------\n"
