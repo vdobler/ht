@@ -204,19 +204,22 @@ func (r *SuiteResult) KPI(pf PenaltyFunc) float64 {
 
 // Matrix returns the histogram data as a formated string.
 func (r *SuiteResult) Matrix() string {
-	s := "        | Ignore  Info  Warn Error Fatal | Total\n"
-	s += "--------+--------------------------------+------\n"
+	s := "        | Total | Ignore  Info  Warn Error Fatal\n"
+	s += "--------+-------+-------------------------------\n"
 	for status := NotRun; status <= Bogus; status++ {
 		c := r.Count[status]
-		s += fmt.Sprintf("%-7s |  %5d %5d %5d %5d %5d | %5d\n",
-			status.String(), c[CritIgnore], c[CritInfo], c[CritWarn],
-			c[CritError], c[CritFatal], c[CritFatal+1])
+		s += fmt.Sprintf("%-7s | %5d |  %5d %5d %5d %5d %5d\n",
+			status.String(), c[CritFatal+1], c[CritIgnore], c[CritInfo],
+			c[CritWarn], c[CritError], c[CritFatal])
+		if status == Pass {
+			s += "--------+-------+-------------------------------\n"
+		}
 	}
-	s += "--------+--------------------------------+------\n"
+	s += "--------+-------+-------------------------------\n"
 	c := r.Count[Bogus+1]
-	s += fmt.Sprintf("%-7s |  %5d %5d %5d %5d %5d | %5d\n",
-		"Total", c[CritIgnore], c[CritInfo], c[CritWarn],
-		c[CritError], c[CritFatal], c[CritFatal+1])
+	s += fmt.Sprintf("%-7s | %5d |  %5d %5d %5d %5d %5d\n",
+		"Total", c[CritFatal+1], c[CritIgnore], c[CritInfo], c[CritWarn],
+		c[CritError], c[CritFatal])
 
 	return s
 }

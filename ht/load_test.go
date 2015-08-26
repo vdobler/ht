@@ -74,9 +74,9 @@ func TestLoadSuite(t *testing.T) {
 		sr := NewSuiteResult()
 		sr.Account(suite, true, true)
 		fmt.Println(sr.Matrix())
-		fmt.Printf("Default KPI: %.3f   Binary KPI: %.3f   Fail is Fail KPI: %.3f\n",
-			sr.KPI(DefaultPenaltyFunc), sr.KPI(BinaryPenaltyFunc),
-			sr.KPI(FailIsFailPenaltyFunc))
+		fmt.Printf("Default KPI: %.3f   JustBad KPI: %.3f    KPI: %.3f\n",
+			sr.KPI(DefaultPenaltyFunc), sr.KPI(JustBadPenaltyFunc),
+			sr.KPI(AllWrongPenaltyFunc))
 	}
 }
 
