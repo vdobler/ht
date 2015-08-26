@@ -28,8 +28,6 @@ func (d Duration) String() string {
 var siUnits = map[int64]string{1e3: "µs", 1e6: "ms", 1e9: "s"}
 
 // si formats n nanoseconds to three significant digits. N must be <= 999 seconds.
-// BUG: rounding up can produce 4 significant digits
-// TODO: negativ duration are most likely broken
 func si(n int64) string {
 	neg := ""
 	if n < 0 {
@@ -40,15 +38,14 @@ func si(n int64) string {
 		return fmt.Sprintf("%s%dns", neg, n)
 	}
 	scale := int64(1000)
-	for n/scale > 999 {
+	for 10*n/scale > 9995 {
 		scale *= 1000
 	}
 	f := float64(n/(scale/1000)) / 1000
-	n /= scale
 	prec := 2
-	if n > 99 {
+	if f > 99.95 {
 		prec = 0
-	} else if n > 9 {
+	} else if f > 9.995 {
 		prec = 1
 	}
 	return fmt.Sprintf("%s%.*f%s", neg, prec, f, siUnits[scale])
