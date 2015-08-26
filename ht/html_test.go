@@ -226,6 +226,61 @@ func TestHTMLLinksExtraction(t *testing.T) {
 	}
 }
 
+func TestHTMLLinkFiltering(t *testing.T) {
+	body := `<!doctype html>
+<html><body>
+  <a href="/C/abc"></a>
+  <a href="/C/123/not"></a>
+  <a href="/C/xyz/skip"></a>
+  <a href="/A/abc"></a>
+  <a href="/A/123/not"></a>
+  <a href="/A/xyz/skip"></a>
+  <a href="/B/abc"></a>
+  <a href="/B/123/not"></a>
+  <a href="/B/xyz/skip"></a>
+</body></html>`
+	baseURL, err := url.Parse("http://www.example.org/")
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	test := &Test{
+		Request: Request{
+			Request: &http.Request{URL: baseURL},
+		},
+		Response: Response{BodyBytes: []byte(body)},
+	}
+
+	check := Links{
+		Which: "a",
+		OnlyLinks: []Condition{
+			Condition{Contains: "/A/"},
+			Condition{Contains: "/C/"},
+		},
+		IgnoredLinks: []Condition{
+			Condition{Contains: "not"},
+			Condition{Contains: "skip"},
+		},
+	}
+	err = check.Prepare()
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	urls, err := check.collectURLs(test)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	if len(urls) != 2 {
+		t.Errorf("Got %v", urls)
+	}
+	if _, ok := urls["http://www.example.org/A/abc"]; !ok {
+		t.Errorf("Missing http://www.example.org/A/abc")
+	}
+	if _, ok := urls["http://www.example.org/C/abc"]; !ok {
+		t.Errorf("Missing http://www.example.org/C/abc")
+	}
+}
+
 func testHTMLLinks(t *testing.T, urls []string) (called []string, err error) {
 	ts1 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
 	defer ts1.Close()

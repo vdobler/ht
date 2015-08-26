@@ -382,27 +382,31 @@ func textContentRec(n *html.Node, raw bool) string {
 // ----------------------------------------------------------------------------
 // Links
 
-// Links checks links and references in HTML pages for availability
+// Links checks links and references in HTML pages for availability.
 type Links struct {
-	// Head triggers HEAD request instead of GET requests.
+	// Head triggers HEAD requests instead of GET requests.
 	Head bool
 
 	// Which links to test; a combination of "a", "img", "link" and "script".
-	// E.g. use "a img" to check the href of all a-tags and src of all img-tags.
+	// E.g. use "a img" to check the href of all a tags and src of all img tags.
 	Which string
 
 	// Concurrency determines how many of the found links are checked
 	// concurrently. A zero value indicats sequential checking.
 	Concurrency int `json:",omitempty"`
 
-	// Timeout if different from main test.
+	// Timeout is the client timeout if different from main test.
 	Timeout Duration `json:",omitempty"`
 
-	IgnoredLinks []Condition `json:",omitempty"`
+	// OnlyLinks and IgnoredLinks can be used to select only a subset of
+	// all links.
+	OnlyLinks, IgnoredLinks []Condition `json:",omitempty"`
 
 	tags []string
 }
 
+// collectURLs returns the URLs selected by Which and OnlyLinks and IgnoredLinks
+// as the map keys.
 func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 	if t.Response.BodyErr != nil {
 		return nil, BadBody
@@ -414,9 +418,17 @@ func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 
 	// Collect all non-ignored URL as map keys (for automatic deduplication).
 	refs := make(map[string]struct{})
-outer:
 	for _, tag := range c.tags {
+	outer:
 		for _, u := range c.linkURL(doc, tag, t.Request.Request.URL) {
+			for i, cond := range c.OnlyLinks {
+				if cond.Fullfilled(u) == nil {
+					break
+				}
+				if i == len(c.OnlyLinks)-1 {
+					continue outer
+				}
+			}
 			for _, cond := range c.IgnoredLinks {
 				if cond.Fullfilled(u) == nil {
 					continue outer
@@ -429,6 +441,7 @@ outer:
 	return refs, nil
 }
 
+// Execute implements Checks Execute method.
 func (c *Links) Execute(t *Test) error {
 	refs, err := c.collectURLs(t)
 	if err != nil {
@@ -488,16 +501,13 @@ func (c *Links) Execute(t *Test) error {
 	return nil
 }
 
-func (_ Links) linkURL(doc *html.Node, tag string, reqURL *url.URL) []string {
-	attr := map[string]string{
-		"a":      "href",
-		"img":    "src",
-		"script": "src",
-		"link":   "href",
-	}
-	href := cascadia.MustCompile(tag)
-	matches := href.MatchAll(doc)
-	ak := attr[tag]
+// linkURL will extract all links for the given tag type from the parsed
+// HTML document. All links are made absolute by parsing in the context of
+// requestURL
+func (_ Links) linkURL(document *html.Node, tag string, requestURL *url.URL) []string {
+	href := linkURLattr[tag].sel
+	matches := href.MatchAll(document)
+	ak := linkURLattr[tag].attr
 	refs := []string{}
 	for _, m := range matches {
 		for _, a := range m.Attr {
@@ -505,7 +515,7 @@ func (_ Links) linkURL(doc *html.Node, tag string, reqURL *url.URL) []string {
 				strings.HasPrefix(a.Val, "mailto:") {
 				continue
 			}
-			u, err := reqURL.Parse(a.Val)
+			u, err := requestURL.Parse(a.Val)
 			if err != nil {
 				refs = append(refs, "Error: "+err.Error())
 			} else {
@@ -517,6 +527,18 @@ func (_ Links) linkURL(doc *html.Node, tag string, reqURL *url.URL) []string {
 	return refs
 }
 
+// linkURLattr maps tags to the appropriate link attributes and CSS selectors.
+var linkURLattr = map[string]struct {
+	attr string
+	sel  cascadia.Selector
+}{
+	"a":      {"href", cascadia.MustCompile("a")},
+	"img":    {"src", cascadia.MustCompile("img")},
+	"script": {"src", cascadia.MustCompile("script")},
+	"link":   {"href", cascadia.MustCompile("link")},
+}
+
+// Prepare implements Checks Prepare method.
 func (c *Links) Prepare() (err error) {
 	// TODO: compile IgnoredLinks
 	c.tags = nil
