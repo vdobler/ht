@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -27,10 +29,13 @@ Monitor runs the suite peridically .... TODO
 }
 
 var (
-	everyFlag    time.Duration
-	httpFlag     string
-	templateFlag string
-	averageFlag  int
+	everyFlag     time.Duration
+	httpFlag      string
+	templateFlag  string
+	averageFlag   string
+	averages      []int
+	maxAverages   int
+	inclSetupFlag bool
 )
 
 func init() {
@@ -44,8 +49,10 @@ func init() {
 		"run suites one after the other instead of concurrently")
 	cmdMonitor.Flag.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
-	cmdMonitor.Flag.IntVar(&averageFlag, "average", 5,
-		"calculate running average over `n` runs")
+	cmdMonitor.Flag.StringVar(&averageFlag, "average", "1,3,9,15",
+		"calculate running average over `n,m,..` runs")
+	cmdMonitor.Flag.BoolVar(&inclSetupFlag, "setup", false,
+		"include setup tests in reported numbers")
 	addVariablesFlag(cmdMonitor.Flag)
 	addOnlyFlag(cmdMonitor.Flag)
 	addSkipFlag(cmdMonitor.Flag)
@@ -63,7 +70,7 @@ type monitorResult struct {
 
 func (m *monitorResult) update(sr *ht.SuiteResult) {
 	m.data = append(m.data, sr)
-	n := averageFlag
+	n := maxAverages
 	if len(m.data) > n {
 		shift := len(m.data) - n
 		for i := 0; i < n; i++ {
@@ -71,6 +78,10 @@ func (m *monitorResult) update(sr *ht.SuiteResult) {
 		}
 		m.data = m.data[:n]
 	}
+}
+
+func (m *monitorResult) N() int {
+	return len(m.data)
 }
 
 func (m *monitorResult) Last() *ht.SuiteResult {
@@ -102,6 +113,17 @@ var (
 )
 
 func runMonitor(cmd *Command, suites []*ht.Suite) {
+	maxAverages = 1
+	for _, avg := range strings.Split(averageFlag, ",") {
+		i, err := strconv.Atoi(avg)
+		if err != nil {
+			log.Fatalf("Cannot parse average flag: %s", err.Error())
+		}
+		averages = append(averages, i)
+		if i > maxAverages {
+			maxAverages = i
+		}
+	}
 
 	go monitor(suites)
 
@@ -125,25 +147,25 @@ func showReports(w http.ResponseWriter, r *http.Request) {
 
 	r.Header.Set("Content-Type", "text/plain")
 
-	last := result.Last()
-	lastN := result.LastN(averageFlag)
+	for _, avg := range averages {
+		if avg > result.N() {
+			fmt.Fprintf(w, "Not jet %d runs to average.\n", avg)
+			continue
+		}
 
-	fmt.Fprintf(w, "Latest run from %s, took %s for %d tests:\n",
-		last.Started.Format(time.RFC1123), last.Duration.String(),
-		last.Tests())
-	fmt.Fprintf(w, "%s\n", last.Matrix())
-	fmt.Fprintf(w, "Default KPI: %.4f    Binary KPI: %.4f    Fail is Fail KPI: %.4f\n\n\n",
-		last.KPI(ht.DefaultPenaltyFunc), last.KPI(ht.BinaryPenaltyFunc),
-		last.KPI(ht.FailIsFailPenaltyFunc))
+		lastN := result.LastN(avg)
 
-	fmt.Fprintf(w, "Average over last %d runs from %s, took in total %s for %d tests:\n",
-		len(result.data), lastN.Started.Format(time.RFC1123),
-		lastN.Duration.String(), lastN.Tests())
-	fmt.Fprintf(w, "%s\n", lastN.Matrix())
-	fmt.Fprintf(w, "Default KPI: %.4f    Binary KPI: %.4f    Fail is Fail KPI: %.4f\n\n\n",
-		lastN.KPI(ht.DefaultPenaltyFunc), lastN.KPI(ht.BinaryPenaltyFunc),
-		lastN.KPI(ht.FailIsFailPenaltyFunc))
-
+		fmt.Fprintf(w, "Average over latest %d runs from %s, took %s for %d tests:\n",
+			avg,
+			lastN.Started.Format(time.RFC1123),
+			lastN.Duration.String(),
+			lastN.Tests())
+		fmt.Fprintf(w, "Error Index: %.1f%%    Real Bad: %.1f%%    All Wrong: %.1f%%\n",
+			100*lastN.KPI(ht.DefaultPenaltyFunc),
+			100*lastN.KPI(ht.JustBadPenaltyFunc),
+			100*lastN.KPI(ht.AllWrongPenaltyFunc))
+		fmt.Fprintf(w, "Details:\n%s\n\n\n", lastN.Matrix())
+	}
 }
 
 func monitor(suites []*ht.Suite) {
@@ -159,7 +181,7 @@ func updateResult(suites []*ht.Suite) {
 
 	sr := ht.NewSuiteResult()
 	for _, s := range suites {
-		sr.Account(s, true, false) // TODO: expose bools?
+		sr.Account(s, inclSetupFlag, false)
 	}
 	result.update(sr)
 }
