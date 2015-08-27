@@ -175,11 +175,11 @@ func findNowVarsInCheckRec(v reflect.Value) (a []string) {
 		}
 		return m
 	case reflect.Struct:
-		for i := 0; i < v.NumField(); i += 1 {
+		for i := 0; i < v.NumField(); i++ {
 			a = append(a, findNowVarsInCheckRec(v.Field(i))...)
 		}
 	case reflect.Slice:
-		for i := 0; i < v.Len(); i += 1 {
+		for i := 0; i < v.Len(); i++ {
 			a = append(a, findNowVarsInCheckRec(v.Index(i))...)
 		}
 	case reflect.Map:

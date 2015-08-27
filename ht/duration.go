@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package response provides a type for captuiring a HTTP response. Its main
-// purpose is breaking an import cycle between ht and ht/check.
 package ht
 
 import (
@@ -20,9 +18,8 @@ func (d Duration) String() string {
 	n := int64(d)
 	if n <= 180*1e9 {
 		return si(n)
-	} else {
-		return clock(n / 1e9)
 	}
+	return clock(n / 1e9)
 }
 
 var siUnits = map[int64]string{1e3: "µs", 1e6: "ms", 1e9: "s"}

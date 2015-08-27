@@ -31,6 +31,7 @@ type Header struct {
 	Absent bool `json:",omitempty"`
 }
 
+// Execute implements Check's Execute method.
 func (h Header) Execute(t *Test) error {
 	key := http.CanonicalHeaderKey(h.Header)
 	values := t.Response.Response.Header[key]
@@ -44,6 +45,7 @@ func (h Header) Execute(t *Test) error {
 	return h.Fullfilled(values[0])
 }
 
+// Prepare implements Check's Prepare method.
 func (h *Header) Prepare() error {
 	return h.Condition.Compile()
 }
@@ -69,6 +71,7 @@ type SetCookie struct {
 	// TODO: check httpOnly and secure
 }
 
+// Execute implements Check's Execute method.
 func (c SetCookie) Execute(t *Test) error {
 	var cookie *http.Cookie
 	for _, cp := range t.Response.Response.Cookies() {
@@ -121,6 +124,7 @@ func (c SetCookie) Execute(t *Test) error {
 
 }
 
+// Prepare implements Check's Prepare method.
 func (c *SetCookie) Prepare() error {
 	if err := c.Value.Compile(); err != nil {
 		return err

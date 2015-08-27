@@ -132,6 +132,7 @@ func (c Condition) FullfilledBytes(b []byte) error {
 	return c.Fullfilled(string(b))
 }
 
+// Compile pre-compiles the regular expression if part of c.
 func (c *Condition) Compile() (err error) {
 	if c.Regexp != "" {
 		c.re, err = regexp.Compile(c.Regexp)

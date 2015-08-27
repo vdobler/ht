@@ -34,8 +34,8 @@ type sampleCheck struct {
 }
 
 // let sampleCheck satisfy Check interface.
-func (_ sampleCheck) Execute(t *Test) error { return nil }
-func (_ sampleCheck) Prepare() error        { return nil }
+func (sampleCheck) Execute(t *Test) error { return nil }
+func (sampleCheck) Prepare() error        { return nil }
 
 type nested struct {
 	X string

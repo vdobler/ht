@@ -259,17 +259,19 @@ const (
 	CritFatal
 )
 
-var DefaultCriticality Criticality = CritError
+// DefaultCriticality is the criticality assigned to tests loaded from JSON5
+// which do not explicitely set the criticality.
+var DefaultCriticality = CritError
 
-const _Criticality_name = "CritDefaultCritIgnoreCritInfoCritWarnCritErrorCritFatal"
+const criticalityName = "CritDefaultCritIgnoreCritInfoCritWarnCritErrorCritFatal"
 
-var _Criticality_index = [...]uint8{0, 11, 21, 29, 37, 46, 55}
+var criticalityIndex = [...]uint8{0, 11, 21, 29, 37, 46, 55}
 
-func (i Criticality) String() string {
-	if i < 0 || i >= Criticality(len(_Criticality_index)-1) {
-		return fmt.Sprintf("Criticality(%d)", i)
+func (c Criticality) String() string {
+	if c < 0 || c >= Criticality(len(criticalityIndex)-1) {
+		return fmt.Sprintf("Criticality(%d)", c)
 	}
-	return _Criticality_name[_Criticality_index[i]:_Criticality_index[i+1]]
+	return criticalityName[criticalityIndex[c]:criticalityIndex[c+1]]
 }
 
 // UnmarshalJSON allows to unmarshal the following JSON values to CritInfo:
@@ -283,10 +285,10 @@ func (c *Criticality) UnmarshalJSON(data []byte) error {
 		if !strings.HasSuffix(s, "Crit") {
 			s = "Crit" + s
 		}
-		i := strings.Index(_Criticality_name, s)
+		i := strings.Index(criticalityName, s)
 
 		if i >= 0 {
-			for crit, index := range _Criticality_index {
+			for crit, index := range criticalityIndex {
 				if int(index) == i {
 					*c = Criticality(crit)
 					return nil

@@ -34,6 +34,7 @@ type Logfile struct {
 	pos int64
 }
 
+// Execute implements Check's Execute method.
 func (f *Logfile) Execute(t *Test) error {
 	file, err := os.Open(f.Path)
 	if err != nil {
@@ -63,6 +64,7 @@ func (f *Logfile) Execute(t *Test) error {
 	return nil
 }
 
+// Prepare implements Check's Prepare method.
 func (f *Logfile) Prepare() error {
 	file, err := os.Open(f.Path)
 	if err != nil {

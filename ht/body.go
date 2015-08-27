@@ -22,6 +22,7 @@ func init() {
 // UTF8Encoded checks that the response body is valid UTF-8 without BOMs.
 type UTF8Encoded struct{}
 
+// Execute implements Check's Execute method.
 func (c UTF8Encoded) Execute(t *Test) error {
 	p := t.Response.BodyBytes
 	char := 0
@@ -39,13 +40,16 @@ func (c UTF8Encoded) Execute(t *Test) error {
 	return nil
 }
 
-func (_ UTF8Encoded) Prepare() error { return nil }
+// Execute implements Check's Prepare method.
+func (UTF8Encoded) Prepare() error { return nil }
 
 // ----------------------------------------------------------------------------
 // Body
 
+// Body provides simple condition checks on the response body.
 type Body Condition
 
+// Execute implements Check's Execute method.
 func (b Body) Execute(t *Test) error {
 	body, err := t.Response.BodyBytes, t.Response.BodyErr
 	if err != nil {
@@ -54,6 +58,7 @@ func (b Body) Execute(t *Test) error {
 	return Condition(b).FullfilledBytes(body)
 }
 
+// Execute implements Check's Prepare method.
 func (b *Body) Prepare() error {
 	return ((*Condition)(b)).Compile()
 }

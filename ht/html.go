@@ -31,6 +31,7 @@ func init() {
 // ValidHTML checks for valid HTML 5. Kinda: It never fails. TODO: make it useful.
 type ValidHTML struct{}
 
+// Execute implements Check's Execute method.
 func (c ValidHTML) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return BadBody
@@ -43,7 +44,8 @@ func (c ValidHTML) Execute(t *Test) error {
 	return nil
 }
 
-func (_ ValidHTML) Prepare() error { return nil }
+// Prepare implements Check's Prepare method.
+func (ValidHTML) Prepare() error { return nil }
 
 // W3CValidHTML checks for valid HTML but checking the response body via
 // the online checker from W3C which is very strict.
@@ -55,6 +57,7 @@ type W3CValidHTML struct {
 	IgnoredErrors []Condition `json:",omitempty"`
 }
 
+// Execute implements Check's Execute method.
 func (w W3CValidHTML) Execute(t *Test) error {
 	file := "@file:@sample.html:" + string(t.Response.BodyBytes)
 	test := &Test{
@@ -129,7 +132,8 @@ outer:
 	return nil
 }
 
-func (_ W3CValidHTML) Prepare() error { return nil }
+// Prepare implements Check's Prepare method.
+func (W3CValidHTML) Prepare() error { return nil }
 
 // ValidationIssue contains extracted information from the output of
 // a W3C validator run.
@@ -174,6 +178,7 @@ type HTMLTag struct {
 	sel cascadia.Selector
 }
 
+// Execute implements Check's Execute method.
 func (c *HTMLTag) Execute(t *Test) error {
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
@@ -205,6 +210,7 @@ func (c *HTMLTag) Execute(t *Test) error {
 	return nil
 }
 
+// Prepare implements Check's Prepare method.
 func (c *HTMLTag) Prepare() (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
@@ -250,6 +256,7 @@ type HTMLContains struct {
 	sel cascadia.Selector
 }
 
+// Execute implements Check's Execute method.
 func (c *HTMLContains) Execute(t *Test) error {
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
@@ -285,6 +292,7 @@ func (c *HTMLContains) Execute(t *Test) error {
 	return nil
 }
 
+// Prepare implements Check's Prepare method.
 func (c *HTMLContains) Prepare() (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
@@ -441,7 +449,7 @@ func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 	return refs, nil
 }
 
-// Execute implements Checks Execute method.
+// Execute implements Check's Execute method.
 func (c *Links) Execute(t *Test) error {
 	refs, err := c.collectURLs(t)
 	if err != nil {
@@ -538,7 +546,7 @@ var linkURLattr = map[string]struct {
 	"link":   {"href", cascadia.MustCompile("link")},
 }
 
-// Prepare implements Checks Prepare method.
+// Prepare implements Check's Prepare method.
 func (c *Links) Prepare() (err error) {
 	c.tags = nil
 	for _, tag := range strings.Split(c.Which, " ") {

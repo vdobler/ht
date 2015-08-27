@@ -22,6 +22,7 @@ type StatusCode struct {
 	Expect int `xml:",attr"`
 }
 
+// Execute implements Check's Execute method.
 func (c StatusCode) Execute(t *Test) error {
 	if t.Response.Response.StatusCode != c.Expect {
 		return fmt.Errorf("got %d, want %d", t.Response.Response.StatusCode, c.Expect)
@@ -29,4 +30,5 @@ func (c StatusCode) Execute(t *Test) error {
 	return nil
 }
 
-func (_ StatusCode) Prepare() error { return nil }
+// Prepare implements Check's Prepare method.
+func (StatusCode) Prepare() error { return nil }

@@ -26,6 +26,7 @@ type XML struct {
 	path *xmlpath.Path
 }
 
+// Execute implements Check's Execute method.
 func (x *XML) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return CantCheck{t.Response.BodyErr}
@@ -45,6 +46,7 @@ func (x *XML) Execute(t *Test) error {
 	return nil
 }
 
+// Prepare implements Check's Prepare method.
 func (x *XML) Prepare() error {
 	p, err := xmlpath.Compile(x.Path)
 	if err != nil {

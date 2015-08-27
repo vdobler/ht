@@ -27,7 +27,7 @@ type Identity struct {
 	SHA1 string
 }
 
-// Execute implements Checks Execute method.
+// Execute implements Check's Execute method.
 func (i Identity) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return CantCheck{t.Response.BodyErr}
@@ -40,5 +40,5 @@ func (i Identity) Execute(t *Test) error {
 	return fmt.Errorf("Got %s", s)
 }
 
-// Prepare implements Checks Prepare method.
+// Prepare implements Check's Prepare method.
 func (_ Identity) Prepare() error { return nil }

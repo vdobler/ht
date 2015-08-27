@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
+	_ "image/gif"  // register gif format
+	_ "image/jpeg" // register jpg format
+	_ "image/png"  // register png format
 
 	"github.com/vdobler/ht/fingerprint"
 )
@@ -46,43 +46,43 @@ type Image struct {
 	Threshold float64 `json:",omitempty"`
 }
 
-// Execute implements Checks Execute method.
-func (c Image) Execute(t *Test) error {
+// Execute implements Check's Execute method.
+func (i Image) Execute(t *Test) error {
 	img, format, err := image.Decode(t.Response.Body())
 	if err != nil {
 		return CantCheck{err}
 	}
 
 	failures := []string{}
-	if c.Format != "" && format != c.Format {
+	if i.Format != "" && format != i.Format {
 		failures = append(failures,
-			fmt.Sprintf("got %s image, want %s", format, c.Format))
+			fmt.Sprintf("got %s image, want %s", format, i.Format))
 	}
 
 	bounds := img.Bounds()
-	if c.Width > 0 && c.Width != bounds.Dx() {
+	if i.Width > 0 && i.Width != bounds.Dx() {
 		failures = append(failures,
-			fmt.Sprintf("got %d px wide image, want %d", bounds.Dx(), c.Width))
+			fmt.Sprintf("got %d px wide image, want %d", bounds.Dx(), i.Width))
 
 	}
-	if c.Height > 0 && c.Height != bounds.Dy() {
+	if i.Height > 0 && i.Height != bounds.Dy() {
 		failures = append(failures,
-			fmt.Sprintf("got %d px heigh image, want %d", bounds.Dy(), c.Height))
+			fmt.Sprintf("got %d px heigh image, want %d", bounds.Dy(), i.Height))
 
 	}
 
-	if len(c.Fingerprint) == 16 {
-		targetBMV, _ := fingerprint.BMVHashFromString(c.Fingerprint)
+	if len(i.Fingerprint) == 16 {
+		targetBMV, _ := fingerprint.BMVHashFromString(i.Fingerprint)
 		imgBMV := fingerprint.NewBMVHash(img)
-		if d := fingerprint.BMVDelta(targetBMV, imgBMV); d > c.Threshold {
+		if d := fingerprint.BMVDelta(targetBMV, imgBMV); d > i.Threshold {
 			failures = append(failures, fmt.Sprintf("got BMV of %s, want %s (delta=%.4f)",
 				imgBMV.String(), targetBMV.String(), d))
 		}
 
-	} else if len(c.Fingerprint) == 24 {
-		targetCH, _ := fingerprint.ColorHistFromString(c.Fingerprint)
+	} else if len(i.Fingerprint) == 24 {
+		targetCH, _ := fingerprint.ColorHistFromString(i.Fingerprint)
 		imgCH := fingerprint.NewColorHist(img)
-		if d := fingerprint.ColorHistDelta(targetCH, imgCH); d > c.Threshold {
+		if d := fingerprint.ColorHistDelta(targetCH, imgCH); d > i.Threshold {
 			failures = append(failures,
 				fmt.Sprintf("got color histogram of %s, want %s (delta=%.4f)",
 					imgCH.String(), targetCH.String(), d))
@@ -96,7 +96,7 @@ func (c Image) Execute(t *Test) error {
 	return nil
 }
 
-// Prepare implements Checks Prepare method.
+// Prepare implements Check's Prepare method.
 func (i Image) Prepare() error {
 	switch len(i.Fingerprint) {
 	case 0:

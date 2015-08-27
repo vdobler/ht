@@ -62,12 +62,12 @@ func deepCopy(dst, src reflect.Value, r *strings.Replacer, f map[int64]int64) {
 			dst.Set(src)
 		}
 	case reflect.Struct:
-		for i := 0; i < src.NumField(); i += 1 {
+		for i := 0; i < src.NumField(); i++ {
 			deepCopy(dst.Field(i), src.Field(i), r, f)
 		}
 	case reflect.Slice:
 		dst.Set(reflect.MakeSlice(src.Type(), src.Len(), src.Cap()))
-		for i := 0; i < src.Len(); i += 1 {
+		for i := 0; i < src.Len(); i++ {
 			deepCopy(dst.Index(i), src.Index(i), r, f)
 		}
 	case reflect.Map:
@@ -160,7 +160,9 @@ func (m MalformedCheck) Error() string {
 // attaching JSON (un)marshaling methods.
 type CheckList []Check
 
-// TODO: handle errors
+// MarshalJSON produces a JSON arry of the checks in cl.
+// Each check is serialized in the form
+//     { Check: "NameOfCheckAsRegistered", Field1OfCheck: Value1, Field2: Value2, ... }
 func (cl CheckList) MarshalJSON() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	buf.WriteRune('[')
@@ -185,6 +187,7 @@ func (cl CheckList) MarshalJSON() ([]byte, error) {
 	return []byte(result), nil
 }
 
+// UnmarshalJSON unmarshals data to a slice of Checks.
 func (cl *CheckList) UnmarshalJSON(data []byte) error {
 	raw := []json5.RawMessage{}
 	err := json5.Unmarshal(data, &raw)
@@ -199,7 +202,7 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		}
 		typ, ok := CheckRegistry[u.Check]
 		if !ok {
-			return fmt.Errorf("no such check %s", u.Check)
+			return fmt.Errorf("ht: no such check %s", u.Check)
 		}
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
