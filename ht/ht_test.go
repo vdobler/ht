@@ -565,13 +565,15 @@ func TestMerge(t *testing.T) {
 	if len(c.Request.Params) != 3 ||
 		c.Request.Params["a"][0] != "aa" ||
 		c.Request.Params["b"][0] != "bb" ||
-		c.Request.Params["q"][0] != "foo-B" {
+		c.Request.Params["q"][0] != "foo-A" ||
+		c.Request.Params["q"][1] != "foo-B" {
 		t.Errorf("Bad Params. Got %#v", c.Request.Params)
 	}
 	if len(c.Request.Header) != 3 ||
 		c.Request.Header["Special-A"][0] != "Special A Value" ||
 		c.Request.Header["Special-B"][0] != "Special B Value" ||
-		c.Request.Header["User-Agent"][0] != "B User Agent" {
+		c.Request.Header["User-Agent"][0] != "A User Agent" ||
+		c.Request.Header["User-Agent"][1] != "B User Agent" {
 		t.Errorf("Bad Header. Got %#v", c.Request.Header)
 	}
 	if len(c.Request.Cookies) != 3 ||
