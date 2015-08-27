@@ -254,12 +254,12 @@ func TestHTMLLinkFiltering(t *testing.T) {
 	check := Links{
 		Which: "a",
 		OnlyLinks: []Condition{
-			Condition{Contains: "/A/"},
-			Condition{Contains: "/C/"},
+			{Contains: "/A/"},
+			{Contains: "/C/"},
 		},
 		IgnoredLinks: []Condition{
-			Condition{Contains: "not"},
-			Condition{Contains: "skip"},
+			{Contains: "not"},
+			{Contains: "skip"},
 		},
 	}
 	err = check.Prepare()

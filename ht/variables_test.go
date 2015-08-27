@@ -37,7 +37,7 @@ var exampleTest = Test{
 	},
 	Checks: CheckList{},
 	VarEx: map[string]Extractor{
-		"extract": Extractor{
+		"extract": {
 			HTMLElementSelector:  "elemSel",
 			HTMLElementAttribute: "elemAttr",
 		},
@@ -57,9 +57,9 @@ func TestRepeat(t *testing.T) {
 	test := &Test{Description: "q={{query}} c={{count}} f={{f}}"}
 
 	variables := map[string][]string{
-		"query": []string{"foo", "bar"},
-		"count": []string{"1", "2", "3"},
-		"f":     []string{"fix"},
+		"query": {"foo", "bar"},
+		"count": {"1", "2", "3"},
+		"f":     {"fix"},
 	}
 
 	nrep := lcmOf(variables)

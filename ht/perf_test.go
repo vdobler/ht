@@ -37,8 +37,8 @@ func setupPerfSuites(t *testing.T) ([]*Suite, *httptest.Server) {
 		Verbosity: 1,
 	}
 	unroll := map[string][]string{
-		"SMIN": []string{"1", "40", "200", "1", "40"},
-		"SMAX": []string{"30", "90", "400", "30", "90"},
+		"SMIN": {"1", "40", "200", "1", "40"},
+		"SMAX": {"30", "90", "400", "30", "90"},
 	}
 	tests, err := Repeat(test, 5, unroll)
 

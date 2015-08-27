@@ -465,7 +465,7 @@ func (c *Links) Execute(t *Test) error {
 		timeout = c.Timeout
 	}
 
-	for r, _ := range refs {
+	for r := range refs {
 		test := &Test{
 			Name: r,
 			Request: Request{

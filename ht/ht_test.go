@@ -195,8 +195,8 @@ func TestRTStats(t *testing.T) {
 	}
 
 	rtimes := map[string][]string{
-		"SMIN": []string{"5", "30", "50"},
-		"SMAX": []string{"20", "70", "100"},
+		"SMIN": {"5", "30", "50"},
+		"SMAX": {"20", "70", "100"},
 	}
 	tests, _ := Repeat(test, 3, rtimes)
 
@@ -465,8 +465,8 @@ func TestMarshalTest(t *testing.T) {
 				"User-Agent": {"Our-Test-Agent"},
 			},
 			Cookies: []Cookie{
-				Cookie{Name: "first", Value: "false"},
-				Cookie{Name: "trusted", Value: "true"},
+				{Name: "first", Value: "false"},
+				{Name: "trusted", Value: "true"},
 			},
 		},
 		Checks: []Check{
