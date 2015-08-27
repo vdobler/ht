@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	_ "image/jpeg"
 	"sort"
 	"strconv"
 )
@@ -189,7 +188,7 @@ func ColorHistFromString(s string) (ColorHist, error) {
 	return ch, nil
 }
 
-// ColorHist computest the color histogram of img.
+// NewColorHist computest the color histogram of img.
 func NewColorHist(img image.Image) ColorHist {
 	bounds := img.Bounds()
 
@@ -235,7 +234,7 @@ func colorBin(c color.Color) int {
 
 // The 24 Macbeth colors from the ColorChecker as 8bit RGB values, taken from
 // http://en.wikipedia.org/wiki/ColorChecker.
-var macbeth [][3]int = [][3]int{
+var macbeth = [][3]int{
 	// Natural colors
 	{0x73, 0x52, 0x44},
 	{0xc2, 0x96, 0x82},

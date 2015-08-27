@@ -35,7 +35,7 @@ func TestExtractor(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %#v", err)
 	} else if val != "18f0ca3f-a50a-437f-9bd1-15c0caa28413" {
-		t.Errorf("Got %q, want 18f0ca3f-a50a-437f-9bd1-15c0caa28413")
+		t.Errorf("Got %q, want 18f0ca3f-a50a-437f-9bd1-15c0caa28413", val)
 	}
 
 	ex = Extractor{

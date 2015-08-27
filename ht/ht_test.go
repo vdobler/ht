@@ -42,7 +42,7 @@ func TestStatusCode(t *testing.T) {
 
 		test.Run(nil)
 		if test.Status != Pass {
-			t.Errorf("Unexpected error for %d: %s", code, t.Error)
+			t.Errorf("Unexpected error for %d: %s", code, test.Error)
 		}
 		if testing.Verbose() {
 			test.PrintReport(os.Stdout)

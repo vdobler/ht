@@ -31,31 +31,28 @@
 // Switching to the average value if the median is too high is necessary
 // as otherwise half-white (or half-black images cannot be fingerprinted
 // properly.
-//
+
 package fingerprint
 
 import (
 	"fmt"
 	"image"
 	"image/color"
-	_ "image/jpeg"
 	"sort"
 	"strconv"
 )
 
-// BMVHash is the 64 bit block mean value hash of an image.
+// BMVHash is the 64 bit block mean value hash of an image. The following
+// references contain more information: Di Wu, Xuebing Zhou, and Xiamu Niu. 2009.
+// A novel image hash algorithm resistant to print-scan. Signal Process. 89,
+// 12 (December 2009), 2415-2424.  As described in Christoph Zauner:
+// "Implementation and Benchmarking of Perceptual Image Hash Functions"
+// DIPLOMARBEIT, FH Hagenberg, Juli 2010.
 type BMVHash uint64
 
 // String returns h in hexadecimal form.
 func (h BMVHash) String() string {
 	return fmt.Sprintf("%016x", uint64(h))
-}
-
-func (h BMVHash) ASCII(zero, one string) string {
-	s := ""
-	for b := uint(0); b < 64; b++ {
-	}
-	return s
 }
 
 // Image "reconstructs" the original image through gray panels.
@@ -78,7 +75,7 @@ func (h BMVHash) Image(width, height int) *image.Gray {
 	return i
 }
 
-// NewBMVHashFromString parses the hexadecimal number in s and panics
+// BMVHashFromString parses the hexadecimal number in s and panics
 // if s cannot be parsed to a uint64.
 func BMVHashFromString(s string) (BMVHash, error) {
 	v, err := strconv.ParseUint(s, 16, 64)
@@ -116,10 +113,12 @@ func rgb2gray(r, g, b uint32) uint32 {
 	return r*19588 + g*38469 + b*7471
 }
 
-// The returned fingerprint hash is 0 for all images with at least one
-// dimension smaller than 8 pixel.
-// Images which are smaller than 16x16 pixel have a fingerprint of just
-// 1s.
+// NewBMVhash computes the block mean value hash of img.
+// The following degenerate case return special values:
+//   * If one or both dimensions of the image are < 8 then BMV hash
+//     of 0 (i.e. 64 0s) is returned.
+//   * If one dimension is smaller than 16 a fingerprint of 64
+//     1s is returned.
 func NewBMVHash(img image.Image) BMVHash {
 	bounds := img.Bounds()
 

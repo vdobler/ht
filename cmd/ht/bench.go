@@ -114,7 +114,7 @@ func analyseBenchmark(results []ht.Test) bool {
 		return false
 	}
 	probs := []float64{}
-	for quant, _ := range rtLimits {
+	for quant := range rtLimits {
 		probs = append(probs, quant)
 	}
 	sort.Float64s(probs)

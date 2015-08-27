@@ -122,30 +122,32 @@ func PerformanceLoadTest(suites []*Suite, opts LoadTestOptions) ([]Test, error) 
 func makeTestChannel(suites []*Suite, count int, duration time.Duration) chan interface{} {
 	rc := make(chan interface{})
 	go func() {
-		n := 0
-		s := 0
+		s, n := 0, 0
 		idx := make([]int, len(suites))
 		start := time.Now()
 	loop:
 		for {
-			suite := suites[s%len(suites)]
+			si := s % len(suites)
+			suite := suites[si]
 			for {
-				i := idx[s]
+				i := idx[si]
 				test := suite.Tests[i%len(suite.Tests)]
-				idx[s]++
+				idx[si]++
 				if test.Poll.Max < 0 {
 					continue // Test is disabled.
 				}
 				err := test.prepare(suite.Variables)
 				if err != nil {
-					log.Printf("Failed to prepare test %q of suite %q: %s", err)
+					log.Printf("ht: cannot prepare test %s of suite %s: %s",
+						test.Name, suite.Name, err.Error())
 					continue
 				}
 				rc <- *test
-				n++
 				if n >= count || time.Since(start) > duration {
 					break loop
 				}
+				n++
+				break
 			}
 			s++
 		}

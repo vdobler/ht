@@ -29,6 +29,7 @@ type JSON struct {
 	tt *jee.TokenTree
 }
 
+// Prepare implements Check's Prepare method.
 func (c *JSON) Prepare() (err error) {
 	tokens, err := jee.Lexer(c.Expression)
 	if err != nil {
@@ -41,6 +42,7 @@ func (c *JSON) Prepare() (err error) {
 	return nil
 }
 
+// Execute implements Check's Execute method.
 func (c *JSON) Execute(t *Test) error {
 	if c.tt == nil {
 		if err := c.Prepare(); err != nil {
