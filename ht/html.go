@@ -540,7 +540,6 @@ var linkURLattr = map[string]struct {
 
 // Prepare implements Checks Prepare method.
 func (c *Links) Prepare() (err error) {
-	// TODO: compile IgnoredLinks
 	c.tags = nil
 	for _, tag := range strings.Split(c.Which, " ") {
 		tag = strings.TrimSpace(tag)
