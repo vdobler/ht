@@ -7,7 +7,9 @@
 package ht
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"image"
 	_ "image/gif"
@@ -44,55 +46,57 @@ type Image struct {
 	Threshold float64 `json:",omitempty"`
 }
 
+// Execute implements Checks Execute method.
 func (c Image) Execute(t *Test) error {
 	img, format, err := image.Decode(t.Response.Body())
 	if err != nil {
-		fmt.Printf("Image.Okay resp.BodyReader=%#v\n", t.Response.Body())
 		return CantCheck{err}
 	}
-	// TODO: Do not abort on first failure.
+
+	failures := []string{}
 	if c.Format != "" && format != c.Format {
-		return fmt.Errorf("Got %s image, want %s", format, c.Format)
+		failures = append(failures,
+			fmt.Sprintf("got %s image, want %s", format, c.Format))
 	}
 
 	bounds := img.Bounds()
 	if c.Width > 0 && c.Width != bounds.Dx() {
-		return fmt.Errorf("Got %d px wide image, want %d",
-			bounds.Dx(), c.Width)
+		failures = append(failures,
+			fmt.Sprintf("got %d px wide image, want %d", bounds.Dx(), c.Width))
 
 	}
 	if c.Height > 0 && c.Height != bounds.Dy() {
-		return fmt.Errorf("Got %d px heigh image, want %d",
-			bounds.Dy(), c.Height)
+		failures = append(failures,
+			fmt.Sprintf("got %d px heigh image, want %d", bounds.Dy(), c.Height))
 
 	}
 
 	if len(c.Fingerprint) == 16 {
-		targetBMV, err := fingerprint.BMVHashFromString(c.Fingerprint)
-		if err != nil {
-			return CantCheck{fmt.Errorf("bad BMV hash: %s", err)}
-		}
+		targetBMV, _ := fingerprint.BMVHashFromString(c.Fingerprint)
 		imgBMV := fingerprint.NewBMVHash(img)
 		if d := fingerprint.BMVDelta(targetBMV, imgBMV); d > c.Threshold {
-			return fmt.Errorf("Got BMV of %s, want %s (delta=%.4f)",
-				imgBMV.String(), targetBMV.String(), d)
+			failures = append(failures, fmt.Sprintf("got BMV of %s, want %s (delta=%.4f)",
+				imgBMV.String(), targetBMV.String(), d))
 		}
 
 	} else if len(c.Fingerprint) == 24 {
-		targetCH, err := fingerprint.ColorHistFromString(c.Fingerprint)
-		if err != nil {
-			return CantCheck{fmt.Errorf("bad ColorHist hash: %s", err)}
-		}
+		targetCH, _ := fingerprint.ColorHistFromString(c.Fingerprint)
 		imgCH := fingerprint.NewColorHist(img)
 		if d := fingerprint.ColorHistDelta(targetCH, imgCH); d > c.Threshold {
-			return fmt.Errorf("Got ColorHist of %s, want %s (delta=%.4f)",
-				imgCH.String(), targetCH.String(), d)
+			failures = append(failures,
+				fmt.Sprintf("got color histogram of %s, want %s (delta=%.4f)",
+					imgCH.String(), targetCH.String(), d))
 		}
+	}
+
+	if len(failures) > 0 {
+		return errors.New(strings.Join(failures, "; "))
 	}
 
 	return nil
 }
 
+// Prepare implements Checks Prepare method.
 func (i Image) Prepare() error {
 	switch len(i.Fingerprint) {
 	case 0:
@@ -108,7 +112,9 @@ func (i Image) Prepare() error {
 			return MalformedCheck{err}
 		}
 	default:
-		return fmt.Errorf("ht: image fingerprint has illegal length %d", len(i.Fingerprint))
+		return MalformedCheck{
+			fmt.Errorf("fingerprint has illegal length %d", len(i.Fingerprint)),
+		}
 	}
 	return nil
 }
