@@ -113,7 +113,7 @@ func rgb2gray(r, g, b uint32) uint32 {
 	return r*19588 + g*38469 + b*7471
 }
 
-// NewBMVhash computes the block mean value hash of img.
+// NewBMVHash computes the block mean value hash of img.
 // The following degenerate case return special values:
 //   * If one or both dimensions of the image are < 8 then BMV hash
 //     of 0 (i.e. 64 0s) is returned.

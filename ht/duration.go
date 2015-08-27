@@ -14,6 +14,7 @@ import (
 // Duration is a time.Duration but has nicer JSON encoding.
 type Duration time.Duration
 
+// String returns a human readable representation of d.
 func (d Duration) String() string {
 	n := int64(d)
 	if n <= 180*1e9 {
@@ -55,10 +56,12 @@ func clock(sec int64) string {
 	return fmt.Sprintf("%dm%02ds", min, sec)
 }
 
+// MarshalJSON provides JSON marshaling of d.
 func (d Duration) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + d.String() + `"`), nil
 }
 
+// UnmarshalJSON provides JSON unmarshaling of data.
 func (d *Duration) UnmarshalJSON(data []byte) error {
 	s := string(data)
 	scale := int64(1e9)

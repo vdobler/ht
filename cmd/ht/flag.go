@@ -72,8 +72,8 @@ func (l *cmdlLimit) Set(s string) error {
 
 // The common flags.
 var (
-	variablesFlag cmdlVar   = make(cmdlVar)   // flag -D
-	rtLimits      cmdlLimit = make(cmdlLimit) // flag -L
+	variablesFlag = make(cmdlVar)   // flag -D
+	rtLimits      = make(cmdlLimit) // flag -L
 	onlyFlag      string
 	skipFlag      string
 	verbosity     int

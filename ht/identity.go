@@ -41,4 +41,4 @@ func (i Identity) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (_ Identity) Prepare() error { return nil }
+func (Identity) Prepare() error { return nil }

@@ -165,7 +165,7 @@ func (resp *Response) Body() *bytes.Reader {
 	return bytes.NewReader(resp.BodyBytes)
 }
 
-// Cookie.
+// Cookie is a HTTP cookie.
 type Cookie struct {
 	Name  string
 	Value string `json:",omitempty"`
@@ -281,6 +281,7 @@ func (c Criticality) String() string {
 func (c *Criticality) UnmarshalJSON(data []byte) error {
 	s := string(data)
 	if strings.HasPrefix(s, `"`) {
+		// Texttual form.
 		s = s[1 : len(s)-1]
 		if !strings.HasSuffix(s, "Crit") {
 			s = "Crit" + s
@@ -296,13 +297,14 @@ func (c *Criticality) UnmarshalJSON(data []byte) error {
 			}
 		}
 		return fmt.Errorf("ht: unknown Criticality %q", string(data[1:len(data)-1]))
-	} else {
-		crit, err := strconv.Atoi(s)
-		if err != nil {
-			return err
-		}
-		*c = Criticality(crit)
 	}
+
+	// Numeric form.
+	crit, err := strconv.Atoi(s)
+	if err != nil {
+		return err
+	}
+	*c = Criticality(crit)
 
 	return nil
 }
@@ -843,7 +845,7 @@ func escapeQuotes(s string) string {
 
 // TODO: handle errors
 func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
-	var body *bytes.Buffer = &bytes.Buffer{}
+	var body = &bytes.Buffer{}
 
 	var mpwriter = multipart.NewWriter(body)
 	// All non-file parameters come first
@@ -892,7 +894,7 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 		h.Set("Content-Disposition",
 			fmt.Sprintf(`form-data; name="%s"; filename="%s"`,
 				escapeQuotes(n), escapeQuotes(basename)))
-		var ct string = "application/octet-stream"
+		var ct = "application/octet-stream"
 		if i := strings.LastIndex(basename, "."); i != -1 {
 			ct = mime.TypeByExtension(basename[i:])
 			if ct == "" {

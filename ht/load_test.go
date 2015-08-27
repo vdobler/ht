@@ -21,7 +21,12 @@ func TestLoadSuite(t *testing.T) {
 
 	if testing.Verbose() {
 		suite.Log = log.New(os.Stdout, "", log.LstdFlags)
+	} else {
+		for _, test := range suite.AllTests() {
+			test.Verbosity = 0
+		}
 	}
+
 	err = suite.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())

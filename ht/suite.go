@@ -50,6 +50,7 @@ type Suite struct {
 	Duration Duration
 }
 
+// AllTests returns all tests including setup and teardown tests.
 func (s Suite) AllTests() []*Test {
 	return append(append(s.Setup, s.Tests...), s.Teardown...)
 }
@@ -107,7 +108,7 @@ func (s *Suite) Prepare() error {
 	return nil
 }
 
-// Execute the setup tests in s. The tests are executed sequentialy,
+// ExecuteSetup runs the setup tests s. The tests are executed sequentialy,
 // execution stops on the first error.
 func (s *Suite) ExecuteSetup() {
 	s.execute(s.Setup, "Setup")
@@ -118,7 +119,7 @@ func (s *Suite) ExecuteTeardown() {
 	s.execute(s.Teardown, "Teardown")
 }
 
-// Execute all non-setup, non-teardown tests of s sequentialy.
+// ExecuteTests run the non-setup, non-teardown tests of s sequentialy.
 func (s *Suite) ExecuteTests() {
 	s.execute(s.Tests, "MainTest")
 }

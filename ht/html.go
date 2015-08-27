@@ -512,7 +512,7 @@ func (c *Links) Execute(t *Test) error {
 // linkURL will extract all links for the given tag type from the parsed
 // HTML document. All links are made absolute by parsing in the context of
 // requestURL
-func (_ Links) linkURL(document *html.Node, tag string, requestURL *url.URL) []string {
+func (Links) linkURL(document *html.Node, tag string, requestURL *url.URL) []string {
 	href := linkURLattr[tag].sel
 	matches := href.MatchAll(document)
 	ak := linkURLattr[tag].attr

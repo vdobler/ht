@@ -23,6 +23,7 @@ type ResponseTime struct {
 	Higher Duration `json:",omitempty"`
 }
 
+// Execute implements Check's Execute method.
 func (c ResponseTime) Execute(t *Test) error {
 	actual := t.Response.Duration
 	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
@@ -39,4 +40,5 @@ func (c ResponseTime) Execute(t *Test) error {
 	return nil
 }
 
-func (_ ResponseTime) Prepare() error { return nil }
+// Prepare implements Check's Prepare method.
+func (ResponseTime) Prepare() error { return nil }

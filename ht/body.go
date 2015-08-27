@@ -40,7 +40,7 @@ func (c UTF8Encoded) Execute(t *Test) error {
 	return nil
 }
 
-// Execute implements Check's Prepare method.
+// Prepare implements Check's Prepare method.
 func (UTF8Encoded) Prepare() error { return nil }
 
 // ----------------------------------------------------------------------------
@@ -58,7 +58,7 @@ func (b Body) Execute(t *Test) error {
 	return Condition(b).FullfilledBytes(body)
 }
 
-// Execute implements Check's Prepare method.
+// Prepare implements Check's Prepare method.
 func (b *Body) Prepare() error {
 	return ((*Condition)(b)).Compile()
 }

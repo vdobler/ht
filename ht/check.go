@@ -100,7 +100,7 @@ func deepCopy(dst, src reflect.Value, r *strings.Replacer, f map[int64]int64) {
 // Registry
 
 // CheckRegistry keeps track of all known Checks.
-var CheckRegistry map[string]reflect.Type = make(map[string]reflect.Type)
+var CheckRegistry = make(map[string]reflect.Type)
 
 // RegisterCheck registers the check. Once a check is registered it may be
 // unmarshaled from its name and marshaled data.
