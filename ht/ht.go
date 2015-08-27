@@ -309,6 +309,7 @@ func (c *Criticality) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON produces a JSON representation of c.
 func (c Criticality) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + c.String() + `"`), nil
 }

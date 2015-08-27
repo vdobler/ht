@@ -53,7 +53,7 @@ type Body Condition
 func (b Body) Execute(t *Test) error {
 	body, err := t.Response.BodyBytes, t.Response.BodyErr
 	if err != nil {
-		return BadBody
+		return ErrBadBody
 	}
 	return Condition(b).FullfilledBytes(body)
 }

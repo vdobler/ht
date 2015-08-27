@@ -34,7 +34,7 @@ type ValidHTML struct{}
 // Execute implements Check's Execute method.
 func (c ValidHTML) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
-		return BadBody
+		return ErrBadBody
 	}
 	_, err := html.Parse(t.Response.Body())
 	if err != nil {
@@ -186,7 +186,7 @@ func (c *HTMLTag) Execute(t *Test) error {
 		}
 	}
 	if t.Response.BodyErr != nil {
-		return BadBody
+		return ErrBadBody
 	}
 
 	doc, err := html.Parse(t.Response.Body())
@@ -198,9 +198,9 @@ func (c *HTMLTag) Execute(t *Test) error {
 
 	switch {
 	case c.Count < 0 && len(matches) > 0:
-		return FoundForbidden
+		return ErrFoundForbidden
 	case c.Count == 0 && len(matches) == 0:
-		return NotFound
+		return ErrNotFound
 	case c.Count > 0:
 		if len(matches) != c.Count {
 			return WrongCount{Got: len(matches), Want: c.Count}
@@ -264,7 +264,7 @@ func (c *HTMLContains) Execute(t *Test) error {
 		}
 	}
 	if t.Response.BodyErr != nil {
-		return BadBody
+		return ErrBadBody
 	}
 	doc, err := html.Parse(t.Response.Body())
 	if err != nil {
@@ -417,7 +417,7 @@ type Links struct {
 // as the map keys.
 func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 	if t.Response.BodyErr != nil {
-		return nil, BadBody
+		return nil, ErrBadBody
 	}
 	doc, err := html.Parse(t.Response.Body())
 	if err != nil {

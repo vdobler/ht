@@ -117,10 +117,17 @@ func RegisterCheck(check Check) {
 // Errors
 
 var (
-	BadBody        = errors.New("skipped due to bad body")
-	Failed         = errors.New("failed")
-	NotFound       = errors.New("not found")
-	FoundForbidden = errors.New("found forbidden")
+	// ErrBadBody is returned from checks if the request body is
+	// not available (e.g. due to a failed request).
+	ErrBadBody = errors.New("skipped due to bad body")
+
+	// ErrNotFound is returned by checks if some expected value was
+	// not found.
+	ErrNotFound = errors.New("not found")
+
+	// ErrFoundFirbidden is returned by checks if a forbidden value
+	// is found.
+	ErrFoundForbidden = errors.New("found forbidden")
 )
 
 // CantCheck is the error type returned by checks whose preconditions

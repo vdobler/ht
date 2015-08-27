@@ -210,8 +210,8 @@ func runTest(t *testing.T, i int, tc TC) {
 	case got != nil && tc.e != nil:
 		_, malformed := got.(MalformedCheck)
 		if (tc.e == someError && !malformed) ||
-			(tc.e == NotFound && got == NotFound) ||
-			(tc.e == FoundForbidden && got == FoundForbidden) {
+			(tc.e == ErrNotFound && got == ErrNotFound) ||
+			(tc.e == ErrFoundForbidden && got == ErrFoundForbidden) {
 			return
 		}
 		switch tc.e.(type) {

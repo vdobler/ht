@@ -38,7 +38,7 @@ func (x *XML) Execute(t *Test) error {
 	}
 
 	if s, ok := x.path.String(root); !ok {
-		return NotFound
+		return ErrNotFound
 	} else if e := x.Fullfilled(s); err != nil {
 		return e
 	}

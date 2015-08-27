@@ -23,7 +23,7 @@ type Extractor struct {
 	// HTMLElementSelector is the CSS selector of an element, e.g.
 	//     head meta[name="_csrf"]   or
 	//     form#login input[name="tok"]
-	//     div.token > span
+	//     div.token span
 	HTMLElementSelector string
 
 	// HTMLElementAttribute is the name of the attribute from which the
@@ -36,6 +36,7 @@ type Extractor struct {
 	HTMLElementAttribute string
 }
 
+// Extract the value defined by e from t.
 func (e Extractor) Extract(t *Test) (string, error) {
 	if e.HTMLElementSelector != "" {
 		sel, err := cascadia.Compile(e.HTMLElementSelector)
@@ -64,8 +65,7 @@ func (e Extractor) Extract(t *Test) (string, error) {
 	return "", errors.New("not found")
 }
 
-// Extract all values defined by VarEx from the sucessfully executed
-// Test t.
+// Extract all values defined by VarEx from the sucessfully executed Test t.
 func (t *Test) Extract() map[string]string {
 	data := make(map[string]string)
 	for varname, ex := range t.VarEx {
