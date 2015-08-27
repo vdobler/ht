@@ -34,8 +34,12 @@ func setupPerfSuites(t *testing.T) ([]*Suite, *httptest.Server) {
 			StatusCode{200},
 		},
 		Timeout:   Duration(400 * time.Millisecond),
-		Verbosity: 1,
+		Verbosity: 0,
 	}
+	if testing.Verbose() {
+		test.Verbosity = 1
+	}
+
 	unroll := map[string][]string{
 		"SMIN": {"1", "40", "200", "1", "40"},
 		"SMAX": {"30", "90", "400", "30", "90"},
