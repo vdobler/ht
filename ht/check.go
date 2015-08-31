@@ -128,6 +128,9 @@ var (
 	// ErrFoundFirbidden is returned by checks if a forbidden value
 	// is found.
 	ErrFoundForbidden = errors.New("found forbidden")
+
+	// ErrFailed is returned by a checks failing unspecificly.
+	ErrFailed = errors.New("failed")
 )
 
 // CantCheck is the error type returned by checks whose preconditions
