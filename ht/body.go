@@ -28,14 +28,14 @@ func (c UTF8Encoded) Execute(t *Test) error {
 	char := 0
 	for len(p) > 0 {
 		r, size := utf8.DecodeRune(p)
+		char++
 		if r == utf8.RuneError {
-			return fmt.Errorf("Invalid UTF-8 at character %d in body.", char)
+			return fmt.Errorf("Invalid UTF-8 after character %d.", char)
 		}
 		if r == '\ufeff' { // BOMs suck.
 			return fmt.Errorf("Unicode BOM at character %d.", char)
 		}
 		p = p[size:]
-		char++
 	}
 	return nil
 }
