@@ -4,7 +4,12 @@
 
 package ht
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+
+	"github.com/vdobler/ht/internal/json5"
+)
 
 var exampleHTML = `
 <html>
@@ -19,14 +24,14 @@ var exampleHTML = `
   </body>
 </html>`
 
-func TestExtractor(t *testing.T) {
+func TestHTMLExtractor(t *testing.T) {
 	test := &Test{
 		Response: Response{
 			BodyBytes: []byte(exampleHTML),
 		},
 	}
 
-	ex := Extractor{
+	ex := HTMLExtractor{
 		HTMLElementSelector:  `head meta[name="_csrf"]`,
 		HTMLElementAttribute: `content`,
 	}
@@ -38,7 +43,7 @@ func TestExtractor(t *testing.T) {
 		t.Errorf("Got %q, want 18f0ca3f-a50a-437f-9bd1-15c0caa28413", val)
 	}
 
-	ex = Extractor{
+	ex = HTMLExtractor{
 		HTMLElementSelector:  `body div.token > span`,
 		HTMLElementAttribute: `~text~`,
 	}
@@ -47,6 +52,130 @@ func TestExtractor(t *testing.T) {
 		t.Errorf("Unexpected error: %#v", err)
 	} else if val != "DEAD-BEEF-0007" {
 		t.Errorf("Got %q, want DEAD-BEEF-0007", val)
+	}
+
+}
+
+func TestBodyExtractor(t *testing.T) {
+	test := &Test{
+		Response: Response{
+			BodyBytes: []byte("Hello World! Foo 123 xyz ABC. Dog and cat."),
+		},
+	}
+
+	ex := BodyExtractor{
+		Regexp: "([1-9]+) (...) ([^ .]*)",
+	}
+
+	val, err := ex.Extract(test)
+	if err != nil {
+		t.Errorf("Unexpected error: %#v", err)
+	} else if val != "123 xyz ABC" {
+		t.Errorf("Got %q, want 123 xyz ABC", val)
+	}
+
+	ex.Submatch = 2
+	val, err = ex.Extract(test)
+	if err != nil {
+		t.Errorf("Unexpected error: %#v", err)
+	} else if val != "xyz" {
+		t.Errorf("Got %q, want xyz", val)
+	}
+
+}
+
+func TestMarshalExtractorMap(t *testing.T) {
+	em := ExtractorMap{
+		"Foo": HTMLExtractor{
+			HTMLElementSelector:  "div.footer p.copyright span.year",
+			HTMLElementAttribute: "~text~",
+		},
+		"Bar": BodyExtractor{
+			Regexp:   "[A-Z]+[0-9]+",
+			Submatch: 1,
+		},
+	}
+
+	out, err := em.MarshalJSON()
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	buf := &bytes.Buffer{}
+	err = json5.Indent(buf, out, "", "    ")
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	if s := buf.String(); s != `{
+    Foo: {
+        Extractor: "HTMLExtractor",
+        HTMLElementSelector: "div.footer p.copyright span.year",
+        HTMLElementAttribute: "~text~"
+    },
+    Bar: {
+        Extractor: "BodyExtractor",
+        Regexp: "[A-Z]+[0-9]+",
+        Submatch: 1
+    }
+}` {
+
+		t.Errorf("Wrong JSON, got:\n%s", s)
+	}
+}
+
+func TestUnmarshalExtractorMap(t *testing.T) {
+	j := []byte(`{
+    Foo: {
+        Extractor: "HTMLExtractor",
+        HTMLElementSelector: "form input[type=password]",
+        HTMLElementAttribute: "value"
+    },
+    Bar: {
+        Extractor: "BodyExtractor",
+        Regexp: "[A-Z]+[0-9]*[g-p]",
+        Submatch: 3
+    }
+}`)
+
+	em := ExtractorMap{}
+	err := (&em).UnmarshalJSON(j)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	if len(em) != 2 {
+		t.Fatalf("Wrong len, got %d\n%#v", len(em), em)
+	}
+
+	if foo, ok := em["Foo"]; !ok {
+		t.Errorf("missing Foo")
+	} else {
+		if htmlex, ok := foo.(*HTMLExtractor); !ok { // TODO: Why pointere here?
+			t.Errorf("wrong type for foo. %#v", foo)
+		} else {
+			if htmlex.HTMLElementSelector != "form input[type=password]" {
+				t.Errorf("HTMLElementSelector = %q", htmlex.HTMLElementSelector)
+			}
+			if htmlex.HTMLElementAttribute != "value" {
+				t.Errorf("HTMLElementAttribte = %q", htmlex.HTMLElementAttribute)
+			}
+		}
+	}
+
+	if bar, ok := em["Bar"]; !ok {
+		t.Errorf("missing Bar")
+	} else {
+		if bodyex, ok := bar.(*BodyExtractor); !ok { // TODO: Why pointere here?
+			t.Errorf("wrong type for bar. %#v", bar)
+		} else {
+			if bodyex.Regexp != "[A-Z]+[0-9]*[g-p]" {
+				t.Errorf("Regexp = %q", bodyex.Regexp)
+			}
+			if bodyex.Submatch != 3 {
+				t.Errorf("Submatch = %d", bodyex.Submatch)
+			}
+		}
 	}
 
 }

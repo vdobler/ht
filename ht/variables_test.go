@@ -37,7 +37,7 @@ var exampleTest = Test{
 	},
 	Checks: CheckList{},
 	VarEx: map[string]Extractor{
-		"extract": {
+		"extract": HTMLExtractor{
 			HTMLElementSelector:  "elemSel",
 			HTMLElementAttribute: "elemAttr",
 		},

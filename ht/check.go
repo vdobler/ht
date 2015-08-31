@@ -25,9 +25,9 @@ type Check interface {
 	Execute(*Test) error
 }
 
-// NameOf returns the name of the check.
-func NameOf(check Check) string {
-	typ := reflect.TypeOf(check)
+// NameOf returns the name of the type of inst.
+func NameOf(inst interface{}) string {
+	typ := reflect.TypeOf(inst)
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
@@ -97,7 +97,7 @@ func deepCopy(dst, src reflect.Value, r *strings.Replacer, f map[int64]int64) {
 }
 
 // ----------------------------------------------------------------------------
-// Registry
+// Check Registry
 
 // CheckRegistry keeps track of all known Checks.
 var CheckRegistry = make(map[string]reflect.Type)
