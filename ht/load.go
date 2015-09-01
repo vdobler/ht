@@ -49,8 +49,8 @@ type rawTest struct {
 	Description string   `json:",omitempty"`
 	BasedOn     []string `json:",omitempty"`
 	Request     Request
-	Checks      CheckList `json:",omitempty"`
-	VarEx       map[string]Extractor
+	Checks      CheckList    `json:",omitempty"`
+	VarEx       ExtractorMap `json:",omitempty"`
 
 	// Unroll contains values to be used during unrolling the Test
 	// generated from the deserialized data to several real Tests.
