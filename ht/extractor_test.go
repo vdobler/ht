@@ -6,6 +6,7 @@ package ht
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/vdobler/ht/internal/json5"
@@ -107,18 +108,20 @@ func TestMarshalExtractorMap(t *testing.T) {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 
-	if s := buf.String(); s != `{
+	fooExpected := `
     Foo: {
         Extractor: "HTMLExtractor",
         HTMLElementSelector: "div.footer p.copyright span.year",
         HTMLElementAttribute: "~text~"
-    },
+    }`
+
+	barExpected := `
     Bar: {
         Extractor: "BodyExtractor",
         Regexp: "[A-Z]+[0-9]+",
         Submatch: 1
-    }
-}` {
+    }`
+	if s := buf.String(); !strings.Contains(s, fooExpected) || !strings.Contains(s, barExpected) {
 
 		t.Errorf("Wrong JSON, got:\n%s", s)
 	}
