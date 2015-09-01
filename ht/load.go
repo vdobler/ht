@@ -85,7 +85,7 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 		origname := t.Name
 		base := []*Test{t}
 		for _, name := range raw.BasedOn {
-			rb, basedir, err := findRawTest(dir, name, testPool)
+			rb, basedir, err := findRawTest(dir, name, testPool, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -124,13 +124,22 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 // The name is interpreted as a relative path from curdir. If that file has been
 // loaded already it is returned from the pool otherwise it is read from the
 // filesystem. The directory the file was found is returned as basedir.
-func findRawTest(curdir string, name string, testPool map[string]*rawTest) (raw *rawTest, basedir string, err error) {
+// If the data parameter is non nil it will be used instead of the
+// data read from the filesyetem to allow testing.
+func findRawTest(curdir string, name string, testPool map[string]*rawTest, data []byte) (raw *rawTest, basedir string, err error) {
 	name = path.Join(curdir, name)
 	basedir = path.Dir(name)
 	if t, ok := testPool[name]; ok {
 		return t, basedir, nil
 	}
-	raw, err = loadRawTest(name)
+
+	if data == nil {
+		data, err = ioutil.ReadFile(name)
+		if err != nil {
+			return nil, basedir, err
+		}
+	}
+	raw, err = loadRawTest(data, name)
 	if err != nil {
 		return nil, basedir, err
 	}
@@ -138,15 +147,10 @@ func findRawTest(curdir string, name string, testPool map[string]*rawTest) (raw 
 	return raw, basedir, nil
 }
 
-// loadRawTest loads the file with the given filename and decodes into
-// a rawTest.
-func loadRawTest(filename string) (*rawTest, error) {
-	all, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
+// loadRawTest unmarshals all to a rawTest.
+func loadRawTest(all []byte, filename string) (*rawTest, error) {
 	t := &rawTest{}
-	err = json5.Unmarshal(all, t)
+	err := json5.Unmarshal(all, t)
 	if err != nil {
 		err := fmt.Errorf(beautifyJSONError(err, all, filename))
 		return nil, err
@@ -161,7 +165,7 @@ func LoadTest(filename string) ([]*Test, error) {
 	dir := path.Dir(filename)
 	name := path.Base(filename)
 	testPool := make(map[string]*rawTest)
-	raw, basedir, err := findRawTest(dir, name, testPool)
+	raw, basedir, err := findRawTest(dir, name, testPool, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +193,7 @@ func LoadSuite(filename string) (*Suite, error) {
 	appendTests := func(testNames []string) ([]*Test, error) {
 		tests := []*Test{}
 		for _, name := range testNames {
-			raw, base, err := findRawTest(curdir, name, testPool)
+			raw, base, err := findRawTest(curdir, name, testPool, nil)
 			if err != nil {
 				return nil, fmt.Errorf("test %q: %s", name, err)
 			}
