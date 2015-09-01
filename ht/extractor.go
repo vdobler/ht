@@ -98,7 +98,10 @@ func (em ExtractorMap) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON unmarshals data to a map of Extractors.
-func (em ExtractorMap) UnmarshalJSON(data []byte) error {
+func (em *ExtractorMap) UnmarshalJSON(data []byte) error {
+	if *em == nil {
+		*em = make(ExtractorMap)
+	}
 	raw := map[string]json5.RawMessage{}
 	err := json5.Unmarshal(data, &raw)
 	if err != nil {
@@ -115,7 +118,6 @@ func (em ExtractorMap) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("ht: no such extractor %s", u.Extractor)
 		}
 		if typ.Kind() == reflect.Ptr {
-			println("Pointer for", name, u.Extractor)
 			typ = typ.Elem()
 		}
 		extractor := reflect.New(typ)
@@ -123,7 +125,7 @@ func (em ExtractorMap) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
-		em[name] = extractor.Interface().(Extractor)
+		(*em)[name] = extractor.Interface().(Extractor)
 	}
 	return nil
 }
