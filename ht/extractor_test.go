@@ -33,8 +33,8 @@ func TestHTMLExtractor(t *testing.T) {
 	}
 
 	ex := HTMLExtractor{
-		HTMLElementSelector:  `head meta[name="_csrf"]`,
-		HTMLElementAttribute: `content`,
+		Selector:  `head meta[name="_csrf"]`,
+		Attribute: `content`,
 	}
 
 	val, err := ex.Extract(test)
@@ -45,8 +45,8 @@ func TestHTMLExtractor(t *testing.T) {
 	}
 
 	ex = HTMLExtractor{
-		HTMLElementSelector:  `body div.token > span`,
-		HTMLElementAttribute: `~text~`,
+		Selector:  `body div.token > span`,
+		Attribute: `~text~`,
 	}
 	val, err = ex.Extract(test)
 	if err != nil {
@@ -88,8 +88,8 @@ func TestBodyExtractor(t *testing.T) {
 func TestMarshalExtractorMap(t *testing.T) {
 	em := ExtractorMap{
 		"Foo": HTMLExtractor{
-			HTMLElementSelector:  "div.footer p.copyright span.year",
-			HTMLElementAttribute: "~text~",
+			Selector:  "div.footer p.copyright span.year",
+			Attribute: "~text~",
 		},
 		"Bar": BodyExtractor{
 			Regexp:   "[A-Z]+[0-9]+",
@@ -111,8 +111,8 @@ func TestMarshalExtractorMap(t *testing.T) {
 	fooExpected := `
     Foo: {
         Extractor: "HTMLExtractor",
-        HTMLElementSelector: "div.footer p.copyright span.year",
-        HTMLElementAttribute: "~text~"
+        Selector: "div.footer p.copyright span.year",
+        Attribute: "~text~"
     }`
 
 	barExpected := `
@@ -131,8 +131,8 @@ func TestUnmarshalExtractorMap(t *testing.T) {
 	j := []byte(`{
     Foo: {
         Extractor: "HTMLExtractor",
-        HTMLElementSelector: "form input[type=password]",
-        HTMLElementAttribute: "value"
+        Selector: "form input[type=password]",
+        Attribute: "value"
     },
     Bar: {
         Extractor: "BodyExtractor",
@@ -157,11 +157,11 @@ func TestUnmarshalExtractorMap(t *testing.T) {
 		if htmlex, ok := foo.(*HTMLExtractor); !ok { // TODO: Why pointere here?
 			t.Errorf("wrong type for foo. %#v", foo)
 		} else {
-			if htmlex.HTMLElementSelector != "form input[type=password]" {
-				t.Errorf("HTMLElementSelector = %q", htmlex.HTMLElementSelector)
+			if htmlex.Selector != "form input[type=password]" {
+				t.Errorf("HTMLElementSelector = %q", htmlex.Selector)
 			}
-			if htmlex.HTMLElementAttribute != "value" {
-				t.Errorf("HTMLElementAttribte = %q", htmlex.HTMLElementAttribute)
+			if htmlex.Attribute != "value" {
+				t.Errorf("HTMLElementAttribte = %q", htmlex.Attribute)
 			}
 		}
 	}

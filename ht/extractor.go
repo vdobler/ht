@@ -141,26 +141,26 @@ func (em *ExtractorMap) UnmarshalJSON(data []byte) error {
 //    <meta name="_csrf" content="18f0ca3f-a50a-437f-9bd1-15c0caa28413" />
 //    <input type="hidden" name="_csrf" value="18f0ca3f-a50a-437f-9bd1-15c0caa28413"/>
 type HTMLExtractor struct {
-	// HTMLElementSelector is the CSS selector of an element, e.g.
+	// Selector is the CSS selector of an element, e.g.
 	//     head meta[name="_csrf"]   or
 	//     form#login input[name="tok"]
 	//     div.token span
-	HTMLElementSelector string
+	Selector string
 
-	// HTMLElementAttribute is the name of the attribute from which the
+	// Attribute is the name of the attribute from which the
 	// value should be extracted.  The magic value "~text~" refers to the
 	// text content of the element. E.g. in the examples above the following
 	// should be sensible:
 	//     content
 	//     value
 	//     ~text~
-	HTMLElementAttribute string
+	Attribute string
 }
 
 // Extract implements Extractor's Extract method.
 func (e HTMLExtractor) Extract(t *Test) (string, error) {
-	if e.HTMLElementSelector != "" {
-		sel, err := cascadia.Compile(e.HTMLElementSelector)
+	if e.Selector != "" {
+		sel, err := cascadia.Compile(e.Selector)
 		if err != nil {
 			return "", err
 		}
@@ -171,13 +171,13 @@ func (e HTMLExtractor) Extract(t *Test) (string, error) {
 
 		node := sel.MatchFirst(doc)
 		if node == nil {
-			return "", fmt.Errorf("could not find node '%s'", e.HTMLElementSelector)
+			return "", fmt.Errorf("could not find node '%s'", e.Selector)
 		}
-		if e.HTMLElementAttribute == "~text~" {
+		if e.Attribute == "~text~" {
 			return textContent(node, true), nil
 		}
 		for _, a := range node.Attr {
-			if a.Key == e.HTMLElementAttribute {
+			if a.Key == e.Attribute {
 				return a.Val, nil
 			}
 		}
