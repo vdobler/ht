@@ -169,10 +169,10 @@ type HTMLTag struct {
 	// Selector is the CSS selector of the HTML elements.
 	Selector string
 
-	// Count determines the number of occurences to check for:
-	//     < 0: no occurence
-	//    == 0: one ore more occurences
-	//     > 0: exactly that many occurences
+	// Count determines the number of occurrences to check for:
+	//     < 0: no occurrence
+	//    == 0: one ore more occurrences
+	//     > 0: exactly that many occurrences
 	Count int `json:",omitempty"`
 
 	sel cascadia.Selector
@@ -229,7 +229,7 @@ func (c *HTMLTag) Prepare() (err error) {
 // The text content found in the HTML document is normalized by roughly the
 // following procedure:
 //   1.  Newlines are inserted around HTML block elements
-//       (actuall any non-inline element)
+//       (i.e. any non-inline element)
 //   2.  Newlines and tabs are replaced by spaces.
 //   3.  Multiple spaces are replaced by one space.
 //   4.  Leading and trailing spaces are trimmed of.
@@ -400,7 +400,7 @@ type Links struct {
 	Which string
 
 	// Concurrency determines how many of the found links are checked
-	// concurrently. A zero value indicats sequential checking.
+	// concurrently. A zero value indicates sequential checking.
 	Concurrency int `json:",omitempty"`
 
 	// Timeout is the client timeout if different from main test.

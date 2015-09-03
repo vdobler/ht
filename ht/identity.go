@@ -19,7 +19,7 @@ func init() {
 // Identity
 
 // Identity checks the value of the response body by comparing its SHA1 hash
-// to the expacted has value.
+// to the expected SHA1 value.
 type Identity struct {
 	// SHA1 is the expected hash as shown by sha1sum of the whole body.
 	// E.g. 2ef7bde608ce5404e97d5f042f95f89f1c232871 for a "Hello World!"

@@ -53,7 +53,7 @@ func (h *Header) Prepare() error {
 // ----------------------------------------------------------------------------
 // SetCookie
 
-// SetCookie checks for cookies beeing properly set.
+// SetCookie checks for cookies being properly set.
 // Note that the Path and Domain conditions are checked on the received Path
 // and/or Domain and not on the interpreted values according to RFC 6265.
 type SetCookie struct {

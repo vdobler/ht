@@ -37,7 +37,7 @@ type JSON struct {
 	Path string `json:",omitempty"`
 
 	// Condition to apply to the value selected by Path.
-	// If Condition is the zero value then only the existens of
+	// If Condition is the zero value then only the existence of
 	// a JSON element selected by Path is checked.
 	// Note that Condition s checked against the actual value in the
 	// flattened JSON map which will contain the quotation marks for
