@@ -18,14 +18,14 @@ func init() {
 // ----------------------------------------------------------------------------
 // Logfile
 
-// Logfile provides checks on files. During preparation the current file
-// size is determined and the checks are run against the bytes written
-// after preparation.
+// Logfile provides checks on files (i.e. it ignores the response).
+// During preparation the current file size is determined and the checks
+// are run against the bytes written after preparation.
 type Logfile struct {
 	// Path is the file system path to the logfile."
 	Path string
 
-	// Condition the written stuff must fullfill.
+	// Condition the written stuff must fulfill.
 	Condition `json:",omitempty"`
 
 	// Disallow states what is forbidden in the written log.

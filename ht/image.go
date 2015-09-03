@@ -27,7 +27,7 @@ func init() {
 // Image
 
 // Image checks image format, size and fingerprint. As usual a zero value of
-// a field skipps the check of that property.
+// a field skips the check of that property.
 // Image fingerprinting is done via github.com/vdobler/ht/fingerprint.
 // Only one of BMV or ColorHist should be used as there is just one threshold.
 type Image struct {

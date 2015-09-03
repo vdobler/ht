@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Condition is a cunjunction of tests against a string. Note that Contains and
+// Condition is a conjunction of tests against a string. Note that Contains and
 // Regexp conditions both use the same Count; most likely one would use either
 // Contains or Regexp but not both.
 type Condition struct {
