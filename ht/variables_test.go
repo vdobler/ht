@@ -190,7 +190,7 @@ func TestFindNow(t *testing.T) {
 			&Body{Contains: "now+5 == {{NOW + 15m}}"},
 		},
 	}
-	nv := test.findNowVariables()
+	nv := test.findSpecialVariables()
 	if len(nv) != 6 {
 		fmt.Printf("Got %v\n", nv)
 	}
@@ -203,6 +203,6 @@ func TestFindNow(t *testing.T) {
 	}
 
 	if testing.Verbose() {
-		fmt.Printf("%#v\n", test.nowVariables(time.Now()))
+		fmt.Printf("%#v\n", test.specialVariables(time.Now()))
 	}
 }

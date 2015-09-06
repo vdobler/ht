@@ -128,14 +128,17 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 
 var nowTimeRe = regexp.MustCompile(`{{NOW *([+-] *[1-9][0-9]*[smhd])? *(\| *"(.*)")?}}`)
 
-// findNowVariables return all occurences of a time-variable.
-func (t *Test) findNowVariables() (v []string) {
+// findSpecialVariables return all occurences of a time-variable.
+func (t *Test) findSpecialVariables() (v []string) {
 	add := func(s string) {
 		m := nowTimeRe.FindAllString(s, 1)
-		if m == nil {
-			return
+		if m != nil {
+			v = append(v, m[0])
 		}
-		v = append(v, m[0])
+		m = randomRe.FindAllString(s, 1)
+		if m != nil {
+			v = append(v, m[0])
+		}
 	}
 
 	add(t.Name)
@@ -156,94 +159,105 @@ func (t *Test) findNowVariables() (v []string) {
 		add(cookie.Value)
 	}
 	for _, c := range t.Checks {
-		v = append(v, findNowVarsInCheck(c)...)
+		v = append(v, findSpecialVarsInCheck(c)...)
 	}
 	return v
 }
 
-func findNowVarsInCheck(check Check) []string {
+func findSpecialVarsInCheck(check Check) []string {
 	v := reflect.ValueOf(check)
-	return findNowVarsInCheckRec(v)
+	return findSpecialVarsInCheckRec(v)
 }
 
-func findNowVarsInCheckRec(v reflect.Value) (a []string) {
+func findSpecialVarsInCheckRec(v reflect.Value) (a []string) {
 	switch v.Kind() {
 	case reflect.String:
 		m := nowTimeRe.FindAllString(v.String(), 1)
-		if m == nil {
-			return
-		}
+		m = append(m, randomRe.FindAllString(v.String(), 1)...)
 		return m
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			a = append(a, findNowVarsInCheckRec(v.Field(i))...)
+			a = append(a, findSpecialVarsInCheckRec(v.Field(i))...)
 		}
 	case reflect.Slice:
 		for i := 0; i < v.Len(); i++ {
-			a = append(a, findNowVarsInCheckRec(v.Index(i))...)
+			a = append(a, findSpecialVarsInCheckRec(v.Index(i))...)
 		}
 	case reflect.Map:
 		for _, key := range v.MapKeys() {
-			a = append(a, findNowVarsInCheckRec(v.MapIndex(key))...)
+			a = append(a, findSpecialVarsInCheckRec(v.MapIndex(key))...)
 		}
 	case reflect.Ptr:
 		v = v.Elem()
 		if !v.IsValid() {
 			return nil
 		}
-		a = findNowVarsInCheckRec(v)
+		a = findSpecialVarsInCheckRec(v)
 	case reflect.Interface:
 		v = v.Elem()
-		a = findNowVarsInCheckRec(v)
+		a = findSpecialVarsInCheckRec(v)
 	}
 	return a
 }
 
-// nowVariables looks through t, extracts all occurences of now variables, i.e.
+// specialVariables looks through t, extracts all occurences of "now" and "random"
+// variables, i.e.
 //     {{NOW + 30s | "2006-Jan-02"}}
-// and formats the desired time. It returns a map suitable for merging with
+//     {{RANDOM TEXT fr 10-30}}
+// and formats the desired value. It returns a map suitable for merging with
 // other, real variable/value-Pairs.
-func (t *Test) nowVariables(now time.Time) (vars map[string]string) {
-	nv := t.findNowVariables()
+func (t *Test) specialVariables(now time.Time) (vars map[string]string) {
+	nv := t.findSpecialVariables()
 	vars = make(map[string]string)
 	for _, k := range nv {
-		m := nowTimeRe.FindAllStringSubmatch(k, 1)
-		if m == nil {
-			panic("Unmatchable " + k)
+		if strings.HasPrefix(k, "{{NOW") {
+			setNowVariable(vars, now, k)
+		} else {
+			// Must be "{{RANDOM".
+			setRandomVariable(vars, k)
 		}
-		kk := k[2 : len(k)-2] // Remove {{ and }} to produce the "variable name".
-		if _, ok := vars[kk]; ok {
-			continue // We already processed this variable.
-		}
-		var off time.Duration
-		delta := m[0][1]
-		if delta != "" {
-			num := strings.TrimLeft(delta[1:len(delta)-1], " ")
-			n, err := strconv.Atoi(num)
-			if err != nil {
-				panic(err)
-			}
-			if delta[0] == '-' {
-				n *= -1
-			}
-			switch delta[len(delta)-1] {
-			case 'm':
-				n *= 60
-			case 'h':
-				n *= 60 * 60
-			case 'd':
-				n *= 24 * 26 * 60
-			}
-			off = time.Duration(n) * time.Second
-		}
-		format := time.RFC1123
-		if m[0][3] != "" {
-			format = m[0][3]
-		}
-		formatedTime := now.Add(off).Format(format)
-		vars[kk] = formatedTime
 	}
+
 	return vars
+}
+
+// interprete k of the form {{NOW ...}} and set vars[k] to that vlaue.
+func setNowVariable(vars map[string]string, now time.Time, k string) {
+	m := nowTimeRe.FindAllStringSubmatch(k, 1)
+	if m == nil {
+		panic("Unmatchable " + k)
+	}
+	kk := k[2 : len(k)-2] // Remove {{ and }} to produce the "variable name".
+	if _, ok := vars[kk]; ok {
+		return // We already processed this variable.
+	}
+	var off time.Duration
+	delta := m[0][1]
+	if delta != "" {
+		num := strings.TrimLeft(delta[1:len(delta)-1], " ")
+		n, err := strconv.Atoi(num)
+		if err != nil {
+			panic(err)
+		}
+		if delta[0] == '-' {
+			n *= -1
+		}
+		switch delta[len(delta)-1] {
+		case 'm':
+			n *= 60
+		case 'h':
+			n *= 60 * 60
+		case 'd':
+			n *= 24 * 26 * 60
+		}
+		off = time.Duration(n) * time.Second
+	}
+	format := time.RFC1123
+	if m[0][3] != "" {
+		format = m[0][3]
+	}
+	formatedTime := now.Add(off).Format(format)
+	vars[kk] = formatedTime
 }
 
 // mergeVariables merges all variables found in the various vars.
