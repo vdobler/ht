@@ -174,35 +174,44 @@ func TestNewReplacer(t *testing.T) {
 	}
 }
 
-func TestFindNow(t *testing.T) {
-	test := Test{
-		Name:        "now == {{NOW}}",
-		Description: "now+1 == {{NOW+1s}}",
-		Request: Request{
-			Method: "GET",
-			URL:    "now+2 == {{NOW + 2s}}",
-			Params: URLValues{
-				"text": []string{`now+3 == {{NOW+3s | "2006-Jan-02"}}`}},
-			Header:          http.Header{"header": []string{"now+4 == {{NOW+4s}}"}},
-			FollowRedirects: false,
-		},
-		Checks: []Check{
-			&Body{Contains: "now+5 == {{NOW + 15m}}"},
-		},
+var specialVariablesTest = Test{
+	Name:        "now == {{NOW}} {{RANDOM NUMBER 12}}",
+	Description: "now+1 == {{NOW+1s}} {{RANDOM NUMBER 30-40}}",
+	Request: Request{
+		Method: "GET",
+		URL:    "now+2 == {{NOW + 2s}} {{RANDOM NUMBER 30-40 %04x}}",
+		Params: URLValues{
+			"text": []string{`now+3 == {{NOW+3s | "2006-Jan-02"}}`}},
+		Header:          http.Header{"header": []string{"now+4 == {{NOW+4s}}"}},
+		FollowRedirects: false,
+	},
+	Checks: []Check{
+		&Body{Contains: "now+5 == {{NOW + 15m}} {{RANDOM TEXT de 3-6}}"},
+	},
+}
+
+func TestFindSpecialVariables(t *testing.T) {
+	nv := specialVariablesTest.findSpecialVariables()
+	want := []string{
+		`{{NOW}}`, `{{RANDOM NUMBER 12}}`,
+		`{{NOW+1s}}`, `{{RANDOM NUMBER 30-40}}`,
+		`{{NOW + 2s}}`, `{{RANDOM NUMBER 30-40 %04x}}`,
+		`{{NOW+3s | "2006-Jan-02"}}`,
+		`{{NOW+4s}}`,
+		`{{NOW + 15m}}`, `{{RANDOM TEXT de 3-6}}`,
 	}
-	nv := test.findSpecialVariables()
-	if len(nv) != 6 {
-		fmt.Printf("Got %v\n", nv)
-	}
-	want := []string{`{{NOW}}`, `{{NOW+1s}}`, `{{NOW + 2s}}`,
-		`{{NOW+3s | "2006-Jan-02"}}`, `{{NOW+4s}}`, `{{NOW + 15m}}`}
 	for i, got := range nv {
 		if got != want[i] {
 			t.Errorf("%d got %q, want %q", i, got, want[i])
 		}
 	}
+}
 
-	if testing.Verbose() {
-		fmt.Printf("%#v\n", test.specialVariables(time.Now()))
+func TestSpecialVariables(t *testing.T) {
+	now := time.Date(2009, 12, 28, 8, 45, 0, 0, time.FixedZone("Aarau", 3600))
+	vars, err := specialVariablesTest.specialVariables(now)
+	if err != nil {
+		t.Errorf("Unexpected error %#v", err)
 	}
+	fmt.Printf("%#v\n", vars)
 }

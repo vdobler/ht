@@ -551,7 +551,10 @@ func (t *Test) execute() {
 // crafting the underlying http request the checks.
 func (t *Test) prepare(variables map[string]string) error {
 	// Create appropriate replace.
-	nowVars := t.specialVariables(time.Now())
+	nowVars, err := t.specialVariables(time.Now())
+	if err != nil {
+		return err
+	}
 	allVars := mergeVariables(variables, nowVars)
 	repl, err := newReplacer(allVars)
 	if err != nil {

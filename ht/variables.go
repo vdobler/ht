@@ -206,30 +206,36 @@ func findSpecialVarsInCheckRec(v reflect.Value) (a []string) {
 //     {{RANDOM TEXT fr 10-30}}
 // and formats the desired value. It returns a map suitable for merging with
 // other, real variable/value-Pairs.
-func (t *Test) specialVariables(now time.Time) (vars map[string]string) {
+func (t *Test) specialVariables(now time.Time) (map[string]string, error) {
 	nv := t.findSpecialVariables()
-	vars = make(map[string]string)
+	vars := make(map[string]string)
 	for _, k := range nv {
 		if strings.HasPrefix(k, "{{NOW") {
-			setNowVariable(vars, now, k)
+			err := setNowVariable(vars, now, k)
+			if err != nil {
+				return vars, err
+			}
 		} else {
 			// Must be "{{RANDOM".
-			setRandomVariable(vars, k)
+			err := setRandomVariable(vars, k)
+			if err != nil {
+				return vars, err
+			}
 		}
 	}
 
-	return vars
+	return vars, nil
 }
 
 // interprete k of the form {{NOW ...}} and set vars[k] to that vlaue.
-func setNowVariable(vars map[string]string, now time.Time, k string) {
+func setNowVariable(vars map[string]string, now time.Time, k string) error {
 	m := nowTimeRe.FindAllStringSubmatch(k, 1)
 	if m == nil {
 		panic("Unmatchable " + k)
 	}
 	kk := k[2 : len(k)-2] // Remove {{ and }} to produce the "variable name".
 	if _, ok := vars[kk]; ok {
-		return // We already processed this variable.
+		return nil // We already processed this variable.
 	}
 	var off time.Duration
 	delta := m[0][1]
@@ -237,18 +243,22 @@ func setNowVariable(vars map[string]string, now time.Time, k string) {
 		num := strings.TrimLeft(delta[1:len(delta)-1], " ")
 		n, err := strconv.Atoi(num)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		if delta[0] == '-' {
 			n *= -1
 		}
 		switch delta[len(delta)-1] {
+		case 's':
+			n *= 1
 		case 'm':
 			n *= 60
 		case 'h':
 			n *= 60 * 60
 		case 'd':
 			n *= 24 * 26 * 60
+		default:
+			return fmt.Errorf("ht: bad now-variable delta unit %q", delta[len(delta)-1])
 		}
 		off = time.Duration(n) * time.Second
 	}
@@ -258,6 +268,7 @@ func setNowVariable(vars map[string]string, now time.Time, k string) {
 	}
 	formatedTime := now.Add(off).Format(format)
 	vars[kk] = formatedTime
+	return nil
 }
 
 // mergeVariables merges all variables found in the various vars.

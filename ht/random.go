@@ -52,8 +52,10 @@ var randomFuncs = []randomFunc{
 
 func randomNumber(args []interface{}) (string, error) {
 	from, to, format := args[1].(int), args[2].(int), args[4].(string)
-	n := from + Random.Intn(to-from)
-	return fmt.Sprintf(format, n), nil
+	if span := (to - from + 1); span > 0 {
+		return fmt.Sprintf(format, from+Random.Intn(span)), nil
+	}
+	return "", fmt.Errorf("ht: invalid range [%d,%d] for random number", from, to)
 }
 
 var textCorpus = map[string]string{
@@ -67,17 +69,33 @@ func randomText(args []interface{}) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("ht: no %s corpus of random text", lang)
 	}
-	n := min + Random.Intn(max-min)
+	span := max - min + 1
+	if span <= 0 {
+		return "", fmt.Errorf("ht: invalid range [%d,%d] for random text", min, max)
+	}
+	n := min + Random.Intn(span)
+	if n == 0 {
+		return "", nil
+	}
 	words := strings.Split(corpus, " ")
-	// BUG: that will go havoc.
-	return strings.Join(words[:n], " "), nil
+	w := len(words)
+	begin := Random.Intn(w - 1)
+	if begin+n <= w {
+		return strings.Join(words[begin:begin+n], " "), nil
+	}
+	text := []string{}
+	for len(text) < n {
+		text = append(text, words[begin:]...)
+		begin = 0
+	}
+	return strings.Join(text[:n], " "), nil
 }
 
 // randomValue interpretes a r of the form "{{RANDOM <what> [parameters]}}".
-func setRandomVariable(vars map[string]string, r string) {
+func setRandomVariable(vars map[string]string, r string) error {
 	k := strings.TrimSpace(r[2 : len(r)-2])
 	if _, ok := vars[k]; ok {
-		return // This one was not a new one.
+		return nil // This one was not a new one.
 	}
 	r = strings.TrimLeft(k[7:], " ")
 
@@ -88,16 +106,16 @@ func setRandomVariable(vars map[string]string, r string) {
 		args := strings.TrimLeft(r[len(rf.name):], " ")
 		arglist, err := parseRandomArgs(args, rf)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		value, err := rf.fn(arglist)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		vars[k] = value
-		return
+		return nil
 	}
-	panic(fmt.Sprintf("ht: no such random type %q", r))
+	return fmt.Errorf("ht: no such random type %q", r)
 }
 
 // parseRandomArgs produces an argument list for rf based on s.
