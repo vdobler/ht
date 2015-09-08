@@ -242,8 +242,9 @@ type Test struct {
 	CheckResults []CheckResult `json:"-"` // The individual checks.
 	SeqNo        string        `json:"-"`
 
-	client *http.Client
-	checks []Check // prepared checks.
+	client      *http.Client
+	specialVars map[string]struct{}
+	checks      []Check // prepared checks.
 }
 
 // Criticality is the business criticality of this tests. Package ht does not
@@ -550,12 +551,18 @@ func (t *Test) execute() {
 // prepare the test for execution by substituting the given variables and
 // crafting the underlying http request the checks.
 func (t *Test) prepare(variables map[string]string) error {
-	// Create appropriate replace.
-	nowVars, err := t.specialVariables(time.Now())
-	if err != nil {
-		return err
+	// Create appropriate replacer.
+	if t.specialVars == nil {
+		t.specialVars = t.findSpecialVariables()
 	}
-	allVars := mergeVariables(variables, nowVars)
+	allVars := variables
+	if len(t.specialVars) > 0 {
+		sv, err := specialVariables(time.Now(), t.specialVars)
+		if err != nil {
+			return err
+		}
+		allVars = mergeVariables(allVars, sv)
+	}
 	repl, err := newReplacer(allVars)
 	if err != nil {
 		return err

@@ -181,8 +181,15 @@ var specialVariablesTest = Test{
 		Method: "GET",
 		URL:    "now+2 == {{NOW + 2s}} {{RANDOM NUMBER 30-40 %04x}}",
 		Params: URLValues{
-			"text": []string{`now+3 == {{NOW+3s | "2006-Jan-02"}}`}},
-		Header:          http.Header{"header": []string{"now+4 == {{NOW+4s}}"}},
+			"text": []string{
+				`now+3 == {{NOW+3s | "2006-Jan-02"}}`,
+				`now again == {{NOW}}`, // duplicate
+			}},
+		Header: http.Header{
+			"header": []string{
+				"now+4 == {{NOW+4s}}",
+				"{{NOW+1m}}{{RANDOM NUMBER 8}}{{{NOW+2m}}{{RANDOM TEXT 10}}",
+			}},
 		FollowRedirects: false,
 	},
 	Checks: []Check{
@@ -199,17 +206,24 @@ func TestFindSpecialVariables(t *testing.T) {
 		`{{NOW+3s | "2006-Jan-02"}}`,
 		`{{NOW+4s}}`,
 		`{{NOW + 15m}}`, `{{RANDOM TEXT de 3-6}}`,
+		"{{NOW+1m}}", "{{RANDOM NUMBER 8}}", "{{NOW+2m}}", "{{RANDOM TEXT 10}}",
 	}
-	for i, got := range nv {
-		if got != want[i] {
-			t.Errorf("%d got %q, want %q", i, got, want[i])
+	for _, w := range want {
+		if _, ok := nv[w]; ok {
+			delete(nv, w)
+		} else {
+			t.Errorf("missing %q", w)
 		}
+	}
+	if len(nv) > 0 {
+		t.Errorf("excess values %v", nv)
 	}
 }
 
 func TestSpecialVariables(t *testing.T) {
-	now := time.Date(2009, 12, 28, 8, 45, 0, 0, time.FixedZone("Aarau", 3600))
-	vars, err := specialVariablesTest.specialVariables(now)
+	now := time.Date(2009, 12, 28, 8, 40, 0, 0, time.FixedZone("Aarau", 3600))
+	nv := specialVariablesTest.findSpecialVariables()
+	vars, err := specialVariables(now, nv)
 	if err != nil {
 		t.Errorf("Unexpected error %#v", err)
 	}

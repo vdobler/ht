@@ -128,88 +128,85 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 
 var nowTimeRe = regexp.MustCompile(`{{NOW *([+-] *[1-9][0-9]*[smhd])? *(\| *"(.*)")?}}`)
 
-// findSpecialVariables return all occurences of a time-variable.
-func (t *Test) findSpecialVariables() (v []string) {
-	add := func(s string) {
-		m := nowTimeRe.FindAllString(s, 1)
-		if m != nil {
-			v = append(v, m[0])
-		}
-		m = randomRe.FindAllString(s, 1)
-		if m != nil {
-			v = append(v, m[0])
-		}
+// addSpecialVariables adds all special variables of the forms
+//     {{NOW ...}}  and
+//     {{RANDOM ...}}
+// in s to the map m.
+// TODO: replace regexp matching with fasterand simpler code.
+func addSpecialVariables(s string, m map[string]struct{}) {
+	for _, match := range nowTimeRe.FindAllString(s, -1) {
+		m[match] = struct{}{}
 	}
+	for _, match := range randomRe.FindAllString(s, -1) {
+		m[match] = struct{}{}
+	}
+}
 
-	add(t.Name)
-	add(t.Description)
-	add(t.Request.URL)
-	add(t.Request.Body)
+// findSpecialVariables return all occurences of special variables
+// as defined in addSpecialVariables
+func (t *Test) findSpecialVariables() map[string]struct{} {
+	v := map[string]struct{}{}
+
+	addSpecialVariables(t.Name, v)
+	addSpecialVariables(t.Description, v)
+	addSpecialVariables(t.Request.URL, v)
+	addSpecialVariables(t.Request.Body, v)
 	for _, pp := range t.Request.Params {
 		for _, p := range pp {
-			add(p)
+			addSpecialVariables(p, v)
 		}
 	}
 	for _, hh := range t.Request.Header {
 		for _, h := range hh {
-			add(h)
+			addSpecialVariables(h, v)
 		}
 	}
 	for _, cookie := range t.Request.Cookies {
-		add(cookie.Value)
+		addSpecialVariables(cookie.Value, v)
 	}
 	for _, c := range t.Checks {
-		v = append(v, findSpecialVarsInCheck(c)...)
+		findSpecialVarsInCheck(c, v)
 	}
 	return v
 }
 
-func findSpecialVarsInCheck(check Check) []string {
+func findSpecialVarsInCheck(check Check, m map[string]struct{}) {
 	v := reflect.ValueOf(check)
-	return findSpecialVarsInCheckRec(v)
+	findSpecialVarsInValue(v, m)
 }
 
-func findSpecialVarsInCheckRec(v reflect.Value) (a []string) {
+func findSpecialVarsInValue(v reflect.Value, m map[string]struct{}) {
 	switch v.Kind() {
 	case reflect.String:
-		m := nowTimeRe.FindAllString(v.String(), 1)
-		m = append(m, randomRe.FindAllString(v.String(), 1)...)
-		return m
+		addSpecialVariables(v.String(), m)
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			a = append(a, findSpecialVarsInCheckRec(v.Field(i))...)
+			findSpecialVarsInValue(v.Field(i), m)
 		}
 	case reflect.Slice:
 		for i := 0; i < v.Len(); i++ {
-			a = append(a, findSpecialVarsInCheckRec(v.Index(i))...)
+			findSpecialVarsInValue(v.Index(i), m)
 		}
 	case reflect.Map:
 		for _, key := range v.MapKeys() {
-			a = append(a, findSpecialVarsInCheckRec(v.MapIndex(key))...)
+			findSpecialVarsInValue(v.MapIndex(key), m)
 		}
 	case reflect.Ptr:
 		v = v.Elem()
 		if !v.IsValid() {
-			return nil
+			return
 		}
-		a = findSpecialVarsInCheckRec(v)
+		findSpecialVarsInValue(v, m)
 	case reflect.Interface:
 		v = v.Elem()
-		a = findSpecialVarsInCheckRec(v)
+		findSpecialVarsInValue(v, m)
 	}
-	return a
 }
 
-// specialVariables looks through t, extracts all occurences of "now" and "random"
-// variables, i.e.
-//     {{NOW + 30s | "2006-Jan-02"}}
-//     {{RANDOM TEXT fr 10-30}}
-// and formats the desired value. It returns a map suitable for merging with
-// other, real variable/value-Pairs.
-func (t *Test) specialVariables(now time.Time) (map[string]string, error) {
-	nv := t.findSpecialVariables()
+// specialVariables produces values for all names of special variables.
+func specialVariables(now time.Time, names map[string]struct{}) (map[string]string, error) {
 	vars := make(map[string]string)
-	for _, k := range nv {
+	for k, _ := range names {
 		if strings.HasPrefix(k, "{{NOW") {
 			err := setNowVariable(vars, now, k)
 			if err != nil {
@@ -223,7 +220,6 @@ func (t *Test) specialVariables(now time.Time) (map[string]string, error) {
 			}
 		}
 	}
-
 	return vars, nil
 }
 
