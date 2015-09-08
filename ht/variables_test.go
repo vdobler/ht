@@ -5,9 +5,10 @@
 package ht
 
 import (
-	"fmt"
+	"math/rand"
 	"net/http"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -174,35 +175,86 @@ func TestNewReplacer(t *testing.T) {
 	}
 }
 
-func TestFindNow(t *testing.T) {
-	test := Test{
-		Name:        "now == {{NOW}}",
-		Description: "now+1 == {{NOW+1s}}",
-		Request: Request{
-			Method: "GET",
-			URL:    "now+2 == {{NOW + 2s}}",
-			Params: URLValues{
-				"text": []string{`now+3 == {{NOW+3s | "2006-Jan-02"}}`}},
-			Header:          http.Header{"header": []string{"now+4 == {{NOW+4s}}"}},
-			FollowRedirects: false,
-		},
-		Checks: []Check{
-			&Body{Contains: "now+5 == {{NOW + 15m}}"},
-		},
+var specialVariablesTest = Test{
+	Name:        "now == {{NOW}} {{RANDOM NUMBER 12}}",
+	Description: "now+1 == {{NOW+1s}} {{RANDOM NUMBER 30-40}}",
+	Request: Request{
+		Method: "GET",
+		URL:    "now+2 == {{NOW + 2s}} {{RANDOM NUMBER 30-40 %04x}}",
+		Params: URLValues{
+			"text": []string{
+				`now+3 == {{NOW+3s | "2006-Jan-02"}}`,
+				`now again == {{NOW}}`, // duplicate
+				`ugly stuff {{{{NOW + 99d}}`,
+				`unclosed {{RANDOM NUMBER 12`,
+				`non-special {{RANDOM_KEY}} foo`,
+			}},
+		Header: http.Header{
+			"header": []string{
+				"now+4 == {{NOW+4s}}",
+				"{{NOW+1m}}{{RANDOM NUMBER 8}}{{{NOW+2m}}{{RANDOM TEXT 10}}",
+			}},
+		FollowRedirects: false,
+	},
+	Checks: []Check{
+		&Body{Contains: "now+5 == {{NOW + 15m}} {{RANDOM TEXT de 3-6}}"},
+	},
+}
+
+func TestFindSpecialVariables(t *testing.T) {
+	got := specialVariablesTest.findSpecialVariables()
+	want := []string{
+		`NOW`, `RANDOM NUMBER 12`,
+		`NOW+1s`, `RANDOM NUMBER 30-40`,
+		`NOW + 2s`, `RANDOM NUMBER 30-40 %04x`,
+		`NOW+3s | "2006-Jan-02"`,
+		`NOW + 99d`,
+		`NOW+4s`,
+		`NOW + 15m`, `RANDOM TEXT de 3-6`,
+		"NOW+1m", "RANDOM NUMBER 8", "NOW+2m", "RANDOM TEXT 10",
 	}
-	nv := test.findNowVariables()
-	if len(nv) != 6 {
-		fmt.Printf("Got %v\n", nv)
+	sort.Strings(want)
+	diff := sliceDifference("Special Variables", want, got)
+	if len(diff) > 0 {
+		t.Errorf("%v", diff)
 	}
-	want := []string{`{{NOW}}`, `{{NOW+1s}}`, `{{NOW + 2s}}`,
-		`{{NOW+3s | "2006-Jan-02"}}`, `{{NOW+4s}}`, `{{NOW + 15m}}`}
-	for i, got := range nv {
-		if got != want[i] {
-			t.Errorf("%d got %q, want %q", i, got, want[i])
+}
+
+func TestSpecialVariables(t *testing.T) {
+	now := time.Date(2009, 12, 28, 8, 40, 0, 0, time.FixedZone("Aarau", 3600))
+	names := specialVariablesTest.findSpecialVariables()
+	Random = rand.New(rand.NewSource(1))
+	vars, err := specialVariables(now, names)
+	if err != nil {
+		t.Errorf("Unexpected error %#v", err)
+	}
+
+	for i, tc := range []struct {
+		name, want string
+	}{
+		{"NOW", now.Format(time.RFC1123)},
+		{"NOW+1s", now.Add(time.Second).Format(time.RFC1123)},
+		{"NOW + 2s", now.Add(2 * time.Second).Format(time.RFC1123)},
+		{`NOW+3s | "2006-Jan-02"`, now.Add(3 * time.Second).Format("2006-Jan-02")},
+		{"NOW+4s", now.Add(4 * time.Second).Format(time.RFC1123)},
+		{"NOW+1m", now.Add(time.Minute).Format(time.RFC1123)},
+		{"NOW + 15m", now.Add(15 * time.Minute).Format(time.RFC1123)},
+		{"RANDOM NUMBER 12", "6"},
+		{"RANDOM NUMBER 30-40", "31"},
+		{"RANDOM NUMBER 30-40 %04x", "0027"},
+		{"RANDOM TEXT de 3-6", "Trittst im Morgenrot daher,"},
+		{"RANDOM TEXT 10",
+			"gloire est arrivé! Contre nous de la tyrannie L'étendard sanglant"},
+	} {
+		got, ok := vars[tc.name]
+		if !ok {
+			t.Errorf("%d: variable %q missing unexpectedly", i, tc.name)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("%d: variable %q, got %q, want %q",
+				i, tc.name, got, tc.want)
 		}
 	}
 
-	if testing.Verbose() {
-		fmt.Printf("%#v\n", test.nowVariables(time.Now()))
-	}
 }
