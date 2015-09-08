@@ -36,7 +36,7 @@ var randomFuncs = []randomFunc{
 	},
 	{
 		name: "TEXT",
-		re:   regexp.MustCompile(`^(([a-z][a-z]) +)?((\d+)-)?(\d+)$`),
+		re:   regexp.MustCompile(`^(([a-z][a-z][a-z]?) +)?((\d+)-)?(\d+)$`),
 		args: []string{"", "fr", "", "#4", "#"},
 		fn:   randomText,
 	},
@@ -57,8 +57,39 @@ func randomNumber(args []interface{}) (string, error) {
 }
 
 var textCorpus = map[string]string{
-	"fr": `Allons enfants de la Patrie Le jour de gloire est arrivé! Contre nous de la tyrannie L'étendard sanglant est levé Entendez-vous dans nos campagnes. Mugir ces féroces soldats? Ils viennent jusque dans vos bras. Égorger vos fils, vos compagnes!`,
-	"de": `Trittst im Morgenrot daher, Seh'ich dich im Strahlenmeer, Dich, du Hocherhabener, Herrlicher! Wenn der Alpenfirn sich rötet, Betet, freie Schweizer, betet! Eure fromme Seele ahnt Eure fromme Seele ahnt Gott im hehren Vaterland, Gott, den Herrn, im hehren Vaterland.`,
+	"fr": "Allons enfants de la Patrie Le jour de gloire est arrivé! " +
+		"Contre nous de la tyrannie L'étendard sanglant est levé " +
+		"Entendez-vous dans nos campagnes. Mugir ces féroces soldats? " +
+		"Ils viennent jusque dans vos bras. Égorger vos fils, vos " +
+		"compagnes! Aux armes, citoyens! Formez vos bataillons! " +
+		"Marchons! Marchons! Qu'un sang impur Abreuve nos sillons! " +
+		"Amour sacré de la patrie, Conduis, soutiens nos bras vengeurs! " +
+		"Liberté, Liberté cherie, Combats avec tes défenseurs! " +
+		"Sous nos drapeaux, que la victoire Accoure à tes mâles accents! " +
+		"Que tes ennemis expirants Voient ton triomphe et notre gloire!",
+	"de": "Trittst im Morgenrot daher, Seh'ich dich im Strahlenmeer, " +
+		"Dich, du Hocherhabener, Herrlicher! Wenn der Alpenfirn sich " +
+		"rötet, Betet, freie Schweizer, betet! Eure fromme Seele ahnt " +
+		"Eure fromme Seele ahnt Gott im hehren Vaterland, Gott, den " +
+		"Herrn, im hehren Vaterland. Kommst im Abendglühn daher, " +
+		"Find'ich dich im Sternenheer, Dich, du Menschenfreundlicher, " +
+		"Liebender! In des Himmels lichten Räumen Kann ich froh und " +
+		"selig träumen! Denn die fromme Seele ahnt Denn die fromme " +
+		"Seele ahnt Gott im hehren Vaterland, Gott, den Herrn, " +
+		"im hehren Vaterland",
+	"en": "God save our gracious Queen, Long live our noble Queen, " +
+		"God save the Queen! Send her victorious, Happy and glorious, " +
+		"Long to reign over us; God save the Queen! O Lord, our God arise, " +
+		"Scatter her enemies And make them fall; Confound their politics, " +
+		"Frustrate their knavish tricks, On Thee our hopes we fix, " +
+		"God save us all! Thy choicest gifts in store " +
+		"On her be pleased to pour; Long may she reign; " +
+		"May she defend our laws, And ever give us cause " +
+		"To sing with heart and voice, God save the Queen!",
+	"tlh": "      " +
+		"      " +
+		"       " +
+		"       ",
 }
 
 func randomText(args []interface{}) (string, error) {
