@@ -19,7 +19,7 @@ func init() {
 	Random = rand.New(rand.NewSource(34)) // Seed choosen truely random by Sabine.
 }
 
-var randomRe = regexp.MustCompile(`{{RANDOM +([a-zA-Z0-9 ]+)}}`)
+var randomRe = regexp.MustCompile(`{{RANDOM +([-a-zA-Z0-9% ]+)}}`)
 
 // randomFunc is one of the random functions.
 type randomFunc struct {
