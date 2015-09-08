@@ -7,7 +7,7 @@
     Name: "Sample Suite",  // The name or title of this suite.                  
     Description: "Optional verbose details",
     KeepCookies: true,   // The tests in this suite share a common cookie jar
-    OmitCheck: false,    // Do not skip the interesting stuff
+    OmitChecks: false,    // Do not skip the interesting stuff
 
     // Setup contains stuff which has to happen before the actual
     // testing happens. If any setup test fails the whole process
