@@ -205,20 +205,30 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	for _, c := range raw {
-		u := struct{ Check string }{}
+		u := map[string]json5.RawMessage{}
 		err = json5.Unmarshal(c, &u)
 		if err != nil {
 			return err
 		}
-		typ, ok := CheckRegistry[u.Check]
+		c, ok := u["Check"]
 		if !ok {
-			return fmt.Errorf("ht: no such check %s", u.Check)
+			return fmt.Errorf("ht: missing 'Check' field in check")
+		}
+		name := string(c)
+		name = name[1 : len(name)-1]
+		typ, ok := CheckRegistry[name]
+		if !ok {
+			return fmt.Errorf("ht: no such check %s", name)
 		}
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
 		}
 		check := reflect.New(typ)
-		err = json5.Unmarshal(c, check.Interface())
+		z := struct {
+			A struct{ Check string }
+			Check
+		}{Check: check.Interface().(Check)}
+		err = json5.Unmarshal(c, &z)
 		if err != nil {
 			return err
 		}

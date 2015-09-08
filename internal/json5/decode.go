@@ -577,6 +577,9 @@ func (d *decodeState) object(v reflect.Value) {
 					}
 					subv = subv.Field(i)
 				}
+			} else {
+				d.error(fmt.Errorf("no such field %q in type %s", key, v.Type().Name()))
+				return
 			}
 		}
 
