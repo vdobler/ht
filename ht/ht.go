@@ -243,7 +243,7 @@ type Test struct {
 	SeqNo        string        `json:"-"`
 
 	client      *http.Client
-	specialVars map[string]struct{}
+	specialVars []string
 	checks      []Check // prepared checks.
 }
 

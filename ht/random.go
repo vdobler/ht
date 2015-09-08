@@ -19,8 +19,6 @@ func init() {
 	Random = rand.New(rand.NewSource(34)) // Seed choosen truely random by Sabine.
 }
 
-var randomRe = regexp.MustCompile(`{{RANDOM +([-a-zA-Z0-9% ]+)}}`)
-
 // randomFunc is one of the random functions.
 type randomFunc struct {
 	name string         // for diagnostics
@@ -91,19 +89,18 @@ func randomText(args []interface{}) (string, error) {
 	return strings.Join(text[:n], " "), nil
 }
 
-// randomValue interpretes a r of the form "{{RANDOM <what> [parameters]}}".
+// randomValue interpretes a r of the form "RANDOM <what> [parameters]".
 func setRandomVariable(vars map[string]string, r string) error {
-	k := strings.TrimSpace(r[2 : len(r)-2])
-	if _, ok := vars[k]; ok {
+	if _, ok := vars[r]; ok {
 		return nil // This one was not a new one.
 	}
-	r = strings.TrimLeft(k[7:], " ")
+	what := strings.TrimLeft(r[7:], " ")
 
 	for _, rf := range randomFuncs {
-		if !strings.HasPrefix(r, rf.name) {
+		if !strings.HasPrefix(what, rf.name) {
 			continue
 		}
-		args := strings.TrimLeft(r[len(rf.name):], " ")
+		args := strings.TrimLeft(what[len(rf.name):], " ")
 		arglist, err := parseRandomArgs(args, rf)
 		if err != nil {
 			return err
@@ -112,7 +109,7 @@ func setRandomVariable(vars map[string]string, r string) error {
 		if err != nil {
 			return err
 		}
-		vars[k] = value
+		vars[r] = value
 		return nil
 	}
 	return fmt.Errorf("ht: no such random type %q", r)

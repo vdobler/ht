@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -142,7 +143,7 @@ func addSpecialVariables(s string, m map[string]struct{}) {
 		if j == -1 {
 			return // Last variable not closed, so no need to look further.
 		}
-		k := s[:j+2]
+		k := s[2:j]
 		m[k] = struct{}{}
 		s = s[j+2:]
 	}
@@ -166,8 +167,10 @@ func isNormalVarnameChar(b byte) bool {
 }
 
 // findSpecialVariables return all occurences of special variables
-// as defined in addSpecialVariables
-func (t *Test) findSpecialVariables() map[string]struct{} {
+// as defined in addSpecialVariables. The enclosing {{ and }} are not
+// part of the variable name. The resulting list is sorted to have
+// a fixed order for a reproducable asignment to random variables.
+func (t *Test) findSpecialVariables() []string {
 	v := map[string]struct{}{}
 
 	addSpecialVariables(t.Name, v)
@@ -190,7 +193,16 @@ func (t *Test) findSpecialVariables() map[string]struct{} {
 	for _, c := range t.Checks {
 		findSpecialVarsInCheck(c, v)
 	}
-	return v
+
+	names := make([]string, len(v))
+	i := 0
+	for k := range v {
+		names[i] = k
+		i++
+	}
+	sort.Strings(names)
+
+	return names
 }
 
 func findSpecialVarsInCheck(check Check, m map[string]struct{}) {
@@ -227,26 +239,27 @@ func findSpecialVarsInValue(v reflect.Value, m map[string]struct{}) {
 }
 
 // specialVariables produces values for all names of special variables.
-func specialVariables(now time.Time, names map[string]struct{}) (map[string]string, error) {
+func specialVariables(now time.Time, names []string) (map[string]string, error) {
 	vars := make(map[string]string)
-	for k, _ := range names {
-		if strings.HasPrefix(k, "{{NOW") {
+	for _, k := range names {
+		if strings.HasPrefix(k, "NOW") {
 			err := setNowVariable(vars, now, k)
 			if err != nil {
 				return vars, err
 			}
-		} else {
-			// Must be "{{RANDOM".
+		} else if strings.HasPrefix(k, "RANDOM") {
 			err := setRandomVariable(vars, k)
 			if err != nil {
 				return vars, err
 			}
+		} else {
+			return vars, fmt.Errorf("ht: unknown special variable %q", k)
 		}
 	}
 	return vars, nil
 }
 
-var nowTimeRe = regexp.MustCompile(`{{NOW *([+-] *[1-9][0-9]*[smhd])? *(\| *"(.*)")?}}`)
+var nowTimeRe = regexp.MustCompile(`NOW *([+-] *[1-9][0-9]*[smhd])? *(\| *"(.*)")?`)
 
 // interprete k of the form {{NOW ...}} and set vars[k] to that vlaue.
 func setNowVariable(vars map[string]string, now time.Time, k string) error {
@@ -254,8 +267,7 @@ func setNowVariable(vars map[string]string, now time.Time, k string) error {
 	if m == nil {
 		panic("Unmatchable " + k)
 	}
-	kk := k[2 : len(k)-2] // Remove {{ and }} to produce the "variable name".
-	if _, ok := vars[kk]; ok {
+	if _, ok := vars[k]; ok {
 		return nil // We already processed this variable.
 	}
 	var off time.Duration
@@ -288,7 +300,7 @@ func setNowVariable(vars map[string]string, now time.Time, k string) error {
 		format = m[0][3]
 	}
 	formatedTime := now.Add(off).Format(format)
-	vars[kk] = formatedTime
+	vars[k] = formatedTime
 	return nil
 }
 
