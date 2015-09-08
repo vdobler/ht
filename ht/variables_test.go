@@ -184,6 +184,9 @@ var specialVariablesTest = Test{
 			"text": []string{
 				`now+3 == {{NOW+3s | "2006-Jan-02"}}`,
 				`now again == {{NOW}}`, // duplicate
+				`ugly stuff {{{{NOW + 99d}}`,
+				`unclosed {{RANDOM NUMBER 12`,
+				`non-special {{RANDOM_KEY}} foo`,
 			}},
 		Header: http.Header{
 			"header": []string{
@@ -204,6 +207,7 @@ func TestFindSpecialVariables(t *testing.T) {
 		`{{NOW+1s}}`, `{{RANDOM NUMBER 30-40}}`,
 		`{{NOW + 2s}}`, `{{RANDOM NUMBER 30-40 %04x}}`,
 		`{{NOW+3s | "2006-Jan-02"}}`,
+		`{{NOW + 99d}}`,
 		`{{NOW+4s}}`,
 		`{{NOW + 15m}}`, `{{RANDOM TEXT de 3-6}}`,
 		"{{NOW+1m}}", "{{RANDOM NUMBER 8}}", "{{NOW+2m}}", "{{RANDOM TEXT 10}}",

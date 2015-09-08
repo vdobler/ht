@@ -126,20 +126,43 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 // ----------------------------------------------------------------------------
 // Variable substitutions
 
-var nowTimeRe = regexp.MustCompile(`{{NOW *([+-] *[1-9][0-9]*[smhd])? *(\| *"(.*)")?}}`)
-
 // addSpecialVariables adds all special variables of the forms
 //     {{NOW ...}}  and
 //     {{RANDOM ...}}
 // in s to the map m.
 // TODO: replace regexp matching with fasterand simpler code.
 func addSpecialVariables(s string, m map[string]struct{}) {
-	for _, match := range nowTimeRe.FindAllString(s, -1) {
-		m[match] = struct{}{}
+	for i := strings.Index(s, "{{"); i > -1; i = strings.Index(s, "{{") {
+		s = s[i:]
+		if !startsWithSpecialVar(s) {
+			s = s[1:]
+			continue
+		}
+		j := strings.Index(s, "}}")
+		if j == -1 {
+			return // Last variable not closed, so no need to look further.
+		}
+		k := s[:j+2]
+		m[k] = struct{}{}
+		s = s[j+2:]
 	}
-	for _, match := range randomRe.FindAllString(s, -1) {
-		m[match] = struct{}{}
+}
+
+func startsWithSpecialVar(s string) bool {
+	for _, prefix := range []string{"{{NOW", "{{RANDOM"} {
+		if strings.HasPrefix(s, prefix) {
+			if len(s) < 7 || isNormalVarnameChar(s[len(prefix)]) {
+				return false
+			}
+			return true
+		}
 	}
+	return false
+}
+
+func isNormalVarnameChar(b byte) bool {
+	return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') ||
+		(b >= 'A' && b <= 'Z') || b == '_'
 }
 
 // findSpecialVariables return all occurences of special variables
@@ -222,6 +245,8 @@ func specialVariables(now time.Time, names map[string]struct{}) (map[string]stri
 	}
 	return vars, nil
 }
+
+var nowTimeRe = regexp.MustCompile(`{{NOW *([+-] *[1-9][0-9]*[smhd])? *(\| *"(.*)")?}}`)
 
 // interprete k of the form {{NOW ...}} and set vars[k] to that vlaue.
 func setNowVariable(vars map[string]string, now time.Time, k string) error {
