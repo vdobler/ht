@@ -32,6 +32,8 @@ func TestSetRandomVariable(t *testing.T) {
 		{r: "RANDOM TEXT 4-2", err: "invalid range"},
 		{r: "RANDOM TEXT 0-0", want: ""},
 		{r: "RANDOM TEXT tlh 1-2", want: "\uf8d1\uf8dd\uf8e1\uf8e3\uf8d0\uf8e2"},
+		{r: "RANDOM EMAIL", want: "Graf.Laura@gmail.com"},
+		{r: "RANDOM EMAIL web.de", want: "Graf.Laura@web.de"},
 	} {
 		vars := map[string]string{}
 		Random = rand.New(rand.NewSource(2))

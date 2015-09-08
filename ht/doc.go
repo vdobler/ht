@@ -74,7 +74,15 @@
 // and defaults to RFC1123. Offset can be negative, the known units are "s" for
 // seconds, "m" for minutes, "h" for hours and "d" for days.
 //
-// TODO: Add {RAND,UNIQUE}{INT,ID,WORDS} or something similiar.
+// Some random values can be include by the following syntax:
+//     {{RANDOM NUMBER 99}}          -->  22
+//     {{RANDOM NUMBER 32-99}}       -->  45
+//     {{RANDOM NUMBER 99 %04x}}     -->  002d
+//     {{RANDOM TEXT 8}}             -->  que la victoire Accoure à tes mâles
+//     {{RANDOM TEXT 2-5}}           -->  Accoure à tes
+//     {{RANDOM TEXT de 5}}          -->  Denn die fromme Seele
+//     {{RANDOM EMAIL}}              -->  Leon.Schneider@gmail.com
+//     {{RANDOM EMAIL web.de}}       -->  Meier.Anna@web.de
 //
 // Tests
 //

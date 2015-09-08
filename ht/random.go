@@ -21,39 +21,81 @@ func init() {
 
 // randomFunc is one of the random functions.
 type randomFunc struct {
-	name string         // for diagnostics
-	re   *regexp.Regexp // submatches yield arguments
-	args []string       // defaults and int parsing
+	// name is for diagnostics and error messages only.
+	name string
+
+	// re is used to parse the argument list for the random function
+	re *regexp.Regexp // submatches yield arguments
+
+	// args contains defaults and int-prasing marks for all
+	// submatches, i.e. the argument list. Examples
+	//    ""      nothing special
+	//    "foo"   default value is foo
+	//    "#"     value should be an integer
+	//    "#3"    default value of 3 and interpreted as a number
+	args []string // defaults and int parsing
 	fn   func(args []interface{}) (string, error)
 }
 
 var randomFuncs = []randomFunc{
 	{
+		// Random integer numbers
+		//     RANDOM NUMBER [<from>-]<to> [<fmt>]
+		// produces random integer in [<from>, <to>] formated with <fmt>.
+		// <from> defaults to 1 and <fmt> to %d. <fmt> is without quotes.
 		name: "NUMBER",
 		re:   regexp.MustCompile(`^((\d+)-)?(\d+)( +(%.+))?$`),
 		args: []string{"", "#1", "#", "", "%d"},
 		fn:   randomNumber,
 	},
 	{
+		// Random sample text
+		//     RANDOM TEXT [<lang>] [<from>-]<to>
+		// produces a sample text in language <lang> with n words
+		// with n in the range [<from>, <to>].
+		// <lang> defaults to fr and <from> to 4.
 		name: "TEXT",
 		re:   regexp.MustCompile(`^(([a-z][a-z][a-z]?) +)?((\d+)-)?(\d+)$`),
 		args: []string{"", "fr", "", "#4", "#"},
 		fn:   randomText,
 	},
 	{
-		name: "IMAGE",
-		re:   regexp.MustCompile(`^((\d+)-)?(\d+)$`),
-		args: []string{"", "any", "#180", "#120"},
-		// fn:   randomImage,
+		// Random email address
+		//     RANDOM EMAIL [<domain>]
+		// produces a random email address with the given <domain>
+		// <domain> defautls to gmail.com
+		name: "EMAIL",
+		re:   regexp.MustCompile(`^([-a-z.]+)?$`),
+		args: []string{"gmail.com"},
+		fn:   randomEmail,
 	},
 }
 
+// randomNumber produces a random integer number in the interval
+// [ args[1], args[2] ] formated as args[4].
 func randomNumber(args []interface{}) (string, error) {
 	from, to, format := args[1].(int), args[2].(int), args[4].(string)
 	if span := (to - from + 1); span > 0 {
 		return fmt.Sprintf(format, from+Random.Intn(span)), nil
 	}
 	return "", fmt.Errorf("ht: invalid range [%d,%d] for random number", from, to)
+}
+
+func randomEmail(args []interface{}) (string, error) {
+	domain := args[0].(string)
+	first := emailNameCorpus[Random.Intn(len(emailNameCorpus))]
+	last := emailNameCorpus[Random.Intn(len(emailNameCorpus))]
+	return fmt.Sprintf("%s.%s@%s", first, last, domain), nil
+}
+
+// the 20 most popular first names (2014) and the 20 most common last names
+// (according to phone book) in Switzerland.
+var emailNameCorpus = []string{
+	"Mila", "Noha", "Lara", "Leon", "Emma", "Luca", "Laura", "Levin",
+	"Anna", "David", "Sara", "Elias", "Lea", "Julian", "Leonie", "Tim",
+	"Mueller", "Meier", "Schmid", "Keller", "Weber", "Huber", "Schneider",
+	"Meyer", "Steiner", "Fischer", "Gerber", "Brunner", "Baumann", "Frei",
+	"Zimmermann", "Moser", "Widmer", "Wyss", "Graf", "Roth",
 }
 
 var textCorpus = map[string]string{
@@ -92,6 +134,8 @@ var textCorpus = map[string]string{
 		"       ",
 }
 
+// randomText produces a random text of n words with n in [ args[3], args[4] ]
+// in the language args[1].
 func randomText(args []interface{}) (string, error) {
 	lang, min, max := args[1].(string), args[3].(int), args[4].(int)
 	corpus, ok := textCorpus[lang]
