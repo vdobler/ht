@@ -1,7 +1,7 @@
 {
     Name: "Suite for Testing Load",
     KeepCookies: true,
-    OmitCheck: false,
+    OmitChecks: false,
     Setup: [
         "a.ht"
     ],

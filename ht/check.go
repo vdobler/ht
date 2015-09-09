@@ -197,6 +197,36 @@ func (cl CheckList) MarshalJSON() ([]byte, error) {
 	return []byte(result), nil
 }
 
+// extractSingleFieldFromJSON5 called with fielname="Check" and data of
+// "{Check: "StatusCode", Expect: 200}"  will return fieldval="StatusCode"
+// and recoded="{Expect: 200}".
+func extractSingleFieldFromJSON5(fieldname string, data []byte) (fieldval string, reencoded []byte, err error) {
+	rawMap := map[string]*json5.RawMessage{}
+	err = json5.Unmarshal(data, &rawMap)
+	if err != nil {
+		return "", nil, err
+	}
+
+	v, ok := rawMap[fieldname]
+	if !ok {
+		return "", nil, fmt.Errorf("ht: missing %s field in %q", fieldname, data)
+	}
+
+	fieldval = string(*v)
+	if strings.HasPrefix(fieldval, `"`) {
+		fieldval = fieldval[1 : len(fieldval)-1]
+	}
+
+	delete(rawMap, fieldname)
+	reencoded, err = json5.Marshal(rawMap)
+	if err != nil {
+		return "", nil, fmt.Errorf("ht: re-marshaling error %q should not happen on %#v", err.Error(), rawMap)
+	}
+
+	return fieldval, reencoded, nil
+
+}
+
 // UnmarshalJSON unmarshals data to a slice of Checks.
 func (cl *CheckList) UnmarshalJSON(data []byte) error {
 	raw := []json5.RawMessage{}
@@ -205,30 +235,19 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	for _, c := range raw {
-		u := map[string]json5.RawMessage{}
-		err = json5.Unmarshal(c, &u)
+		checkName, checkDef, err := extractSingleFieldFromJSON5("Check", c)
 		if err != nil {
 			return err
 		}
-		c, ok := u["Check"]
+		typ, ok := CheckRegistry[checkName]
 		if !ok {
-			return fmt.Errorf("ht: missing 'Check' field in check")
-		}
-		name := string(c)
-		name = name[1 : len(name)-1]
-		typ, ok := CheckRegistry[name]
-		if !ok {
-			return fmt.Errorf("ht: no such check %s", name)
+			return fmt.Errorf("ht: no such check %s", checkName)
 		}
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
 		}
 		check := reflect.New(typ)
-		z := struct {
-			A struct{ Check string }
-			Check
-		}{Check: check.Interface().(Check)}
-		err = json5.Unmarshal(c, &z)
+		err = json5.Unmarshal(checkDef, check.Interface())
 		if err != nil {
 			return err
 		}
