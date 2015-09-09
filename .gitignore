@@ -4,5 +4,8 @@ tmp/*
 *.R
 *.png
 cmd/ht/ht
+cmd/ht/ht_linux
+cmd/ht/ht_darwin
+cmd/ht/ht_windows.exe
 cmd/fingerprint/fingerprint
 *.bined.jpg
