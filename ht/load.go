@@ -260,12 +260,16 @@ func loadRawSuite(filename string) (s rawSuite, err error) {
 // json5.SyntaxError returned while decoding jsonData which came from
 // file.  If err is of any other type err.Error() is returned.
 func beautifyJSONError(err error, jsonData []byte, file string) string {
-	se, ok := err.(*json5.SyntaxError)
-	if !ok {
+	off := 0
+
+	if se, ok := err.(*json5.SyntaxError); ok {
+		off = int(se.Offset)
+	} else if fe, ok := err.(*json5.UnmarshalUnknownFieldError); ok {
+		off = int(fe.Offset)
+	} else {
 		return err.Error()
 	}
 
-	off := int(se.Offset)
 	lines := bytes.Split(jsonData, []byte("\n"))
 	total := 0
 	lineNo := 0

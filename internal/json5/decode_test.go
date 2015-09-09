@@ -232,7 +232,8 @@ var unmarshalTests = []unmarshalTest{
 	{in: `"invalid: \uD834x\uDD1E"`, ptr: new(string), out: "invalid: \uFFFDx\uFFFD"},
 	{in: "null", ptr: new(interface{}), out: nil},
 	{in: `{"X": [1,2,3], "Y": 4}`, ptr: new(T), out: T{Y: 4}, err: &UnmarshalTypeError{"array", reflect.TypeOf("")}},
-	{in: `{"x": 1}`, ptr: new(tx), out: tx{}},
+	{in: `{"x": 1}`, ptr: new(tx), out: tx{},
+		err: &UnmarshalUnknownFieldError{"tx", "x", 1}},
 	{in: `{"F1":1,"F2":2,"F3":3}`, ptr: new(V), out: V{F1: float64(1), F2: int32(2), F3: Number("3")}},
 	{in: `{"F1":1,"F2":2,"F3":3}`, ptr: new(V), out: V{F1: Number("1"), F2: int32(2), F3: Number("3")}, useNumber: true},
 	{in: `{"k1":1,"k2":"s","k3":[1,2.0,3e-3],"k4":{"kk1":"s","kk2":2}}`, ptr: new(interface{}), out: ifaceNumAsFloat64},
@@ -246,11 +247,14 @@ var unmarshalTests = []unmarshalTest{
 	{in: "\t \"a\\u1234\" \n", ptr: new(string), out: "a\u1234"},
 
 	// Z has a "-" tag.
-	{in: `{"Y": 1, "Z": 2}`, ptr: new(T), out: T{Y: 1}},
+	{in: `{"Y": 1, "Z": 2}`, ptr: new(T), out: T{Y: 1},
+		err: &UnmarshalUnknownFieldError{"T", "Z", 9}},
 
-	{in: `{"alpha": "abc", "alphabet": "xyz"}`, ptr: new(U), out: U{Alphabet: "abc"}},
+	{in: `{"alpha": "abc", "alphabet": "xyz"}`, ptr: new(U), out: U{Alphabet: "abc"},
+		err: &UnmarshalUnknownFieldError{"U", "alphabet", 17}},
 	{in: `{"alpha": "abc"}`, ptr: new(U), out: U{Alphabet: "abc"}},
-	{in: `{"alphabet": "xyz"}`, ptr: new(U), out: U{}},
+	{in: `{"alphabet": "xyz"}`, ptr: new(U), out: U{},
+		err: &UnmarshalUnknownFieldError{"U", "alphabet", 1}},
 
 	// syntax errors
 	{in: `{"X": "foo", "Y"}`, err: &SyntaxError{"invalid character '}' after object key", 17}},
@@ -363,11 +367,13 @@ var unmarshalTests = []unmarshalTest{
 		in:  `{"X": 1,"Y":2}`,
 		ptr: new(S5),
 		out: S5{S8: S8{S9: S9{Y: 2}}},
+		err: &UnmarshalUnknownFieldError{"S5", "X", 1},
 	},
 	{
 		in:  `{"X": 1,"Y":2}`,
 		ptr: new(S10),
 		out: S10{S13: S13{S8: S8{S9: S9{Y: 2}}}},
+		err: &UnmarshalUnknownFieldError{"S10", "X", 1},
 	},
 
 	// invalid UTF-8 is coerced to valid UTF-8.
@@ -526,10 +532,6 @@ func TestUnmarshal(t *testing.T) {
 		}
 		if !reflect.DeepEqual(v.Elem().Interface(), tt.out) {
 			t.Errorf("#%d: mismatch\nhave: %#+v\nwant: %#+v", i, v.Elem().Interface(), tt.out)
-			data, _ := Marshal(v.Elem().Interface())
-			println(string(data))
-			data, _ = Marshal(tt.out)
-			println(string(data))
 			continue
 		}
 
@@ -1245,15 +1247,10 @@ type unexportedFields struct {
 
 func TestUnmarshalUnexported(t *testing.T) {
 	input := `{"Name": "Bob", "m": {"x": 123}, "m2": {"y": 456}, "abcd": {"z": 789}}`
-	want := &unexportedFields{Name: "Bob"}
-
 	out := &unexportedFields{}
 	err := Unmarshal([]byte(input), out)
-	if err != nil {
-		t.Errorf("got error %v, expected nil", err)
-	}
-	if !reflect.DeepEqual(out, want) {
-		t.Errorf("got %q, want %q", out, want)
+	if err == nil {
+		t.Errorf("got nil error, expected 'no such filed m'")
 	}
 }
 

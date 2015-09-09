@@ -108,20 +108,19 @@ func (em *ExtractorMap) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	for name, ex := range raw {
-		u := struct{ Extractor string }{}
-		err = json5.Unmarshal(ex, &u)
+		exName, exDef, err := extractSingleFieldFromJSON5("Extractor", ex)
 		if err != nil {
 			return err
 		}
-		typ, ok := ExtractorRegistry[u.Extractor]
+		typ, ok := ExtractorRegistry[exName]
 		if !ok {
-			return fmt.Errorf("ht: no such extractor %s", u.Extractor)
+			return fmt.Errorf("ht: no such extractor %s", exName)
 		}
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
 		}
 		extractor := reflect.New(typ)
-		err = json5.Unmarshal(ex, extractor.Interface())
+		err = json5.Unmarshal(exDef, extractor.Interface())
 		if err != nil {
 			return err
 		}
