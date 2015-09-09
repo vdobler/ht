@@ -25,6 +25,14 @@ import (
 // Unmarshal parses the JSON-encoded data and stores the result
 // in the value pointed to by v.
 //
+// Unmarshal works like encoding/json in the standard library as
+// described below with two excpetions:
+//   a) It works on JSON5 documents.
+//   b) If a JSON field cannot be mapped to a field in a Go struct
+//      an error is created (the stdlib json silently ignores this
+//      fact). The error is of type &UnmarshalUnknownFieldError.
+// So this Unmarshal provides 'strict' unmarshaling.
+//
 // Unmarshal uses the inverse of the encodings that
 // Marshal uses, allocating maps, slices, and pointers as necessary,
 // with the following additional rules:
@@ -110,6 +118,18 @@ type UnmarshalFieldError struct {
 
 func (e *UnmarshalFieldError) Error() string {
 	return "json: cannot unmarshal object key " + strconv.Quote(e.Key) + " into unexported field " + e.Field.Name + " of type " + e.Type.String()
+}
+
+// An UnmarshalUnknownFieldError describes a field in the JSON which
+// cannot be mapped to a struct fieled.
+type UnmarshalUnknownFieldError struct {
+	typ    string // the Go type name
+	field  string // the unknown field
+	Offset int64  // error occurred after reading Offset bytes
+}
+
+func (e *UnmarshalUnknownFieldError) Error() string {
+	return fmt.Sprintf("no such field '%s' in type %s at offset %d", e.field, e.typ, e.Offset)
 }
 
 // An InvalidUnmarshalError describes an invalid argument passed to Unmarshal.
@@ -578,8 +598,11 @@ func (d *decodeState) object(v reflect.Value) {
 					subv = subv.Field(i)
 				}
 			} else {
-				d.error(fmt.Errorf("no such field %q in type %s", key, v.Type().Name()))
-				return
+				d.saveError(&UnmarshalUnknownFieldError{
+					typ:    v.Type().Name(),
+					field:  string(key),
+					Offset: int64(start),
+				})
 			}
 		}
 
