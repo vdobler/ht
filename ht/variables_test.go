@@ -242,9 +242,9 @@ func TestSpecialVariables(t *testing.T) {
 		{"RANDOM NUMBER 12", "6"},
 		{"RANDOM NUMBER 30-40", "31"},
 		{"RANDOM NUMBER 30-40 %04x", "0027"},
-		{"RANDOM TEXT de 3-6", "Trittst im Morgenrot daher,"},
+		{"RANDOM TEXT de 3-6", "hehren Vaterland Trittst im"},
 		{"RANDOM TEXT 10",
-			"gloire est arrivé! Contre nous de la tyrannie L'étendard sanglant"},
+			"tes mâles accents! Que tes ennemis expirants Voient ton triomphe"},
 	} {
 		got, ok := vars[tc.name]
 		if !ok {
