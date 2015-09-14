@@ -82,7 +82,7 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 		Criticality: raw.Criticality,
 	}
 	if len(raw.BasedOn) > 0 {
-		origname := t.Name
+		origname, origfollow := t.Name, t.Request.FollowRedirects
 		base := []*Test{t}
 		for _, name := range raw.BasedOn {
 			rb, basedir, err := findRawTest(dir, name, testPool, nil)
@@ -97,13 +97,14 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 			base = append(base, b...)
 		}
 		t, err = Merge(base...)
-		// Beautify name and description: BasedOn is not a merge
-		// between equal partners.
-		t.Description = t.Name + "\n" + t.Description
-		t.Name = origname
 		if err != nil {
 			return nil, err
 		}
+		// Beautify name and description and force follow redirect
+		// policy: BasedOn is not a merge between equal partners.
+		t.Description = t.Name + "\n" + t.Description
+		t.Name = origname
+		t.Request.FollowRedirects = origfollow
 	}
 
 	if len(raw.Unroll) > 0 {
