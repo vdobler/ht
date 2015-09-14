@@ -214,7 +214,7 @@ func TestRawTestToTest(t *testing.T) {
 				{Name: "basecookie", Value: "basevalue"},
 			},
 			Body:            "RequestBody",
-			FollowRedirects: false,
+			FollowRedirects: true,
 		},
 		Checks: CheckList{
 			&StatusCode{Expect: 200},
