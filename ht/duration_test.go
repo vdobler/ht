@@ -106,6 +106,10 @@ var UnmarshalJSONTests = []struct {
 	{1e9, "1"},
 	{1e9, "1.0"},
 	{1e6, "0.001"},
+	{5 * 60 * 1e9, `"5m"`},
+	{5 * 60 * 1e9, `"5m00s"`},
+	{12 * 60 * 60 * 1e9, `"12h"`},
+	{(48*60*60 + 15) * 1e9, `"48h15s"`},
 }
 
 func TestUnmarshalJSONDuration(t *testing.T) {

@@ -64,41 +64,24 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON provides JSON unmarshaling of data.
 func (d *Duration) UnmarshalJSON(data []byte) error {
 	s := string(data)
-	scale := int64(1e9)
 	if strings.HasPrefix(s, `"`) {
-		s = s[1 : len(s)-1]
-		if strings.HasSuffix(s, "ns") {
-			scale = 1
-			s = s[:len(s)-2]
-		} else if strings.HasSuffix(s, "µs") {
-			scale = 1e3
-			s = s[:len(s)-3]
-		} else if strings.HasSuffix(s, "ms") {
-			scale = 1e6
-			s = s[:len(s)-2]
-		} else if strings.HasSuffix(s, "s") {
-			scale = 1e9
-			s = s[:len(s)-1]
-			if i := strings.Index(s, "m"); i != -1 {
-				m, err := strconv.Atoi(s[:i])
-				if err != nil {
-					return err
-				}
-				sec, err := strconv.Atoi(s[i+1:])
-				if err != nil {
-					return err
-				}
-				sec += 60 * m
-				*d = Duration(int64(sec) * 1e9)
-				return nil
-			}
+		if !strings.HasSuffix(s[1:], `"`) {
+			return fmt.Errorf("ht: badly quoted duration")
 		}
+		s = s[1 : len(s)-1]
+		pd, err := time.ParseDuration(s)
+		if err != nil {
+			return err
+		}
+		*d = Duration(pd)
+		return nil
 	}
+
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return err
 	}
-	*d = Duration(f * float64(scale))
+	*d = Duration(f * 1e9)
 
 	return nil
 }
