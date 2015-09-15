@@ -158,6 +158,9 @@ type Response struct {
 	// The received body and the error got while reading it.
 	BodyBytes []byte
 	BodyErr   error
+
+	// Redirections records the URLs of automatic GET requests due to redirects.
+	Redirections []string
 }
 
 // Body returns a reader of the response body.
@@ -622,14 +625,23 @@ func (t *Test) prepare(variables map[string]string) error {
 	if t.Timeout > 0 {
 		to = t.Timeout
 	}
-	if t.ClientPool != nil {
+
+	if t.Request.FollowRedirects {
+		cr := func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			t.Response.Redirections = append(t.Response.Redirections, req.URL.String())
+			return nil
+		}
+		t.client = &http.Client{CheckRedirect: cr, Timeout: time.Duration(to)}
+	} else if t.ClientPool != nil {
 		t.tracef("Taking client from pool")
-		t.client = t.ClientPool.Get(to, t.Request.FollowRedirects)
-	} else if t.Request.FollowRedirects {
-		t.client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: time.Duration(to)}
+		t.client = t.ClientPool.Get(to)
 	} else {
 		t.client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: time.Duration(to)}
 	}
+
 	return nil
 }
 
@@ -719,8 +731,9 @@ func (t *Test) executeRequest() error {
 	t.infof("%s %q", t.Request.Request.Method, t.Request.Request.URL.String())
 
 	var err error
-	start := time.Now()
+	t.Response.Redirections = nil
 
+	start := time.Now()
 	resp, err := t.client.Do(t.Request.Request)
 	if ue, ok := err.(*url.Error); ok && ue.Err == redirectNofollow &&
 		!t.Request.FollowRedirects {
@@ -751,6 +764,10 @@ func (t *Test) executeRequest() error {
 
 done:
 	t.Response.Duration = Duration(time.Since(start))
+
+	for i, via := range t.Response.Redirections {
+		t.infof("Redirection %d: %s", i+1, via)
+	}
 
 	t.debugf("request took %s, %s", t.Response.Duration, msg)
 
@@ -936,9 +953,8 @@ func (p Poll) Skip() bool {
 	return p.Max < 0
 }
 
-// Get retreives a new or existing http.Client for the given timeout and
-// redirect following policy.
-func (p *ClientPool) Get(timeout Duration, followRedirects bool) *http.Client {
+// Get retreives a new or existing http.Client for the given timeout.
+func (p *ClientPool) Get(timeout Duration) *http.Client {
 	if timeout == 0 {
 		log.Fatalln("ClientPool.Get called with zero timeout.")
 	}
@@ -950,20 +966,12 @@ func (p *ClientPool) Get(timeout Duration, followRedirects bool) *http.Client {
 	}
 
 	key := timeout
-	if followRedirects {
-		key = -key
-	}
-
 	if client, ok := p.clients[key]; ok {
 		return client
 	}
 
 	var client *http.Client
-	if followRedirects {
-		client = &http.Client{CheckRedirect: doFollowRedirects, Timeout: time.Duration(timeout)}
-	} else {
-		client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: time.Duration(timeout)}
-	}
+	client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: time.Duration(timeout)}
 	if p.Jar != nil {
 		client.Jar = p.Jar
 	}
@@ -975,13 +983,6 @@ func (p *ClientPool) Get(timeout Duration, followRedirects bool) *http.Client {
 	return client
 }
 
-func doFollowRedirects(req *http.Request, via []*http.Request) error {
-	if len(via) >= 10 {
-		return errors.New("stopped after 10 redirects")
-	}
-	return nil
-}
-
-func dontFollowRedirects(req *http.Request, via []*http.Request) error {
+func dontFollowRedirects(*http.Request, []*http.Request) error {
 	return redirectNofollow
 }
