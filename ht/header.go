@@ -10,6 +10,7 @@ package ht
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 func init() {
@@ -69,3 +70,57 @@ func (f FinalURL) Execute(t *Test) error {
 func (f *FinalURL) Prepare() error {
 	return ((*Condition)(f)).Compile()
 }
+
+// ----------------------------------------------------------------------------
+// ContentType
+
+// ContentType checks the Content-Type header.
+type ContentType struct {
+	// Is is the wanted content type. It may be abrevated, e.g.
+	// "json" would match "application/json"
+	Is string
+
+	// Charset is an optional charset
+	Charset string `json:",omitempty"`
+}
+
+// Execute implements Check's Execute method.
+func (c ContentType) Execute(t *Test) error {
+	if t.Response.Response == nil || t.Response.Response.Header == nil {
+		return fmt.Errorf("no proper response available")
+	}
+	ct := t.Response.Response.Header["Content-Type"]
+	if len(ct) == 0 {
+		return fmt.Errorf("no Content-Type header received")
+	}
+	if len(ct) > 1 {
+		// This is technically not a failure, but if someone sends
+		// mutliple Content-Type headers something is a bit odd.
+		return fmt.Errorf("received %d Content-Type headers", len(ct))
+	}
+	parts := strings.Split(ct[0], ";")
+	got := strings.TrimSpace(parts[0])
+	want := c.Is
+	if strings.Index(want, "/") == -1 {
+		want = "/" + want
+	}
+	if !strings.HasSuffix(got, want) {
+		return fmt.Errorf("Content-Type is %s", ct[0])
+	}
+
+	if c.Charset != "" {
+		if len(parts) < 2 {
+			return fmt.Errorf("no charset in %s", ct[0])
+		}
+		got := strings.TrimSpace(parts[1])
+		want := "charset=" + c.Charset
+		if got != want {
+			return fmt.Errorf("bad charset in %s", ct[0])
+		}
+	}
+
+	return nil
+}
+
+// Prepare implements Check's Prepare method.
+func (ContentType) Prepare() error { return nil }
