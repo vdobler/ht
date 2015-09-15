@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kr/pretty"
 	"github.com/vdobler/ht/internal/json5"
 )
 
@@ -168,7 +167,7 @@ func TestParameterHandling(t *testing.T) {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
 	if len(f.Value) != 3 || len(f.Value["single"]) != 1 || len(f.Value["multi"]) != 2 {
-		t.Errorf(pretty.Sprintf("Got\n%# v\n", f))
+		t.Errorf("Got\n%#v\n", f)
 	}
 }
 
@@ -560,7 +559,11 @@ func TestMerge(t *testing.T) {
 		t.Fatalf("Unexpected error %#v", err)
 	}
 	if testing.Verbose() {
-		pretty.Printf("% #v\n", c)
+		jr, err := json5.Marshal(c)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		t.Log(jr)
 	}
 	if len(c.Request.Params) != 3 ||
 		c.Request.Params["a"][0] != "aa" ||

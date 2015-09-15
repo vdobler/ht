@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kr/pretty"
 	"github.com/vdobler/ht/internal/json5"
 )
 
@@ -146,7 +145,7 @@ func TestSubstituteTestVariables(t *testing.T) {
 		rt.Checks[0].(*Body).Contains != "bctext=Y" ||
 		rt.Checks[1].(*Header).Header != "LocationY" ||
 		rt.Checks[1].(*Header).Suffix != "fooYbar" {
-		t.Errorf("%s", pretty.Sprintf("%# v\n", test))
+		t.Errorf("%#v", test)
 	}
 
 }

@@ -12,8 +12,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/kr/pretty"
 )
 
 var sampleTestJSON = `{
@@ -406,11 +404,11 @@ func TestLoadSuite(t *testing.T) {
 			if tr.Response.Response != nil &&
 				tr.Response.Response.Request != nil {
 				tr.Response.Response.Request.TLS = nil
-				req := pretty.Sprintf("% #v", tr.Response.Response.Request)
+				req := fmt.Sprintf("%#v", tr.Response.Response.Request)
 				fmt.Printf("  Request\n%s\n", req)
 				tr.Response.Response.Request = nil
 				tr.Response.Response.TLS = nil
-				resp := pretty.Sprintf("% #v", tr.Response.Response)
+				resp := fmt.Sprintf("%#v", tr.Response.Response)
 				fmt.Printf("  Response\n%s\n", resp)
 			}
 		}
