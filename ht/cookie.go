@@ -9,13 +9,47 @@ package ht
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
 
 func init() {
 	RegisterCheck(&SetCookie{})
+	RegisterCheck(&DeleteCookie{})
 }
+
+func findCookiesByName(t *Test, name string) (cookies []*http.Cookie) {
+	for _, cp := range t.Response.Response.Cookies() {
+		if cp.Name == name {
+			cookies = append(cookies, cp)
+		}
+	}
+	return cookies
+}
+
+// isProperCookiePath determins whether path is a sensible Path value
+// in a Set-Cookie header received from u. E.g. a cookie of the form
+//     Set-Cookie: foo=bar; Path=/abc/123
+// which is received while accessing
+//     http://example.org/some/other/path
+// will be rejected by browser because the ath value is not suitable for
+// the path in the URL. See RFC 6265 section 5.1.4 for reference.
+func isProperCookiePath(u *url.URL, path string) bool {
+	if path == "" || u.Path == path {
+		return true // Empyt path defaults to actual path, so it is okay.
+	}
+	if strings.HasPrefix(u.Path, path) {
+		if u.Path[len(path)] == '/' || path[len(path)-1] == '/' {
+			// "/abc" and "/abc/" both are proper for "/abc/foo" URL path.
+			return true
+		}
+	}
+	return false
+}
+
+// ----------------------------------------------------------------------------
+// SetCookie
 
 // SetCookie checks for cookies being properly set.
 // Note that the Path and Domain conditions are checked on the received Path
@@ -27,23 +61,19 @@ type SetCookie struct {
 	Domain Condition `json:",omitempty"` // Domain is applied to the domain value
 
 	// MinLifetime is the expectetd minimum lifetime of the cookie.
-	// A positive value enforces a persistent cookie and a negative
-	// value is is equivalent to Delete=true.
+	// A positive value enforces a persistent cookie.
+	// Negative values are illegal (use DelteCookie instead).
 	MinLifetime Duration `json:",omitempty"`
 
 	// Absent indicates that the cookie with the given Name must not be received.
 	Absent bool `json:",omitempty"`
-
-	// Delete indicates that the Set-Cookie header enforces a deletion
-	// of the cookie.
-	Delete bool `json:",omitempty"`
 
 	// Type is the type of the cookie. It is a space seperated string of
 	// the following (case-insensitive) keywords:
 	//   - "session": a session cookie
 	//   - "persistent": a persistent cookie
 	//   - "secure": a secure cookie, to be sont over https only
-	//   - "unsafe", to be sent also over http
+	//   - "unsafe", aka insecure; to be sent also over http
 	//   - "httpOnly": not accesible from JavaScript
 	//   - "exposed": accesible from JavaScript, Flash, etc.
 	Type string `json:",omitempty"`
@@ -79,16 +109,6 @@ func (c SetCookie) Execute(t *Test) error {
 		return err
 	}
 
-	if c.Delete {
-		err := properlyDeleted(cookie)
-		if err != nil {
-			return err
-		}
-		// No need to check MinLifetime and Type is ignored
-		// for delete requests.
-		return nil
-	}
-
 	if c.MinLifetime > 0 {
 		if cookie.MaxAge > 0 {
 			if int(time.Duration(c.MinLifetime).Seconds()) > cookie.MaxAge {
@@ -110,67 +130,6 @@ func (c SetCookie) Execute(t *Test) error {
 	return c.checkType(cookie)
 
 }
-
-// Prepare implements Check's Prepare method.
-func (c *SetCookie) Prepare() error {
-	if err := c.Value.Compile(); err != nil {
-		return err
-	}
-	if err := c.Path.Compile(); err != nil {
-		return err
-	}
-	if err := c.Domain.Compile(); err != nil {
-		return err
-	}
-
-	if c.MinLifetime < 0 {
-		c.MinLifetime = 0
-		c.Delete = true
-	}
-
-	c.Type = strings.ToLower(c.Type)
-	x := c.Type
-	for _, t := range strings.Split("session persistent secure unsafe httponly exposed", " ") {
-		x = strings.TrimSpace(strings.Replace(x, t, "", -1))
-	}
-	if x != "" {
-		return fmt.Errorf("ht: unknown stuff in cookie type %q", x)
-	}
-
-	if c.MinLifetime > 0 {
-		if strings.Index(c.Type, "persistent") == -1 {
-			c.Type += " persistent"
-		}
-	}
-
-	return nil
-}
-
-// properlyDeleted ensures the received cookie c is a proper
-// delete request
-func properlyDeleted(cookie *http.Cookie) error {
-	if cookie.MaxAge == 0 && cookie.Expires.IsZero() {
-		return fmt.Errorf("cookie not deleted", cookie.MaxAge)
-	}
-
-	if cookie.MaxAge > 0 {
-		return fmt.Errorf("MaxAge=%d > 0, not deleted", cookie.MaxAge)
-	}
-	if !cookie.Expires.IsZero() {
-		// Deletion via Expires value is problematic due to
-		// clock variations. Play it safe and require at least
-		// 90 seconds backdatedExpires.
-		now := time.Now().Add(-90 * time.Second)
-		if cookie.Expires.After(now) {
-			return fmt.Errorf("Expires %s to late, not deleted", cookie.Expires)
-		}
-	}
-
-	// Not both of MaxAge and Expires are unset; and none is positive,
-	// so at least one is negative. Thus properly deleted.
-	return nil
-}
-
 func (c *SetCookie) checkType(cookie *http.Cookie) error {
 	t := c.Type
 	if strings.Index(t, "session") != -1 {
@@ -195,5 +154,138 @@ func (c *SetCookie) checkType(cookie *http.Cookie) error {
 		return fmt.Errorf("http-only cookie")
 	}
 
+	return nil
+}
+
+// Prepare implements Check's Prepare method.
+func (c *SetCookie) Prepare() error {
+	if err := c.Value.Compile(); err != nil {
+		return err
+	}
+	if err := c.Path.Compile(); err != nil {
+		return err
+	}
+	if err := c.Domain.Compile(); err != nil {
+		return err
+	}
+
+	if c.MinLifetime < 0 {
+		return fmt.Errorf("ht: illegal negative MinLifetime")
+	}
+
+	c.Type = strings.ToLower(c.Type)
+	x := strings.Replace(c.Type, ",", " ", -1)
+	for _, t := range strings.Split("session persistent secure unsafe httponly exposed", " ") {
+		x = strings.TrimSpace(strings.Replace(x, t, "", -1))
+	}
+	if x != "" {
+		return fmt.Errorf("ht: unknown stuff in cookie type %q", x)
+	}
+
+	if c.MinLifetime > 0 {
+		if strings.Index(c.Type, "persistent") == -1 {
+			c.Type += " persistent"
+		}
+	}
+
+	return nil
+}
+
+// ----------------------------------------------------------------------------
+// DeleteCookie
+
+// DeleteCookie checks that the HTTP response properly deletes all cookies
+// matching Name, Path and Domain. Path and Domain are optional in which case
+// all cookies with the given Name are checkd for deletion.
+type DeleteCookie struct {
+	Name   string
+	Path   string `json:",omitempty"`
+	Domain string `json:",omitempty"`
+}
+
+// Execute implements Check's Execute method.
+func (c DeleteCookie) Execute(t *Test) error {
+	errors := []string{}
+	deleted := false
+	u := t.Response.Response.Request.URL
+	for _, cookie := range findCookiesByName(t, c.Name) {
+		// Report malformed (becuase of path) cookies
+		if !isProperCookiePath(u, cookie.Path) {
+			em := fmt.Sprintf("invalid cookie path %s for URL %s",
+				c.Name, cookie.Path, u.String())
+			errors = append(errors, em)
+			continue
+		}
+		if c.Path != "" && !isProperCookiePath(u, c.Path) {
+			// Well this should be reported during Prepare, not
+			// here. Unfortunately Prepare knows nothing about
+			// the URL the request will go to. So do it here.
+			em := fmt.Sprintf("bogus path %s in check", c.Path)
+			errors = append(errors, em)
+			continue
+		}
+
+		// Work only on cookies matching the optional Path and Domain.
+		if c.Path != "" && cookie.Path != c.Path {
+			continue
+		}
+		if c.Domain != "" && cookie.Domain != c.Domain {
+			continue
+		}
+
+		// Check for deletion.
+		if cookie.MaxAge == 0 && cookie.Expires.IsZero() {
+			em := fmt.Sprintf("cookie %s;%s;%s not deleted",
+				c.Name, cookie.Path, cookie.Domain)
+			errors = append(errors, em)
+			continue
+		}
+		if cookie.MaxAge > 0 {
+			em := fmt.Sprintf("cookie (%s;%s;%s) not deleted,MaxAge=%d",
+				c.Name, cookie.Path, cookie.Domain, cookie.MaxAge)
+			errors = append(errors, em)
+			continue
+		}
+		if !cookie.Expires.IsZero() {
+			// Deletion via Expires value is problematic due to
+			// clock variations. Play it safe and require at least
+			// 90 seconds backdatedExpires.
+			now := time.Now().Add(-90 * time.Second)
+			if cookie.Expires.After(now) {
+				em := fmt.Sprintf("cookie (%s;%s;%s) not deleted, Expires=%s",
+					c.Name, cookie.Path, cookie.Domain, cookie.RawExpires)
+				errors = append(errors, em)
+				continue
+			}
+		}
+		// Here not both of MaxAge and Expires are unset
+		// and none is positive, so at least one is negative.
+		// Thus the cookie is properly deleted.
+
+		// Sanity check: Do not send values when deleting cookies.
+		// It technically works but it is _strange_.
+		if cookie.Value != "" {
+			em := fmt.Sprintf("cookie (%s;%s;%s) deleted but has value %s",
+				c.Name, cookie.Path, cookie.Domain, cookie.Value)
+			errors = append(errors, em)
+			continue
+		}
+
+		deleted = true
+	}
+
+	if !deleted {
+		errors = append(errors, fmt.Sprintf("No cookie (%s;%s;%s) was deleted",
+			c.Name, c.Path, c.Domain))
+	}
+
+	if len(errors) != 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "\n"))
+	}
+	return nil
+}
+
+// Prepare implements Check's Prepare method.
+func (c *DeleteCookie) Prepare() error {
 	return nil
 }
