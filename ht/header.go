@@ -133,9 +133,10 @@ func (ContentType) Prepare() error { return nil }
 
 // Redirect checks for HTTP redirections.
 type Redirect struct {
-	// To is matched against the Location header. It may end or begin in
-	// three dots "..." which inicate that To should match the start or the
-	// end of the Location header value.
+	// To is matched against the Location header. It may begin with,
+	// or end with contain three dots "..." which inicate that To should
+	// match the end or the start or both ends of the Location header
+	// value. (Note that only one occurence of "..." is supported."
 	To string
 
 	// If StatusCode is greater zero it is the required HTTP status code
@@ -177,6 +178,11 @@ func (r Redirect) Execute(t *Test) error {
 			}
 		} else if strings.HasSuffix(r.To, "...") {
 			if !strings.HasPrefix(loc, r.To[:len(r.To)-3]) {
+				err = append(err, fmt.Sprintf("Location = %s", loc))
+			}
+		} else if i:=strings.Index(r.To, "..."); i!= -1 {
+			a, e := r.To[:i], r.To[i+3:]
+			if !(strings.HasPrefix(loc, a) && strings.HasSuffix(loc,e)) {
 				err = append(err, fmt.Sprintf("Location = %s", loc))
 			}
 		} else if loc != r.To {

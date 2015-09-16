@@ -54,6 +54,7 @@ var redirectTests = []TC{
 	{jsonct, &Redirect{To: "http://example.org/foo/bar"}, nil},
 	{jsonct, &Redirect{To: "http://example.org/..."}, nil},
 	{jsonct, &Redirect{To: ".../foo/bar"}, nil},
+	{jsonct, &Redirect{To: "http://example.../bar"}, nil},
 	{jsonct, &Redirect{To: "http://example.org/foo/bar", StatusCode: 302}, nil},
 	{jsonct, &Redirect{To: "http://other.domain/waz"}, someError},
 	{jsonct, &Redirect{To: "http://example.org/foo/bar", StatusCode: 307}, someError},
