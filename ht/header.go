@@ -8,6 +8,7 @@
 package ht
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,6 +17,7 @@ import (
 func init() {
 	RegisterCheck(&Header{})
 	RegisterCheck(&FinalURL{})
+	RegisterCheck(&Redirect{})
 }
 
 // Header provides a textual test of single-valued HTTP headers.
@@ -124,3 +126,78 @@ func (c ContentType) Execute(t *Test) error {
 
 // Prepare implements Check's Prepare method.
 func (ContentType) Prepare() error { return nil }
+
+// ----------------------------------------------------------------------------
+// Redirect
+
+// Redirect checks for HTTP redirections.
+type Redirect struct {
+	// To is matched against the Location header. It may end or begin in
+	// three dots "..." which inicate that To should match the start or the
+	// end of the Location header value.
+	To string
+
+	// If StatusCode is greater zero it is the required HTTP status code
+	// expected in this response. If zero the valid status codes are
+	// 301 (Moved Permanently), 302 (Found), 303 (See Other) and
+	// 307 (Temporary Redirect)
+	StatusCode int `json:",omitempty"`
+}
+
+// Execute implements Check's Execute method.
+func (r Redirect) Execute(t *Test) error {
+	err := []string{}
+
+	if t.Response.Response == nil {
+		return errors.New("no response to check")
+	}
+
+	sc := t.Response.Response.StatusCode
+	if r.StatusCode > 0 {
+		if sc != r.StatusCode {
+			err = append(err, fmt.Sprintf("got status code %d", sc))
+		}
+	} else {
+		if !(sc == 301 || sc == 302 || sc == 303 || sc == 307) {
+			err = append(err, fmt.Sprintf("got status code %d", sc))
+		}
+	}
+
+	if location, ok := t.Response.Response.Header["Location"]; !ok {
+		err = append(err, "no Location header received")
+	} else {
+		if len(location) > 1 {
+			err = append(err, fmt.Sprintf("got %d Location header", len(location)))
+		}
+		loc := location[0]
+		if strings.HasPrefix(r.To, "...") {
+			if !strings.HasSuffix(loc, r.To[3:]) {
+				err = append(err, fmt.Sprintf("Location = %s", loc))
+			}
+		} else if strings.HasSuffix(r.To, "...") {
+			if !strings.HasPrefix(loc, r.To[:len(r.To)-3]) {
+				err = append(err, fmt.Sprintf("Location = %s", loc))
+			}
+		} else if loc != r.To {
+			err = append(err, fmt.Sprintf("Location = %s", loc))
+		}
+	}
+
+	if len(err) > 0 {
+		return errors.New(strings.Join(err, "; "))
+	}
+
+	return nil
+}
+
+// Prepare implements Check's Prepare method.
+func (r Redirect) Prepare() error {
+	if r.To == "" {
+		return MalformedCheck{fmt.Errorf("To must not be empty")}
+	}
+
+	if r.StatusCode > 0 && (r.StatusCode < 300 || r.StatusCode > 399) {
+		return MalformedCheck{fmt.Errorf("status code %d out of redirect range", r.StatusCode)}
+	}
+	return nil
+}
