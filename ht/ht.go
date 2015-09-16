@@ -22,7 +22,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/vdobler/ht/internal/json5"
@@ -186,21 +185,6 @@ type Poll struct {
 	Sleep Duration `json:",omitempty"`
 }
 
-// ClientPool maintains a pool of clients for the given transport
-// and cookie jar. ClientPools must not be copied.
-type ClientPool struct {
-	// Transport will be used a the clients Transport
-	Transport http.RoundTripper
-
-	// Jar will be used as the clients Jar
-	Jar http.CookieJar
-
-	mu sync.Mutex
-	// clients are index by their timeout. Clients which follow redirects
-	// are distinguisehd by a negative timeout.
-	clients map[Duration]*http.Client
-}
-
 // ----------------------------------------------------------------------------
 // Test
 
@@ -229,9 +213,8 @@ type Test struct {
 	// after the checks.
 	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
 
-	// ClientPool allows to inject special http.Transports or a
-	// cookie jar to be used by this Test.
-	ClientPool *ClientPool `json:"-"`
+	// Jar is the cookie jar to use
+	Jar http.CookieJar `json:"-"`
 
 	Response Response `json:",omitempty"`
 
@@ -634,12 +617,17 @@ func (t *Test) prepare(variables map[string]string) error {
 			t.Response.Redirections = append(t.Response.Redirections, req.URL.String())
 			return nil
 		}
-		t.client = &http.Client{CheckRedirect: cr, Timeout: time.Duration(to)}
-	} else if t.ClientPool != nil {
-		t.tracef("Taking client from pool")
-		t.client = t.ClientPool.Get(to)
+		t.client = &http.Client{
+			CheckRedirect: cr,
+			Jar:           t.Jar,
+			Timeout:       time.Duration(to),
+		}
 	} else {
-		t.client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: time.Duration(to)}
+		t.client = &http.Client{
+			CheckRedirect: dontFollowRedirects,
+			Jar:           t.Jar,
+			Timeout:       time.Duration(to),
+		}
 	}
 
 	return nil
@@ -951,36 +939,6 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 // Skip return whether the test should be skipped.
 func (p Poll) Skip() bool {
 	return p.Max < 0
-}
-
-// Get retreives a new or existing http.Client for the given timeout.
-func (p *ClientPool) Get(timeout Duration) *http.Client {
-	if timeout == 0 {
-		log.Fatalln("ClientPool.Get called with zero timeout.")
-	}
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if len(p.clients) == 0 {
-		p.clients = make(map[Duration]*http.Client)
-	}
-
-	key := timeout
-	if client, ok := p.clients[key]; ok {
-		return client
-	}
-
-	var client *http.Client
-	client = &http.Client{CheckRedirect: dontFollowRedirects, Timeout: time.Duration(timeout)}
-	if p.Jar != nil {
-		client.Jar = p.Jar
-	}
-	if p.Transport != nil {
-		client.Transport = p.Transport
-	}
-
-	p.clients[key] = client
-	return client
 }
 
 func dontFollowRedirects(*http.Request, []*http.Request) error {

@@ -487,7 +487,7 @@ func (c *Links) Execute(t *Test) error {
 				URL:             r,
 				FollowRedirects: true,
 			},
-			ClientPool: t.ClientPool,
+			Jar: t.Jar,
 			Checks: CheckList{
 				StatusCode{Expect: 200},
 			},

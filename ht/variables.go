@@ -84,7 +84,7 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 		PreSleep:    t.PreSleep,
 		InterSleep:  t.InterSleep,
 		PostSleep:   t.PostSleep,
-		ClientPool:  t.ClientPool,
+		Jar:         t.Jar,
 		VarEx:       t.VarEx,
 		Criticality: t.Criticality,
 	}

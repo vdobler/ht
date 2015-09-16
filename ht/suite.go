@@ -7,7 +7,6 @@ package ht
 import (
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"sync"
@@ -58,8 +57,7 @@ func (s Suite) AllTests() []*Test {
 // Prepare all tests in s for execution. This will also prepare all tests to
 // detect bogus tests early.
 func (s *Suite) Prepare() error {
-	// Create cookie jar if needed.
-	cp := &ClientPool{
+	/*
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			Dial: (&net.Dialer{
@@ -69,15 +67,16 @@ func (s *Suite) Prepare() error {
 			DisableCompression:  true,
 			TLSHandshakeTimeout: 10 * time.Second,
 		},
-	}
+	*/
+	// Create cookie jar if needed.
+	var jar http.CookieJar
 	if s.KeepCookies {
-		jar, _ := cookiejar.New(nil)
-		cp.Jar = jar
+		jar, _ = cookiejar.New(nil)
 	}
 
 	// Try to prepare all tests and inject jar and logger.
 	prepare := func(t *Test, which string, omit bool) error {
-		t.ClientPool = cp
+		t.Jar = jar
 
 		err := t.prepare(s.Variables)
 		if err != nil {
