@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -19,7 +20,7 @@ import (
 
 var cmdExec = &Command{
 	Run:         runExecute,
-	Usage:       "exec [-serial] <suite>...",
+	Usage:       "exec [options] <suite>...",
 	Description: "generate request and test response",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
@@ -36,6 +37,8 @@ func init() {
 		"run suites one after the other instead of concurrently")
 	cmdExec.Flag.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
+	cmdExec.Flag.Int64Var(&randomSeed, "seed", 0,
+		"use `num` as seed for PRNG (0 will take seed from time)")
 	addVariablesFlag(cmdExec.Flag)
 	addOnlyFlag(cmdExec.Flag)
 	addSkipFlag(cmdExec.Flag)
@@ -45,6 +48,7 @@ func init() {
 var (
 	serialFlag bool
 	outputDir  string
+	randomSeed int64
 	sanitizer  = strings.NewReplacer(" ", "_", ":", "_", "@", "_at_", "/", "_",
 		"*", "_", "?", "_", "#", "_", "$", "_", "<", "_", ">", "_", "~", "_",
 		"ä", "ae", "ö", "oe", "ü", "ue", "Ä", "Ae", "Ö", "Oe", "Ü", "Ue",
@@ -56,6 +60,11 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		outputDir = time.Now().Format("2006-01-02_15h04m05s")
 	}
 	os.MkdirAll(outputDir, 0766)
+	if randomSeed == 0 {
+		randomSeed = time.Now().UnixNano()
+	}
+	log.Printf("Seeding random number generator with %d", randomSeed)
+	ht.Random = rand.New(rand.NewSource(randomSeed))
 	executeSuites(suites)
 
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
