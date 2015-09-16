@@ -253,6 +253,9 @@ type HTMLContains struct {
 	// If true: Text contains all matches of Selector.
 	Complete bool `json:",omitempty"`
 
+	// If true: Actual matches must be listed in order in Text.
+	InOrder bool `json:",omitempty"`
+
 	sel cascadia.Selector
 }
 
@@ -272,16 +275,27 @@ func (c *HTMLContains) Execute(t *Test) error {
 	}
 
 	matches := c.sel.MatchAll(doc)
+	actual := make([]string, len(matches))
+	for i, m := range matches {
+		actual[i] = normalizeWhitespace(textContent(m, c.Raw))
+	}
 
-	for i, want := range c.Text {
-		if i == len(matches) {
-			return WrongCount{Got: len(matches), Want: len(c.Text)}
+	last := 0
+	for _, want := range c.Text {
+		found := -1
+		for a := last; a < len(actual); a++ {
+			if want == actual[a] {
+				found = a
+				break
+			}
 		}
-
-		got := textContent(matches[i], c.Raw)
-		got = normalizeWhitespace(got)
-		if want != got {
-			return fmt.Errorf("found %q, want %q", got, want)
+		if found < 0 {
+			return fmt.Errorf("missing %q", want)
+		}
+		if c.InOrder {
+			last = found + 1
+		} else {
+			last = 0
 		}
 	}
 

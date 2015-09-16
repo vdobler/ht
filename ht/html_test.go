@@ -83,6 +83,18 @@ var htmlContainsTextTests = []TC{
 		Text: []string{"Foo Bar Waz"}}, nil},
 	{hcr, &HTMLContains{Selector: "ul.fancy",
 		Text: []string{"One Second Three"}}, nil},
+	{hcr, &HTMLContains{Selector: "li",
+		Text: []string{"Foo", "Bar", "Waz"}}, nil},
+	{hcr, &HTMLContains{Selector: "li",
+		Text: []string{"Waz", "Bar", "Foo"}}, nil},
+	{hcr, &HTMLContains{Selector: "li", InOrder: true,
+		Text: []string{"Waz", "Bar", "Foo"}}, someError},
+	{hcr, &HTMLContains{Selector: "li", Complete: true,
+		Text: []string{"One", "Waz", "Bar", "Foo", "Three", "Second"}}, nil},
+	{hcr, &HTMLContains{Selector: "li", Complete: true, InOrder: true,
+		Text: []string{"One", "Waz", "Bar", "Foo", "Three", "Second"}}, someError},
+	{hcr, &HTMLContains{Selector: "li", Complete: true, InOrder: true,
+		Text: []string{"Foo", "Bar", "Waz", "One", "Second", "Three"}}, nil},
 }
 
 func TestHTMLContains(t *testing.T) {

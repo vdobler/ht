@@ -180,9 +180,9 @@ func (r Redirect) Execute(t *Test) error {
 			if !strings.HasPrefix(loc, r.To[:len(r.To)-3]) {
 				err = append(err, fmt.Sprintf("Location = %s", loc))
 			}
-		} else if i:=strings.Index(r.To, "..."); i!= -1 {
+		} else if i := strings.Index(r.To, "..."); i != -1 {
 			a, e := r.To[:i], r.To[i+3:]
-			if !(strings.HasPrefix(loc, a) && strings.HasSuffix(loc,e)) {
+			if !(strings.HasPrefix(loc, a) && strings.HasSuffix(loc, e)) {
 				err = append(err, fmt.Sprintf("Location = %s", loc))
 			}
 		} else if loc != r.To {
