@@ -17,6 +17,7 @@ import (
 func init() {
 	RegisterCheck(&Header{})
 	RegisterCheck(&FinalURL{})
+	RegisterCheck(&ContentType{})
 	RegisterCheck(&Redirect{})
 }
 
