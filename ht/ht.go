@@ -7,6 +7,7 @@ package ht
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"math"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -39,6 +41,20 @@ var (
 	// DefaultClientTimeout is the timeout used by the http clients.
 	DefaultClientTimeout = Duration(10 * time.Second)
 )
+
+// Transport is the http Transport used while making requests.
+// It is exposed to allow different Timeouts or laxer TLS settings.
+var Transport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	Dial: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).Dial,
+	TLSClientConfig: &tls.Config{
+		InsecureSkipVerify: false,
+	},
+	TLSHandshakeTimeout: 10 * time.Second,
+}
 
 // URLValues is a url.Values with a fancier JSON unmarshalling.
 type URLValues url.Values
@@ -618,12 +634,14 @@ func (t *Test) prepare(variables map[string]string) error {
 			return nil
 		}
 		t.client = &http.Client{
+			Transport:     Transport,
 			CheckRedirect: cr,
 			Jar:           t.Jar,
 			Timeout:       time.Duration(to),
 		}
 	} else {
 		t.client = &http.Client{
+			Transport:     Transport,
 			CheckRedirect: dontFollowRedirects,
 			Jar:           t.Jar,
 			Timeout:       time.Duration(to),

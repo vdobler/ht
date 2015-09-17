@@ -39,6 +39,8 @@ func init() {
 		"save results to `dirname` instead of timestamp")
 	cmdExec.Flag.Int64Var(&randomSeed, "seed", 0,
 		"use `num` as seed for PRNG (0 will take seed from time)")
+	cmdExec.Flag.BoolVar(&skipTLSVerify, "skiptlsverify", false,
+		"do not verify TLS certificate chain of servers")
 	addVariablesFlag(cmdExec.Flag)
 	addOnlyFlag(cmdExec.Flag)
 	addSkipFlag(cmdExec.Flag)
@@ -46,10 +48,11 @@ func init() {
 }
 
 var (
-	serialFlag bool
-	outputDir  string
-	randomSeed int64
-	sanitizer  = strings.NewReplacer(" ", "_", ":", "_", "@", "_at_", "/", "_",
+	serialFlag    bool
+	outputDir     string
+	randomSeed    int64
+	skipTLSVerify bool
+	sanitizer     = strings.NewReplacer(" ", "_", ":", "_", "@", "_at_", "/", "_",
 		"*", "_", "?", "_", "#", "_", "$", "_", "<", "_", ">", "_", "~", "_",
 		"ä", "ae", "ö", "oe", "ü", "ue", "Ä", "Ae", "Ö", "Oe", "Ü", "Ue",
 		"%", "_", "&", "+", "(", "_", ")", "_", "'", "_", "`", "_", "^", "_")
@@ -60,11 +63,17 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		outputDir = time.Now().Format("2006-01-02_15h04m05s")
 	}
 	os.MkdirAll(outputDir, 0766)
+
 	if randomSeed == 0 {
 		randomSeed = time.Now().UnixNano()
 	}
 	log.Printf("Seeding random number generator with %d", randomSeed)
 	ht.Random = rand.New(rand.NewSource(randomSeed))
+	if skipTLSVerify {
+		log.Printf("Skipping verification of TLS certificates presented by any server.")
+		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
+	}
+
 	executeSuites(suites)
 
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
