@@ -22,10 +22,11 @@ and executes the test (or the first of the unroled tests).
 }
 
 func init() {
-	cmdRun.Flag.StringVar(&outputDir, "output", "",
-		"save results to `dirname` instead of timestamp")
 	addVariablesFlag(cmdRun.Flag)
 	addVerbosityFlag(cmdRun.Flag)
+	addSeedFlag(cmdRun.Flag)
+	addOutputFlag(cmdRun.Flag)
+	addSkiptlsverifyFlag(cmdRun.Flag)
 }
 
 func runRun(cmd *Command, suites []*ht.Suite) {

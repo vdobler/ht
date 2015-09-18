@@ -35,24 +35,18 @@ are present, 1 if only check failures occured and 0 if everything passed.
 func init() {
 	cmdExec.Flag.BoolVar(&serialFlag, "serial", false,
 		"run suites one after the other instead of concurrently")
-	cmdExec.Flag.StringVar(&outputDir, "output", "",
-		"save results to `dirname` instead of timestamp")
-	cmdExec.Flag.Int64Var(&randomSeed, "seed", 0,
-		"use `num` as seed for PRNG (0 will take seed from time)")
-	cmdExec.Flag.BoolVar(&skipTLSVerify, "skiptlsverify", false,
-		"do not verify TLS certificate chain of servers")
 	addVariablesFlag(cmdExec.Flag)
 	addOnlyFlag(cmdExec.Flag)
 	addSkipFlag(cmdExec.Flag)
 	addVerbosityFlag(cmdExec.Flag)
+	addSeedFlag(cmdExec.Flag)
+	addOutputFlag(cmdExec.Flag)
+	addSkiptlsverifyFlag(cmdExec.Flag)
 }
 
 var (
-	serialFlag    bool
-	outputDir     string
-	randomSeed    int64
-	skipTLSVerify bool
-	sanitizer     = strings.NewReplacer(" ", "_", ":", "_", "@", "_at_", "/", "_",
+	serialFlag bool
+	sanitizer  = strings.NewReplacer(" ", "_", ":", "_", "@", "_at_", "/", "_",
 		"*", "_", "?", "_", "#", "_", "$", "_", "<", "_", ">", "_", "~", "_",
 		"ä", "ae", "ö", "oe", "ü", "ue", "Ä", "Ae", "Ö", "Oe", "Ü", "Ue",
 		"%", "_", "&", "+", "(", "_", ")", "_", "'", "_", "`", "_", "^", "_")

@@ -70,31 +70,54 @@ func (l *cmdlLimit) Set(s string) error {
 	return nil
 }
 
-// The common flags.
+// ----------------------------------------------------------------------------
+// Common flags
+
 var (
 	variablesFlag = make(cmdlVar)   // flag -D
 	rtLimits      = make(cmdlLimit) // flag -L
-	onlyFlag      string
-	skipFlag      string
-	verbosity     int
+	onlyFlag      string            // flag -only
+	skipFlag      string            // flag -skip
+	verbosity     int               // flag -verbosity
+	outputDir     string            // flag -output
+	randomSeed    int64             // flag -seed
+	skipTLSVerify bool              // flag -skiptlsverify
 )
 
+func addOutputFlag(fs *flag.FlagSet) {
+	fs.StringVar(&outputDir, "output", "",
+		"save results to `dirname` instead of timestamp")
+}
+func addSeedFlag(fs *flag.FlagSet) {
+	fs.Int64Var(&randomSeed, "seed", 0,
+		"use `num` as seed for PRNG (0 will take seed from time)")
+}
+func addSkiptlsverifyFlag(fs *flag.FlagSet) {
+	fs.BoolVar(&skipTLSVerify, "skiptlsverify", false,
+		"do not verify TLS certificate chain of servers")
+}
+
 func addVariablesFlag(fs *flag.FlagSet) {
-	fs.Var(&variablesFlag, "D", "set `parameter=value`")
+	fs.Var(&variablesFlag, "D",
+		"set `parameter=value`")
 }
 
 func addLimitFlag(fs *flag.FlagSet) {
-	fs.Var(&rtLimits, "L", "set responste time limit of `quantile=millisecond`")
+	fs.Var(&rtLimits, "L",
+		"set responste time limit of `quantile=millisecond`")
 }
 
 func addOnlyFlag(fs *flag.FlagSet) {
-	fs.StringVar(&onlyFlag, "only", "", "run only tests given by `testID`")
+	fs.StringVar(&onlyFlag, "only", "",
+		"run only tests given by `testID`")
 }
 
 func addSkipFlag(fs *flag.FlagSet) {
-	fs.StringVar(&skipFlag, "skip", "", "skip tests identified by `testID`")
+	fs.StringVar(&skipFlag, "skip", "",
+		"skip tests identified by `testID`")
 }
 
 func addVerbosityFlag(fs *flag.FlagSet) {
-	fs.IntVar(&verbosity, "verbosity", -99, "verbosity to `level`")
+	fs.IntVar(&verbosity, "verbosity", -99,
+		"verbosity to `level`")
 }
