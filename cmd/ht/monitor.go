@@ -24,7 +24,12 @@ var cmdMonitor = &Command{
 	Description: "periodically run suites",
 	Flag:        flag.NewFlagSet("monitor", flag.ContinueOnError),
 	Help: `
-Monitor runs the suite peridically .... TODO
+Monitor runs the given suites periodically and reports the various KPIs
+via a simple web GUI whose address can be set with the -http flag.
+If the suite(s) take longer than the interval given by -every the
+actual intervall will be longer; i.e. the next run is not started
+until the last has finished.
+This feature is experimental.
 	`,
 }
 
@@ -39,19 +44,18 @@ var (
 )
 
 func init() {
-	cmdMonitor.Flag.DurationVar(&everyFlag, "every", 60*time.Second,
+	cmdMonitor.Flag.DurationVar(&everyFlag, "every", 120*time.Second,
 		"execute once every `persiod`")
 	cmdMonitor.Flag.StringVar(&httpFlag, "http", ":9090",
 		"http service address")
-	cmdMonitor.Flag.StringVar(&templateFlag, "template", "",
-		"use alternate template")
+	// cmdMonitor.Flag.StringVar(&templateFlag, "template", "", "use alternate template")
 	cmdMonitor.Flag.BoolVar(&serialFlag, "serial", false,
 		"run suites one after the other instead of concurrently")
 	cmdMonitor.Flag.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
 	cmdMonitor.Flag.StringVar(&averageFlag, "average", "1,3,9,15",
 		"calculate running average over `n,m,..` runs")
-	cmdMonitor.Flag.BoolVar(&inclSetupFlag, "setup", false,
+	cmdMonitor.Flag.BoolVar(&inclSetupFlag, "includesetup", false,
 		"include setup tests in reported numbers")
 	addVariablesFlag(cmdMonitor.Flag)
 	addOnlyFlag(cmdMonitor.Flag)
@@ -170,8 +174,17 @@ func showReports(w http.ResponseWriter, r *http.Request) {
 
 func monitor(suites []*ht.Suite) {
 	for {
+		started := time.Now()
 		executeSuites(suites)
 		updateResult(suites)
+		took := time.Since(started)
+		remaining := everyFlag - took
+		if remaining > 0 {
+			log.Printf("Sleeping %s", remaining)
+			time.Sleep(remaining)
+		} else {
+			log.Printf("Execution delayed by %s", -remaining)
+		}
 	}
 }
 
