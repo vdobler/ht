@@ -24,7 +24,8 @@
 	"unic-homepage.ht",
 	"heise-homepage.ht",
 	"sz-homepage.ht",
-	"amazon-autocomplete.ht"
+	"amazon-autocomplete.ht",
+	"redirect.ht",
     ],
 
     // Teardown tests are executed afterwords, the may fail without

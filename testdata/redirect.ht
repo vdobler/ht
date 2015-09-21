@@ -1,0 +1,12 @@
+{
+    Name: "Redirect tester",
+    Request: {
+        URL: "https://httpbin.org/redirect/3",
+	FollowRedirects: true,
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 200},
+    ],
+    Verbosity: 1,
+    Criticality: "Error",
+}
