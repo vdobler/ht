@@ -34,8 +34,11 @@ git are available and working:
 Documentation
 -------------
 
-The documentation is a bit sparse but you should be able to
-extract almost everything from the godoc:
+For a start have a look at the 
+
+Tutorial https://github.com/vdobler/ht/blob/master/cmd/ht/Tutorial.md
+
+and see the the godoc for reference:
 
 * Tests, Checks and their options:
   https://godoc.org/github.com/vdobler/ht/ht
