@@ -136,7 +136,7 @@ type Request struct {
 	// ParamsAs determines how the parameters in the Param field are sent:
 	//   "URL" or "": append properly encoded to URL
 	//   "body"     : send as application/x-www-form-urlencoded in body.
-	//   "multipart": send as multipart in body.
+	//   "multipart": send as multipart/form-data in body.
 	// The two values "body" and "multipart" must not be used
 	// on a GET or HEAD request.
 	ParamsAs string `json:",omitempty"`
