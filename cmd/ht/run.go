@@ -16,13 +16,15 @@ var cmdRun = &Command{
 	Description: "run a single test",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
-Run loads the single test, unrolls it and prepares it
-and executes the test (or the first of the unroled tests).
+Run loads the single test, unrolls it and prepares it and executes the
+test (or the first of the unroled tests).
+Variables set with the -D flag overwrite variables read from file with -Dfile.
 	`,
 }
 
 func init() {
 	addVariablesFlag(cmdRun.Flag)
+	addDfileFlag(cmdRun.Flag)
 	addVerbosityFlag(cmdRun.Flag)
 	addSeedFlag(cmdRun.Flag)
 	addOutputFlag(cmdRun.Flag)

@@ -75,6 +75,7 @@ func (l *cmdlLimit) Set(s string) error {
 
 var (
 	variablesFlag = make(cmdlVar)   // flag -D
+	variablesFile string            // -Dfile
 	rtLimits      = make(cmdlLimit) // flag -L
 	onlyFlag      string            // flag -only
 	skipFlag      string            // flag -skip
@@ -84,14 +85,21 @@ var (
 	skipTLSVerify bool              // flag -skiptlsverify
 )
 
+func addDfileFlag(fs *flag.FlagSet) {
+	fs.StringVar(&variablesFile, "Dfile", "",
+		"read variables from `file.json`")
+}
+
 func addOutputFlag(fs *flag.FlagSet) {
 	fs.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
 }
+
 func addSeedFlag(fs *flag.FlagSet) {
 	fs.Int64Var(&randomSeed, "seed", 0,
 		"use `num` as seed for PRNG (0 will take seed from time)")
 }
+
 func addSkiptlsverifyFlag(fs *flag.FlagSet) {
 	fs.BoolVar(&skipTLSVerify, "skiptlsverify", false,
 		"do not verify TLS certificate chain of servers")

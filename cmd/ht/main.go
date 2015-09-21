@@ -9,12 +9,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/internal/json5"
 )
 
 // A Command is one of the subcommands of ht.
@@ -95,23 +97,27 @@ func main() {
 		help(args[1:])
 		return
 	}
+
 	var suites []*ht.Suite
 	for _, cmd := range commands {
-		if cmd.Name() == args[0] {
-			cmd.Flag.Usage = func() { cmd.usage() }
-			err := cmd.Flag.Parse(args[1:])
-			if err != nil {
-				os.Exit(9)
-			}
-			args = cmd.Flag.Args()
-			if cmd.Name() == "run" {
-				suites = []*ht.Suite{loadTests(args)}
-			} else {
-				suites = loadSuites(args)
-			}
-			cmd.Run(cmd, suites)
-			return
+		if cmd.Name() != args[0] {
+			continue
 		}
+
+		cmd.Flag.Usage = func() { cmd.usage() }
+		err := cmd.Flag.Parse(args[1:])
+		if err != nil {
+			os.Exit(9)
+		}
+		fillVariablesFlagFrom(variablesFile)
+		args = cmd.Flag.Args()
+		if cmd.Name() == "run" {
+			suites = []*ht.Suite{loadTests(args)}
+		} else {
+			suites = loadSuites(args)
+		}
+		cmd.Run(cmd, suites)
+		return
 	}
 
 	fmt.Fprintf(os.Stderr, "ht: unknown subcommand %q\nRun 'ht help' for usage.\n",
@@ -311,4 +317,28 @@ func addCWD(i *cmdlIncl) {
 		}
 	}
 	*i = append(*i, ".")
+}
+
+// fillVariablesFlagFrom reads in the file variablesFile and sets the
+// jet unset variables. This meass that the resulting variable/values in
+// variablesFlag looks like the variablesFile was loaded first and the
+// -D flags overwrite the ones loaded from file.
+func fillVariablesFlagFrom(variablesFile string) {
+	if variablesFile == "" {
+		return
+	}
+	data, err := ioutil.ReadFile(variablesFile)
+	if err != nil {
+		log.Fatalf("Cannot read variable file %q: %s", variablesFile, err)
+	}
+	v := map[string]string{}
+	err = json5.Unmarshal(data, &v)
+	if err != nil {
+		log.Fatalf("Cannot unmarshal variable file %q: %s", variablesFile, err)
+	}
+	for n, k := range v {
+		if _, ok := variablesFlag[n]; !ok {
+			variablesFlag[n] = k
+		}
+	}
 }

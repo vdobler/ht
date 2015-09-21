@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +27,8 @@ var cmdExec = &Command{
 	Help: `
 Exec loads the given suites, unrolls the tests, prepares the tests and
 executes them. The flags -skip and -only allow to fine controll which
-tests in the suite(s) are executed.
+tests in the suite(s) are executed. Variables set with the -D flag overwrite
+variables read from file with -Dfile.
 The exit code is 3 if bogus tests or checks are found, 2 if test errors
 are present, 1 if only check failures occured and 0 if everything passed.
 	`,
@@ -36,6 +38,7 @@ func init() {
 	cmdExec.Flag.BoolVar(&serialFlag, "serial", false,
 		"run suites one after the other instead of concurrently")
 	addVariablesFlag(cmdExec.Flag)
+	addDfileFlag(cmdExec.Flag)
 	addOnlyFlag(cmdExec.Flag)
 	addSkipFlag(cmdExec.Flag)
 	addVerbosityFlag(cmdExec.Flag)
@@ -68,6 +71,16 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
 	}
 
+	// Log variables and values sorted by variable name.
+	varnames := make([]string, 0, len(variablesFlag))
+	for v := range variablesFlag {
+		varnames = append(varnames, v)
+	}
+	sort.Strings(varnames)
+	for _, v := range varnames {
+		log.Printf("Variable %s = %q", v, variablesFlag[v])
+	}
+
 	executeSuites(suites)
 
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
@@ -92,7 +105,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		}
 
 		dirname := outputDir + "/" + sanitizer.Replace(suites[s].Name)
-		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
+		log.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
 		err := os.MkdirAll(dirname, 0766)
 		if err != nil {
 			log.Panic(err)
@@ -106,6 +119,9 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			log.Panic(err)
 		}
 		err = ioutil.WriteFile(dirname+"/junit-report.xml", []byte(junit), 0666)
+		if err != nil {
+			log.Panic(err)
+		}
 	}
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
