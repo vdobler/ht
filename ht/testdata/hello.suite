@@ -1,0 +1,9 @@
+{
+    Name: "The Dead Simple Suite",
+    Tests: [ "hello.ht" ],
+    Variables: {
+        SCHEMA: "http://",
+        HOST: "localhost",
+        PATH: "/hello",
+    }
+}

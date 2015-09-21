@@ -1,0 +1,10 @@
+{
+    Name: "Hello",
+    Request: {
+        URL: "{{SCHEMA}}{{HOST}}{{PATH}}",
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 200},
+        {Check: "Body", Contains: "Hello world"},
+    ],
+}
