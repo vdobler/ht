@@ -223,8 +223,8 @@ func (c *HTMLTag) Prepare() (err error) {
 // ----------------------------------------------------------------------------
 // HTMLContains
 
-// HTMLContains check the text content off HTML elements selected by
-// a CSS rule.
+// HTMLContains checks the text content (and optionally the order) of HTML
+// elements selected by a CSS rule.
 //
 // The text content found in the HTML document is normalized by roughly the
 // following procedure:
@@ -243,17 +243,21 @@ type HTMLContains struct {
 	// Selector is the CSS selector of the HTML elements.
 	Selector string
 
-	// The plain text content of each selected element.
+	// Text contains the expected plain text content of the HTL elements
+	// selected through the given selector.
 	Text []string `json:",omitempty"`
 
-	// Raw turns of white space normalization and returns the unprocessed
+	// Raw turns of white space normalization and will check the unprocessed
 	// text content.
 	Raw bool `json:",omitempty"`
 
-	// If true: Text contains all matches of Selector.
+	// Complete makes sure that no excess HTML elements are found:
+	// If true the len(Text) must be equal to the number of HTML elements
+	// selected for the check to succeed.
 	Complete bool `json:",omitempty"`
 
-	// If true: Actual matches must be listed in order in Text.
+	// InOrder makes the check fail if the selected HTML elements have a
+	// different order than given in Text.
 	InOrder bool `json:",omitempty"`
 
 	sel cascadia.Selector
