@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html><head><title>Availbale Checks</title><meta charset="UTF-8"></head>
+<body><h1>Available Checks</h1>
+<p>Version: v0.6.0</p>
+<h2>Body</h2>
+<pre>
+type Body Condition
+
+    Body provides simple condition checks on the response body.
+
+</pre>
+<h2>ContentType</h2>
+<pre>
+type ContentType struct {
+	// Is is the wanted content type. It may be abrevated, e.g.
+	// "json" would match "application/json"
+	Is string
+
+	// Charset is an optional charset
+	Charset string `json:",omitempty"`
+}
+
+    ContentType checks the Content-Type header.
+
+</pre>
+<h2>DeleteCookie</h2>
+<pre>
+type DeleteCookie struct {
+	Name   string
+	Path   string `json:",omitempty"`
+	Domain string `json:",omitempty"`
+}
+
+    DeleteCookie checks that the HTTP response properly deletes all cookies
+    matching Name, Path and Domain. Path and Domain are optional in which case
+    all cookies with the given Name are checkd for deletion.
+
+</pre>
+<h2>FinalURL</h2>
+<pre>
+type FinalURL Condition
+
+    FinalURL checks the last URL after following all redirects. This check is
+    useful only for tests with Request.FollowRedirects=true
+
+</pre>
+<h2>Header</h2>
+<pre>
+type Header struct {
+	// Header is the HTTP header to check.
+	Header string
+
+	// Condition is applied to the first header value. A zero value checks
+	// for the existence of the given Header only.
+	Condition `json:",omitempty"`
+
+	// Absent indicates that no header Header shall be part of the response.
+	Absent bool `json:",omitempty"`
+}
+
+    Header provides a textual test of single-valued HTTP headers.
+
+</pre>
+<h2>HTMLContains</h2>
+<pre>
+type HTMLContains struct {
+	// Selector is the CSS selector of the HTML elements.
+	Selector string
+
+	// Text contains the expected plain text content of the HTL elements
+	// selected through the given selector.
+	Text []string `json:",omitempty"`
+
+	// Raw turns of white space normalization and will check the unprocessed
+	// text content.
+	Raw bool `json:",omitempty"`
+
+	// Complete makes sure that no excess HTML elements are found:
+	// If true the len(Text) must be equal to the number of HTML elements
+	// selected for the check to succeed.
+	Complete bool `json:",omitempty"`
+
+	// InOrder makes the check fail if the selected HTML elements have a
+	// different order than given in Text.
+	InOrder bool `json:",omitempty"`
+	// Has unexported fields.
+}
+
+    HTMLContains checks the text content (and optionally the order) of HTML
+    elements selected by a CSS rule.
+
+    The text content found in the HTML document is normalized by roughly the
+    following procedure:
+
+    1.  Newlines are inserted around HTML block elements
+        (i.e. any non-inline element)
+    2.  Newlines and tabs are replaced by spaces.
+    3.  Multiple spaces are replaced by one space.
+    4.  Leading and trailing spaces are trimmed of.
+
+    As an example consider the following HTML:
+
+    &lt;html&gt;&lt;body&gt;
+      &lt;ul class="fancy"&gt;&lt;li&gt;One&lt;/li&gt;&lt;li&gt;S&lt;strong&gt;econ&lt;/strong&gt;d&lt;/li&gt;&lt;li&gt; Three &lt;/li&gt;&lt;/ul&gt;
+    &lt;/body&gt;&lt;/html&gt;
+
+    The normalized text selected by a Selector of "ul.fancy" would be
+
+    "One Second Three"
+
+</pre>
+<h2>HTMLTag</h2>
+<pre>
+type HTMLTag struct {
+	// Selector is the CSS selector of the HTML elements.
+	Selector string
+
+	// Count determines the number of occurrences to check for:
+	//     &lt; 0: no occurrence
+	//    == 0: one ore more occurrences
+	//     &gt; 0: exactly that many occurrences
+	Count int `json:",omitempty"`
+	// Has unexported fields.
+}
+
+    HTMLTag checks for the existens of HTML elements selected by CSS selectors.
+
+</pre>
+<h2>Identity</h2>
+<pre>
+type Identity struct {
+	// SHA1 is the expected hash as shown by sha1sum of the whole body.
+	// E.g. 2ef7bde608ce5404e97d5f042f95f89f1c232871 for a "Hello World!"
+	// body (no newline).
+	SHA1 string
+}
+
+    Identity checks the value of the response body by comparing its SHA1 hash to
+    the expected SHA1 value.
+
+</pre>
+<h2>Image</h2>
+<pre>
+type Image struct {
+	// Format is the format of the image as registered in package image.
+	Format string `json:",omitempty"`
+
+	// If &gt; 0 check width or height of image.
+	Width, Height int `json:",omitempty"`
+
+	// Fingerprint is either the 16 hex digit long Block Mean Value hash or
+	// the 24 hex digit long Color Histogram hash of the image.
+	Fingerprint string `json:",omitempty"`
+
+	// Threshold is the limit up to which the received image may differ
+	// from the given BMV or ColorHist fingerprint.
+	Threshold float64 `json:",omitempty"`
+}
+
+    Image checks image format, size and fingerprint. As usual a zero value of a
+    field skips the check of that property. Image fingerprinting is done via
+    github.com/vdobler/ht/fingerprint. Only one of BMV or ColorHist should be
+    used as there is just one threshold.
+
+</pre>
+<h2>JSON</h2>
+<pre>
+type JSON struct {
+	// Expression is a boolean gojee expression which must evaluate
+	// to true for the check to pass.
+	Expression string `json:",omitempty"`
+
+	// Path in the flattened JSON map to apply the Condition to.
+	Path string `json:",omitempty"`
+
+	// Condition to apply to the value selected by Path.
+	// If Condition is the zero value then only the existence of
+	// a JSON element selected by Path is checked.
+	// Note that Condition s checked against the actual value in the
+	// flattened JSON map which will contain the quotation marks for
+	// string values.
+	Condition `json:",omitempty"`
+
+	// Sep is the seperator in Path when checking the Condition.
+	// A zero value is equivalanet to "."
+	Sep string `json:",omitempty"`
+	// Has unexported fields.
+}
+
+    JSON checking via github.com/nytlabs/gojee (Expression) and
+    github.com/nytlabs/gojsonexplode (Path, Condition (+ Sep). Both, Expression
+    and Path, may be empty in which case this check just makes sure the response
+    bodyis wellformed JSON.
+
+</pre>
+<h2>Links</h2>
+<pre>
+type Links struct {
+	// Head triggers HEAD requests instead of GET requests.
+	Head bool
+
+	// Which links to test; a combination of "a", "img", "link" and "script".
+	// E.g. use "a img" to check the href of all a tags and src of all img tags.
+	Which string
+
+	// Concurrency determines how many of the found links are checked
+	// concurrently. A zero value indicates sequential checking.
+	Concurrency int `json:",omitempty"`
+
+	// Timeout is the client timeout if different from main test.
+	Timeout Duration `json:",omitempty"`
+
+	// OnlyLinks and IgnoredLinks can be used to select only a subset of
+	// all links.
+	OnlyLinks, IgnoredLinks []Condition `json:",omitempty"`
+	// Has unexported fields.
+}
+
+    Links checks links and references in HTML pages for availability.
+
+</pre>
+<h2>Logfile</h2>
+<pre>
+type Logfile struct {
+	// Path is the file system path to the logfile."
+	Path string
+
+	// Condition the written stuff must fulfill.
+	Condition `json:",omitempty"`
+
+	// Disallow states what is forbidden in the written log.
+	Disallow []string `json:",omitempty"`
+	// Has unexported fields.
+}
+
+    Logfile provides checks on files (i.e. it ignores the response). During
+    preparation the current file size is determined and the checks are run
+    against the bytes written after preparation.
+
+</pre>
+<h2>Redirect</h2>
+<pre>
+type Redirect struct {
+	// To is matched against the Location header. It may begin with,
+	// or end with contain three dots "..." which inicate that To should
+	// match the end or the start or both ends of the Location header
+	// value. (Note that only one occurence of "..." is supported."
+	To string
+
+	// If StatusCode is greater zero it is the required HTTP status code
+	// expected in this response. If zero the valid status codes are
+	// 301 (Moved Permanently), 302 (Found), 303 (See Other) and
+	// 307 (Temporary Redirect)
+	StatusCode int `json:",omitempty"`
+}
+
+    Redirect checks for HTTP redirections.
+
+</pre>
+<h2>ResponseTime</h2>
+<pre>
+type ResponseTime struct {
+	Lower  Duration `json:",omitempty"`
+	Higher Duration `json:",omitempty"`
+}
+
+    ResponseTime checks the response time.
+
+</pre>
+<h2>SetCookie</h2>
+<pre>
+type SetCookie struct {
+	Name   string    `json:",omitempty"` // Name is the cookie name.
+	Value  Condition `json:",omitempty"` // Value is applied to the cookie value
+	Path   Condition `json:",omitempty"` // Path is applied to the path value
+	Domain Condition `json:",omitempty"` // Domain is applied to the domain value
+
+	// MinLifetime is the expectetd minimum lifetime of the cookie.
+	// A positive value enforces a persistent cookie.
+	// Negative values are illegal (use DelteCookie instead).
+	MinLifetime Duration `json:",omitempty"`
+
+	// Absent indicates that the cookie with the given Name must not be received.
+	Absent bool `json:",omitempty"`
+
+	// Type is the type of the cookie. It is a space seperated string of
+	// the following (case-insensitive) keywords:
+	//   - "session": a session cookie
+	//   - "persistent": a persistent cookie
+	//   - "secure": a secure cookie, to be sont over https only
+	//   - "unsafe", aka insecure; to be sent also over http
+	//   - "httpOnly": not accesible from JavaScript
+	//   - "exposed": accesible from JavaScript, Flash, etc.
+	Type string `json:",omitempty"`
+}
+
+    SetCookie checks for cookies being properly set. Note that the Path and
+    Domain conditions are checked on the received Path and/or Domain and not on
+    the interpreted values according to RFC 6265.
+
+</pre>
+<h2>StatusCode</h2>
+<pre>
+type StatusCode struct {
+	Expect int `xml:",attr"`
+}
+
+    StatusCode checks the HTTP statuscode.
+
+</pre>
+<h2>UTF8Encoded</h2>
+<pre>
+type UTF8Encoded struct{}
+
+    UTF8Encoded checks that the response body is valid UTF-8 without BOMs.
+
+</pre>
+<h2>ValidHTML</h2>
+<pre>
+type ValidHTML struct{}
+
+    ValidHTML checks for valid HTML 5. Kinda: It never fails. TODO: make it
+    useful.
+
+</pre>
+<h2>W3CValidHTML</h2>
+<pre>
+type W3CValidHTML struct {
+	// AllowedErrors is the number of allowed errors (after ignoring errors).
+	AllowedErrors int `json:",omitempty"`
+
+	// IgnoredErrros is a list of error messages to be ignored completely.
+	IgnoredErrors []Condition `json:",omitempty"`
+}
+
+    W3CValidHTML checks for valid HTML but checking the response body via the
+    online checker from W3C which is very strict.
+
+</pre>
+<h2>XML</h2>
+<pre>
+type XML struct {
+	// Path is a XPath expression understood by launchpad.net/xmlpath.
+	Path string
+
+	// Condition the first element addressed by Path must fullfill.
+	Condition
+	// Has unexported fields.
+}
+
+    XML allows to check XML request bodies.
+
+</pre>
+<hr>
+<p>Type Condition is not a Check but it is used so often
+   in checks that it is worth describing here.</p>
+<h2>Condition</h2>
+<pre>
+type Condition struct {
+	// Equals is the exact value to be expected.
+	// No other tests are performed if Equals is non-zero as these
+	// other tests would be redundant.
+	Equals string `json:",omitempty"`
+
+	// Prefix is the required prefix
+	Prefix string `json:",omitempty"`
+
+	// Suffix is the required suffix.
+	Suffix string `json:",omitempty"`
+
+	// Contains must be contained in the string.
+	Contains string `json:",omitempty"`
+
+	// Regexp is a regular expression to look for.
+	Regexp string `json:",omitempty"`
+
+	// Count determines how many occurences of Contains or Regexp
+	// are required for a match:
+	//     0: Any positive number of matches is okay
+	//   &gt; 0: Exactly that many matches required
+	//   &lt; 0: No match allowed (invert the condition)
+	Count int `json:",omitempty"`
+
+	// Min and Max are the minimum and maximum length the string may
+	// have. Two zero values disables this test.
+	Min, Max int `json:",omitempty"`
+	// Has unexported fields.
+}
+
+    Condition is a conjunction of tests against a string. Note that Contains and
+    Regexp conditions both use the same Count; most likely one would use either
+    Contains or Regexp but not both.
+
+</pre>
+</body></html>
