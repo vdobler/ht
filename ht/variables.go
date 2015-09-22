@@ -131,7 +131,6 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 //     {{NOW ...}}  and
 //     {{RANDOM ...}}
 // in s to the map m.
-// TODO: replace regexp matching with fasterand simpler code.
 func addSpecialVariables(s string, m map[string]struct{}) {
 	for i := strings.Index(s, "{{"); i > -1; i = strings.Index(s, "{{") {
 		s = s[i:]
