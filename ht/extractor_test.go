@@ -85,6 +85,39 @@ func TestBodyExtractor(t *testing.T) {
 
 }
 
+var jsonExtractorTests = []struct {
+	body, path, want string
+	err              error
+}{
+	{`{"a":"foo", "b":"bar", "c": [1,2,3]}`, "a", "foo", nil},
+	{`{"a":"foo", "b":"bar", "c": [1,2,3]}`, "b", "bar", nil},
+	{`{"a":"foo", "b":"bar", "c": [1,2,3]}`, "c.2", "3", nil},
+}
+
+func TestJSONExtractor(t *testing.T) {
+	for i, tc := range jsonExtractorTests {
+		test := &Test{
+			Response: Response{
+				BodyBytes: []byte(tc.body),
+			},
+		}
+		ex := JSONExtractor{Path: tc.path}
+		got, err := ex.Extract(test)
+		if err != nil {
+			if tc.err == nil {
+				t.Errorf("%d. Path=%q: unexpected error %v",
+					i, tc.path, err)
+				continue
+			}
+			continue // TODO check type and message
+		}
+		if got != tc.want {
+			t.Errorf("%d. Path=%q: got %q, want %q",
+				i, tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestMarshalExtractorMap(t *testing.T) {
 	em := ExtractorMap{
 		"Foo": HTMLExtractor{

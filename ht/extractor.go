@@ -6,12 +6,15 @@ package ht
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/andybalholm/cascadia"
+	"github.com/nytlabs/gojsonexplode"
 	"github.com/vdobler/ht/internal/json5"
 	"golang.org/x/net/html"
 )
@@ -134,8 +137,6 @@ func (em *ExtractorMap) UnmarshalJSON(data []byte) error {
 
 // HTMLExtractor allows to extract data from an executed Test.
 // It supports extracting HTML attribute values and HTML text node values.
-// Support for different stuff like HTTP Header, JSON values, etc. are
-// a major TODO.
 // Examples for CSRF token in the HTML:
 //    <meta name="_csrf" content="18f0ca3f-a50a-437f-9bd1-15c0caa28413" />
 //    <input type="hidden" name="_csrf" value="18f0ca3f-a50a-437f-9bd1-15c0caa28413"/>
@@ -219,4 +220,54 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 	}
 
 	return "", fmt.Errorf("got only %d submatches in %q", len(submatches)-1, submatches[0])
+}
+
+// ----------------------------------------------------------------------------
+// JSONExtractor
+
+// JSONExtractor extracts a value from a JSON response body.
+// It uses github.com/nytlabs/gojsonexplode to flatten the JSON file
+// for easier access.
+type JSONExtractor struct {
+	// Path in the flattened JSON map to extract.
+	Path string `json:",omitempty"`
+
+	// Sep is the seperator in Path.
+	// A zero value is equivalent to "."
+	Sep string `json:",omitempty"`
+}
+
+// Extract implements Extractor's Extract method.
+func (e JSONExtractor) Extract(t *Test) (string, error) {
+	if t.Response.BodyErr != nil {
+		return "", ErrBadBody
+	}
+
+	sep := "."
+	if e.Sep != "" {
+		sep = e.Sep
+	}
+
+	out, err := gojsonexplode.Explodejson(t.Response.BodyBytes, sep)
+	if err != nil {
+		return "", fmt.Errorf("unable to explode JSON: %s", err.Error())
+	}
+
+	var flat map[string]*json.RawMessage
+	err = json.Unmarshal(out, &flat)
+	if err != nil {
+		return "", fmt.Errorf("unable to parse exploded JSON: %s", err.Error())
+	}
+
+	val, ok := flat[e.Path]
+	if !ok {
+		return "", ErrNotFound
+	}
+
+	// Strip quotes from strings.
+	s := string(*val)
+	if strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) && len(s) >= 2 {
+		s = s[1 : len(s)-1]
+	}
+	return s, nil
 }
