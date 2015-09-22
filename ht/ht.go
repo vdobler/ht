@@ -877,7 +877,9 @@ func escapeQuotes(s string) string {
 	return quoteEscaper.Replace(s)
 }
 
-// TODO: handle errors
+// multipartBody formats the given param as a proper multipart/form-data
+// body and returns a reader ready to use as the body as well as the
+// multipart boundary to be include in the content type.
 func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 	var body = &bytes.Buffer{}
 
@@ -890,10 +892,14 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 		// TODO: handle errors
 		if len(v) > 0 {
 			for _, vv := range v {
-				mpwriter.WriteField(n, vv)
+				if err := mpwriter.WriteField(n, vv); err != nil {
+					return nil, "", err
+				}
 			}
 		} else {
-			mpwriter.WriteField(n, "")
+			if err := mpwriter.WriteField(n, ""); err != nil {
+				return nil, "", err
+			}
 		}
 	}
 
