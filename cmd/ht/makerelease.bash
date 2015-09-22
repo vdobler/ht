@@ -27,8 +27,8 @@ GOOS=windows GOARCH=amd64 go build -o ht_windows.exe -ldflags "$LDFLAGS"
 
 echo
 echo "### Check documentation"
-(cd ../../ht/; ./list-checks.bash;) > CheckDocumentation.txt
-ls -l CheckDocumentation.txt
+(cd ../../ht/; ./list-checks.bash;) > Checks.html
+ls -l Checks.html
 
 source <(go env)
 echo
