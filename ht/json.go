@@ -22,16 +22,13 @@ func init() {
 // JSON
 
 // JSON checking via github.com/nytlabs/gojee (Expression) and
-// github.com/nytlabs/gojsonexplode (Path&Condition). Both checks may
-// be empty.
+// github.com/nytlabs/gojsonexplode (Path, Condition (+ Sep).
+// Both, Expression and Path, may be empty in which case this check
+// just makes sure the response bodyis wellformed JSON.
 type JSON struct {
 	// Expression is a boolean gojee expression which must evaluate
 	// to true for the check to pass.
 	Expression string `json:",omitempty"`
-
-	// Sep is the seperator in Path when checking the Condition.
-	// A zero value is equivalanet to "."
-	Sep string `json:",omitempty"`
 
 	// Path in the flattened JSON map to apply the Condition to.
 	Path string `json:",omitempty"`
@@ -43,6 +40,10 @@ type JSON struct {
 	// flattened JSON map which will contain the quotation marks for
 	// string values.
 	Condition `json:",omitempty"`
+
+	// Sep is the seperator in Path when checking the Condition.
+	// A zero value is equivalanet to "."
+	Sep string `json:",omitempty"`
 
 	tt *jee.TokenTree
 }
