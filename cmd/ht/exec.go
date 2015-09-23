@@ -56,30 +56,7 @@ var (
 )
 
 func runExecute(cmd *Command, suites []*ht.Suite) {
-	if outputDir == "" {
-		outputDir = time.Now().Format("2006-01-02_15h04m05s")
-	}
-	os.MkdirAll(outputDir, 0766)
-
-	if randomSeed == 0 {
-		randomSeed = time.Now().UnixNano()
-	}
-	log.Printf("Seeding random number generator with %d", randomSeed)
-	ht.Random = rand.New(rand.NewSource(randomSeed))
-	if skipTLSVerify {
-		log.Printf("Skipping verification of TLS certificates presented by any server.")
-		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
-	}
-
-	// Log variables and values sorted by variable name.
-	varnames := make([]string, 0, len(variablesFlag))
-	for v := range variablesFlag {
-		varnames = append(varnames, v)
-	}
-	sort.Strings(varnames)
-	for _, v := range varnames {
-		log.Printf("Variable %s = %q", v, variablesFlag[v])
-	}
+	prepareExecution()
 
 	executeSuites(suites)
 
@@ -135,6 +112,34 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	}
 
 	os.Exit(0)
+}
+
+func prepareExecution() {
+	if outputDir == "" {
+		outputDir = time.Now().Format("2006-01-02_15h04m05s")
+	}
+	os.MkdirAll(outputDir, 0766)
+
+	if randomSeed == 0 {
+		randomSeed = time.Now().UnixNano()
+	}
+	log.Printf("Seeding random number generator with %d", randomSeed)
+	ht.Random = rand.New(rand.NewSource(randomSeed))
+	if skipTLSVerify {
+		log.Printf("Skipping verification of TLS certificates presented by any server.")
+		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
+	}
+
+	// Log variables and values sorted by variable name.
+	varnames := make([]string, 0, len(variablesFlag))
+	for v := range variablesFlag {
+		varnames = append(varnames, v)
+	}
+	sort.Strings(varnames)
+	for _, v := range varnames {
+		log.Printf("Variable %s = %q", v, variablesFlag[v])
+	}
+
 }
 
 func executeSuites(suites []*ht.Suite) {

@@ -52,6 +52,7 @@ var commands = []*Command{
 	cmdList,
 	cmdRun,
 	cmdExec,
+	cmdWarmup,
 	cmdBench,
 	cmdMonitor,
 	// cmdPerf,
