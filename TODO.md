@@ -9,6 +9,12 @@ Collection of TODOs and Ideas for HT
    HTTP headers, JSON values, XML elemnts. Possibly even allow to extract
    stuff inside them, e.g. a capturing group in a regexp.
 
+*  HEAD request with gziped Content-Encoding fail with EOF which is
+   wrong.
+
+*  Link checking does not properly keep the cookie jar: t.Jar is overwritten
+   during suite preparation.  This might be a general bug.
+   
 
 Resolved TODOs
 --------------
