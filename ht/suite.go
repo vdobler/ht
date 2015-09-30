@@ -74,9 +74,11 @@ func (s *Suite) Prepare() error {
 		jar, _ = cookiejar.New(nil)
 	}
 
-	// Try to prepare all tests and inject jar and logger.
+	// Try to prepare all tests and inject jar if not already set.
 	prepare := func(t *Test, which string, omit bool) error {
-		t.Jar = jar
+		if t.Jar == nil {
+			t.Jar = jar
+		}
 
 		err := t.prepare(s.Variables)
 		if err != nil {
