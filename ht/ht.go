@@ -750,6 +750,9 @@ func (t *Test) executeRequest() error {
 	t.Response.Response = resp
 	msg := "okay"
 	if err == nil {
+		if t.Request.Request.Method == "HEAD" {
+			goto done
+		}
 		var reader io.ReadCloser
 		switch resp.Header.Get("Content-Encoding") {
 		case "gzip":
