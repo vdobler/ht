@@ -218,7 +218,9 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 	if len(submatches) > e.Submatch {
 		return string(submatches[e.Submatch]), nil
 	}
-
+	if len(submatches) == 0 {
+		return "", fmt.Errorf("no match found in %q", t.Response.BodyBytes)
+	}
 	return "", fmt.Errorf("got only %d submatches in %q", len(submatches)-1, submatches[0])
 }
 

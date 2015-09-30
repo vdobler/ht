@@ -83,6 +83,11 @@ func TestBodyExtractor(t *testing.T) {
 		t.Errorf("Got %q, want xyz", val)
 	}
 
+	test.Response.BodyBytes = []byte("blablabla")
+	val, err = ex.Extract(test)
+	if err == nil || err.Error() != `no match found in "blablabla"` {
+		t.Errorf("Missing or wrong error: %v", err)
+	}
 }
 
 var jsonExtractorTests = []struct {
