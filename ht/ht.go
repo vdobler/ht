@@ -495,6 +495,11 @@ func (t *Test) Run(variables map[string]string) error {
 		return nil
 	}
 
+	// specialVars is the cached version of special variables (NOW, RANDOM)
+	// wich can be cached from one try to the next, but this set may change
+	// from one run to the other so clear it here.
+	t.specialVars = nil
+
 	// Try until first success.
 	start := time.Now()
 	try := 1
