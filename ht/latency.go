@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -36,10 +37,12 @@ type Latency struct {
 	Concurrent int `json:",omitempty"`
 
 	// Limits is a string of the following form:
-	//    "50% < 150; 80% < 200; 95% < 250; 0.9995 < 900"
+	//    "50% ≤ 150; 80% ≤ 200; 95% ≤ 250; 0.9995 ≤ 900"
 	// The limits above would require the median of the response
-	// times to be < 150 ms and would allow only 1 request in 2000 to
+	// times to be <= 150 ms and would allow only 1 request in 2000 to
 	// exced 900ms.
+	// Note that it must be the ≤ signe (U+2264), a plain < or a <=
+	// is not recognized.
 	Limits string `json:",omitempty"`
 
 	// If SkipChecks is true no checks are performed i.e. only the
@@ -80,11 +83,9 @@ func (L *Latency) Execute(t *Test) error {
 	}
 
 	conc := L.Concurrent
-	offset := time.Duration(t.Response.Duration) / time.Duration(conc)
-	// offset -= 10 * time.Millisecond
 
 	// Provide a set of Test instances to be executed.
-	tests := make(chan *Test, conc) // buffer of unused tests
+	tests := []*Test{}
 	for i := 0; i < conc; i++ {
 		cpy, err := Merge(t)
 		if err != nil {
@@ -99,99 +100,125 @@ func (L *Latency) Execute(t *Test) error {
 			checks = append(checks, c)
 		}
 		cpy.Checks = checks
-		tests <- cpy
+		cpy.Verbosity = 0
+		tests = append(tests, cpy)
 	}
 
-	warmup := conc * 2
-	type result struct {
-		status   Status
-		started  time.Time
-		duration Duration
-	}
-	results := make(chan result, L.N+warmup)
+	results := make(chan latencyResult, 2*conc)
 
+	// Synchronous warmup phase is much simpler.
+	wg := &sync.WaitGroup{}
+	started := time.Now()
+	prewarmed := 0
+	for prewarm := 0; prewarm < 2; prewarm++ {
+		for i := 0; i < conc; i++ {
+			prewarmed++
+			wg.Add(1)
+			go func(ex *Test) {
+				ex.Run(nil) // TODO: get copy of variables from somewhere
+				wg.Done()
+			}(tests[i])
+		}
+		wg.Wait()
+	}
+	offset := time.Since(started) / time.Duration(prewarmed*conc)
+
+	// Conc requests generation workers execute their own test instance
+	// until the channel running is closed.
 	done := make(chan bool)
-
-	// Collect results into data and signal end via done.
-	data := make([]result, 0, L.N)
-	npass, nerr, nfail := 0, 0, 0
-	// TODO: clean t.Name from ',' and other stuff illegal in csv files.
-	checkid := fmt.Sprintf("%s,%d", t.Name, L.Concurrent)
-	go func() {
-		for {
-			r := <-results
-			switch r.status {
-			case Pass:
-				npass++
-				data = append(data, r)
-			case Error:
-				nerr++
-			case Fail:
-				nfail++
-			default:
-				panic(r.status.String())
-			}
-			fmt.Fprintf(dumper, "%s,%s,%s,%d\n",
-				checkid,
-				r.started.Format(time.RFC3339Nano),
-				r.status,
-				r.duration/Duration(time.Millisecond))
-			// TODO: limit total running time, etc.
-			if npass == L.N || nfail > L.N/5 || nerr > L.N/20 {
-				close(done)
-				break
-			}
-		}
-	}()
-
-	// Main loop generating requests.
-	i := 0
-mainLoop:
-	for {
-		select {
-		case <-done:
-			break mainLoop
-		default:
-		}
-
-		if i < conc {
-			time.Sleep(offset)
-		}
-
-		go func(ex *Test, measure bool) {
-			ex.Run(nil) // TODO: get copy of variables from somewhere
-			if measure {
-				results <- result{
+	wg2 := &sync.WaitGroup{}
+	wg2.Add(1) // Add one sentinel value.
+	for i := 0; i < conc; i++ {
+		go func(ex *Test, id int) {
+			for {
+				wg2.Add(1)
+				ex.Run(nil) // TODO: get copy of variables from somewhere
+				results <- latencyResult{
 					status:   ex.Status,
 					started:  ex.Started,
 					duration: ex.Response.Duration,
+					execBy:   id,
+				}
+				wg2.Done()
+				select {
+				case <-done:
+					return
+				default:
 				}
 			}
-			tests <- ex // return to unused buffer
-		}(<-tests, i > warmup) // grap next unused test from buffer
-
-		i++
+		}(tests[i], i)
+		time.Sleep(offset)
 	}
+
+	// Collect results into data and signal end via done.
+	data := make([]latencyResult, 2*L.N)
+	counters := make([]int, Bogus)
+	// TODO: clean t.Name from ',' and other stuff illegal in csv files.
+	checkid := fmt.Sprintf("%s,%d", t.Name, L.Concurrent)
+	seen := uint64(0) // Bitmap of testinstances who returned.
+	all := (uint64(1) << uint(conc)) - 1
+	measureFrom := 0
+	n := 0
+	started = time.Now()
+	for n < len(data) {
+		data[n] = <-results
+		if seen == all {
+			if measureFrom == 0 {
+				measureFrom = n
+			}
+			counters[data[n].status]++
+		} else {
+			seen |= 1 << uint(data[n].execBy)
+		}
+		n++
+
+		// TODO: Make limits configurable?
+		if counters[Pass] == L.N ||
+			counters[Fail] > L.N/5 ||
+			counters[Error] > L.N/20 ||
+			time.Since(started) > 2*time.Minute {
+			break
+		}
+	}
+	close(done)
+	data = data[:n]
 
 	// Drain rest; wait till requests currently in flight die.
-	for len(results) > 0 {
-		<-results
+	wg2.Done() // Done with sentinel value.
+	wg2.Wait()
+
+	completed := false
+	if counters[Pass] == L.N {
+		completed = true
+	}
+	for _, r := range data {
+		fmt.Fprintf(dumper, "%s,%s,%s,%d,%t\n",
+			checkid,
+			r.started.Format(time.RFC3339Nano),
+			r.status,
+			r.duration/Duration(time.Millisecond),
+			completed,
+		)
+	}
+	if !completed {
+		return fmt.Errorf("Got only %d PASS but %d FAIL and %d ERR",
+			counters[Pass], counters[Fail], counters[Error])
 	}
 
-	latencies := make([]int, len(data))
+	latencies := []int{}
 	for i, r := range data {
-		latencies[i] = int(r.duration) / int(time.Millisecond)
+		if i < measureFrom || r.status != Pass {
+			continue
+		}
+		latencies = append(latencies, int(r.duration)/int(time.Millisecond))
 	}
 	sort.Ints(latencies)
-
-	if len(latencies) < L.N {
-		return fmt.Errorf("Got only %d PASS but %d FAIL and %d ERR",
-			npass, nfail, nerr)
-	}
 
 	errs := ""
 	for _, lim := range L.limits {
 		lat := time.Millisecond * time.Duration(quantile(latencies, lim.q))
+		t.infof("Latency quantil (conc=%d) %0.4f = %d ms",
+			conc, lim.q, lat/time.Millisecond)
 		if lat > lim.max {
 			if errs != "" {
 				errs += "; "
@@ -205,6 +232,13 @@ mainLoop:
 	}
 
 	return nil
+}
+
+type latencyResult struct {
+	status   Status
+	started  time.Time
+	duration Duration
+	execBy   int
 }
 
 // https://en.wikipedia.org/wiki/Quantile formula R-8
@@ -232,10 +266,15 @@ func (L *Latency) Prepare() error {
 	}
 	if L.Concurrent == 0 {
 		L.Concurrent = 2
+	} else if L.Concurrent > 64 {
+		return MalformedCheck{
+			Err: fmt.Errorf("concurrency %d > allowed max of 64",
+				L.Concurrent),
+		}
 	}
 
 	if L.Limits == "" {
-		L.Limits = "75% < 500"
+		L.Limits = "75% ≤ 500"
 	}
 
 	if err := L.parseLimit(); err != nil {
@@ -262,9 +301,9 @@ func (L *Latency) parseLimit() error {
 }
 
 func parseQantileLimit(s string) (float64, time.Duration, error) {
-	parts := strings.SplitN(s, "<", 2)
+	parts := strings.SplitN(s, "≤", 2)
 	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("missing '<'")
+		return 0, 0, fmt.Errorf("missing '≤'")
 	}
 
 	q := strings.TrimSpace(strings.TrimRight(parts[0], " %"))

@@ -6,6 +6,7 @@ package ht
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,42 +22,54 @@ func TestQuantile(t *testing.T) {
 	}
 }
 
+func primeHandler(w http.ResponseWriter, r *http.Request) {
+	n := intFormValue(r, "n")
+	if n < 2 {
+		n = rand.Intn(10000)
+	}
+
+	// Brute force check of primality of n.
+	text := fmt.Sprintf("Number %d is prime.", n)
+	for d := 2; d < n; d++ {
+		if n%d == 0 {
+			text = fmt.Sprintf("Number %d is NOT prime (divisor %d).", n, d)
+		}
+	}
+
+	http.Error(w, text, http.StatusOK)
+}
+
 func TestLatency(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
+	ts := httptest.NewServer(http.HandlerFunc(primeHandler))
 	defer ts.Close()
 
-	for _, conc := range []int{1, 2, 4, 8, 16, 32, 64, 128} {
-		fmt.Printf("Conccurency = %d\n", conc)
+	for _, conc := range []int{1, 2, 4, 8, 16, 32, 64} {
 		test := Test{
-			Name: "Echo-Handler",
+			Name: "Prime-Handler",
 			Request: Request{
 				Method: "GET",
 				URL:    ts.URL + "/",
 				Params: URLValues{
-					"smin": []string{"10"},
-					"smax": []string{"50"},
-					"fail": {"1"},
+					"n": []string{"100000"},
 				},
 			},
 			Timeout: Duration(100 * time.Millisecond),
 			Checks: []Check{
 				StatusCode{200},
 				&Latency{
-					N:          100 * conc,
+					N:          200 * conc,
 					Concurrent: conc,
-					Limits:     "50% < 35ms; 75% < 45ms; 90% < 55ms",
+					Limits:     "50% ≤ 35ms; 75% ≤ 45ms; 0.995 ≤ 55ms",
 					DumpTo:     "foo.xxx",
 				},
 			},
+			Verbosity: 1,
 		}
 
 		test.Run(nil)
-		if test.Status != Pass {
-			t.Errorf("Unexpected error %s", test.Error)
-		}
+
 		if testing.Verbose() {
 			test.PrintReport(os.Stdout)
 		}
-
 	}
 }
