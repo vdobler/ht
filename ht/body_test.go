@@ -48,3 +48,20 @@ func TestUTF8Encoded(t *testing.T) {
 		runTest(t, i, tc)
 	}
 }
+
+var srb = Response{BodyBytes: []byte("foo 1 bar 2 waz 3 tir 4 kap 5")}
+var sortedTests = []TC{
+	{srb, &Sorted{Text: []string{"foo", "waz", "4"}}, nil},
+	{srb, &Sorted{Text: []string{"foo 1 b", "ar 2 w", "az"}}, nil},
+	{srb, &Sorted{Text: []string{"1", "2", "??", "3", "4"}}, someError},
+	{srb, &Sorted{Text: []string{"1", "2", "??", "3", "4"}, AllowMissing: true}, nil},
+	{srb, &Sorted{Text: []string{"xxx", "yyy", "2", "??"}, AllowMissing: true}, someError},
+	{srb, &Sorted{Text: []string{"xxx", "yyy", "zzz", "??"}, AllowMissing: true}, someError},
+	{srb, &Sorted{Text: []string{"1"}}, prepareError},
+}
+
+func TestSorted(t *testing.T) {
+	for i, tc := range sortedTests {
+		runTest(t, i, tc)
+	}
+}

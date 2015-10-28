@@ -7,6 +7,8 @@
 package ht
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"unicode/utf8"
 )
@@ -14,6 +16,7 @@ import (
 func init() {
 	RegisterCheck(UTF8Encoded{})
 	RegisterCheck(&Body{})
+	RegisterCheck(&Sorted{})
 }
 
 // ----------------------------------------------------------------------------
@@ -61,4 +64,53 @@ func (b Body) Execute(t *Test) error {
 // Prepare implements Check's Prepare method.
 func (b *Body) Prepare() error {
 	return ((*Condition)(b)).Compile()
+}
+
+// ----------------------------------------------------------------------------
+// Sorted
+
+// Sorted checks for an ordered occurence of items.
+// The check Sorted could be replaced by a Regexp based Body test
+// without loss of functionality; Sorted just makes the idea of
+// "looking for a sorted occurence" clearer.
+type Sorted struct {
+	// Text is the list of text fragments to look for in the
+	// response body.
+	Text []string
+
+	// AllowMissing makes the check not fail if values of Text
+	// cannot be found in the response body.
+	AllowMissing bool `json:",omitempty"`
+}
+
+// Execute implements Check's Execute method.
+func (s *Sorted) Execute(t *Test) error {
+	bb := t.Response.BodyBytes
+	found := 0
+	for i, text := range s.Text {
+		idx := bytes.Index(bb, []byte(text))
+		if idx == -1 {
+			if s.AllowMissing {
+				continue
+			}
+			return fmt.Errorf("missing %d. value %q", i, text)
+		}
+
+		bb = bb[idx+len(text):]
+		found++
+	}
+	if found < 2 {
+		return fmt.Errorf("found only %d values", found)
+	}
+	return nil
+}
+
+// Prepare implements Check's Prepare method.
+func (s *Sorted) Prepare() error {
+	if len(s.Text) < 2 {
+		return MalformedCheck{
+			Err: errors.New("not enough values to check sorted"),
+		}
+	}
+	return nil
 }
