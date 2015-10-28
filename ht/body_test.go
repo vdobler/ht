@@ -7,6 +7,7 @@ package ht
 import (
 	_ "image/jpeg"
 	_ "image/png"
+	"net/http"
 	"testing"
 )
 
@@ -50,6 +51,13 @@ func TestUTF8Encoded(t *testing.T) {
 }
 
 var srb = Response{BodyBytes: []byte("foo 1 bar 2 waz 3 tir 4 kap 5")}
+var srbh = Response{
+	BodyBytes: []byte(sampleHtml),
+	Response: &http.Response{
+		Header: http.Header{"Content-Type": []string{"text/html; charset=UTF-8"}},
+	},
+}
+
 var sortedTests = []TC{
 	{srb, &Sorted{Text: []string{"foo", "waz", "4"}}, nil},
 	{srb, &Sorted{Text: []string{"foo 1 b", "ar 2 w", "az"}}, nil},
@@ -58,6 +66,8 @@ var sortedTests = []TC{
 	{srb, &Sorted{Text: []string{"xxx", "yyy", "2", "??"}, AllowMissing: true}, someError},
 	{srb, &Sorted{Text: []string{"xxx", "yyy", "zzz", "??"}, AllowMissing: true}, someError},
 	{srb, &Sorted{Text: []string{"1"}}, prepareError},
+	{srbh, &Sorted{Text: []string{"Foo", "Bar", "Waz"}}, nil},
+	{srbh, &Sorted{Text: []string{"Interwordemphasis", "Some important things", "Waz", "Three"}}, nil},
 }
 
 func TestSorted(t *testing.T) {

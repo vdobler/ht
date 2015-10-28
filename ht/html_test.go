@@ -13,8 +13,7 @@ import (
 	"testing"
 )
 
-var hcr = Response{
-	BodyBytes: []byte(`<!doctype html>
+var sampleHtml = `<!doctype html>
 <html>
 <link href="/css/base.css">
 <head><title>CSS Selectors</title></head>
@@ -41,7 +40,10 @@ var hcr = Response{
 </div>
 </body>
 </html>
-`)}
+`
+
+var hcr = Response{
+	BodyBytes: []byte(sampleHtml)}
 
 var htmlContainsTests = []TC{
 	{hcr, &HTMLTag{Selector: "h1"}, nil},

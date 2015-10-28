@@ -11,6 +11,9 @@ import (
 	"errors"
 	"fmt"
 	"unicode/utf8"
+
+	"github.com/andybalholm/cascadia"
+	"golang.org/x/net/html"
 )
 
 func init() {
@@ -73,9 +76,14 @@ func (b *Body) Prepare() error {
 // The check Sorted could be replaced by a Regexp based Body test
 // without loss of functionality; Sorted just makes the idea of
 // "looking for a sorted occurence" clearer.
+//
+// If the response has a Content-Type header indicating a HTML
+// response the HTML will be parsed and the text content normalized
+// as described in the HTMLContains check.
 type Sorted struct {
 	// Text is the list of text fragments to look for in the
-	// response body.
+	// response body or the normalized text content of the
+	// HTML page.
 	Text []string
 
 	// AllowMissing makes the check not fail if values of Text
@@ -86,6 +94,21 @@ type Sorted struct {
 // Execute implements Check's Execute method.
 func (s *Sorted) Execute(t *Test) error {
 	bb := t.Response.BodyBytes
+
+	ct := ContentType{Is: "html"}
+	if ct.Execute(t) == nil {
+		doc, err := html.Parse(t.Response.Body())
+		if err != nil {
+			return CantCheck{err}
+		}
+		bodySel := cascadia.MustCompile("body")
+		body := bodySel.MatchFirst(doc)
+		if body == nil {
+			return fmt.Errorf("no <body> tag found")
+		}
+		bb = []byte(textContent(body, false))
+	}
+
 	found := 0
 	for i, text := range s.Text {
 		idx := bytes.Index(bb, []byte(text))
