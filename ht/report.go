@@ -261,7 +261,8 @@ var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{i
   Error: {{.Error}}{{end}}
 {{if eq .Status 2 3 4 5}}  {{if .CheckResults}}Checks:
 {{range $i, $c := .CheckResults}}{{printf "    %2d. " $i}}{{template "CHECK" .}}
-{{end}}{{end}}{{end}}{{end}}`
+{{end}}{{end}}{{end}}{{if .Variables}}  Variables:
+{{range $k, $v := .Variables}}{{printf "    %s == %s\n" $k $v}}{{end}}{{end}}{{end}}`
 
 var htmlTestTmpl = `{{define "TEST"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}">

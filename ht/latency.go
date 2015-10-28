@@ -115,7 +115,7 @@ func (L *Latency) Execute(t *Test) error {
 			prewarmed++
 			wg.Add(1)
 			go func(ex *Test) {
-				ex.Run(nil) // TODO: get copy of variables from somewhere
+				ex.Run(t.Variables)
 				wg.Done()
 			}(tests[i])
 		}

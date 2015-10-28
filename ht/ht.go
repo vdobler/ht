@@ -243,6 +243,7 @@ type Test struct {
 	Tries        int           `json:"-"`
 	CheckResults []CheckResult `json:"-"` // The individual checks.
 	SeqNo        string        `json:"-"`
+	Variables    map[string]string
 
 	client      *http.Client
 	specialVars []string
@@ -568,8 +569,15 @@ func (t *Test) prepare(variables map[string]string) error {
 		if err != nil {
 			return err
 		}
+		// TODO: with mergeVariables(allVars, sv) the values in
+		// sv overwrite the ones in allVars. Using it the other
+		// way around like (sv, allVars) would allow the user to
+		// "overwrite" special variables, e.g. she could fix
+		// "{{NOW + 3m}}" to "Mon, 03 Oct 2016 18:00:07 MST"
+		// which might come handy.
 		allVars = mergeVariables(allVars, sv)
 	}
+	t.Variables = allVars
 	repl, err := newReplacer(allVars)
 	if err != nil {
 		return err
