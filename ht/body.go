@@ -86,9 +86,10 @@ type Sorted struct {
 	// HTML page.
 	Text []string
 
-	// AllowMissing makes the check not fail if values of Text
-	// cannot be found in the response body.
-	AllowMissing bool `json:",omitempty"`
+	// AllowedMisses is the number of elements of Text which may
+	// not be present in the response body. The default of 0 means
+	// all elements of Text must be present.
+	AllowedMisses int `json:",omitempty"`
 }
 
 // Execute implements Check's Execute method.
@@ -109,21 +110,17 @@ func (s *Sorted) Execute(t *Test) error {
 		bb = []byte(textContent(body, false))
 	}
 
-	found := 0
-	for i, text := range s.Text {
+	misses := []string{}
+	for _, text := range s.Text {
 		idx := bytes.Index(bb, []byte(text))
 		if idx == -1 {
-			if s.AllowMissing {
-				continue
-			}
-			return fmt.Errorf("missing %d. value %q", i, text)
+			misses = append(misses, text)
+			continue
 		}
-
 		bb = bb[idx+len(text):]
-		found++
 	}
-	if found < 2 {
-		return fmt.Errorf("found only %d values", found)
+	if len(misses) > s.AllowedMisses {
+		return fmt.Errorf("too many misses %q", misses)
 	}
 	return nil
 }
@@ -134,6 +131,13 @@ func (s *Sorted) Prepare() error {
 		return MalformedCheck{
 			Err: errors.New("not enough values to check sorted"),
 		}
+	}
+
+	if s.AllowedMisses > len(s.Text)-2 {
+		return MalformedCheck{
+			Err: errors.New("too many allowed misses"),
+		}
+
 	}
 	return nil
 }
