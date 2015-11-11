@@ -107,7 +107,7 @@ func (s *Sorted) Execute(t *Test) error {
 		if body == nil {
 			return fmt.Errorf("no <body> tag found")
 		}
-		bb = []byte(textContent(body, false))
+		bb = []byte(TextContent(body, false))
 	}
 
 	misses := []string{}

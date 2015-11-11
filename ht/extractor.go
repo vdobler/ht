@@ -174,7 +174,7 @@ func (e HTMLExtractor) Extract(t *Test) (string, error) {
 			return "", fmt.Errorf("could not find node '%s'", e.Selector)
 		}
 		if e.Attribute == "~text~" {
-			return textContent(node, true), nil
+			return TextContent(node, true), nil
 		}
 		for _, a := range node.Attr {
 			if a.Key == e.Attribute {

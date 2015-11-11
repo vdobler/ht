@@ -152,12 +152,12 @@ var (
 )
 
 func extractValidationIssue(node *html.Node) ValidationIssue {
-	p := textContent(w3cValidatorLocSel.MatchFirst(node), false)
+	p := TextContent(w3cValidatorLocSel.MatchFirst(node), false)
 	p = strings.Replace(p, "\n     ", "", -1)
 	return ValidationIssue{
 		Position: p,
-		Message:  textContent(w3cValidatorMsgSel.MatchFirst(node), false),
-		Input:    textContent(w3cValidatorInputSel.MatchFirst(node), false),
+		Message:  TextContent(w3cValidatorMsgSel.MatchFirst(node), false),
+		Input:    TextContent(w3cValidatorInputSel.MatchFirst(node), false),
 	}
 }
 
@@ -281,7 +281,7 @@ func (c *HTMLContains) Execute(t *Test) error {
 	matches := c.sel.MatchAll(doc)
 	actual := make([]string, len(matches))
 	for i, m := range matches {
-		actual[i] = normalizeWhitespace(textContent(m, c.Raw))
+		actual[i] = TextContent(m, c.Raw)
 	}
 
 	last := 0
@@ -320,10 +320,10 @@ func (c *HTMLContains) Prepare() (err error) {
 	return nil
 }
 
-// textContent returns the full text content of n. With raw processing the
+// TextContent returns the full text content of n. With raw processing the
 // unprocessed content is returned. If raw==false then whitespace is
 // normalized.
-func textContent(n *html.Node, raw bool) string {
+func TextContent(n *html.Node, raw bool) string {
 	tc := textContentRec(n, raw)
 	if !raw {
 		tc = normalizeWhitespace(tc)
