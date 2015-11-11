@@ -59,6 +59,7 @@ func RegisterExtractor(ex Extractor) {
 func init() {
 	RegisterExtractor(HTMLExtractor{})
 	RegisterExtractor(BodyExtractor{})
+	RegisterExtractor(JSONExtractor{})
 }
 
 // ----------------------------------------------------------------------------
