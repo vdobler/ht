@@ -21,7 +21,10 @@ var exampleHTML = `
   </head>
   <body>
     <h1>Headline</h1>
-    <div class="token"><span>DEAD-BEEF-0007</span></div>
+    <div class="token"><span>
+	DEAD-BEEF-0007
+
+</span></div>
   </body>
 </html>`
 

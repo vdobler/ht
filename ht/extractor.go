@@ -150,8 +150,9 @@ type HTMLExtractor struct {
 
 	// Attribute is the name of the attribute from which the
 	// value should be extracted.  The magic value "~text~" refers to the
-	// text content of the element. E.g. in the examples above the following
-	// should be sensible:
+	// normalized text content of the element and ~rawtext~ to the raw
+	// text content.
+	// E.g. in the examples above the following should be sensible:
 	//     content
 	//     value
 	//     ~text~
@@ -174,9 +175,12 @@ func (e HTMLExtractor) Extract(t *Test) (string, error) {
 		if node == nil {
 			return "", fmt.Errorf("could not find node '%s'", e.Selector)
 		}
-		if e.Attribute == "~text~" {
+		if e.Attribute == "~rawtext~" {
 			return TextContent(node, true), nil
+		} else if e.Attribute == "~text~" {
+			return TextContent(node, false), nil
 		}
+
 		for _, a := range node.Attr {
 			if a.Key == e.Attribute {
 				return a.Val, nil
