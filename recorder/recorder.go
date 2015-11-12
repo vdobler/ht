@@ -26,21 +26,22 @@ import (
 	"github.com/vdobler/ht/internal/json5"
 )
 
-var Events []Event // the global list of request/response events to generate tests for
+// Events is the global list of recorded events.
+var Events []Event
 
 var (
-	eventFront int
-
-	directory  = flag.String("dir", "./recorded", "save tests to directory `d`")
 	name       = flag.String("name", "test", "set name of tests to `n`")
 	disarm     = flag.Duration("disarm", 1*time.Second, "duration in which recording is off")
 	ignoreCT   = flag.String("ignore.ct", "", "ignore request with content-type matching `regexp`")
 	ignorePath = flag.String("ignore.path", "", "ignore request with path matching `regexp`")
+
+	remoteHost string
 )
 
 // StartReverseProxy listens on the local port and forwards request to remote
 // while capturing the request/response pairs.
 func StartReverseProxy(port string, remote *url.URL) error {
+	remoteHost = remote.Host
 	requests := make(chan Event, 10)
 	go process(requests)
 
@@ -56,6 +57,7 @@ type Event struct {
 	Response  *httptest.ResponseRecorder // The recorded response
 	Body      []byte                     // The captured body
 	Timestamp time.Time                  // Timestamp when caputred
+	Name      string                     // Used during dumping
 }
 
 func handler(p *httputil.ReverseProxy, requests chan Event) func(http.ResponseWriter, *http.Request) {
@@ -67,7 +69,11 @@ func handler(p *httputil.ReverseProxy, requests chan Event) func(http.ResponseWr
 		}
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 		p.ServeHTTP(rr, r)
-		requests <- Event{r, body, rr, time.Now()}
+		requests <- Event{
+			Request:   r,
+			Response:  rr,
+			Body:      body,
+			Timestamp: time.Now()}
 		for h, v := range rr.HeaderMap {
 			w.Header()[h] = v
 		}
@@ -101,7 +107,8 @@ func process(requests chan Event) {
 			continue
 		}
 		last = e.Timestamp
-		events = append(events, e)
+		e.Name = fmt.Sprintf("Event %d", len(Events)+1)
+		Events = append(Events, e)
 		log.Println("Recorded", e.Request.Method, e.Request.URL, " --> ", e.Response.Code)
 	}
 }
@@ -115,14 +122,23 @@ type Test struct {
 	Checks      ht.CheckList `json:",omitempty"`
 }
 
-func dumpEvents(w http.ResponseWriter, r *http.Request) {
-	err := os.MkdirAll(*directory, 0777)
+// Suite is a reduced version of ht.Suite suitable to serialization to JSON5.
+type Suite struct {
+	Name        string
+	Description string `json:",omitempty"`
+	Tests       []string
+	Variables   map[string]string
+}
+
+// DumpEvents writes events to directory, it extracts common headers.
+func DumpEvents(events []Event, directory string, suitename string) error {
+	err := os.MkdirAll(directory, 0777)
 	if err != nil {
-		panic(err.Error())
+		return err
 	}
 
 	// extract all common headers into mixin
-	commonHeaders := extractCommonHeaders()
+	commonHeaders := ExtractCommonHeaders(events)
 	test := &Test{
 		Name: fmt.Sprintf("Common Header of %s", *name),
 		Request: ht.Request{
@@ -130,10 +146,21 @@ func dumpEvents(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	commonFilename := path.Join(*directory, "common-headers.mixin")
-	writeTest(test, commonFilename)
+	commonFilename := path.Join(directory, "common-headers.mixin")
+	err = writeTest(test, commonFilename)
+	if err != nil {
+		return err
+	}
 
-	for i, e := range events {
+	suite := Suite{
+		Name:        suitename,
+		Description: fmt.Sprintf("Generated at %s", time.Now()),
+		Variables: map[string]string{
+			"HOSTNAME": remoteHost,
+		},
+	}
+
+	for _, e := range events {
 		host := e.Request.URL.Host
 		e.Request.URL.Host = "H.O.S.T.N.A.M.E"
 		cookies := []ht.Cookie{}
@@ -153,7 +180,7 @@ func dumpEvents(w http.ResponseWriter, r *http.Request) {
 		checks := extractChecks(e)
 
 		test := &Test{
-			Name:        fmt.Sprintf("%s %d", *name, i+1),
+			Name:        e.Name,
 			Description: fmt.Sprintf("Recorded from %s on %s", host, time.Now()),
 			BasedOn:     []string{commonFilename},
 			Request: ht.Request{
@@ -167,28 +194,52 @@ func dumpEvents(w http.ResponseWriter, r *http.Request) {
 			Checks: checks,
 		}
 
-		filename := path.Join(*directory, fmt.Sprintf("%s_%02d.ht", *name, i+1))
-		writeTest(test, filename)
+		name := strings.ToLower(strings.Replace(e.Name, " ", "_", -1)) + ".ht"
+		suite.Tests = append(suite.Tests, name)
+		filename := path.Join(directory, name)
+		err = writeTest(test, filename)
+		if err != nil {
+			return err
+		}
 
 		e.Request.URL.Host = host
 		log.Println("Generate test for ", e.Request.Method, e.Request.URL, " --> ", filename)
 	}
 
-	http.Error(w, fmt.Sprintf("Generated %d tests.", len(events)), 200)
-	eventFront = len(events)
+	name := strings.ToLower(strings.Replace(suitename, " ", "_", -1)) + ".suite"
+	filename := path.Join(directory, name)
+	err = writeSuite(suite, filename)
+	if err != nil {
+		return err
+	}
+	log.Println("Generate suite ", filename)
+
+	return nil
 }
 
-func writeTest(test *Test, filename string) {
+func writeTest(test *Test, filename string) error {
 	data, err := json5.MarshalIndent(test, "", "    ")
 	if err != nil {
-		log.Printf("Ooops: Test %s, cannot serialize: %s", test.Name, err)
-		return
+		return err
 	}
 	err = ioutil.WriteFile(filename, data, 0666)
 	if err != nil {
-		log.Printf("Ooops: Test %s, cannot write file %s: %s", test.Name, filename, err)
-		return
+		return err
 	}
+	return nil
+}
+
+// TODO: combine with writeTest
+func writeSuite(suite Suite, filename string) error {
+	data, err := json5.MarshalIndent(suite, "", "    ")
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(filename, data, 0666)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func extractChecks(e Event) ht.CheckList {
@@ -286,7 +337,8 @@ func createSetCookieCheck(c *http.Cookie, now time.Time) *ht.SetCookie {
 	return sc
 }
 
-func extractCommonHeaders() http.Header {
+// ExtractCommonHeaders from events.
+func ExtractCommonHeaders(events []Event) http.Header {
 	common := http.Header{}
 	h0 := events[0].Request.Header
 	for h, v := range h0 {
