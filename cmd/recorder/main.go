@@ -9,45 +9,24 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"html/template"
 	"log"
 	"net/http"
-	"net/http/httptest"
-	"net/http/httputil"
 	"net/url"
 	"os"
-	"path"
-	"regexp"
-	"strings"
-	"time"
+	"strconv"
 
-	"github.com/vdobler/ht/ht"
-	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/recorder"
 )
 
 var (
-	events []event // the global list of request/response events to generate tests for
-
-	directory  = flag.String("dir", "./recorded", "save tests to directory `d`")
-	name       = flag.String("name", "test", "set name of tests to `n`")
-	disarm     = flag.Duration("disarm", 1*time.Second, "duration in which recording is off")
-	ignoreCT   = flag.String("ignore.ct", "", "ignore request with content-type matching `regexp`")
-	ignorePath = flag.String("ignore.path", "", "ignore request with path matching `regexp`")
-
-	ignoreCTRe   *regexp.Regexp
-	ignorePathRe *regexp.Regexp
+	port      = flag.String("port", ":8080", "local service address")
+	directory = flag.String("dir", "./recorded", "save tests to directory `d`")
 )
 
 func main() {
 	flag.Parse()
 	args := flag.Args()
-
-	if *ignoreCT != "" {
-		ignoreCTRe = regexp.MustCompile(*ignoreCT)
-	}
-	if *ignorePath != "" {
-		ignorePathRe = regexp.MustCompile(*ignorePath)
-	}
 
 	if len(args) != 1 {
 		fmt.Fprintf(os.Stderr, "Missing target\n")
@@ -59,195 +38,151 @@ func main() {
 		panic(err)
 	}
 
-	requests := make(chan event, 10)
-	go process(requests)
+	templ = template.Must(template.New("admin").Parse(adminTemplate))
+	registerAdminHandlers()
 
-	proxy := httputil.NewSingleHostReverseProxy(remote)
-	http.HandleFunc("/", handler(proxy, requests))
-	http.HandleFunc("/DUMP", dumpEvents)
-	err = http.ListenAndServe(":8080", nil)
+	err = recorder.StartReverseProxy(*port, remote)
 	if err != nil {
 		panic(err)
 	}
 }
 
-type event struct {
-	request   *http.Request
-	body      []byte
-	response  *httptest.ResponseRecorder
-	timestamp time.Time
+func registerAdminHandlers() {
+	http.HandleFunc("/-ADMIN-", adminHandler)
+	log.Printf("Point browser to http://localhost%s/-ADMIN- to access recorder admin interface", *port)
 }
 
-func handler(p *httputil.ReverseProxy, requests chan event) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		rr := httptest.NewRecorder()
-		body, err := ioutil.ReadAll(r.Body)
+func updateEvents(form url.Values) error {
+	del := map[int]bool{}
+	for _, v := range form["event"] {
+		i, err := strconv.Atoi(v)
 		if err != nil {
-			panic(err.Error()) // Harsh but what else?
+			return err
 		}
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-		p.ServeHTTP(rr, r)
-		requests <- event{r, body, rr, time.Now()}
-		for h, v := range rr.HeaderMap {
-			w.Header()[h] = v
-		}
-		w.WriteHeader(rr.Code)
-		w.Write(rr.Body.Bytes())
+		del[i] = true
 	}
-}
-
-func process(requests chan event) {
-	last := time.Now()
-	log.Println("Started processing")
-	for e := range requests {
-		delta := e.timestamp.Sub(last)
-		if delta < *disarm {
+	log.Printf("Del == %#v", del)
+	ne := []recorder.Event{}
+	for i, e := range recorder.Events {
+		if del[i] {
 			continue
 		}
-		if ignorePathRe != nil && ignorePathRe.MatchString(e.request.URL.Path) {
-			log.Println("Ignoring path", e.request.URL.Path)
-			continue
+		if name := form.Get(fmt.Sprintf("name%d", i)); name != "" {
+			e.Name = name
 		}
-		if ignoreCTRe != nil && ignoreCTRe.MatchString(e.response.HeaderMap.Get("Content-Type")) {
-			log.Println("Ignoring content type ", e.response.HeaderMap.Get("Content-Type"))
-			continue
-		}
-		last = e.timestamp
-		events = append(events, e)
-		log.Println("Recorded", e.request.Method, e.request.URL, " --> ", e.response.Code)
+		ne = append(ne, e)
 	}
+	recorder.Events = ne
+	return nil
 }
 
-type Test struct {
-	Name        string
-	Description string   `json:",omitempty"`
-	BasedOn     []string `json:",omitempty"`
-	Request     ht.Request
-	Checks      ht.CheckList `json:",omitempty"`
-}
-
-func dumpEvents(w http.ResponseWriter, r *http.Request) {
-	err := os.MkdirAll(*directory, 0777)
+func saveEvents(form url.Values) error {
+	ets := []recorder.Event{}
+	for i, e := range recorder.Events {
+		if name := form.Get(fmt.Sprintf("name%d", i)); name != "" {
+			e.Name = name
+		}
+		ets = append(ets, e)
+	}
+	dir := form.Get("directory")
+	if dir == "" {
+		dir = "."
+	}
+	suite := form.Get("suite")
+	if suite == "" {
+		suite = "Suite"
+	}
+	err := recorder.DumpEvents(ets, dir, suite)
 	if err != nil {
-		panic(err.Error())
+		return err
 	}
+	log.Printf("Saved %d tests to directory %s", len(ets), dir)
 
-	// extract all common headers into mixin
-	commonHeaders := extractCommonHeaders()
-	test := &Test{
-		Name: fmt.Sprintf("Common Header of %s", *name),
-		Request: ht.Request{
-			Header: commonHeaders,
-		},
-	}
-
-	commonFilename := path.Join(*directory, "common-headers.mixin")
-	writeTest(test, commonFilename)
-
-	for i, e := range events {
-		host := e.request.URL.Host
-		e.request.URL.Host = "H.O.S.T.N.A.M.E"
-		cookies := []ht.Cookie{}
-		for _, c := range e.request.Cookies() {
-			cookies = append(cookies, ht.Cookie{Name: c.Name, Value: c.Value})
-		}
-		e.request.Header.Del("Cookie")
-
-		params := e.request.URL.Query()
-		e.request.URL.RawQuery = ""
-		urlString := e.request.URL.String()
-		urlString = strings.Replace(urlString, "H.O.S.T.N.A.M.E", "{{HOSTNAME}}", 1)
-
-		// TODO: scan body for parameters and set ParamsAs
-		body := e.body
-
-		checks := extractChecks(e)
-
-		test := &Test{
-			Name:        fmt.Sprintf("%s %d", *name, i+1),
-			Description: fmt.Sprintf("Recorded from %s on %s", host, time.Now()),
-			BasedOn:     []string{commonFilename},
-			Request: ht.Request{
-				Method:  e.request.Method,
-				URL:     urlString,
-				Cookies: cookies,
-				Header:  e.request.Header,
-				Params:  ht.URLValues(params),
-				Body:    string(body),
-			},
-			Checks: checks,
-		}
-
-		filename := path.Join(*directory, fmt.Sprintf("%s_%02d.ht", *name, i+1))
-		writeTest(test, filename)
-
-		log.Println("Generate test:  ", e.request.Method, e.request.URL, " --> ", filename)
-	}
-
-	http.Error(w, fmt.Sprintf("Generated %d tests.", len(events)), 200)
-	events = events[:0]
+	recorder.Events = recorder.Events[:0]
+	return nil
 }
 
-func writeTest(test *Test, filename string) {
-	data, err := json5.MarshalIndent(test, "", "    ")
+func adminHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	if r.Method == "POST" {
+		switch r.FormValue("action") {
+		case "Update":
+			err = updateEvents(r.Form)
+		case "Save":
+			err = saveEvents(r.Form)
+		default:
+			err = fmt.Errorf("Unknown action %q", r.FormValue("action"))
+		}
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	buf := &bytes.Buffer{}
+
+	type Data struct {
+		Dir    string
+		Events []recorder.Event
+	}
+
+	data := Data{
+		Dir:    *directory,
+		Events: recorder.Events,
+	}
+
+	err = templ.Execute(buf, data)
 	if err != nil {
-		log.Printf("Ooops: Test %s, cannot serialize: %s", test.Name, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = ioutil.WriteFile(filename, data, 0666)
-	if err != nil {
-		log.Printf("Ooops: Test %s, cannot write file %s: %s", test.Name, filename, err)
-		return
-	}
+	w.Write(buf.Bytes())
 }
 
-func extractChecks(e event) ht.CheckList {
-	list := ht.CheckList{}
+var templ *template.Template
 
-	// Allways add StatusCode check.
-	list = append(list, ht.StatusCode{Expect: e.response.Code})
+const adminTemplate = `<!DOCTYPE html>
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=utf-8">
+   <title>Test Recoder - Admin</title>
+</head>
+<body>
+<h1>Test Recorder - Admin</h1>
 
-	// Check for Content-Type header.
-	ct := e.response.Header().Get("Content-Type")
-	if ct != "" {
-		ct = strings.TrimSpace(strings.Split(ct, ";")[0])
-		if i := strings.Index(ct, "/"); i != -1 {
-			ct := ct[i+1:]
-			list = append(list, ht.ContentType{Is: ct})
-		} else {
-			ct = ""
-		}
-	}
+<form action="/-ADMIN-" method="post">
+  <table style="border-spacing: 5px">
+    <thead>
+      <tr><td style="background-color: red">Delete</td><td>Name</td><td>URL</td></tr>
+    </thead>
+    <tbody>
+      {{range $i, $e := .Events}}
+      <tr style="padding-bottom: 1ex">
+          <td>
+              <input type="checkbox" name="event" value="{{$i}}" />
+          </td>
+          <td>
+              <input type="text" name="name{{$i}}" value="{{$e.Name}}" />
+          </td>
+          <td>
+              {{$e.Request.URL}}
+          </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
 
-	// Checks for Set-Cookie headers:
-	dummy := http.Response{Header: e.response.Header()}
-	for _, c := range dummy.Cookies() {
-		sc := &ht.SetCookie{Name: c.Name, Value: ht.Condition{Equals: c.Value}}
-		// TODO: MinLifetime, Path, etc.
-		list = append(list, sc)
-	}
+  <div style="padding: 2ex 2ex 4ex 0ex">
+      <input type="submit" name="action" value="Update" />
+  </div>
 
-	return list
-}
+  <div>
+      Save to: <input type="text" name="directory" value="{{.Dir}}" />
+      as suite  <input type="text" name="suite" value="" />
+      <input type="submit" name="action" value=" Save " />
+  </div>
 
-func extractCommonHeaders() http.Header {
-	common := http.Header{}
-	h0 := events[0].request.Header
-	for h, v := range h0 {
-		vs := fmt.Sprintf("%v", v)
-		identical := true
-		for j := 2; j < len(events); j++ {
-			if vs != fmt.Sprintf("%v", events[j].request.Header[h]) {
-				identical = false
-				break
-			}
-		}
-		if identical {
-			common[h] = v
-			for _, e := range events {
-				e.request.Header.Del(h)
-			}
-		}
-	}
-	return common
-}
+</form>
+
+</body>
+`
