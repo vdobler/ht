@@ -19,7 +19,7 @@ import (
 )
 
 var cmdMonitor = &Command{
-	Run:         runMonitor,
+	RunSuites:   runMonitor,
 	Usage:       "monitor [flags] <suite>...",
 	Description: "periodically run suites",
 	Flag:        flag.NewFlagSet("monitor", flag.ContinueOnError),

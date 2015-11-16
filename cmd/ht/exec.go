@@ -20,7 +20,7 @@ import (
 )
 
 var cmdExec = &Command{
-	Run:         runExecute,
+	RunSuites:   runExecute,
 	Usage:       "exec [options] <suite>...",
 	Description: "generate request and test response",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),

@@ -13,7 +13,7 @@ import (
 )
 
 var cmdWarmup = &Command{
-	Run:         runWarmup,
+	RunSuites:   runWarmup,
 	Usage:       "warmup [options] <suite>...",
 	Description: "make HTTP requests without testing",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),

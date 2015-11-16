@@ -14,7 +14,7 @@ import (
 )
 
 var cmdPerf = &Command{
-	Run:         runPerf,
+	RunSuites:   runPerf,
 	Usage:       "perf [flags] <suite>...",
 	Description: "run a performance/load test",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),

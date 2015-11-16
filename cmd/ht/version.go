@@ -7,12 +7,10 @@ package main
 import (
 	"flag"
 	"fmt"
-
-	"github.com/vdobler/ht/ht"
 )
 
 var cmdVersion = &Command{
-	Run:         runVersion,
+	RunArgs:     runVersion,
 	Usage:       "version",
 	Description: "print version information",
 	Flag:        flag.NewFlagSet("version", flag.ContinueOnError),
@@ -22,9 +20,9 @@ Version prints version information about ht.
 }
 
 var (
-	version = "0.2beta"
+	version = "0.8beta"
 )
 
-func runVersion(cmd *Command, suites []*ht.Suite) {
+func runVersion(cmd *Command, _ []string) {
 	fmt.Printf("ht version %s\n", version)
 }

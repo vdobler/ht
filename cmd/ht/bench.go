@@ -17,7 +17,7 @@ import (
 )
 
 var cmdBench = &Command{
-	Run:         runBench,
+	RunSuites:   runBench,
 	Usage:       "bench [flags] <suite>...",
 	Description: "benchmark requests",
 	Flag:        flag.NewFlagSet("bench", flag.ContinueOnError),

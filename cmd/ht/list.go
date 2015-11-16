@@ -13,7 +13,7 @@ import (
 )
 
 var cmdList = &Command{
-	Run:         runList,
+	RunSuites:   runList,
 	Usage:       "list [flags] <suite>...",
 	Description: "list tests in suits",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
