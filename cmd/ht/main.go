@@ -56,6 +56,7 @@ var commands = []*Command{
 	cmdWarmup,
 	cmdBench,
 	cmdMonitor,
+	cmdFingerprint,
 	// cmdPerf,
 }
 
@@ -64,7 +65,7 @@ func usage() {
 	formatedCmdList := ""
 
 	for _, cmd := range commands {
-		formatedCmdList += fmt.Sprintf("    %-8s %s\n",
+		formatedCmdList += fmt.Sprintf("    %-12s %s\n",
 			cmd.Name(), cmd.Description)
 	}
 
