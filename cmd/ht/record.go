@@ -2,54 +2,69 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// recorder is a reverse proxy to record requests and output tests.
 package main
 
 import (
 	"bytes"
 	"flag"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
+	"text/template"
 
 	"github.com/vdobler/ht/recorder"
 )
 
+var cmdRecord = &Command{
+	RunArgs:     runRecord,
+	Usage:       "record [flags] <remote-target>",
+	Description: "run reverse proxy to record tests",
+	Flag:        flag.NewFlagSet("record", flag.ContinueOnError),
+	Help: `
+Record acts as a reverse proxy to <remote-target> capturing requests and
+responses. It allows to filter which request/response pairs get captured.
+Tests can be generated for the captured reqest/response pairs.
+`,
+}
+
+func init() {
+	cmdRecord.Flag.StringVar(&recorderPort, "port", ":8080", "local service address")
+	addOutputFlag(cmdRecord.Flag)
+}
+
 var (
-	port      = flag.String("port", ":8080", "local service address")
-	directory = flag.String("dir", "./recorded", "save tests to directory `d`")
+	recorderPort string
 )
 
-func main() {
-	flag.Parse()
-	args := flag.Args()
-
+func runRecord(cmd *Command, args []string) {
 	if len(args) != 1 {
-		fmt.Fprintf(os.Stderr, "Missing target\n")
-		os.Exit(9)
+		fmt.Fprintln(os.Stderr, "Missing <remote-target> for record")
+		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
+		os.Exit(1)
 	}
 
 	remote, err := url.Parse(args[0])
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Cannot parsee %q as an URL: %s\n", args[0], err)
+		os.Exit(1)
 	}
 
 	templ = template.Must(template.New("admin").Parse(adminTemplate))
 	registerAdminHandlers()
 
-	err = recorder.StartReverseProxy(*port, remote)
+	err = recorder.StartReverseProxy(recorderPort, remote)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Cannot launch reverse proxy: %s", err)
+		os.Exit(1)
 	}
 }
 
 func registerAdminHandlers() {
 	http.HandleFunc("/-ADMIN-", adminHandler)
-	log.Printf("Point browser to http://localhost%s/-ADMIN- to access recorder admin interface", *port)
+	log.Printf("Point browser to http://localhost%s/-ADMIN- to access recorder admin interface", recorderPort)
 }
 
 func updateEvents(form url.Values) error {
@@ -128,7 +143,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := Data{
-		Dir:    *directory,
+		Dir:    outputDir,
 		Events: recorder.Events,
 	}
 

@@ -50,6 +50,7 @@ func (c *Command) usage() {
 // The order here is the order in which they are printed by 'go help'.
 var commands = []*Command{
 	cmdVersion,
+	cmdRecord,
 	cmdList,
 	cmdRun,
 	cmdExec,
