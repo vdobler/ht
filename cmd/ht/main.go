@@ -57,6 +57,7 @@ var commands = []*Command{
 	cmdBench,
 	cmdMonitor,
 	cmdFingerprint,
+	cmdReconstruct,
 	// cmdPerf,
 }
 
