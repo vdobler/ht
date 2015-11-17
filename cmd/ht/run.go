@@ -43,7 +43,8 @@ func runRun(cmd *Command, tests []*ht.Test) {
 	suite.Tests = tests
 	err := suite.Prepare()
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Println(err.Error())
+		os.Exit(3)
 	}
 	if verbosity != -99 {
 		for i := range suite.Tests {

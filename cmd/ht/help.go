@@ -28,7 +28,7 @@ func runHelp(cmd *Command, args []string) {
 
 	if len(args) > 1 {
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
-		os.Exit(1)
+		os.Exit(9)
 	}
 
 	arg := args[0]

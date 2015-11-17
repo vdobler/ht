@@ -108,7 +108,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	} else if totalError > 0 {
 		os.Exit(2)
 	} else if totalFailed > 0 {
-		os.Exit(2)
+		os.Exit(1)
 	}
 
 	os.Exit(0)

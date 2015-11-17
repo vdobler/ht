@@ -43,7 +43,7 @@ func runReconstruct(cmd *Command, args []string) {
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "Missing arguments to fingerprint")
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
-		os.Exit(1)
+		os.Exit(9)
 	}
 	hash := args[0]
 
@@ -52,24 +52,24 @@ func runReconstruct(cmd *Command, args []string) {
 		bmv, err := fingerprint.BMVHashFromString(hash)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Sorry, %q is not a BMV Hash value\n", hash)
-			os.Exit(1)
+			os.Exit(8)
 		}
 		img = bmv.Image(recunstructWidth, recunstructHeight)
 	} else if len(hash) == 24 {
 		ch, err := fingerprint.ColorHistFromString(hash)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Sorry, %q is not a Color Histogram Hash value\n", hash)
-			os.Exit(1)
+			os.Exit(8)
 		}
 		img = ch.Image(recunstructWidth, recunstructHeight)
 	} else {
 		fmt.Fprintf(os.Stderr, "Uncrecognised hash (neither 16 nor 24 hex digit long).")
-		os.Exit(1)
+		os.Exit(8)
 	}
 	err := png.Encode(os.Stdout, img)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Problems writing image: %s\n", err.Error())
-		os.Exit(1)
+		os.Exit(8)
 	}
 
 	os.Exit(0)

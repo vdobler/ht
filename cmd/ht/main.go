@@ -146,7 +146,8 @@ func loadSuites(args []string) []*ht.Suite {
 	for _, s := range args {
 		suite, err := ht.LoadSuite(s)
 		if err != nil {
-			log.Fatalf("Cannot read suite %q: %s", s, err)
+			log.Printf("Cannot read suite %q: %s", s, err)
+			os.Exit(8)
 		}
 		for varName, varVal := range variablesFlag {
 			suite.Variables[varName] = varVal
@@ -154,7 +155,8 @@ func loadSuites(args []string) []*ht.Suite {
 		suite.Log = logger
 		err = suite.Prepare()
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Println(err.Error())
+			os.Exit(8)
 		}
 		if verbosity != -99 {
 			for i := range suite.Setup {
@@ -195,7 +197,8 @@ func loadTests(args []string) []*ht.Test {
 	for _, t := range args {
 		tests, err := ht.LoadTest(t)
 		if err != nil {
-			log.Fatalf("Cannot read test %q: %s", t, err)
+			log.Printf("Cannot read test %q: %s", t, err)
+			os.Exit(8)
 		}
 		tt = append(tt, tests[0])
 	}
@@ -291,12 +294,14 @@ func fillVariablesFlagFrom(variablesFile string) {
 	}
 	data, err := ioutil.ReadFile(variablesFile)
 	if err != nil {
-		log.Fatalf("Cannot read variable file %q: %s", variablesFile, err)
+		log.Printf("Cannot read variable file %q: %s", variablesFile, err)
+		os.Exit(8)
 	}
 	v := map[string]string{}
 	err = json5.Unmarshal(data, &v)
 	if err != nil {
-		log.Fatalf("Cannot unmarshal variable file %q: %s", variablesFile, err)
+		log.Printf("Cannot unmarshal variable file %q: %s", variablesFile, err)
+		os.Exit(8)
 	}
 	for n, k := range v {
 		if _, ok := variablesFlag[n]; !ok {

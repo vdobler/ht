@@ -34,7 +34,7 @@ func runFingerprint(cmd *Command, args []string) {
 	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, "Missing arguments to fingerprint")
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
-		os.Exit(1)
+		os.Exit(9)
 	}
 
 	max := 0
@@ -45,17 +45,24 @@ func runFingerprint(cmd *Command, args []string) {
 	}
 
 	fmt.Printf("%-*s :  %-16s  %-24s\n", max, "# Image Path", "BMV-Hash", "ColorHist-Hash")
+	okay := true
 	for _, a := range args {
 		fmt.Printf("%-*s :  ", max, a)
 		img, err := readImage(a)
 		if err != nil {
 			fmt.Printf("Error %s\n", err)
+			okay = false
 		} else {
 			ch := fingerprint.NewColorHist(img)
 			bmv := fingerprint.NewBMVHash(img)
 			fmt.Printf("%s  %s\n", bmv.String(), ch.String())
 		}
 	}
+
+	if okay {
+		os.Exit(0)
+	}
+	os.Exit(8)
 }
 
 func readImage(name string) (image.Image, error) {
