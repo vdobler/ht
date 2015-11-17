@@ -8,7 +8,9 @@ package recorder
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"fmt"
+	"image"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,6 +23,10 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/html"
+
+	"github.com/andybalholm/cascadia"
+	"github.com/vdobler/ht/fingerprint"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/json5"
 )
@@ -245,6 +251,8 @@ func writeSuite(suite Suite, filename string) error {
 	return nil
 }
 
+// extractChecks tries to generate checks based on the given
+// request/response pair in e.
 func extractChecks(e Event) ht.CheckList {
 	list := ht.CheckList{}
 
@@ -253,13 +261,12 @@ func extractChecks(e Event) ht.CheckList {
 
 	// Check for Content-Type header.
 	contentType := e.Response.Header().Get("Content-Type")
+	contentTypeParts := []string{"??", "??"}
 	if contentType != "" {
 		contentType = strings.TrimSpace(strings.Split(contentType, ";")[0])
 		if i := strings.Index(contentType, "/"); i != -1 {
-			contentType := contentType[i+1:]
-			list = append(list, ht.ContentType{Is: contentType})
-		} else {
-			contentType = ""
+			contentTypeParts = strings.SplitN(contentType, "/", 2)
+			list = append(list, ht.ContentType{Is: contentTypeParts[1]})
 		}
 	}
 
@@ -284,10 +291,101 @@ func extractChecks(e Event) ht.CheckList {
 		list = append(list, red)
 	}
 
-	// Some HTML stuff
-	if contentType == "html" || contentType == "xhtml" {
-
+	// Based on content type
+	switch {
+	case contentTypeParts[1] == "html", contentTypeParts[1] == "xhtml":
+		list = append(list, extractHTMLChecks(e)...)
+	case contentTypeParts[0] == "image":
+		list = append(list, extractImageChecks(e)...)
+	case contentTypeParts[1] == "pdf":
+		list = append(list, identityCheck(e))
 	}
+
+	return list
+}
+
+var (
+	htmlTitleSel = cascadia.MustCompile("head title")
+	htmlH1Sel    = cascadia.MustCompile("body h1")
+)
+
+func identityCheck(e Event) ht.Check {
+	hash := sha1.Sum(e.Body)
+	return ht.Identity{SHA1: fmt.Sprintf("%02x", hash)}
+}
+
+func extractHTMLChecks(e Event) ht.CheckList {
+	list := ht.CheckList{}
+
+	// Allways add Links check.
+	list = append(list, &ht.Links{
+		Head:        true,
+		Which:       "a img link script",
+		Concurrency: 4,
+		Timeout:     ht.Duration(20 * time.Second),
+		IgnoredLinks: []ht.Condition{
+			ht.Condition{Contains: "www.facebook.com/"},
+			ht.Condition{Contains: "www.twitter.com/"},
+		},
+	})
+
+	doc, err := html.Parse(bytes.NewBuffer(e.Body))
+	if err != nil {
+		return list
+	}
+
+	// Title
+	if node := htmlTitleSel.MatchFirst(doc); node != nil {
+		title := ht.TextContent(node, false)
+		list = append(list, &ht.HTMLContains{
+			Selector: "head title",
+			Text:     []string{title},
+			Complete: true,
+		})
+	}
+
+	// All h1
+	if nodes := htmlH1Sel.MatchAll(doc); len(nodes) != 0 {
+		h1s := []string{}
+		for _, node := range nodes {
+			h1s = append(h1s, ht.TextContent(node, false))
+		}
+		list = append(list, &ht.HTMLContains{
+			Selector: "head title",
+			Text:     h1s,
+			Complete: true,
+			InOrder:  true,
+		})
+	}
+
+	return list
+}
+
+func extractImageChecks(e Event) ht.CheckList {
+	list := ht.CheckList{}
+
+	image, format, err := image.Decode(bytes.NewBuffer(e.Body))
+	if err != nil {
+		return list
+	}
+
+	list = append(list, ht.Image{
+		Format: format,
+		Width:  image.Bounds().Dx(),
+		Height: image.Bounds().Dy(),
+	})
+
+	BMV := fingerprint.NewBMVHash(image)
+	list = append(list, ht.Image{
+		Fingerprint: BMV.String(),
+		Threshold:   0.01,
+	})
+
+	ch := fingerprint.NewColorHist(image)
+	list = append(list, ht.Image{
+		Fingerprint: ch.String(),
+		Threshold:   0.01,
+	})
 
 	return list
 }
