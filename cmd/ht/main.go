@@ -21,6 +21,7 @@ import (
 
 // A Command is one of the subcommands of ht.
 type Command struct {
+	// One of RunSuites, RunTest and RunArgs must be provided by the command.
 	RunSuites func(cmd *Command, suites []*ht.Suite)
 	RunTests  func(cmd *Command, tests []*ht.Test)
 	RunArgs   func(cmd *Command, tests []string)
@@ -48,18 +49,23 @@ func (c *Command) usage() {
 
 // Commands lists the available commands and help topics.
 // The order here is the order in which they are printed by 'go help'.
-var commands = []*Command{
-	cmdVersion,
-	cmdRecord,
-	cmdList,
-	cmdRun,
-	cmdExec,
-	cmdWarmup,
-	cmdBench,
-	cmdMonitor,
-	cmdFingerprint,
-	cmdReconstruct,
-	// cmdPerf,
+var commands []*Command
+
+func init() {
+	commands = []*Command{
+		cmdVersion,
+		cmdHelp,
+		cmdRecord,
+		cmdList,
+		cmdRun,
+		cmdExec,
+		cmdWarmup,
+		cmdBench,
+		cmdMonitor,
+		cmdFingerprint,
+		cmdReconstruct,
+		// cmdPerf,
+	}
 }
 
 // usage prints usage information.
@@ -98,12 +104,6 @@ func main() {
 		os.Exit(9)
 	}
 
-	if args[0] == "help" {
-		help(args[1:])
-		return
-	}
-
-	var suites []*ht.Suite
 	for _, cmd := range commands {
 		if cmd.Name() != args[0] {
 			continue
@@ -118,7 +118,7 @@ func main() {
 		args = cmd.Flag.Args()
 		switch {
 		case cmd.RunSuites != nil:
-			suites = loadSuites(args)
+			suites := loadSuites(args)
 			cmd.RunSuites(cmd, suites)
 		case cmd.RunTests != nil:
 			tests := loadTests(args)
@@ -132,36 +132,6 @@ func main() {
 	fmt.Fprintf(os.Stderr, "ht: unknown subcommand %q\nRun 'ht help' for usage.\n",
 		args[0])
 	os.Exit(9)
-}
-
-// The help command.
-func help(args []string) {
-	if len(args) == 0 {
-		usage()
-		os.Exit(9)
-	}
-	if len(args) != 1 {
-		fmt.Fprintf(os.Stderr, "usage: ht help <command>\n\nToo many arguments given.\n")
-		os.Exit(9)
-	}
-
-	arg := args[0]
-
-	for _, cmd := range commands {
-		if cmd.Name() == arg {
-			fmt.Printf(`Usage:
-
-    ht %s
-%s
-Flags:
-`, cmd.Usage, cmd.Help)
-			cmd.Flag.PrintDefaults()
-			os.Exit(0)
-		}
-	}
-
-	fmt.Fprintf(os.Stderr, "Unknown help topic %#q.  Run 'ht help'.\n", arg)
-	os.Exit(9) // failed at 'go help cmd'
 }
 
 func loadSuites(args []string) []*ht.Suite {
