@@ -187,6 +187,7 @@ func LoadSuite(filename string) (*Suite, error) {
 		Description: raw.Description,
 		KeepCookies: raw.KeepCookies,
 		OmitChecks:  raw.OmitChecks,
+		Variables:   make(map[string]string),
 	}
 
 	testPool := make(map[string]*rawTest)
@@ -220,7 +221,9 @@ func LoadSuite(filename string) (*Suite, error) {
 		return suite, err
 	}
 
-	suite.Variables = raw.Variables
+	for k, v := range raw.Variables {
+		suite.Variables[k] = v
+	}
 	suite.KeepCookies = raw.KeepCookies
 	suite.OmitChecks = raw.OmitChecks
 
