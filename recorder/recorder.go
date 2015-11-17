@@ -8,7 +8,6 @@ package recorder
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -29,28 +28,6 @@ import (
 // Events is the global list of recorded events.
 var Events []Event
 
-var (
-	name       = flag.String("name", "test", "set name of tests to `n`")
-	disarm     = flag.Duration("disarm", 1*time.Second, "duration in which recording is off")
-	ignoreCT   = flag.String("ignore.ct", "", "ignore request with content-type matching `regexp`")
-	ignorePath = flag.String("ignore.path", "", "ignore request with path matching `regexp`")
-
-	remoteHost string
-)
-
-// StartReverseProxy listens on the local port and forwards request to remote
-// while capturing the request/response pairs.
-func StartReverseProxy(port string, remote *url.URL) error {
-	remoteHost = remote.Host
-	requests := make(chan Event, 10)
-	go process(requests)
-
-	proxy := httputil.NewSingleHostReverseProxy(remote)
-	http.HandleFunc("/", handler(proxy, requests))
-	log.Printf("Staring reverse proxying from localhost:%s to %s", port, remote.String())
-	return http.ListenAndServe(port, nil)
-}
-
 // Event is a request/response pair
 type Event struct {
 	Request   *http.Request              // The request
@@ -58,6 +35,45 @@ type Event struct {
 	Body      []byte                     // The captured body
 	Timestamp time.Time                  // Timestamp when caputred
 	Name      string                     // Used during dumping
+}
+
+type Options struct {
+	// Disarm is the time span after a captured request/response pair
+	// in which the capturing is disarmed.
+	Disarm time.Duration
+
+	IgnoredContentType *regexp.Regexp
+	IgnoredPath        *regexp.Regexp
+}
+
+func (o Options) ignore(e Event) bool {
+	if o.IgnoredPath != nil && o.IgnoredPath.MatchString(e.Request.URL.Path) {
+		log.Println("Ignoring path", e.Request.URL.Path)
+		return true
+	}
+	if o.IgnoredContentType != nil &&
+		o.IgnoredContentType.MatchString(e.Response.HeaderMap.Get("Content-Type")) {
+		log.Println("Ignoring content type ", e.Response.HeaderMap.Get("Content-Type"))
+		return true
+	}
+	return false
+}
+
+var (
+	remoteHost string
+)
+
+// StartReverseProxy listens on the local port and forwards request to remote
+// while capturing the request/response pairs.
+func StartReverseProxy(port string, remote *url.URL, opts Options) error {
+	remoteHost = remote.Host
+	requests := make(chan Event, 10)
+	go process(requests, opts)
+
+	proxy := httputil.NewSingleHostReverseProxy(remote)
+	http.HandleFunc("/", handler(proxy, requests))
+	log.Printf("Staring reverse proxying from localhost:%s to %s", port, remote.String())
+	return http.ListenAndServe(port, nil)
 }
 
 func handler(p *httputil.ReverseProxy, requests chan Event) func(http.ResponseWriter, *http.Request) {
@@ -82,28 +98,15 @@ func handler(p *httputil.ReverseProxy, requests chan Event) func(http.ResponseWr
 	}
 }
 
-func process(requests chan Event) {
-	var ignoreCTRe, ignorePathRe *regexp.Regexp
-	if *ignoreCT != "" {
-		ignoreCTRe = regexp.MustCompile(*ignoreCT)
-	}
-	if *ignorePath != "" {
-		ignorePathRe = regexp.MustCompile(*ignorePath)
-	}
-
+func process(requests chan Event, opts Options) {
 	log.Println("Started processing")
 	last := time.Now()
 	for e := range requests {
 		delta := e.Timestamp.Sub(last)
-		if delta < *disarm {
+		if delta < opts.Disarm {
 			continue
 		}
-		if ignorePathRe != nil && ignorePathRe.MatchString(e.Request.URL.Path) {
-			log.Println("Ignoring path", e.Request.URL.Path)
-			continue
-		}
-		if ignoreCTRe != nil && ignoreCTRe.MatchString(e.Response.HeaderMap.Get("Content-Type")) {
-			log.Println("Ignoring content type ", e.Response.HeaderMap.Get("Content-Type"))
+		if opts.ignore(e) {
 			continue
 		}
 		last = e.Timestamp
@@ -140,7 +143,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 	// extract all common headers into mixin
 	commonHeaders := ExtractCommonHeaders(events)
 	test := &Test{
-		Name: fmt.Sprintf("Common Header of %s", *name),
+		Name: fmt.Sprintf("Common Header of %s", suitename),
 		Request: ht.Request{
 			Header: commonHeaders,
 		},

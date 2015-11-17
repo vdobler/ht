@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"text/template"
+	"time"
 
 	"github.com/vdobler/ht/recorder"
 )
@@ -32,11 +34,19 @@ Tests can be generated for the captured reqest/response pairs.
 
 func init() {
 	cmdRecord.Flag.StringVar(&recorderPort, "port", ":8080", "local service address")
-	addOutputFlag(cmdRecord.Flag)
+	cmdRecord.Flag.StringVar(&recorderIgnPath, "ignore.path", "",
+		"ignore path matching `regexp`")
+	cmdRecord.Flag.StringVar(&recorderIgnCT, "ignore.type", "",
+		"ignore content types matching `regexp`")
+	cmdRecord.Flag.DurationVar(&recorderDisarm, "disarm", 1*time.Second,
+		"disarm recorder for `period` after last capture")
 }
 
 var (
-	recorderPort string
+	recorderPort    string
+	recorderDisarm  time.Duration
+	recorderIgnPath string
+	recorderIgnCT   string
 )
 
 func runRecord(cmd *Command, args []string) {
@@ -55,7 +65,17 @@ func runRecord(cmd *Command, args []string) {
 	templ = template.Must(template.New("admin").Parse(adminTemplate))
 	registerAdminHandlers()
 
-	err = recorder.StartReverseProxy(recorderPort, remote)
+	opts := recorder.Options{
+		Disarm: recorderDisarm,
+	}
+	if recorderIgnPath != "" {
+		opts.IgnoredPath = regexp.MustCompile(recorderIgnPath)
+	}
+	if recorderIgnCT != "" {
+		opts.IgnoredContentType = regexp.MustCompile(recorderIgnCT)
+	}
+
+	err = recorder.StartReverseProxy(recorderPort, remote, opts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot launch reverse proxy: %s", err)
 		os.Exit(1)
