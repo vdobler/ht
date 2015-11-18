@@ -214,7 +214,7 @@ const adminTemplate = `<!DOCTYPE html>
   <div>
       Save to: <input type="text" name="directory" value="{{.Dir}}" />
       as suite  <input type="text" name="suite" value="" />
-      <input type="submit" name="action" value=" Save " />
+      <input type="submit" name="action" value="Save" />
   </div>
 
 </form>
