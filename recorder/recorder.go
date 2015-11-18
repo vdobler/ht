@@ -304,11 +304,6 @@ func extractChecks(e Event) ht.CheckList {
 	return list
 }
 
-var (
-	htmlTitleSel = cascadia.MustCompile("head title")
-	htmlH1Sel    = cascadia.MustCompile("body h1")
-)
-
 func identityCheck(e Event) ht.Check {
 	hash := sha1.Sum(e.Body)
 	return ht.Identity{SHA1: fmt.Sprintf("%02x", hash)}
@@ -336,6 +331,9 @@ func extractHTMLChecks(e Event) ht.CheckList {
 	if err != nil {
 		return list
 	}
+
+	htmlTitleSel := cascadia.MustCompile("head title")
+	htmlH1Sel := cascadia.MustCompile("body h1")
 
 	// Title
 	if node := htmlTitleSel.MatchFirst(doc); node != nil {
