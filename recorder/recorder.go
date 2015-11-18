@@ -317,6 +317,9 @@ func identityCheck(e Event) ht.Check {
 func extractHTMLChecks(e Event) ht.CheckList {
 	list := ht.CheckList{}
 
+	// Anything else than UTF-8 is bad.
+	list = append(list, ht.UTF8Encoded{})
+
 	// Allways add Links check.
 	list = append(list, &ht.Links{
 		Head:        true,
