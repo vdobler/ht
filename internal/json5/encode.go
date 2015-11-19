@@ -192,6 +192,12 @@ type Marshaler interface {
 	MarshalJSON() ([]byte, error)
 }
 
+// Marshaler5 is the interface implemented by objects that
+// can marshal themselves into valid JSON5.
+type Marshaler5 interface {
+	MarshalJSON5() ([]byte, error)
+}
+
 // An UnsupportedTypeError is returned by Marshal when attempting
 // to encode an unsupported value type.
 type UnsupportedTypeError struct {
@@ -347,16 +353,23 @@ func typeEncoder(t reflect.Type) encoderFunc {
 
 var (
 	marshalerType     = reflect.TypeOf(new(Marshaler)).Elem()
+	marshaler5Type    = reflect.TypeOf(new(Marshaler5)).Elem()
 	textMarshalerType = reflect.TypeOf(new(encoding.TextMarshaler)).Elem()
 )
 
 // newTypeEncoder constructs an encoderFunc for a type.
 // The returned encoder only checks CanAddr when allowAddr is true.
 func newTypeEncoder(t reflect.Type, allowAddr bool) encoderFunc {
+	if t.Implements(marshaler5Type) {
+		return marshaler5Encoder
+	}
 	if t.Implements(marshalerType) {
 		return marshalerEncoder
 	}
 	if t.Kind() != reflect.Ptr && allowAddr {
+		if reflect.PtrTo(t).Implements(marshaler5Type) {
+			return newCondAddrEncoder(addrMarshaler5Encoder, newTypeEncoder(t, false))
+		}
 		if reflect.PtrTo(t).Implements(marshalerType) {
 			return newCondAddrEncoder(addrMarshalerEncoder, newTypeEncoder(t, false))
 		}
@@ -429,6 +442,38 @@ func addrMarshalerEncoder(e *encodeState, v reflect.Value, quoted bool) {
 	}
 	m := va.Interface().(Marshaler)
 	b, err := m.MarshalJSON()
+	if err == nil {
+		// copy JSON into buffer, checking validity.
+		err = compact(&e.Buffer, b, true)
+	}
+	if err != nil {
+		e.error(&MarshalerError{v.Type(), err})
+	}
+}
+func marshaler5Encoder(e *encodeState, v reflect.Value, quoted bool) {
+	if v.Kind() == reflect.Ptr && v.IsNil() {
+		e.WriteString("null")
+		return
+	}
+	m := v.Interface().(Marshaler5)
+	b, err := m.MarshalJSON5()
+	if err == nil {
+		// copy JSON into buffer, checking validity.
+		err = compact(&e.Buffer, b, true)
+	}
+	if err != nil {
+		e.error(&MarshalerError{v.Type(), err})
+	}
+}
+
+func addrMarshaler5Encoder(e *encodeState, v reflect.Value, quoted bool) {
+	va := v.Addr()
+	if va.IsNil() {
+		e.WriteString("null")
+		return
+	}
+	m := va.Interface().(Marshaler5)
+	b, err := m.MarshalJSON5()
 	if err == nil {
 		// copy JSON into buffer, checking validity.
 		err = compact(&e.Buffer, b, true)

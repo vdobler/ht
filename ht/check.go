@@ -173,7 +173,7 @@ type CheckList []Check
 // MarshalJSON produces a JSON arry of the checks in cl.
 // Each check is serialized in the form
 //     { Check: "NameOfCheckAsRegistered", Field1OfCheck: Value1, Field2: Value2, ... }
-func (cl CheckList) MarshalJSON() ([]byte, error) {
+func (cl CheckList) MarshalJSON5() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	buf.WriteRune('[')
 	for i, check := range cl {
@@ -181,7 +181,7 @@ func (cl CheckList) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		buf.WriteString(`{"Check":"` + NameOf(check) + `"`)
+		buf.WriteString(`{Check:"` + NameOf(check) + `"`)
 		if string(raw) != "{}" {
 			buf.WriteRune(',')
 			buf.Write(raw[1 : len(raw)-1])
