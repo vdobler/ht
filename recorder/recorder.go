@@ -87,7 +87,7 @@ func StartReverseProxy(port string, remote *url.URL, opts Options) error {
 
 	proxy := newSingleHostReverseProxy(remote)
 	http.HandleFunc("/", handler(proxy, requests))
-	log.Printf("Staring reverse proxying from localhost:%s to %s", port, remote.String())
+	log.Printf("Staring reverse proxy. Proxying from localhost%s to %s", port, remote.String())
 	return http.ListenAndServe(port, nil)
 }
 
@@ -245,13 +245,31 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 		}
 		e.Request.Header.Del("Cookie")
 
-		params := e.Request.URL.Query()
-		e.Request.URL.RawQuery = ""
+		// Inspect body and extract parameters if appropriate.
+		queryParams := e.Request.URL.Query()
+		rawQuery := e.Request.URL.RawQuery
+		e.Request.URL.RawQuery = "" // clear to prevent reparsing when body is analyzed
+		body, bodyParams, paramsAs := scanRequestBody(&e)
+
+		var params url.Values
+		if len(queryParams) > 0 && len(bodyParams) > 0 {
+			// Parameters in URL _and_ body: Must keep both
+			e.Request.URL.RawQuery = rawQuery
+			params = bodyParams
+		} else {
+			// Just one "type" of parameters.
+			if len(queryParams) > 0 {
+				params = queryParams
+				paramsAs = ""
+			} else {
+				params = bodyParams
+			}
+		}
+
 		urlString := e.Request.URL.String()
 		urlString = strings.Replace(urlString, "H.O.S.T.N.A.M.E", "{{HOSTNAME}}", 1)
 
-		// TODO: scan body for parameters and set ParamsAs
-		body := e.RequestBody
+		dropUnnecessaryHeaders(e.Request.Header)
 
 		checks := extractChecks(e)
 
@@ -260,12 +278,13 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 			Description: fmt.Sprintf("Recorded from %s on %s", host, time.Now()),
 			BasedOn:     []string{commonFilename},
 			Request: ht.Request{
-				Method:  e.Request.Method,
-				URL:     urlString,
-				Cookies: cookies,
-				Header:  e.Request.Header,
-				Params:  ht.URLValues(params),
-				Body:    string(body),
+				Method:   e.Request.Method,
+				URL:      urlString,
+				Cookies:  cookies,
+				Header:   e.Request.Header,
+				Params:   ht.URLValues(params),
+				ParamsAs: paramsAs,
+				Body:     body,
 			},
 			Checks: checks,
 		}
@@ -293,6 +312,42 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 	return nil
 }
 
+func scanRequestBody(e *Event) (body string, params url.Values, as string) {
+	if len(e.RequestBody) == 0 {
+		return "", nil, ""
+	}
+
+	if e.Request.Method != "POST" {
+		log.Printf("Ooops: Don't know how to treat %s-Request with non-empty body.",
+			e.Request.Method)
+		return e.RequestBody, nil, ""
+	}
+
+	// Repopulate the request body with an "unconsumed" writer (the original
+	// request has been forwarded to the proxy which drained the body).
+	e.Request.Body = ioutil.NopCloser(bytes.NewBufferString(e.RequestBody))
+
+	contentType := e.Request.Header.Get("Content-Type")
+	switch {
+	case strings.HasPrefix(contentType, "application/x-www-form-urlencoded"):
+		if err := e.Request.ParseForm(); err != nil {
+			log.Printf("Error parsing form: %s")
+		}
+		as = "body"
+	case strings.HasPrefix(contentType, "multipart/form-data"):
+		if err := e.Request.ParseMultipartForm(1 << 26); err != nil {
+			log.Printf("Error parsing multipart form: %s")
+		}
+		as = "multipart"
+	default:
+		log.Printf("Ooops: Don't know how to treat Content-Type %s with non-empty body.",
+			contentType)
+		return e.RequestBody, nil, ""
+	}
+
+	return "", e.Request.Form, as
+}
+
 func writeTest(test *Test, filename string) error {
 	data, err := json5.MarshalIndent(test, "", "    ")
 	if err != nil {
@@ -318,10 +373,15 @@ func writeSuite(suite Suite, filename string) error {
 	return nil
 }
 
+// ----------------------------------------------------------------------------
+// Extract Checks
+
 // extractChecks tries to generate checks based on the given
 // request/response pair in e.
 func extractChecks(e Event) ht.CheckList {
 	list := ht.CheckList{}
+
+	isRedirect := e.Response.Code/100 == 3 //  Uaaahhrg!
 
 	// Allways add StatusCode check.
 	list = append(list, ht.StatusCode{Expect: e.Response.Code})
@@ -331,7 +391,7 @@ func extractChecks(e Event) ht.CheckList {
 	contentTypeParts := []string{"??", "??"}
 	if contentType != "" {
 		contentType = strings.TrimSpace(strings.Split(contentType, ";")[0])
-		if i := strings.Index(contentType, "/"); i != -1 {
+		if i := strings.Index(contentType, "/"); i != -1 && !isRedirect {
 			contentTypeParts = strings.SplitN(contentType, "/", 2)
 			list = append(list, ht.ContentType{Is: contentTypeParts[1]})
 		}
@@ -353,13 +413,17 @@ func extractChecks(e Event) ht.CheckList {
 	}
 
 	// Check redirections:
-	if loc := e.Response.HeaderMap.Get("Location"); loc != "" && e.Response.Code/100 == 3 { //  Uaaahhrg!
+	if loc := e.Response.HeaderMap.Get("Location"); loc != "" && isRedirect {
 		red := &ht.Redirect{To: loc, StatusCode: e.Response.Code}
 		list = append(list, red)
 	}
 
+	log.Printf("Content Type %v", contentTypeParts)
+	log.Printf("Content Length %d", len(e.ResponseBody))
+	log.Printf("Body: %q", e.ResponseBody)
+
 	// Based on content type but ignore responses without body (e.g. 301)
-	if len(e.ResponseBody) > 0 {
+	if len(e.ResponseBody) > 0 && !isRedirect {
 		switch {
 		case contentTypeParts[1] == "html", contentTypeParts[1] == "xhtml":
 			list = append(list, extractHTMLChecks(e)...)
@@ -410,7 +474,6 @@ func extractHTMLChecks(e Event) ht.CheckList {
 
 	// Title
 	if node := htmlTitleSel.MatchFirst(doc); node != nil {
-		log.Printf("Title matched")
 		title := ht.TextContent(node, false)
 		list = append(list, &ht.HTMLContains{
 			Selector: "head title",
@@ -421,7 +484,6 @@ func extractHTMLChecks(e Event) ht.CheckList {
 
 	// All h1
 	if nodes := htmlH1Sel.MatchAll(doc); len(nodes) != 0 {
-		log.Printf("H1 matched")
 		h1s := []string{}
 		for _, node := range nodes {
 			h1s = append(h1s, ht.TextContent(node, false))
@@ -518,7 +580,7 @@ func createSetCookieCheck(c *http.Cookie, now time.Time) *ht.SetCookie {
 }
 
 // ----------------------------------------------------------------------------
-// Extraction of common header fields
+// Handling of headers
 
 func ExtractCommonResponseHeaders(events []Event) http.Header {
 	headers := make([]http.Header, len(events))
@@ -557,4 +619,9 @@ func extractCommonHeaders(headers []http.Header) http.Header {
 		}
 	}
 	return common
+}
+
+func dropUnnecessaryHeaders(h http.Header) {
+	h.Del("Content-Length") // Automatically set by package http
+	h.Del("Origin")         // This one is "http://localhost:8080"
 }

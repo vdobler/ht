@@ -96,7 +96,6 @@ func updateEvents(form url.Values) error {
 		}
 		del[i] = true
 	}
-	log.Printf("Del == %#v", del)
 	ne := []recorder.Event{}
 	for i, e := range recorder.Events {
 		if del[i] {
