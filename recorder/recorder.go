@@ -46,7 +46,42 @@ type Event struct {
 	Name         string    // Used during dumping.
 }
 
-// Options determining which events should be captured.
+func (e Event) extractName() string {
+	doc, err := html.Parse(bytes.NewBufferString(e.ResponseBody))
+	if err != nil {
+		return ""
+	}
+
+	// Try title first.
+	if node := cascadia.MustCompile("head title").MatchFirst(doc); node != nil {
+		title := ht.TextContent(node, false)
+		if title != "" {
+			return title
+		}
+	}
+
+	// First h1 is a good second choice.
+	if node := cascadia.MustCompile("h1").MatchFirst(doc); node != nil {
+		title := ht.TextContent(node, false)
+		if title != "" {
+			return title
+		}
+	}
+
+	// Last part of the URL without extension is my last idea
+	p := e.Request.URL.Path
+	p = p[strings.LastIndex(p, "/")+1:]
+	if i := strings.Index(p, "."); i != -1 {
+		p = p[:i]
+		if p != "" {
+			return p
+		}
+	}
+
+	return ""
+}
+
+// Options determining which and how events should be captured.
 type Options struct {
 	// Disarm is the time span after a captured request/response pair
 	// in which the capturing is disarmed.
@@ -168,8 +203,9 @@ func process(events chan Event, opts Options) {
 		if opts.ignore(e) {
 			continue
 		}
+		name := e.extractName()
 		last = e.Timestamp
-		e.Name = fmt.Sprintf("Event %d", len(Events)+1)
+		e.Name = fmt.Sprintf("Event %d: %s", len(Events)+1, name)
 		Events = append(Events, e)
 		log.Println("Recorded", e.Request.Method, e.Request.URL, " --> ",
 			e.Response.Code, e.Response.HeaderMap.Get("Content-Type"))
@@ -417,10 +453,6 @@ func extractChecks(e Event) ht.CheckList {
 		red := &ht.Redirect{To: loc, StatusCode: e.Response.Code}
 		list = append(list, red)
 	}
-
-	log.Printf("Content Type %v", contentTypeParts)
-	log.Printf("Content Length %d", len(e.ResponseBody))
-	log.Printf("Body: %q", e.ResponseBody)
 
 	// Based on content type but ignore responses without body (e.g. 301)
 	if len(e.ResponseBody) > 0 && !isRedirect {
