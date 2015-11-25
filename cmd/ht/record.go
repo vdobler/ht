@@ -40,6 +40,7 @@ func init() {
 		"ignore content types matching `regexp`")
 	cmdRecord.Flag.DurationVar(&recorderDisarm, "disarm", 1*time.Second,
 		"disarm recorder for `period` after last capture")
+	addOutputFlag(cmdRecord.Flag)
 }
 
 var (
@@ -124,7 +125,7 @@ func saveEvents(form url.Values) error {
 	}
 	suite := form.Get("suite")
 	if suite == "" {
-		suite = "Suite"
+		suite = "suite"
 	}
 	err := recorder.DumpEvents(ets, dir, suite)
 	if err != nil {
@@ -152,6 +153,9 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		w.Header().Set("Location", fmt.Sprintf("http://localhost%s/-ADMIN-", recorderPort))
+		http.Error(w, "Redirect after POST", http.StatusMovedPermanently)
 	}
 
 	buf := &bytes.Buffer{}
@@ -159,6 +163,10 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	type Data struct {
 		Dir    string
 		Events []recorder.Event
+	}
+
+	if outputDir == "" {
+		outputDir = time.Now().Format("2006-01-02_15h04m05s")
 	}
 
 	data := Data{
@@ -187,7 +195,12 @@ const adminTemplate = `<!DOCTYPE html>
 <form action="/-ADMIN-" method="post">
   <table style="border-spacing: 5px">
     <thead>
-      <tr><td style="background-color: red">Delete</td><td>Name</td><td>URL</td></tr>
+      <tr>
+        <td style="background-color: red">Delete</td>
+        <td>Name</td>
+        <td>Method</td>
+        <td>URL</td>
+      </tr>
     </thead>
     <tbody>
       {{range $i, $e := .Events}}
@@ -199,7 +212,10 @@ const adminTemplate = `<!DOCTYPE html>
               <input type="text" name="name{{$i}}" value="{{$e.Name}}" />
           </td>
           <td>
-              {{$e.Request.URL}}
+              {{$e.Request.Method}}
+          </td>
+          <td>
+              <a href="{{$e.Request.URL}}">{{$e.Request.URL}}</a>
           </td>
       </tr>
       {{end}}
@@ -207,12 +223,12 @@ const adminTemplate = `<!DOCTYPE html>
   </table>
 
   <div style="padding: 2ex 2ex 4ex 0ex">
-      <input type="submit" name="action" value="Update" />
+      <input type="submit" name="action" value="Update" /> (Delete selected and/or change names.)
   </div>
 
   <div>
-      Save to: <input type="text" name="directory" value="{{.Dir}}" />
-      as suite  <input type="text" name="suite" value="" />
+      Save tests and suite to directory: <input type="text" name="directory" value="{{.Dir}}" />
+      as suite  <input type="text" name="suite" value="suite.suite" />
       <input type="submit" name="action" value="Save" />
   </div>
 
