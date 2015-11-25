@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/recorder"
+	"github.com/vdobler/ht/sanitize"
 )
 
 var cmdRecord = &Command{
@@ -127,6 +128,10 @@ func saveEvents(form url.Values) error {
 	if suite == "" {
 		suite = "suite"
 	}
+
+	dir = sanitize.SanitizeFilename(dir)
+	suite = sanitize.SanitizeFilename(suite)
+
 	err := recorder.DumpEvents(ets, dir, suite)
 	if err != nil {
 		return err

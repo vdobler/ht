@@ -31,6 +31,7 @@ import (
 	"github.com/vdobler/ht/fingerprint"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/sanitize"
 )
 
 // Events is the global list of recorded events.
@@ -325,7 +326,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 			Checks: checks,
 		}
 
-		name := strings.ToLower(strings.Replace(e.Name, " ", "_", -1)) + ".ht"
+		name := sanitize.SanitizeFilename(e.Name) + ".ht"
 		suite.Tests = append(suite.Tests, name)
 		filename := path.Join(directory, name)
 		err = writeTest(test, filename)
