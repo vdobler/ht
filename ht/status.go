@@ -6,12 +6,11 @@
 
 package ht
 
-import (
-	"fmt"
-)
+import "fmt"
 
 func init() {
 	RegisterCheck(StatusCode{})
+	RegisterCheck(NoServerError{})
 }
 
 // ----------------------------------------------------------------------------
@@ -19,7 +18,7 @@ func init() {
 
 // StatusCode checks the HTTP statuscode.
 type StatusCode struct {
-	Expect int `xml:",attr"`
+	Expect int
 }
 
 // Execute implements Check's Execute method.
@@ -32,3 +31,27 @@ func (c StatusCode) Execute(t *Test) error {
 
 // Prepare implements Check's Prepare method.
 func (StatusCode) Prepare() error { return nil }
+
+// ----------------------------------------------------------------------------
+// NoServerError
+
+// NoServerError checks the HTTP status code for not beeing a 5xx server error
+// and that the body could be read without errors or timeouts.
+type NoServerError struct{}
+
+// Execute implements Check's Execute method.
+func (NoServerError) Execute(t *Test) error {
+	if t.Response.Response == nil {
+		return fmt.Errorf("No response recieved")
+	}
+	if t.Response.Response.StatusCode/100 == 5 {
+		return fmt.Errorf("Server Error %q", t.Response.Response.Status)
+	}
+	if t.Response.BodyErr != nil {
+		return t.Response.BodyErr
+	}
+	return nil
+}
+
+// Prepare implements Check's Prepare method.
+func (NoServerError) Prepare() error { return nil }

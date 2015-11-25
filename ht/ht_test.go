@@ -12,42 +12,12 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/vdobler/ht/internal/json5"
 )
-
-func TestStatusCode(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
-	defer ts.Close()
-
-	for _, code := range []int{200, 201, 204, 300, 400, 404, 500} {
-		s := fmt.Sprintf("%d", code)
-		test := Test{
-			Name: "A very basic test.",
-			Request: Request{
-				Method:          "GET",
-				URL:             ts.URL + "/",
-				Params:          URLValues{"status": []string{s}},
-				FollowRedirects: false,
-			},
-			Checks: []Check{
-				StatusCode{Expect: code},
-			},
-		}
-
-		test.Run(nil)
-		if test.Status != Pass {
-			t.Errorf("Unexpected error for %d: %s", code, test.Error)
-		}
-		if testing.Verbose() {
-			test.PrintReport(os.Stdout)
-		}
-	}
-}
 
 func TestSkippingChecks(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
