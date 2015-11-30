@@ -7,6 +7,7 @@ package ht
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"mime"
 	"mime/multipart"
@@ -632,5 +633,45 @@ func TestUnmarshalURLValuesError(t *testing.T) {
 		if err == nil {
 			t.Errorf("%d. missing error on %s", i, tc)
 		}
+	}
+}
+
+func bodyReadTestHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/hello":
+		http.Error(w, "Hello World", http.StatusOK)
+	case "/redirect-plain":
+		r.URL.Path = "/hello"
+		log.Printf("Redirect plain to %s", r.URL.String())
+		w.Header().Set("Location", r.URL.String())
+		w.WriteHeader(302)
+	case "/redirect-content":
+		r.URL.Path = "/hello"
+		log.Printf("Redirect content to %s", r.URL.String())
+		w.Header().Set("Location", r.URL.String())
+		w.WriteHeader(302)
+		fmt.Fprintln(w, "Please go to /hello")
+	default:
+		http.Error(w, "Ooops", http.StatusInternalServerError)
+	}
+	return
+}
+
+func TestReadBody(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(bodyReadTestHandler))
+	defer ts.Close()
+
+	test := Test{
+		Request: Request{
+			Method:          "GET",
+			URL:             ts.URL + "/redirect-content",
+			FollowRedirects: false,
+		},
+		Checks: []Check{NoServerError{}},
+	}
+	test.Run(nil)
+
+	if test.Response.BodyErr != nil {
+		t.Errorf("Unexpected problem reading body: %#v", test.Response.BodyErr)
 	}
 }

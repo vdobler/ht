@@ -1,7 +1,17 @@
 Collection of TODOs and Ideas for HT
 ====================================
 
-   
+Open Issues
+-----------
+
+*  If FollowRedirects==false and a redirect response is received, then
+   the body is not readable (as it got closed by the Client before stopping
+   the redirections).  Fixing this would require the use of a raw
+   Transport.  This issue highlight a general problem in ht: Handling of
+   clients and reuse/sharing them e.g. in Latency checks.  This is done
+   headless and without any concept or proper design.
+
+
 
 Resolved TODOs
 --------------
