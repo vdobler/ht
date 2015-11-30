@@ -82,7 +82,9 @@ func (r Resilience) Execute(t *Test) error {
 		}
 	}
 
+	t.infof("Start of resilience suite")
 	suite.Execute()
+	t.infof("End of resilience suite")
 	if suite.Status != Pass {
 		failures := []string{}
 		for _, t := range suite.Tests {
@@ -135,6 +137,7 @@ func resilienceTest(orig *Test, method string) *Test {
 			URL:             orig.Request.URL,
 			FollowRedirects: false,
 		},
+		Jar:       orig.Jar,
 		Verbosity: orig.Verbosity - 1,
 		PreSleep:  Duration(10 * time.Millisecond),
 	}
