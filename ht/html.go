@@ -491,13 +491,13 @@ func (c *Links) Execute(t *Test) error {
 				URL:             r,
 				FollowRedirects: true,
 			},
-			Jar: t.Jar,
 			Checks: CheckList{
 				StatusCode{Expect: 200},
 			},
 			Verbosity: t.Verbosity - 1,
 			Timeout:   timeout,
 		}
+		test.PopulateCookies(t.Jar, t.Request.Request.URL)
 		suite.Tests = append(suite.Tests, test)
 	}
 
