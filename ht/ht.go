@@ -454,6 +454,19 @@ func Merge(tests ...*Test) (*Test, error) {
 	return &m, nil
 }
 
+// PopulateCookies populates t.Request.Cookies with the those
+// cookies from jar which would be sent to u.
+func (t *Test) PopulateCookies(jar http.CookieJar, u *url.URL) {
+	if jar == nil || u == nil {
+		return
+	}
+
+	for _, cookie := range jar.Cookies(u) {
+		t.Request.Cookies = append(t.Request.Cookies,
+			Cookie{Name: cookie.Name, Value: cookie.Value})
+	}
+}
+
 // Run runs the test t. The actual HTTP request is crafted and executed and
 // the checks are performed on the received response. This whole process
 // is repeated on failure or skipped entirely according to t.Poll.

@@ -128,7 +128,7 @@ func modify(m map[string][]string, key string, mod modification) string {
 
 // resilienceTest makes a copy of orig. The copy uses the given method
 // and has just one check, a No ServerError. Header fields and parameters
-// are deep copied.
+// are deep copied. The actual set of cookies is copied from the jar.
 func resilienceTest(orig *Test, method string) *Test {
 	cpy := &Test{
 		Name: method,
@@ -137,7 +137,6 @@ func resilienceTest(orig *Test, method string) *Test {
 			URL:             orig.Request.URL,
 			FollowRedirects: false,
 		},
-		Jar:       orig.Jar,
 		Verbosity: orig.Verbosity - 1,
 		PreSleep:  Duration(10 * time.Millisecond),
 	}
@@ -163,6 +162,8 @@ func resilienceTest(orig *Test, method string) *Test {
 	cpy.Checks = CheckList{
 		NoServerError{},
 	}
+
+	cpy.PopulateCookies(orig.Jar, orig.Request.Request.URL)
 
 	return cpy
 }
