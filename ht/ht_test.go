@@ -661,17 +661,20 @@ func TestReadBody(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(bodyReadTestHandler))
 	defer ts.Close()
 
-	test := Test{
-		Request: Request{
-			Method:          "GET",
-			URL:             ts.URL + "/redirect-content",
-			FollowRedirects: false,
-		},
-		Checks: []Check{NoServerError{}},
-	}
-	test.Run(nil)
+	for _, path := range []string{"/redirect-plain", "/redirect-content"} {
+		test := Test{
+			Request: Request{
+				Method:          "GET",
+				URL:             ts.URL + path,
+				FollowRedirects: false,
+			},
+			Checks: []Check{NoServerError{}},
+		}
+		test.Run(nil)
 
-	if test.Response.BodyErr != nil {
-		t.Errorf("Unexpected problem reading body: %#v", test.Response.BodyErr)
+		if test.Response.BodyErr != nil {
+			t.Errorf("Path %q: Unexpected problem reading body: %#v",
+				path, test.Response.BodyErr)
+		}
 	}
 }

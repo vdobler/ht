@@ -763,6 +763,7 @@ func (t *Test) executeRequest() error {
 	t.infof("%s %q", t.Request.Request.Method, t.Request.Request.URL.String())
 
 	var err error
+	abortedRedirection := false
 	t.Response.Redirections = nil
 
 	start := time.Now()
@@ -771,12 +772,13 @@ func (t *Test) executeRequest() error {
 		!t.Request.FollowRedirects {
 		// Clear err if it is just our redirect non-following policy.
 		err = nil
+		abortedRedirection = true
 	}
 
 	t.Response.Response = resp
 	msg := "okay"
 	if err == nil {
-		if t.Request.Request.Method == "HEAD" {
+		if t.Request.Request.Method == "HEAD" || abortedRedirection {
 			goto done
 		}
 		var reader io.ReadCloser
