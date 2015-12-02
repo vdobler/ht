@@ -681,9 +681,12 @@ func (t *Test) prepare(variables map[string]string) error {
 // If a sepcial Content-Type header is needed (e.g. because of a multipart
 // body) it is returned.
 func (t *Test) newRequest(repl replacer) (contentType string, err error) {
-	// Prepare request method.
+	// Set efaults for the request method and the parameter transmission type.
 	if t.Request.Method == "" {
 		t.Request.Method = "GET"
+	}
+	if t.Request.ParamsAs == "" {
+		t.Request.ParamsAs = "URL"
 	}
 
 	rurl := repl.str.Replace(t.Request.URL)
