@@ -120,9 +120,11 @@ import (
 // Interface values encode as the value contained in the interface.
 // A nil interface value encodes as the null JSON object.
 //
-// Channel, complex, and function values cannot be encoded in JSON.
+// Complex and function values cannot be encoded in JSON.
 // Attempting to encode such a value causes Marshal to return
 // an UnsupportedTypeError.
+//
+// Channel values are encoded as "null".
 //
 // JSON cannot represent cyclic data structures and Marshal does not
 // handle them.  Passing cyclic structures to Marshal will result in
@@ -409,6 +411,8 @@ func newTypeEncoder(t reflect.Type, allowAddr bool) encoderFunc {
 		return newArrayEncoder(t)
 	case reflect.Ptr:
 		return newPtrEncoder(t)
+	case reflect.Chan:
+		return invalidValueEncoder
 	default:
 		return unsupportedTypeEncoder
 	}
