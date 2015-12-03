@@ -123,7 +123,7 @@ func StartReverseProxy(port string, remote *url.URL, opts Options) error {
 
 	proxy := newSingleHostReverseProxy(remote)
 	http.HandleFunc("/", handler(proxy, requests))
-	log.Printf("Staring reverse proxy. Proxying from localhost%s to %s", port, remote.String())
+	log.Printf("Staring reverse proxy. Proxying from http://localhost%s to %s", port, remote.String())
 	return http.ListenAndServe(port, nil)
 }
 
@@ -252,6 +252,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 
 	// extract all common headers into mixin
 	commonHeaders := ExtractCommonRequestHeaders(events)
+	commonHeadersName := "common-headers.mixin"
 	test := &Test{
 		Name: fmt.Sprintf("Common Header of %s", suitename),
 		Request: ht.Request{
@@ -259,7 +260,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 		},
 	}
 
-	commonFilename := path.Join(directory, "common-headers.mixin")
+	commonFilename := path.Join(directory, commonHeadersName)
 	err = writeTest(test, commonFilename)
 	if err != nil {
 		return err
@@ -313,7 +314,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 		test := &Test{
 			Name:        e.Name,
 			Description: fmt.Sprintf("Recorded from %s on %s", host, time.Now()),
-			BasedOn:     []string{commonFilename},
+			BasedOn:     []string{commonHeadersName},
 			Request: ht.Request{
 				Method:   e.Request.Method,
 				URL:      urlString,
@@ -338,7 +339,10 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 		log.Println("Generate test for ", e.Request.Method, e.Request.URL, " --> ", filename)
 	}
 
-	name := strings.ToLower(strings.Replace(suitename, " ", "_", -1)) + ".suite"
+	name := strings.ToLower(strings.Replace(suitename, " ", "_", -1))
+	if !strings.HasSuffix(name, ".suite") {
+		name += ".suite"
+	}
 	filename := path.Join(directory, name)
 	err = writeSuite(suite, filename)
 	if err != nil {
