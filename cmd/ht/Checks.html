@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html><head><title>Availbale Checks</title><meta charset="UTF-8"></head>
 <body><h1>Available Checks</h1>
-<p>Version: v0.7.0</p>
+<p>Version: v0.8.0</p>
 <h2>Body</h2>
 <pre>
 type Body Condition
@@ -83,6 +83,7 @@ type HTMLContains struct {
 	// InOrder makes the check fail if the selected HTML elements have a
 	// different order than given in Text.
 	InOrder bool `json:",omitempty"`
+
 	// Has unexported fields.
 }
     HTMLContains checks the text content (and optionally the order) of HTML
@@ -120,6 +121,7 @@ type HTMLTag struct {
 	//    == 0: one ore more occurrences
 	//     &gt; 0: exactly that many occurrences
 	Count int `json:",omitempty"`
+
 	// Has unexported fields.
 }
     HTMLTag checks for the existens of HTML elements selected by CSS selectors.
@@ -184,6 +186,7 @@ type JSON struct {
 	// Sep is the seperator in Path when checking the Condition.
 	// A zero value is equivalanet to "."
 	Sep string `json:",omitempty"`
+
 	// Has unexported fields.
 }
     JSON checking via github.com/nytlabs/gojee (Expression) and
@@ -220,6 +223,7 @@ type Latency struct {
 	// DumpTo is the filename where the latencies are reported.
 	// The special values "stdout" and "stderr" are recognised.
 	DumpTo string `json:",omitempty"`
+
 	// Has unexported fields.
 }
 
@@ -244,6 +248,7 @@ type Links struct {
 	// OnlyLinks and IgnoredLinks can be used to select only a subset of
 	// all links.
 	OnlyLinks, IgnoredLinks []Condition `json:",omitempty"`
+
 	// Has unexported fields.
 }
     Links checks links and references in HTML pages for availability.
@@ -261,11 +266,20 @@ type Logfile struct {
 
 	// Disallow states what is forbidden in the written log.
 	Disallow []string `json:",omitempty"`
+
 	// Has unexported fields.
 }
     Logfile provides checks on files (i.e. it ignores the response). During
     preparation the current file size is determined and the checks are run
     against the bytes written after preparation.
+
+
+</pre>
+<h2>NoServerError</h2>
+<pre>
+type NoServerError struct{}
+    NoServerError checks the HTTP status code for not beeing a 5xx server error
+    and that the body could be read without errors or timeouts.
 
 
 </pre>
@@ -285,6 +299,74 @@ type Redirect struct {
 	StatusCode int `json:",omitempty"`
 }
     Redirect checks for HTTP redirections.
+
+
+</pre>
+<h2>Resilience</h2>
+<pre>
+type Resilience struct {
+	// Methods is the space seperated list of HTTP methods to check,
+	// e.g. "GET POST HEAD". The empty value will test the original
+	// method of the test.
+	Methods string `json:",omitempty"`
+
+	// ModParam and ModHeader controll which modifications of parameter values
+	// and header values are checked.
+	// It is a space seprated string if the modifications explained above
+	// e.g. "drop nonsense empty".
+	ModParam, ModHeader string `json:",omitempty"`
+
+	// ParamsAs controls how parameter values are transmitted, it
+	// is a space seperated list of all transmission types like in
+	// the Request.ParamsAs field, e.g. "URL body multipart" to check
+	// URL query parameters, x-www-form-urlencoded and multipart/formdata.
+	// The empty value will just check the type used in the original
+	// test.
+	ParamsAs string `json:",omitempty"`
+
+	// SaveFailuresTo is the filename to which all failed checks shall
+	// be logged. The data is appended to the file.
+	SaveFailuresTo string
+}
+    Resilience checks the resilience of an URL against unexpected requests like
+    different HTTP methods, changed or garbled parameters, different parameter
+    transmission types and changed or garbled HTTP headers.
+
+    Parameters and Header values can undergo several different types of
+    modifications
+
+    * drop:      don't send at all
+    * double:    send same value two times
+    * twice:     send two different values
+    * change:    change a single character (first, middle and last one)
+    * delete:    drop single character (first, middle and last one)
+    * nonsense:  "hubba%12bubba(!"
+    * malicious: "\000\ufeff&lt;script&gt;\r\r\n"  (not suitable for headers)
+    * empty:     ""
+    * type:      change the type (if obvious)
+        - "1234"     --&gt;  "xxxx"
+        - "i@you.me" --&gt;  "iXyouYme"
+        - "foobar  " --&gt;  "12345"
+        - "08:45"    --&gt;  "zz:zz"
+        - "#0c12ff   --&gt;  "blün"
+    * large:     produce much larger values
+        - "1234"  --&gt;  "98765432123456789"
+        - "56.78" --&gt;  "8888888888888888.9999999999"
+        - "foo"   --&gt;  "fooooooooooooooooooooooooooooooooooooooooooooooooooooo"
+        - "08:45" --&gt;  "25:65"
+    * negative   produce negative values
+        - "1234"  --&gt;  "-2"
+        - "56.78" --&gt;  "-3.0"
+    * tiny:      produce 0 or short values
+        - "1234"   --&gt;  "0"
+        - "12.3"   --&gt;  "0"
+        - "foobar" --&gt; "f"
+    * none:      don't modify the individual parameters or header but
+                 don't send any parameters or headers
+
+    This check will make a wast amount of request to the given URL including the
+    modifying and non-idempotent methods POST, PUT, and DELETE. Some care using
+    this check is advisable.
 
 
 </pre>
@@ -356,7 +438,7 @@ type Sorted struct {
 <h2>StatusCode</h2>
 <pre>
 type StatusCode struct {
-	Expect int `xml:",attr"`
+	Expect int
 }
     StatusCode checks the HTTP statuscode.
 
@@ -399,6 +481,7 @@ type XML struct {
 
 	// Condition the first element addressed by Path must fullfill.
 	Condition
+
 	// Has unexported fields.
 }
     XML allows to check XML request bodies.
@@ -438,6 +521,7 @@ type Condition struct {
 	// Min and Max are the minimum and maximum length the string may
 	// have. Two zero values disables this test.
 	Min, Max int `json:",omitempty"`
+
 	// Has unexported fields.
 }
     Condition is a conjunction of tests against a string. Note that Contains and
