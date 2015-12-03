@@ -101,7 +101,7 @@ func (c *JSON) executeCondition(t *Test) error {
 		sep = c.Sep
 	}
 
-	out, err := gojsonexplode.Explodejson(t.Response.BodyBytes, sep)
+	out, err := gojsonexplode.Explodejson([]byte(t.Response.BodyStr), sep)
 	if err != nil {
 		return fmt.Errorf("unable to explode JSON: %s", err.Error())
 	}
@@ -127,7 +127,7 @@ func (c *JSON) executeExpression(t *Test) error {
 	}
 
 	var bmsg jee.BMsg
-	err := json.Unmarshal(t.Response.BodyBytes, &bmsg)
+	err := json.Unmarshal([]byte(t.Response.BodyStr), &bmsg)
 	if err != nil {
 		return err
 	}

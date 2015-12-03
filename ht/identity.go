@@ -32,7 +32,7 @@ func (i Identity) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return CantCheck{t.Response.BodyErr}
 	}
-	hash := sha1.Sum(t.Response.BodyBytes)
+	hash := sha1.Sum([]byte(t.Response.BodyStr))
 	s := fmt.Sprintf("%02x", hash)
 	if s == i.SHA1 {
 		return nil

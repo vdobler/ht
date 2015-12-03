@@ -219,12 +219,12 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 		return "", errors.New("BodyExtractor.Submatch < 0")
 	}
 
-	submatches := re.FindSubmatch(t.Response.BodyBytes)
+	submatches := re.FindStringSubmatch(t.Response.BodyStr)
 	if len(submatches) > e.Submatch {
 		return string(submatches[e.Submatch]), nil
 	}
 	if len(submatches) == 0 {
-		return "", fmt.Errorf("no match found in %q", t.Response.BodyBytes)
+		return "", fmt.Errorf("no match found in %q", t.Response.BodyStr)
 	}
 	return "", fmt.Errorf("got only %d submatches in %q", len(submatches)-1, submatches[0])
 }
@@ -255,7 +255,7 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 		sep = e.Sep
 	}
 
-	out, err := gojsonexplode.Explodejson(t.Response.BodyBytes, sep)
+	out, err := gojsonexplode.Explodejson([]byte(t.Response.BodyStr), sep)
 	if err != nil {
 		return "", fmt.Errorf("unable to explode JSON: %s", err.Error())
 	}

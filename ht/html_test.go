@@ -43,7 +43,7 @@ var sampleHtml = `<!doctype html>
 `
 
 var hcr = Response{
-	BodyBytes: []byte(sampleHtml)}
+	BodyStr: sampleHtml}
 
 var htmlContainsTests = []TC{
 	{hcr, &HTMLTag{Selector: "h1"}, nil},
@@ -134,7 +134,7 @@ func TestW3CValidHTML(t *testing.T) {
   <h1>Here all good &amp; nice</h1>
 </body>`
 
-	rr := Response{BodyBytes: []byte(body)}
+	rr := Response{BodyStr: body}
 	check := W3CValidHTML{
 		AllowedErrors: 0,
 	}
@@ -152,7 +152,7 @@ func TestW3CValidHTML(t *testing.T) {
   <span><div>Strangly nested</div></span>
 </body>`
 
-	rr2 := Response{BodyBytes: []byte(body2)}
+	rr2 := Response{BodyStr: body2}
 	check2 := W3CValidHTML{
 		AllowedErrors: 1,
 		IgnoredErrors: []Condition{
@@ -208,7 +208,7 @@ func TestHTMLLinksExtraction(t *testing.T) {
 		Request: Request{
 			Request: &http.Request{URL: baseURL},
 		},
-		Response: Response{BodyBytes: []byte(body)},
+		Response: Response{BodyStr: body},
 	}
 
 	for i, tc := range []struct{ which, want string }{
@@ -262,7 +262,7 @@ func TestHTMLLinkFiltering(t *testing.T) {
 		Request: Request{
 			Request: &http.Request{URL: baseURL},
 		},
-		Response: Response{BodyBytes: []byte(body)},
+		Response: Response{BodyStr: body},
 	}
 
 	check := Links{
@@ -323,7 +323,7 @@ func testHTMLLinks(t *testing.T, urls []string) (called []string, err error) {
 
 	test := &Test{
 		Request:   Request{Request: &http.Request{URL: baseURL}},
-		Response:  Response{BodyBytes: []byte(body)},
+		Response:  Response{BodyStr: body},
 		Verbosity: 1,
 	}
 

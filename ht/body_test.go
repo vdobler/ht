@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-var br = Response{BodyBytes: []byte("foo bar baz foo foo")}
+var br = Response{BodyStr: "foo bar baz foo foo"}
 var bodyTests = []TC{
 	{br, &Body{Contains: "foo"}, nil},
 	{br, &Body{Contains: "bar"}, nil},
@@ -39,9 +39,9 @@ func TestBody(t *testing.T) {
 }
 
 var utf8Tests = []TC{
-	{Response{BodyBytes: []byte("All fine!")}, UTF8Encoded{}, nil},
-	{Response{BodyBytes: []byte("BOMs \ufeff sucks!")}, UTF8Encoded{}, someError},
-	{Response{BodyBytes: []byte("Strange \xbd\xb2\x3d\xbc")}, UTF8Encoded{}, someError},
+	{Response{BodyStr: "All fine!"}, UTF8Encoded{}, nil},
+	{Response{BodyStr: "BOMs \ufeff sucks!"}, UTF8Encoded{}, someError},
+	{Response{BodyStr: "Strange \xbd\xb2\x3d\xbc"}, UTF8Encoded{}, someError},
 }
 
 func TestUTF8Encoded(t *testing.T) {
@@ -50,9 +50,9 @@ func TestUTF8Encoded(t *testing.T) {
 	}
 }
 
-var srb = Response{BodyBytes: []byte("foo 1 bar 2 waz 3 tir 4 kap 5")}
+var srb = Response{BodyStr: "foo 1 bar 2 waz 3 tir 4 kap 5"}
 var srbh = Response{
-	BodyBytes: []byte(sampleHtml),
+	BodyStr: sampleHtml,
 	Response: &http.Response{
 		Header: http.Header{"Content-Type": []string{"text/html; charset=UTF-8"}},
 	},

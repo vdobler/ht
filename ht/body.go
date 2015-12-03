@@ -7,9 +7,9 @@
 package ht
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/andybalholm/cascadia"
@@ -30,7 +30,7 @@ type UTF8Encoded struct{}
 
 // Execute implements Check's Execute method.
 func (c UTF8Encoded) Execute(t *Test) error {
-	p := t.Response.BodyBytes
+	p := []byte(t.Response.BodyStr)
 	char := 0
 	for len(p) > 0 {
 		r, size := utf8.DecodeRune(p)
@@ -57,11 +57,11 @@ type Body Condition
 
 // Execute implements Check's Execute method.
 func (b Body) Execute(t *Test) error {
-	body, err := t.Response.BodyBytes, t.Response.BodyErr
+	body, err := t.Response.BodyStr, t.Response.BodyErr
 	if err != nil {
 		return ErrBadBody
 	}
-	return Condition(b).FullfilledBytes(body)
+	return Condition(b).Fullfilled(body)
 }
 
 // Prepare implements Check's Prepare method.
@@ -94,7 +94,7 @@ type Sorted struct {
 
 // Execute implements Check's Execute method.
 func (s *Sorted) Execute(t *Test) error {
-	bb := t.Response.BodyBytes
+	bb := t.Response.BodyStr
 
 	ct := ContentType{Is: "html"}
 	if ct.Execute(t) == nil {
@@ -107,12 +107,12 @@ func (s *Sorted) Execute(t *Test) error {
 		if body == nil {
 			return fmt.Errorf("no <body> tag found")
 		}
-		bb = []byte(TextContent(body, false))
+		bb = TextContent(body, false)
 	}
 
 	misses := []string{}
 	for _, text := range s.Text {
-		idx := bytes.Index(bb, []byte(text))
+		idx := strings.Index(bb, text)
 		if idx == -1 {
 			misses = append(misses, text)
 			continue

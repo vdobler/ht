@@ -7,7 +7,7 @@ package ht
 import "testing"
 
 var xmlr = Response{
-	BodyBytes: []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	BodyStr: `<?xml version="1.0" encoding="UTF-8"?>
 <library>
   <!-- Great book. -->
   <book id="b0836217462" available="true">
@@ -32,7 +32,7 @@ var xmlr = Response{
     </character>
   </book>
 </library>
-`)}
+`}
 
 var xmlTests = []TC{
 	{xmlr, &XML{Path: "/library/book/isbn", Condition: Condition{Equals: "0836217462"}}, nil},

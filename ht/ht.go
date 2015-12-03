@@ -171,8 +171,8 @@ type Response struct {
 	Duration Duration
 
 	// The received body and the error got while reading it.
-	BodyBytes []byte
-	BodyErr   error
+	BodyStr string
+	BodyErr error
 
 	// Redirections records the URLs of automatic GET requests due to redirects.
 	Redirections []string
@@ -180,7 +180,7 @@ type Response struct {
 
 // Body returns a reader of the response body.
 func (resp *Response) Body() *bytes.Reader {
-	return bytes.NewReader(resp.BodyBytes)
+	return bytes.NewReader([]byte(resp.BodyStr)) // TODO
 }
 
 // Cookie is a HTTP cookie.
@@ -551,6 +551,30 @@ func (t *Test) Run(variables map[string]string) error {
 	return nil
 }
 
+// AsJSON5 returns a JSON5 representation of the test. Executed tests can
+// be serialised and will contain basically all information required to
+// debug or re-run the test but note that several fields in the actual
+// *http.Request and *http.Response structs are cleared during this
+// serialisation.
+func (t *Test) AsJSON5() ([]byte, error) {
+	// Nil some un-serilisable stuff.
+	t.Jar = nil
+	t.client = nil
+	if t.Request.Request != nil {
+		t.Request.Request.Body = nil
+		t.Request.Request.PostForm = nil
+		t.Request.Request.MultipartForm = nil
+		t.Request.Request.TLS = nil
+		t.Request.Request.Close = false
+	}
+	if t.Response.Response != nil {
+		t.Response.Response.TLS = nil
+		t.Response.Response.Body = nil
+	}
+
+	return json5.MarshalIndent(t, "", "    ")
+}
+
 // execute does a single request and check the response, the outcome is put
 // into result.
 func (t *Test) execute() {
@@ -796,7 +820,9 @@ func (t *Test) executeRequest() error {
 		default:
 			reader = resp.Body
 		}
-		t.Response.BodyBytes, t.Response.BodyErr = ioutil.ReadAll(reader)
+		bb, be := ioutil.ReadAll(reader)
+		t.Response.BodyStr = string(bb)
+		t.Response.BodyErr = be
 		reader.Close()
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())

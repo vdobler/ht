@@ -530,7 +530,7 @@ func (s Suite) HTMLReport(dir string) error {
 		return err
 	}
 	for _, tr := range s.AllTests() {
-		body := tr.Response.BodyBytes
+		body := []byte(tr.Response.BodyStr)
 		err = ioutil.WriteFile(path.Join(dir, tr.SeqNo+".ResponseBody"), body, 0666)
 		if err != nil {
 			return err

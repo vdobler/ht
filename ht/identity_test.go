@@ -6,7 +6,7 @@ package ht
 
 import "testing"
 
-var idr = Response{BodyBytes: []byte("Hello world")}
+var idr = Response{BodyStr: "Hello world"}
 
 var identityTests = []TC{
 	{idr, Identity{SHA1: "7b502c3a1f48c8609ae212cdfb639dee39673f5e"}, nil},

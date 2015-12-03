@@ -31,7 +31,7 @@ var exampleHTML = `
 func TestHTMLExtractor(t *testing.T) {
 	test := &Test{
 		Response: Response{
-			BodyBytes: []byte(exampleHTML),
+			BodyStr: exampleHTML,
 		},
 	}
 
@@ -63,7 +63,7 @@ func TestHTMLExtractor(t *testing.T) {
 func TestBodyExtractor(t *testing.T) {
 	test := &Test{
 		Response: Response{
-			BodyBytes: []byte("Hello World! Foo 123 xyz ABC. Dog and cat."),
+			BodyStr: "Hello World! Foo 123 xyz ABC. Dog and cat.",
 		},
 	}
 
@@ -86,7 +86,7 @@ func TestBodyExtractor(t *testing.T) {
 		t.Errorf("Got %q, want xyz", val)
 	}
 
-	test.Response.BodyBytes = []byte("blablabla")
+	test.Response.BodyStr = "blablabla"
 	val, err = ex.Extract(test)
 	if err == nil || err.Error() != `no match found in "blablabla"` {
 		t.Errorf("Missing or wrong error: %v", err)
@@ -106,7 +106,7 @@ func TestJSONExtractor(t *testing.T) {
 	for i, tc := range jsonExtractorTests {
 		test := &Test{
 			Response: Response{
-				BodyBytes: []byte(tc.body),
+				BodyStr: tc.body,
 			},
 		}
 		ex := JSONExtractor{Path: tc.path}

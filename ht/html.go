@@ -59,7 +59,7 @@ type W3CValidHTML struct {
 
 // Execute implements Check's Execute method.
 func (w W3CValidHTML) Execute(t *Test) error {
-	file := "@file:@sample.html:" + string(t.Response.BodyBytes)
+	file := "@file:@sample.html:" + t.Response.BodyStr
 	test := &Test{
 		Name: "W3CValidHTML",
 		Request: Request{
