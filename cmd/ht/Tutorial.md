@@ -753,7 +753,43 @@ Normally you will just want one of the following to:
 
 
 
+Recording Tests
+---------------
 
+The `ht` has a `record` subcommand which starts a reverse proxy, records
+requests/responses made through it and can generate tests based on the
+recorded events. 
+
+Try the following:
+
+1. Start the reverse proxy to some website: `$ ./ht record http://example.org`
+
+2. Surf the website via the reverse proxy by visiting `http://localhost:8080/`
+   in your browser.
+   Do not klick too fast, wait one second between each clicks you want
+   to record.
+
+3. See what events have been recorded by visiting
+   `http://localhost:8080/-ADMIN-`. This will display a unfancy list of
+   recorded events.
+
+4. Select checkbox of the events you want to delete and modify the names
+   of the other ones to your liking. Persist this by clicking "Update".
+
+5. You may record more events and/or update the list of recorded events.
+
+6. Specify a folder name and a suite name and press "Save" to generate
+   tests.
+
+7. You may continue to record and update events and save them as tests.
+   Once done abort the reverse proxy, e.g. with Ctrl-C.
+
+8. Take a look at the tests (the `*.ht` files in the folder) and make
+   sure the requests and the checks are okay. Most probably you should
+   adobt the checks.
+
+9. Try them out by running `$ ./ht exec -verbosity 2 <folder>/<suite>`
+   
 
 
 
