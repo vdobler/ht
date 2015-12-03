@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -85,6 +86,10 @@ type Resilience struct {
 	// The empty value will just check the type used in the original
 	// test.
 	ParamsAs string `json:",omitempty"`
+
+	// SaveFailuresTo is the filename to which all failed checks shall
+	// be logged. The data is appended to the file.
+	SaveFailuresTo string
 }
 
 // Execute implements Check's Execute method.
@@ -168,17 +173,57 @@ func (r Resilience) Execute(t *Test) error {
 	suite.Execute()
 	t.infof("End of resilience suite")
 	if suite.Status != Pass {
-		failures := []string{}
-		for _, t := range suite.Tests {
-			if t.Status != Pass {
-				failures = append(failures, t.Name)
-			}
+		return r.collectErrors(t, suite)
+	}
+	return nil
+}
+
+// collectErrors collects all test failures/errors in the resilience suite.
+// If logging the results is desired via r.SaveFailuresTo this is done
+// here. CollectErros allways returns a non-nil error.
+func (r Resilience) collectErrors(t *Test, suite *Suite) error {
+	var failures = []string{}
+
+	var file *os.File
+	var err error
+
+	if r.SaveFailuresTo != "" {
+		fmt.Println("AAAAAAAAAAA")
+		file, err = os.OpenFile(r.SaveFailuresTo, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+		if err != nil {
+			file = nil
+			// Cannot do much more than return this info and log it
+			failures = append(failures, fmt.Sprintf("cannot SaveFailuresTo %q: %s",
+				r.SaveFailuresTo, err))
 		}
-		collected := strings.Join(failures, "; ")
-		return errors.New(collected)
+	} else {
+		defer file.Close()
+		fmt.Fprintf(file, "#### List of failed Reslience checks in test %q started at %s:\n",
+			t.Name, t.Started)
 	}
 
-	return nil
+	for _, t := range suite.Tests {
+		if t.Status != Pass {
+			failures = append(failures, t.Name)
+			if file == nil {
+				continue
+			}
+			fmt.Println("BBBBBBBB")
+
+			// Log to file name SaveFailuresTo.
+			data, err := t.AsJSON5()
+			if err != nil {
+				fmt.Fprintf(file, "# %q: Cannot serialize: %q\n", t.Name, err.Error())
+			} else {
+				fmt.Fprintf(file, "# %q: %s\n", t.Name, t.Status)
+				fmt.Fprintln(file, string(data))
+				fmt.Fprintln(file)
+			}
+		}
+	}
+
+	collected := strings.Join(failures, "; ")
+	return errors.New(collected)
 }
 
 func prettyprintParams(name string, mv []string) string {
