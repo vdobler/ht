@@ -35,6 +35,7 @@ func init() {
 //
 // Parameters and Header values can undergo several different types of
 // modifications
+//   * all:       all the individual modifications below
 //   * drop:      don't send at all
 //   * double:    send same value two times
 //   * twice:     send two different values
@@ -73,7 +74,7 @@ type Resilience struct {
 	// method of the test.
 	Methods string `json:",omitempty"`
 
-	// ModParam and ModHeader controll which modifications of parameter values
+	// ModParam and ModHeader control which modifications of parameter values
 	// and header values are checked.
 	// It is a space seprated string if the modifications explained above
 	// e.g. "drop nonsense empty".
@@ -89,7 +90,7 @@ type Resilience struct {
 
 	// SaveFailuresTo is the filename to which all failed checks shall
 	// be logged. The data is appended to the file.
-	SaveFailuresTo string
+	SaveFailuresTo string `json:",omitempty"`
 }
 
 // Execute implements Check's Execute method.
@@ -188,7 +189,6 @@ func (r Resilience) collectErrors(t *Test, suite *Suite) error {
 	var err error
 
 	if r.SaveFailuresTo != "" {
-		fmt.Println("AAAAAAAAAAA")
 		file, err = os.OpenFile(r.SaveFailuresTo, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 		if err != nil {
 			file = nil
@@ -208,7 +208,6 @@ func (r Resilience) collectErrors(t *Test, suite *Suite) error {
 			if file == nil {
 				continue
 			}
-			fmt.Println("BBBBBBBB")
 
 			// Log to file name SaveFailuresTo.
 			data, err := t.AsJSON5()
@@ -324,7 +323,35 @@ func modify(orig []string, mod modification) [][]string {
 		list = append(list, []string{val, "extraValue"})
 	}
 
-	// TODO: change and delete
+	if mod&modChange != 0 {
+		for o := range orig {
+			L := len(orig[0])
+			if L >= 1 {
+				list = append(list, doChange(orig, o, 0))
+			}
+			if L >= 2 {
+				list = append(list, doChange(orig, o, L-1))
+			}
+			if L >= 3 {
+				list = append(list, doChange(orig, o, L/2))
+			}
+		}
+	}
+
+	if mod&modDelete != 0 {
+		for o := range orig {
+			L := len(orig[o])
+			if L >= 1 {
+				list = append(list, doDelete(orig, o, 0))
+			}
+			if L >= 2 {
+				list = append(list, doDelete(orig, o, L-1))
+			}
+			if L >= 3 {
+				list = append(list, doDelete(orig, o, L/2))
+			}
+		}
+	}
 
 	if mod&modNonsense != 0 {
 		list = append(list, []string{"p,f1u;p5c:h*"})    // arbitary garbage
@@ -439,6 +466,30 @@ func resilienceTest(orig *Test, method string, paramsAs string) *Test {
 
 	cpy.PopulateCookies(orig.Jar, orig.Request.Request.URL)
 
+	return cpy
+}
+
+// doChange returns a copy of orig with the character (i,j) changed.
+func doChange(orig []string, i, j int) []string {
+	cpy := make([]string, len(orig))
+	copy(cpy, orig)
+	val := []byte(cpy[i])
+	if val[j] < 127 {
+		val[j]++
+	} else {
+		val[j]--
+	}
+	cpy[i] = string(val)
+	return cpy
+}
+
+// doChange returns a copy of orig with the character (i,j) deleted.
+func doDelete(orig []string, i, j int) []string {
+	cpy := make([]string, len(orig))
+	copy(cpy, orig)
+	val := []byte(cpy[i])
+	mod := append(val[:j], val[j+1:]...)
+	cpy[i] = string(mod)
 	return cpy
 }
 
