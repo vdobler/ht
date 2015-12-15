@@ -132,7 +132,7 @@ func (L *Latency) Execute(t *Test) error {
 		go func(ex *Test, id int) {
 			for {
 				wg2.Add(1)
-				ex.Run(nil) // TODO: get copy of variables from somewhere
+				ex.Run(t.Variables)
 				results <- latencyResult{
 					status:   ex.Status,
 					started:  ex.Started,
