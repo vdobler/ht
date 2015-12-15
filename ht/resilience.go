@@ -319,8 +319,8 @@ func modify(orig []string, mod modification) [][]string {
 	}
 
 	if mod&modTwice != 0 {
-		val := orig[0]
-		list = append(list, []string{val, "extraValue"})
+		val := append(orig, "extraValue")
+		list = append(list, val)
 	}
 
 	if mod&modChange != 0 {

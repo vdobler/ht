@@ -14,14 +14,16 @@ func TestModify(t *testing.T) {
 		[]string{"hello"},
 		[]string{"12"},
 		[]string{"98.95"},
+		[]string{"foo@test.org"},
+		[]string{"H"},
+		[]string{""},
+		[]string{"foo", "bar"},
 	} {
-
-		modvals := modify(tc, modTiny*2-1)
+		modvals := modify(tc, modAll)
 		fmt.Printf("Original: %v\n", tc)
 		for _, mv := range modvals {
 			fmt.Printf("  %#v\n", mv)
 		}
-
 	}
 }
 
