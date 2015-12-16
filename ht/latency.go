@@ -234,8 +234,8 @@ func (L *Latency) Execute(t *Test) error {
 	errs := ""
 	for _, lim := range L.limits {
 		lat := time.Millisecond * time.Duration(quantile(latencies, lim.q))
-		t.infof("Latency quantil (conc=%d) %0.4f = %d ms",
-			conc, lim.q, lat/time.Millisecond)
+		t.infof("Latency quantil (conc=%d) %0.2f%% ≤ %d ms",
+			conc, lim.q*100, lat/time.Millisecond)
 		if lat > lim.max {
 			if errs != "" {
 				errs += "; "
