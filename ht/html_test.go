@@ -105,20 +105,6 @@ func TestHTMLContains(t *testing.T) {
 	}
 }
 
-func TestValidHTML(t *testing.T) {
-	/* TODO: find a broken HTML or fix ValidHTML
-		broken := response.Response{Body: []byte(`<!doctype html>
-	<html>
-	<head><ta&&tatat>CS&dsdjhsdkhskdjh;S Se`)}
-	*/
-	for i, tc := range []TC{
-		{hcr, ValidHTML{}, nil},
-		// {broken, ValidHTML{}, someError},
-	} {
-		runTest(t, i, tc)
-	}
-}
-
 func TestW3CValidHTML(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping W3C Validator based checks in short mode.")
