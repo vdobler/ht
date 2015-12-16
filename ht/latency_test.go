@@ -105,7 +105,7 @@ func TestLatency(t *testing.T) {
 					N:          200 * conc,
 					Concurrent: conc,
 					Limits:     "50% ≤ 35ms; 75% ≤ 45ms; 0.995 ≤ 55ms",
-					DumpTo:     "foo.xxx",
+					// DumpTo:     "foo.xxx",
 				},
 			},
 			Verbosity: 1,
@@ -142,10 +142,10 @@ func TestSessionLatency(t *testing.T) {
 				Checks: []Check{
 					StatusCode{200},
 					&Latency{
-						N:                  200 * conc,
-						Concurrent:         conc,
-						Limits:             "50% ≤ " + medianLimit,
-						DumpTo:             "sessionlatency",
+						N:          200 * conc,
+						Concurrent: conc,
+						Limits:     "50% ≤ " + medianLimit,
+						// DumpTo:             "sessionlatency",
 						IndividualSessions: kind == "indiv",
 					},
 				},
