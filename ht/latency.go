@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"net/http/cookiejar"
 	"os"
 	"sort"
 	"strconv"
@@ -27,6 +28,7 @@ func init() {
 // ----------------------------------------------------------------------------
 // Latency
 
+// Latency provides checks against percentils of the response time latency.
 type Latency struct {
 	// N is the number if request to measure. It should be much larger
 	// than Concurrent. Default is 50.
@@ -41,9 +43,16 @@ type Latency struct {
 	// The limits above would require the median of the response
 	// times to be <= 150 ms and would allow only 1 request in 2000 to
 	// exced 900ms.
-	// Note that it must be the ≤ signe (U+2264), a plain < or a <=
+	// Note that it must be the ≤ sign (U+2264), a plain < or a <=
 	// is not recognized.
 	Limits string `json:",omitempty"`
+
+	// IndividualSessions tries to run the concurrent requests in
+	// individual sessions: A new one for each of the Concurrent many
+	// requests (not N many sessions).
+	// This is done by using a fresh cookiejar so it won't work if the
+	// request requires prior login.
+	IndividualSessions bool `json:",omitempty"`
 
 	// If SkipChecks is true no checks are performed i.e. only the
 	// requests are executed.
@@ -101,6 +110,14 @@ func (L *Latency) Execute(t *Test) error {
 		}
 		cpy.Checks = checks
 		cpy.Verbosity = 0
+
+		if t.Jar != nil {
+			if L.IndividualSessions {
+				cpy.Jar, _ = cookiejar.New(nil)
+			} else {
+				cpy.Jar = t.Jar
+			}
+		}
 		tests = append(tests, cpy)
 	}
 
