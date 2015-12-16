@@ -20,32 +20,12 @@ import (
 func init() {
 	RegisterCheck(&HTMLTag{})
 	RegisterCheck(&HTMLContains{})
-	RegisterCheck(ValidHTML{})
 	RegisterCheck(W3CValidHTML{})
 	RegisterCheck(&Links{})
 }
 
 // ----------------------------------------------------------------------------
-// ValidHTML and W3CValidHTML
-
-// ValidHTML checks for valid HTML 5. Kinda: It never fails. TODO: make it useful.
-type ValidHTML struct{}
-
-// Execute implements Check's Execute method.
-func (c ValidHTML) Execute(t *Test) error {
-	if t.Response.BodyErr != nil {
-		return ErrBadBody
-	}
-	_, err := html.Parse(t.Response.Body())
-	if err != nil {
-		return fmt.Errorf("Invalid HTML: %s", err.Error())
-	}
-
-	return nil
-}
-
-// Prepare implements Check's Prepare method.
-func (ValidHTML) Prepare() error { return nil }
+// W3CValidHTML
 
 // W3CValidHTML checks for valid HTML but checking the response body via
 // the online checker from W3C which is very strict.
