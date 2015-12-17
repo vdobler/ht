@@ -62,20 +62,22 @@ done:
 			return z.Err()
 		case html.TextToken:
 			// fmt.Printf(" %q\n", z.Text())
+			// fmt.Println()
 			if depth > 0 {
 				state.checkEscaping(string(z.Raw()))
 			}
 		case html.StartTagToken, html.SelfClosingTagToken:
-			if tt == html.StartTagToken {
-				depth++
-			}
 			raw := string(z.Raw())
 			if len(raw) > 3 {
 				state.checkEscaping(raw[1 : len(raw)-1])
 			}
 			tn, hasAttr := z.TagName()
-			if tt != html.SelfClosingTagToken {
+			// Some tags are empty and may be written in the self-closing
+			// variant "<br/>" or simply empty like "<br>".
+			// TODO: Maybe llow the non-compliant form "<br></br>" too?
+			if tt != html.SelfClosingTagToken && !emptyHTMLElement[string(tn)] {
 				state.push(string(tn))
+				depth++
 			}
 			tag := string(tn)
 			// fmt.Printf(" %s  ", tag)
@@ -145,6 +147,26 @@ done:
 func (v ValidHTML) Prepare() error {
 	_, err := ignoreMask(v.Ignore)
 	return err
+}
+
+// emptyHTMLElement is the list of all HTML5 elements which are empty, that
+// is they are implecitely self-closing and can be written either in
+// XML-style like e.g. "<br/>" or in HTML5-style just "<br>".
+// The list was taken from:
+//   - http://www.elharo.com/blog/software-development/web-development/2007/01/29/all-empty-tags-in-html/
+// Someone should check the whole list here: http://www.w3schools.com/tags/default.asp
+var emptyHTMLElement = map[string]bool{
+	"br":    true,
+	"hr":    true,
+	"meta":  true,
+	"base":  true,
+	"link":  true,
+	"img":   true,
+	"embed": true,
+	"param": true,
+	"area":  true,
+	"col":   true,
+	"input": true,
 }
 
 // ----------------------------------------------------------------------------
@@ -263,7 +285,11 @@ func (s *htmlState) checkEscaping(text string) {
 		return
 	}
 
-	if n := len(s.openTags); n > 0 && s.openTags[n-1] == "script" {
+	// Javascript is full of unescaped <, > and && and content of 'noscript'
+	// and 'iframe' seems to be unparsed by package html: Skip check of
+	// proper escaping inside these elements.
+	if n := len(s.openTags); n > 0 &&
+		(s.openTags[n-1] == "script" || s.openTags[n-1] == "noscript" || s.openTags[n-1] == "iframe") {
 		return
 	}
 
