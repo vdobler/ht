@@ -31,7 +31,7 @@ var brokenHtml = `<html>
             <img src="/image?n=1&p=2" />
         </div>
     </li>
-    <a href="mailto:infoexampleorg>write us</a>
+    <a href="mailto:info-example_org>write us</a>
 </body>
 </html>
 `
@@ -72,7 +72,10 @@ var okayHtml = `<!DOCTYPE html><html>
             <img src="/image?n=1&amp;p=2" />
         </li>
     </ul>
-    <a href="mailto:info@example.org>write us</a>
+    <a href="mailto:info@example.org">write us</a>
+    <script>
+       if(a<b && c!="") { consol.log("foo"); }
+    </script>
 </body>
 </html>
 `
@@ -86,7 +89,7 @@ func TestValidHTMLBroken(t *testing.T) {
 		Response: Response{BodyStr: brokenHtml},
 	}
 
-	check := ValidHTML{Ignore: "doctype"}
+	check := ValidHTML{}
 	err := check.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)

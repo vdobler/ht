@@ -45,7 +45,6 @@ func (v ValidHTML) Execute(t *Test) error {
 	}
 
 	mask, _ := ignoreMask(v.Ignore)
-	fmt.Printf("Ignore Mask == %x\n", mask)
 	state := newHtmlState(t.Response.BodyStr, mask)
 
 	// Parse document and record local errors in state.
@@ -119,8 +118,6 @@ done:
 
 	// Check for global errors.
 	state.line++ // Global errors are reported "after the last line".
-	fmt.Printf("state.ignore&issueDoctype = %x  %x %x\n", state.ignore&issueDoctype, state.ignore,
-		issueDoctype)
 	if state.ignore&issueDoctype == 0 {
 		if d := state.elementCount["DOCTYPE"]; d != 1 {
 			state.err(fmt.Errorf("found %d DOCTYPE", d))
@@ -173,6 +170,9 @@ func ignoreMask(s string) (htmlIssue, error) {
 	mask := htmlIssue(0)
 	s = strings.ToLower(s)
 	for _, p := range strings.Split(s, " ") {
+		if p == "" {
+			continue
+		}
 		i := strings.Index(issueNames, p)
 		if i == -1 {
 			return mask, fmt.Errorf("no such html issue '%s'", p)
@@ -262,6 +262,11 @@ func (s *htmlState) checkEscaping(text string) {
 	if s.ignore&issueEscaping != 0 {
 		return
 	}
+
+	if n := len(s.openTags); n > 0 && s.openTags[n-1] == "script" {
+		return
+	}
+
 	if strings.Index(text, "<") != -1 {
 		s.err(fmt.Errorf("unescaped '<'"))
 	}
