@@ -39,7 +39,7 @@ type Latency struct {
 	Concurrent int `json:",omitempty"`
 
 	// Limits is a string of the following form:
-	//    "50% ≤ 150; 80% ≤ 200; 95% ≤ 250; 0.9995 ≤ 900"
+	//    "50% ≤ 150ms; 80% ≤ 200ms; 95% ≤ 250ms; 0.9995 ≤ 0.9s"
 	// The limits above would require the median of the response
 	// times to be <= 150 ms and would allow only 1 request in 2000 to
 	// exced 900ms.
