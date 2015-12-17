@@ -57,6 +57,7 @@ func init() {
 		cmdHelp,
 		cmdRecord,
 		cmdList,
+		cmdQuick,
 		cmdRun,
 		cmdExec,
 		cmdWarmup,
