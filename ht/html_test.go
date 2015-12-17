@@ -105,7 +105,7 @@ func TestHTMLContains(t *testing.T) {
 	}
 }
 
-func TestW3CValidHTML(t *testing.T) {
+func TestW3CValidatorHTML(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping W3C Validator based checks in short mode.")
 	}
