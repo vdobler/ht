@@ -32,6 +32,7 @@ var defaultHeader = http.Header{}
 func init() {
 	addSkiptlsverifyFlag(cmdQuick.Flag)
 	addVerbosityFlag(cmdQuick.Flag)
+	addOutputFlag(cmdQuick.Flag)
 
 	defaultHeader.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
 	defaultHeader.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/47.0.2526.73 Chrome/47.0.2526.73 Safari/537.36")
@@ -62,14 +63,14 @@ func sameHostCondition(s string) ht.Condition {
 func runQuick(cmd *Command, urls []string) {
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 	suite := &ht.Suite{
-		Name: "Quick Suite",
+		Name: "Quick Check",
 		Log:  logger,
 	}
 
-	for i, u := range urls {
+	for _, u := range urls {
 		test := &ht.Test{
-			Name:        fmt.Sprintf("URL %02d", i+1),
-			Description: u,
+			Name:        u,
+			Description: "Quick test for " + u,
 			Request: ht.Request{
 				Method:          "GET",
 				URL:             u,
@@ -82,15 +83,13 @@ func runQuick(cmd *Command, urls []string) {
 				ht.UTF8Encoded{},
 				ht.ValidHTML{},
 				ht.ResponseTime{Lower: ht.Duration(1 * time.Second)},
-				/*
-					&ht.Links{Which: "a img link script",
-						Concurrency: 4, OnlyLinks: []ht.Condition{sameHostCondition(u)}},
-						ht.Resilience{ModParam: "drop none nonsense type", ModHeader: "drop none"},
-						&ht.Latency{N: 21, Concurrent: 1, SkipChecks: true,
-							Limits: "50% ≤ 750ms; 80% ≤ 1.0s; 95% ≤ 1.25s"},
-						&ht.Latency{N: 41, Concurrent: 4, SkipChecks: true,
-							Limits: "50% ≤ 1000ms; 80% ≤ 1.5s; 95% ≤ 2s"},
-				*/
+				&ht.Links{Which: "a img link script",
+					Concurrency: 8, OnlyLinks: []ht.Condition{sameHostCondition(u)}},
+				ht.Resilience{ModParam: "drop none nonsense type large", ModHeader: "drop none"},
+				&ht.Latency{N: 21, Concurrent: 1, SkipChecks: true,
+					Limits: "25% ≤ 700ms; 50% ≤ 750ms; 80% ≤ 1.0s; 90% ≤ 1.1s; 95% ≤ 1.25s"},
+				&ht.Latency{N: 41, Concurrent: 4, SkipChecks: true,
+					Limits: "25% ≤ 900ms; 50% ≤ 1000ms; 80% ≤ 1.5s; 90% ≤ 1.7s; 95% ≤ 2s"},
 			},
 		}
 		suite.Tests = append(suite.Tests, test)
