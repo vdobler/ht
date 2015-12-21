@@ -853,7 +853,11 @@ func (t *Test) executeChecks(result []CheckResult) {
 		start := time.Now()
 		err := ck.Execute(t)
 		result[i].Duration = Duration(time.Since(start))
-		result[i].Error = err
+		if el, ok := err.(ErrorList); ok {
+			result[i].Error = el
+		} else {
+			result[i].Error = ErrorList{err}
+		}
 		if err != nil {
 			t.debugf("check %d %s failed: %s", i, NameOf(ck), err)
 			if _, ok := err.(MalformedCheck); ok {

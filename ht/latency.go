@@ -231,24 +231,20 @@ func (L *Latency) Execute(t *Test) error {
 	}
 	sort.Ints(latencies)
 
-	errs := ""
+	errs := ErrorList{}
 	for _, lim := range L.limits {
 		lat := time.Millisecond * time.Duration(quantile(latencies, lim.q))
 		t.infof("Latency quantil (conc=%d) %0.2f%% ≤ %d ms",
 			conc, lim.q*100, lat/time.Millisecond)
 		if lat > lim.max {
-			if errs != "" {
-				errs += "; "
-			}
-			errs += fmt.Sprintf("%.2f%% = %s > limit %s",
-				100*lim.q, lat, lim.max)
+			errs = append(errs, fmt.Errorf("%.2f%% = %s > limit %s",
+				100*lim.q, lat, lim.max))
 		}
 	}
-	if errs != "" {
-		return fmt.Errorf("%s", errs)
+	if len(errs) == 0 {
+		return nil
 	}
-
-	return nil
+	return errs
 }
 
 type latencyResult struct {

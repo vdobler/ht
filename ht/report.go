@@ -73,11 +73,11 @@ func (s *Suite) Stats() (notRun int, skipped int, passed int, failed int, errore
 
 // CheckResult captures the outcom of a single check inside a test.
 type CheckResult struct {
-	Name     string   // Name of the check as registered.
-	JSON     string   // JSON serialization of check.
-	Status   Status   // Outcome of check. All status but Error
-	Duration Duration // How long the check took.
-	Error    error    // For a Status of Bogus or Fail.
+	Name     string    // Name of the check as registered.
+	JSON     string    // JSON serialization of check.
+	Status   Status    // Outcome of check. All status but Error
+	Duration Duration  // How long the check took.
+	Error    ErrorList // For a Status of Bogus or Fail.
 }
 
 // ----------------------------------------------------------------------------
@@ -228,7 +228,8 @@ func (r *SuiteResult) Matrix() string {
 // Templates to output
 
 var defaultCheckTmpl = `{{define "CHECK"}}{{printf "%-7s %-15s %s" .Status .Name .JSON}}` +
-	`{{if eq .Status 3 5}} {{.Error.Error}}{{end}}{{end}}`
+	`{{if eq .Status 3 5}}{{range .Error}}
+                {{.Error}}{{end}}{{end}}{{end}}`
 
 var htmlCheckTmpl = `{{define "CHECK"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}2">

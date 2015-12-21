@@ -390,12 +390,12 @@ func textContentRec(n *html.Node, raw bool) string {
 
 // Links checks links and references in HTML pages for availability.
 type Links struct {
-	// Head triggers HEAD requests instead of GET requests.
-	Head bool
-
 	// Which links to test; a combination of "a", "img", "link" and "script".
 	// E.g. use "a img" to check the href of all a tags and src of all img tags.
 	Which string
+
+	// Head triggers HEAD requests instead of GET requests.
+	Head bool `json:",omitempty"`
 
 	// Concurrency determines how many of the found links are checked
 	// concurrently. A zero value indicates sequential checking.
@@ -491,18 +491,18 @@ func (c *Links) Execute(t *Test) error {
 	}
 	suite.ExecuteConcurrent(conc)
 	if suite.Status != Pass {
-		broken := []string{}
+		broken := ErrorList{}
 		for _, test := range suite.Tests {
 			if test.Status == Error || test.Status == Bogus {
-				broken = append(broken, fmt.Sprintf("%s  -->  %s",
+				broken = append(broken, fmt.Errorf("%s  -->  %s",
 					test.Request.URL, test.Error))
 			} else if test.Status == Fail {
-				broken = append(broken, fmt.Sprintf("%s  -->  %d",
+				broken = append(broken, fmt.Errorf("%s  -->  %d",
 					test.Request.URL,
 					test.Response.Response.StatusCode))
 			}
 		}
-		return fmt.Errorf("%s", strings.Join(broken, "\n"))
+		return broken
 	}
 	return nil
 }
