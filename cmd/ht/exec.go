@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"sync"
@@ -124,6 +125,11 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		err = suites[s].HTMLReport(dirname)
 		if err != nil {
 			log.Panic(err)
+		}
+		cwd, err := os.Getwd()
+		if err == nil {
+			reportURL := "file://" + path.Join(cwd, dirname, "Report.html")
+			log.Printf("See %s", reportURL)
 		}
 		junit, err := suites[s].JUnit4XML()
 		if err != nil {
