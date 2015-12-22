@@ -34,9 +34,9 @@ git are available and working:
 * Run `$GOPATH/bin/ht help` to get you started.
 * For a quick check of a HTML page do a 
 
-    $GOPATH/bin/ht quick <URL-of-HTML-page>
+    `$GOPATH/bin/ht quick <URL-of-HTML-page>`
 
-  and check the generated Report.html file.
+  and check the generated `Report.html` file.
 
 
 Documentation
