@@ -61,6 +61,7 @@ func init() {
 		cmdRun,
 		cmdExec,
 		cmdWarmup,
+		cmdDebug,
 		cmdBench,
 		cmdMonitor,
 		cmdFingerprint,
