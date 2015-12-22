@@ -461,6 +461,9 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
   <title>Suite {{.Name}}</title>
 </head>
 </body>
+<a href="../../">Up/Back/Home</a>
+
+
 <h1>Results of Suite <code>{{.Name}}</code></h1>
 
 {{.Description}}
