@@ -74,7 +74,7 @@ done:
 			tn, hasAttr := z.TagName()
 			// Some tags are empty and may be written in the self-closing
 			// variant "<br/>" or simply empty like "<br>".
-			// TODO: Maybe llow the non-compliant form "<br></br>" too?
+			// TODO: Maybe allow the non-compliant form "<br></br>" too?
 			if tt != html.SelfClosingTagToken && !emptyHTMLElement[string(tn)] {
 				state.push(string(tn))
 				depth++
