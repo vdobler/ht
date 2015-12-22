@@ -31,6 +31,13 @@ func init() {
 //   * 'escaping':  unescaped &, < and > characters or unknown entities
 //   * 'label':     reference to nonexisting id in label tags
 //   * 'url':       malformed URLs
+//
+// Notes:
+//  - HTML5 allows unescaped & in several circumstances but ValidHTML
+//    reports all stray & as an error.
+//  - The lang attributes are parse very lax, e.g. the non-canonical form
+//    'de_CH' is considered valid (and equivalent to 'de-CH'). I don't
+//    know how browser handle this.
 type ValidHTML struct {
 	// Ignore is a space seperated list of issues to ignore.
 	// You normaly won't skip detection of these issues as all issues
