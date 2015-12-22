@@ -73,6 +73,9 @@ func readImage(name string) (image.Image, error) {
 			return nil, err
 		}
 		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			return nil, fmt.Errorf("%s", resp.Status)
+		}
 		in = resp.Body
 	} else {
 		file, err := os.Open(name)
