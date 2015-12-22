@@ -53,7 +53,7 @@ func init() {
 //   * large:     produce much larger values
 //       - "1234"  -->  "98765432123456789"
 //       - "56.78" -->  "8888888888888888.9999999999"
-//       - "foo"   -->  "fooooooooooooooooooooooooooooooooooooooooooooooooooooo"
+//       - "foo"   -->  "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ....ZZZZZZZZ"
 //       - "08:45" -->  "25:65"
 //   * negative   produce negative values
 //       - "1234"  -->  "-2"
