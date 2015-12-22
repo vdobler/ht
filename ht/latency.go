@@ -193,7 +193,7 @@ func (L *Latency) Execute(t *Test) error {
 		if counters[Pass] == L.N ||
 			counters[Fail] > L.N/5 ||
 			counters[Error] > L.N/20 ||
-			time.Since(started) > 2*time.Minute {
+			time.Since(started) > 3*time.Minute {
 			break
 		}
 	}
@@ -217,10 +217,6 @@ func (L *Latency) Execute(t *Test) error {
 			completed,
 		)
 	}
-	if !completed {
-		return fmt.Errorf("Got only %d PASS but %d FAIL and %d ERR",
-			counters[Pass], counters[Fail], counters[Error])
-	}
 
 	latencies := []int{}
 	for i, r := range data {
@@ -241,6 +237,12 @@ func (L *Latency) Execute(t *Test) error {
 				100*lim.q, lat, lim.max))
 		}
 	}
+
+	if !completed {
+		errs = append(errs, fmt.Errorf("Got only %d PASS but %d FAIL and %d ERROR",
+			counters[Pass], counters[Fail], counters[Error]))
+	}
+
 	if len(errs) == 0 {
 		return nil
 	}
