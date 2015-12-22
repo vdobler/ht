@@ -15,12 +15,14 @@ ht tries to achieve the following:
 * Make measuring response times easy.
 * Make it easy to generate a certain load.
 
+
 Non-Goals
 ---------
 
 ht is not the jack of all trades in testing web applications:
 * Simulating browsers (evaluating JavaScript or even rendering
   is not done.
+
 
 Installation
 ------------
@@ -30,6 +32,12 @@ git are available and working:
 * Run `GO15VENDOREXPERIMENT=1 go get github.com/vdobler/ht/cmd/ht`
   which should download, compile and install everything.
 * Run `$GOPATH/bin/ht help` to get you started.
+* For a quick check of a HTML page do a 
+
+    $GOPATH/bin/ht quick <URL-of-HTML-page>
+
+  and check the generated Report.html file.
+
 
 Documentation
 -------------
