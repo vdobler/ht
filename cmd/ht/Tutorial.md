@@ -118,6 +118,43 @@ You may want to run it (after saving to unic-hp2.ht):
 You should see the passed checks.
 
 
+Recording Test skeletons with the reverse proxy
+-----------------------------------------------
+
+Writing tests is not that complicated and the subsequent sections deal with
+all the fancy stuff you can do and configure. But setting up a fresh set
+of tests and combining them to a suite requires several files and some
+typing (and getting the filenames right).
+
+To faciliate this `ht` comes with a reverse proxy which can record requests
+and responses and generate skeleton tests and suites from this recording.
+Let's assue you want to create test for `http://your.own.site/`:
+
+    $ ./ht record http://your.own.site/
+
+Point your browser to `http://localhost:8080` and request the pages
+you like to check. Wait more than 1 second between click to allow the
+reverse proxy to record the different events.
+
+Try two or three pages.  Now point your browser to
+`http://localhost:8080/-ADMIN-`. This should display a small form
+whith each row displaying one recorded event. You can delete events
+if you do not want to generate tests for them by checking the left box 
+and clicking "Update" or you can give more meaningful names to the
+events than the autogenrated names by typing them into the box and 
+clicking Update.
+
+You may continue to surf the website, you may freely switch between the
+site and the `-ADMIN-` form. Once you are satisfied you can "Save" the events
+to the given folder and combine them to the given suite.
+
+The generated tests have some stub checks and provide a suitable starting
+ground for refining the tests and checks.
+
+What and how the reverse proxy captures requests can be controlled 
+by command line options. Please see `$ ./ht help record`.
+
+
 
 Details of the `Request` object
 -------------------------------
