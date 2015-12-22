@@ -89,26 +89,29 @@ func makeChecks(u string) ht.CheckList {
 
 		cl = append(cl,
 			&ht.Latency{
-				Concurrent: 1,
-				N:          31,
-				SkipChecks: true,
-				Limits:     "25% ≤ 1ms; 50% ≤ 2ms; 80% ≤ 3ms; 90% ≤ 4ms; 95% ≤ 5ms",
+				Concurrent:         1,
+				N:                  31,
+				SkipChecks:         true,
+				Limits:             "1% ≤ 1ms; 25% ≤ 2ms; 50% ≤ 3ms; 80% ≤ 4ms; 90% ≤ 5ms; 95% ≤ 6ms",
+				IndividualSessions: true,
 			})
 
 		cl = append(cl,
 			&ht.Latency{
-				Concurrent: 4,
-				N:          51,
-				SkipChecks: true,
-				Limits:     "25% ≤ 1ms; 50% ≤ 2ms; 80% ≤ 3ms; 90% ≤ 4ms; 95% ≤ 5ms",
+				Concurrent:         3,
+				N:                  51,
+				SkipChecks:         true,
+				Limits:             "1% ≤ 1ms; 25% ≤ 2ms; 50% ≤ 3ms; 80% ≤ 4ms; 90% ≤ 5ms; 95% ≤ 6ms",
+				IndividualSessions: true,
 			})
 
 		cl = append(cl,
 			&ht.Latency{
-				Concurrent: 8,
-				N:          71,
-				SkipChecks: true,
-				Limits:     "25% ≤ 1ms; 50% ≤ 2ms; 80% ≤ 3ms; 90% ≤ 4ms; 95% ≤ 5ms",
+				Concurrent:         6,
+				N:                  71,
+				SkipChecks:         true,
+				Limits:             "1% ≤ 1ms; 25% ≤ 2ms; 50% ≤ 3ms; 80% ≤ 4ms; 90% ≤ 5ms; 95% ≤ 6ms",
+				IndividualSessions: true,
 			})
 	}
 
