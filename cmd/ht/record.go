@@ -41,6 +41,7 @@ func init() {
 		"ignore content types matching `regexp`")
 	cmdRecord.Flag.DurationVar(&recorderDisarm, "disarm", 1*time.Second,
 		"disarm recorder for `period` after last capture")
+	cmdRecord.Flag.BoolVar(&recorderRewrite, "rewrite", true, "rewrite absolute redirects, href and src sttributes")
 	addOutputFlag(cmdRecord.Flag)
 }
 
@@ -49,6 +50,7 @@ var (
 	recorderDisarm  time.Duration
 	recorderIgnPath string
 	recorderIgnCT   string
+	recorderRewrite bool
 )
 
 func runRecord(cmd *Command, args []string) {
@@ -68,7 +70,8 @@ func runRecord(cmd *Command, args []string) {
 	registerAdminHandlers()
 
 	opts := recorder.Options{
-		Disarm: recorderDisarm,
+		Disarm:              recorderDisarm,
+		RewriteAbsoluteURLs: recorderRewrite,
 	}
 	if recorderIgnPath != "" {
 		opts.IgnoredPath = regexp.MustCompile(recorderIgnPath)

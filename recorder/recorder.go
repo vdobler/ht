@@ -9,9 +9,11 @@ package recorder
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/sha1"
 	"fmt"
 	"image"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -47,6 +49,8 @@ type Event struct {
 	Name         string    // Used during dumping.
 }
 
+// extractName tries to come up with a useful and representative name for
+// the event.
 func (e Event) extractName() string {
 	doc, err := html.Parse(bytes.NewBufferString(e.ResponseBody))
 	if err != nil {
@@ -69,7 +73,7 @@ func (e Event) extractName() string {
 		}
 	}
 
-	// Last part of the URL without extension is my last idea
+	// Last part of the URL without extension is my last idea.
 	p := e.Request.URL.Path
 	p = p[strings.LastIndex(p, "/")+1:]
 	if i := strings.Index(p, "."); i != -1 {
@@ -95,6 +99,10 @@ type Options struct {
 	// IgnoredPath allows to skip capturing events based on the
 	// requested path,
 	IgnoredPath *regexp.Regexp
+
+	// RewriteAbsoluteURLs allows to rewrite Location headers an
+	// href and src attributes in HTML bodies.
+	RewriteAbsoluteURLs bool
 }
 
 func (o Options) ignore(e Event) bool {
@@ -116,14 +124,18 @@ var (
 
 // StartReverseProxy listens on the local port and forwards request to remote
 // while capturing the request/response pairs selected by opts.
-func StartReverseProxy(port string, remote *url.URL, opts Options) error {
-	remoteHost = remote.Host
+func StartReverseProxy(port string, remoteURL *url.URL, opts Options) error {
+	remoteHost = remoteURL.Host
+	remote := remoteURL.String()
 	requests := make(chan Event, 10)
 	go process(requests, opts)
 
-	proxy := newSingleHostReverseProxy(remote)
-	http.HandleFunc("/", handler(proxy, requests))
-	log.Printf("Staring reverse proxy. Proxying from http://localhost%s to %s", port, remote.String())
+	local := "http://localhost" + port
+	proxy := newSingleHostReverseProxy(remoteURL)
+	http.HandleFunc("/", handler(proxy, requests, opts.RewriteAbsoluteURLs, local, remote))
+	log.Println("Staring reverse proxy")
+	log.Printf("Proxying from http://localhost%s to %s", port, remote)
+	log.Println("Rewriting absolute URLs: ", opts.RewriteAbsoluteURLs)
 	return http.ListenAndServe(port, nil)
 }
 
@@ -145,7 +157,6 @@ func newSingleHostReverseProxy(target *url.URL) *httputil.ReverseProxy {
 		// but check if the can be used for requests too.
 		req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		req.Header.Set("Pragma", "no-cache")
-		req.Header.Set("Expires", "0")
 		req.Header.Del("If-Modified-Since")
 		req.Header.Del("If-None-Match")
 	}
@@ -167,7 +178,7 @@ func singleJoiningSlash(a, b string) string {
 // handler produces a http.HandlerFunc which routes the request via the
 // reverse proxy p, records the request and the response and sends these
 // to events.
-func handler(p *httputil.ReverseProxy, events chan Event) func(http.ResponseWriter, *http.Request) {
+func handler(p *httputil.ReverseProxy, events chan Event, rewrite bool, local, remote string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rr := httptest.NewRecorder()
 		requestBody, err := ioutil.ReadAll(r.Body)
@@ -175,19 +186,72 @@ func handler(p *httputil.ReverseProxy, events chan Event) func(http.ResponseWrit
 			panic(err.Error()) // Harsh but what else?
 		}
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+
 		p.ServeHTTP(rr, r)
+
+		// Read response body, transparently unzip if needed
+		var respBodyReader io.Reader
+		gzipped := false
+		if rr.HeaderMap.Get("Content-Encoding") == "gzip" {
+			respBodyReader, err = gzip.NewReader(rr.Body)
+			if err != nil {
+				panic(err) // TODO
+			}
+			gzipped = true
+		} else {
+			respBodyReader = rr.Body
+		}
+		body, err := ioutil.ReadAll(respBodyReader)
+		if err != nil {
+			panic(err) // TODO
+		}
 
 		events <- Event{
 			Request:      r,
 			RequestBody:  string(requestBody),
 			Response:     rr,
-			ResponseBody: rr.Body.String(),
-			Timestamp:    time.Now()}
+			ResponseBody: string(body),
+			Timestamp:    time.Now(),
+		}
+
 		for h, v := range rr.HeaderMap {
+			if gzipped && h == "Content-Length" {
+				// Any gzip content will be rezipped below which might
+				// result in a different content length (especially if
+				// rewriting absolute URLS): So drop the header and
+				// let net/http recalculate the content length.
+				continue
+			}
+			if rewrite && h == "Location" && strings.HasPrefix(v[0], remote) {
+				// Rewrite absolute redirects to the captured domain.
+				vl := local + v[0][len(remote):]
+				log.Printf("Redirect Location %q rewritten to %q", v, vl)
+				v = []string{vl}
+			}
 			w.Header()[h] = v
 		}
 		w.WriteHeader(rr.Code)
-		w.Write(rr.Body.Bytes())
+		if rewrite && strings.HasPrefix(rr.HeaderMap.Get("Content-Type"), "text/html") {
+			// Rewrite absolute hrefs and srcs.
+			// The way the rewrite happens is clearly bogus: A non-context
+			// sensitive text replacement will replace too many occurences
+			// of remote. But parsing the HTML seems inappropriate
+			// complicated.
+			oldhref := []byte(`href="` + remote)
+			newhref := []byte(`href="` + local)
+			body = bytes.Replace(body, oldhref, newhref, -1)
+			oldsrc := []byte(`src="` + remote)
+			newsrc := []byte(`src="` + local)
+			body = bytes.Replace(body, oldsrc, newsrc, -1)
+		}
+
+		if gzipped {
+			gz := gzip.NewWriter(w)
+			gz.Write(body)
+			gz.Close()
+		} else {
+			w.Write(body)
+		}
 	}
 }
 
