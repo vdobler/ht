@@ -491,12 +491,18 @@ func (t *Test) Run(variables map[string]string) error {
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
+		not := ""
+
+		if neg, ok := c.(Negate); ok {
+			c = neg
+			not = "NOT "
+		}
 		t.CheckResults[i].Name = NameOf(c)
 		buf, err := json5.Marshal(c)
 		if err != nil {
 			buf = []byte(err.Error())
 		}
-		t.CheckResults[i].JSON = string(buf)
+		t.CheckResults[i].JSON = not + string(buf)
 	}
 
 	maxTries := t.Poll.Max

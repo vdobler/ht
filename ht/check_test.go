@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/vdobler/ht/internal/json5"
 )
 
 type sampleCheck struct {
@@ -130,10 +132,52 @@ func TestSubstituteCheckVariables(t *testing.T) {
 
 }
 
-func TestUnmarshalJSON(t *testing.T) {
+func TestChecklistMarshalJSON(t *testing.T) {
+	cl := CheckList{
+		&StatusCode{Expect: 404},
+		Negate{ResponseTime{Lower: Duration(1234)}},
+		Negate{UTF8Encoded{}},
+	}
+
+	j, err := json5.MarshalIndent(cl, "", "    ")
+	if err != nil {
+		t.Fatalf("Unexpected error %v", err)
+	}
+
+	want := `[
+    {
+        Check: "StatusCode",
+        Expect: 404
+    },
+    {
+        Check: "NOT ResponseTime",
+        Lower: "1.23µs"
+    },
+    {
+        Check: "NOT UTF8Encoded"
+    }
+]`
+	got := string(j)
+	if got != want {
+		t.Errorf("Got: %s", got)
+	}
+}
+
+func TestCheckMarshalJSON(t *testing.T) {
+	check := Negate{ResponseTime{Lower: Duration(1234)}}
+	j, err := json5.Marshal(check)
+	if err != nil {
+		t.Fatalf("Unexpected error %v", err)
+	}
+	fmt.Println(string(j))
+}
+
+func TestChecklistUnmarshalJSON(t *testing.T) {
 	j := []byte(`[
 {Check: "ResponseTime", Lower: 1.23},
 {Check: "Body", Prefix: "BEGIN", Regexp: "foo", Count: 3},
+{Check: "NOT StatusCode", Expect: 500},
+{Check: "NOT UTF8Encoded"},
 ]`)
 
 	cl := CheckList{}
@@ -142,7 +186,7 @@ func TestUnmarshalJSON(t *testing.T) {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 
-	if len(cl) != 2 {
+	if len(cl) != 4 {
 		t.Fatalf("Wrong len, got %d", len(cl))
 	}
 
@@ -169,6 +213,26 @@ func TestUnmarshalJSON(t *testing.T) {
 		}
 		if len(rt.re.FindAllString("The foo made foomuh", -1)) != 2 {
 			t.Errorf("Got %v", rt.re.FindAllString("The foo made foomuh", -1))
+		}
+	}
+
+	if rt, ok := cl[2].(Negate); !ok {
+		t.Errorf("Check 2, got %T, %#v", cl[2], cl[2])
+	} else {
+		if sc, ok := rt.Check.(*StatusCode); !ok {
+			t.Errorf("Check 2, value to negate, got %T, %#v", rt.Check, rt.Check)
+		} else {
+			if sc.Expect != 500 {
+				t.Errorf("Check 2, got StatusCode.Expect==%d", sc.Expect)
+			}
+		}
+	}
+
+	if rt, ok := cl[3].(Negate); !ok {
+		t.Errorf("Check 3, got %T, %#v", cl[3], cl[3])
+	} else {
+		if _, ok := rt.Check.(*UTF8Encoded); !ok {
+			t.Errorf("Check 3, value to negate, got %T, %#v", rt.Check, rt.Check)
 		}
 	}
 }

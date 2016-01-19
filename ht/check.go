@@ -25,6 +25,31 @@ type Check interface {
 	Execute(*Test) error
 }
 
+// Negate the outcome of the Check.
+type Negate struct {
+	Check Check
+}
+
+// Prepare implements Checks' Prepare method by forwarding to
+// the underlying check.
+func (n Negate) Prepare() error {
+	return n.Check.Prepare()
+}
+
+// Execute implements Check's Execute method. It returns nil if the
+// underlying check return a non-nil value.
+func (n Negate) Execute(t *Test) error {
+	err := n.Check.Execute(t)
+	if err == nil {
+		return fmt.Errorf("no check failure detected")
+	}
+	return nil
+}
+
+func init() {
+	RegisterCheck(Negate{})
+}
+
 // NameOf returns the name of the type of inst.
 func NameOf(inst interface{}) string {
 	typ := reflect.TypeOf(inst)
@@ -181,7 +206,14 @@ func (cl CheckList) MarshalJSON5() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		buf.WriteString(`{Check:"` + NameOf(check) + `"`)
+		buf.WriteString(`{Check:"`)
+		if negate, ok := check.(Negate); ok {
+			buf.WriteString("NOT ")
+			check = negate.Check
+			raw = raw[len("Check:{") : len(raw)-1]
+		}
+		buf.WriteString(NameOf(check))
+		buf.WriteByte('"')
 		if string(raw) != "{}" {
 			buf.WriteRune(',')
 			buf.Write(raw[1 : len(raw)-1])
@@ -197,7 +229,7 @@ func (cl CheckList) MarshalJSON5() ([]byte, error) {
 	return []byte(result), nil
 }
 
-// extractSingleFieldFromJSON5 called with fielname="Check" and data of
+// extractSingleFieldFromJSON5 called with fieldname="Check" and data of
 // "{Check: "StatusCode", Expect: 200}"  will return fieldval="StatusCode"
 // and recoded="{Expect: 200}".
 func extractSingleFieldFromJSON5(fieldname string, data []byte) (fieldval string, reencoded []byte, err error) {
@@ -239,6 +271,11 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
+		negated := false
+		if strings.HasPrefix(checkName, "NOT ") {
+			checkName = checkName[4:]
+			negated = true
+		}
 		typ, ok := CheckRegistry[checkName]
 		if !ok {
 			return fmt.Errorf("ht: no such check %s", checkName)
@@ -246,12 +283,18 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
 		}
-		check := reflect.New(typ)
-		err = json5.Unmarshal(checkDef, check.Interface())
+		rcheck := reflect.New(typ)
+		err = json5.Unmarshal(checkDef, rcheck.Interface())
 		if err != nil {
 			return err
 		}
-		*cl = append(*cl, check.Interface().(Check))
+
+		check := rcheck.Interface().(Check)
+		if negated {
+			*cl = append(*cl, Negate{check})
+		} else {
+			*cl = append(*cl, check)
+		}
 	}
 	return nil
 }
