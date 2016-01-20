@@ -135,13 +135,19 @@ func TestSubstituteCheckVariables(t *testing.T) {
 func TestChecklistMarshalJSON(t *testing.T) {
 	cl := CheckList{
 		&StatusCode{Expect: 404},
-		Negate{ResponseTime{Lower: Duration(1234)}},
-		Negate{UTF8Encoded{}},
+		None{Of: CheckList{ResponseTime{Lower: Duration(1234)}}},
+		None{Of: CheckList{UTF8Encoded{}}},
+		AnyOne{
+			Of: CheckList{
+				&StatusCode{Expect: 303},
+				&StatusCode{Expect: 404},
+			},
+		},
 	}
 
 	j, err := json5.MarshalIndent(cl, "", "    ")
 	if err != nil {
-		t.Fatalf("Unexpected error %v", err)
+		t.Fatalf("Unexpected error %v\n%s", err, j)
 	}
 
 	want := `[
@@ -150,11 +156,34 @@ func TestChecklistMarshalJSON(t *testing.T) {
         Expect: 404
     },
     {
-        Check: "NOT ResponseTime",
-        Lower: "1.23µs"
+        Check: "None",
+        Of: [
+            {
+                Check: "ResponseTime",
+                Lower: "1.23µs"
+            }
+        ]
     },
     {
-        Check: "NOT UTF8Encoded"
+        Check: "None",
+        Of: [
+            {
+                Check: "UTF8Encoded"
+            }
+        ]
+    },
+    {
+        Check: "AnyOne",
+        Of: [
+            {
+                Check: "StatusCode",
+                Expect: 303
+            },
+            {
+                Check: "StatusCode",
+                Expect: 404
+            }
+        ]
     }
 ]`
 	got := string(j)
@@ -163,21 +192,15 @@ func TestChecklistMarshalJSON(t *testing.T) {
 	}
 }
 
-func TestCheckMarshalJSON(t *testing.T) {
-	check := Negate{ResponseTime{Lower: Duration(1234)}}
-	j, err := json5.Marshal(check)
-	if err != nil {
-		t.Fatalf("Unexpected error %v", err)
-	}
-	fmt.Println(string(j))
-}
-
 func TestChecklistUnmarshalJSON(t *testing.T) {
 	j := []byte(`[
 {Check: "ResponseTime", Lower: 1.23},
 {Check: "Body", Prefix: "BEGIN", Regexp: "foo", Count: 3},
-{Check: "NOT StatusCode", Expect: 500},
-{Check: "NOT UTF8Encoded"},
+{Check: "None", Of: [ {Check: "StatusCode", Expect: 500} ] },
+{Check: "AnyOne", Of: [
+   {Check: "StatusCode", Expect: 303},
+   {Check: "Body", Contains: "all good"},
+]},
 ]`)
 
 	cl := CheckList{}
@@ -216,23 +239,42 @@ func TestChecklistUnmarshalJSON(t *testing.T) {
 		}
 	}
 
-	if rt, ok := cl[2].(Negate); !ok {
+	if n, ok := cl[2].(*None); !ok {
 		t.Errorf("Check 2, got %T, %#v", cl[2], cl[2])
 	} else {
-		if sc, ok := rt.Check.(*StatusCode); !ok {
-			t.Errorf("Check 2, value to negate, got %T, %#v", rt.Check, rt.Check)
+		if len(n.Of) != 1 {
+			t.Errorf("Check 2, Of=%v", n.Of)
+		} else if sc, ok := n.Of[0].(*StatusCode); !ok {
+			t.Errorf("Check 2, Of[0], got %#v", n.Of[0])
 		} else {
 			if sc.Expect != 500 {
-				t.Errorf("Check 2, got StatusCode.Expect==%d", sc.Expect)
+				t.Errorf("Check 2, Of[0].Expect==%d", sc.Expect)
 			}
 		}
 	}
 
-	if rt, ok := cl[3].(Negate); !ok {
+	if any, ok := cl[3].(*AnyOne); !ok {
 		t.Errorf("Check 3, got %T, %#v", cl[3], cl[3])
 	} else {
-		if _, ok := rt.Check.(*UTF8Encoded); !ok {
-			t.Errorf("Check 3, value to negate, got %T, %#v", rt.Check, rt.Check)
+		if len(any.Of) != 2 {
+			t.Errorf("Wrong count of clauses, got %d", len(any.Of))
+		} else {
+			/*
+				if sc, ok := okc.Clauses[0].(*StatusCode); !ok {
+					t.Errorf("Clause 0, got %#v", okc.Clauses[0])
+				} else {
+					if sc.Expect != 303 {
+						t.Errorf("Clause 0, got StatusCode.Expect==%d", sc.Expect)
+					}
+				}
+				if bc, ok := okc.Clauses[1].(*Body); !ok {
+					t.Errorf("Clause 1, got %#v", okc.Clauses[1])
+				} else {
+					if bc.Contains != "all good" {
+						t.Errorf("Clause 1, got Body.Contains==%q", bc.Contains)
+					}
+				}
+			*/
 		}
 	}
 }

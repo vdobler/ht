@@ -534,7 +534,7 @@ func TestMerge(t *testing.T) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		t.Log(jr)
+		t.Log(string(jr))
 	}
 	if len(c.Request.Params) != 3 ||
 		c.Request.Params["a"][0] != "aa" ||

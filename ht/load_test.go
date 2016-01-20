@@ -44,7 +44,9 @@ var sampleTestJSON = `{
         {Check: "StatusCode", Expect: 200},
         {Check: "Header", Header: "X-Clacks-Overhead", Equals: "GNU Terry Pratchett"},
 	{Check: "HTMLTag", Selector: "div#logo_bereich div.logo", Count: 1},
-        {Check: "NOT Identity", SHA1: "bc86149a4f735e882f2d922eb6b778751161ac9b"},
+        {Check: "None", Of: [
+            {Check: "Identity", SHA1: "bc86149a4f735e882f2d922eb6b778751161ac9b"},
+        ]},
     ],
     VarEx: {
         VariableA: {Extractor: "BodyExtractor", Regexp: "[A-Z]+[0-9]+"},
@@ -219,7 +221,7 @@ func TestRawTestToTest(t *testing.T) {
 			&StatusCode{Expect: 200},
 			&Header{Header: "X-Clacks-Overhead", Condition: Condition{Equals: "GNU Terry Pratchett"}},
 			&HTMLTag{Selector: "div#logo_bereich div.logo", Count: 1},
-			Negate{Identity{SHA1: "bc86149a4f735e882f2d922eb6b778751161ac9b"}},
+			None{Of: CheckList{Identity{SHA1: "bc86149a4f735e882f2d922eb6b778751161ac9b"}}},
 			&StatusCode{Expect: 400},
 		},
 		VarEx: map[string]Extractor{

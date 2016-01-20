@@ -25,29 +25,102 @@ type Check interface {
 	Execute(*Test) error
 }
 
-// Negate the outcome of the Check.
-type Negate struct {
-	Check Check
+// ----------------------------------------------------------------------------
+// Boolean combinations of Checks
+
+// AnyOne checks that at least on Of the embeded checks passes.
+// It is the short circuiting boolean OR of the underlying checks.
+// Check execution stops once the first passing check is found.
+// Example (in JSON5 notation) to check for 202 OR 404:
+//     {
+//         Check: "AnyOne", Of: [
+//             {Check: "StatusCode", Expect: 202},
+//             {Check: "StatusCode", Expect: 404},
+//         ]
+//     }
+type AnyOne struct {
+	// Of is the list of checks to execute.
+	Of CheckList
 }
 
 // Prepare implements Checks' Prepare method by forwarding to
-// the underlying check.
-func (n Negate) Prepare() error {
-	return n.Check.Prepare()
+// the underlying checks.
+func (a AnyOne) Prepare() error {
+	errs := ErrorList{}
+	for _, c := range a.Of {
+		err := c.Prepare()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
 }
 
-// Execute implements Check's Execute method. It returns nil if the
-// underlying check return a non-nil value.
-func (n Negate) Execute(t *Test) error {
-	err := n.Check.Execute(t)
-	if err == nil {
-		return fmt.Errorf("no check failure detected")
+// Execute implements Check's Execute method. It executes the underlying checks
+// until the first passes. If all underlying checks fail the whole list of
+// failures is returned.
+func (a AnyOne) Execute(t *Test) error {
+	errs := ErrorList{}
+	for _, c := range a.Of {
+		err := c.Execute(t)
+		if err == nil {
+			return nil
+		}
+		errs = append(errs, err)
+	}
+	return errs
+}
+
+// None checks that none Of the embeded checks passes.
+// It is the NOT of the short circuiting boolean AND of the underlying checks.
+// Check execution stops once the first passing check is found.
+// It
+// Example (in JSON5 notation) to check for non-occurence if 'foo' in body.:
+//     {
+//         Check: "None", Of: [
+//             {Check: "Body", Contains: "foo"},
+//         ]
+//     }
+type None struct {
+	// Of is the list of checks to execute.
+	Of CheckList
+}
+
+// Prepare implements Checks' Prepare method by forwarding to
+// the underlying checks.
+func (n None) Prepare() error {
+	errs := ErrorList{}
+	for _, c := range n.Of {
+		err := c.Prepare()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
+}
+
+// Execute implements Check's Execute method. It executes the underlying checks
+// until the first passes. If all underlying checks fail the whole list of
+// failures is returned.
+func (n None) Execute(t *Test) error {
+	for i, c := range n.Of {
+		err := c.Prepare()
+		if err == nil {
+			return fmt.Errorf("check %d passed", i+1)
+		}
 	}
 	return nil
 }
 
 func init() {
-	RegisterCheck(Negate{})
+	RegisterCheck(AnyOne{})
+	RegisterCheck(None{})
 }
 
 // NameOf returns the name of the type of inst.
@@ -207,11 +280,6 @@ func (cl CheckList) MarshalJSON5() ([]byte, error) {
 			return nil, err
 		}
 		buf.WriteString(`{Check:"`)
-		if negate, ok := check.(Negate); ok {
-			buf.WriteString("NOT ")
-			check = negate.Check
-			raw = raw[len("Check:{") : len(raw)-1]
-		}
 		buf.WriteString(NameOf(check))
 		buf.WriteByte('"')
 		if string(raw) != "{}" {
@@ -271,11 +339,6 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
-		negated := false
-		if strings.HasPrefix(checkName, "NOT ") {
-			checkName = checkName[4:]
-			negated = true
-		}
 		typ, ok := CheckRegistry[checkName]
 		if !ok {
 			return fmt.Errorf("ht: no such check %s", checkName)
@@ -289,12 +352,7 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		check := rcheck.Interface().(Check)
-		if negated {
-			*cl = append(*cl, Negate{check})
-		} else {
-			*cl = append(*cl, check)
-		}
+		*cl = append(*cl, rcheck.Interface().(Check))
 	}
 	return nil
 }
