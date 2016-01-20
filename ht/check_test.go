@@ -196,10 +196,14 @@ func TestChecklistUnmarshalJSON(t *testing.T) {
 	j := []byte(`[
 {Check: "ResponseTime", Lower: 1.23},
 {Check: "Body", Prefix: "BEGIN", Regexp: "foo", Count: 3},
-{Check: "None", Of: [ {Check: "StatusCode", Expect: 500} ] },
+{Check: "None", Of: [
+   {Check: "StatusCode", Expect: 500},
+   {Check: "UTF8Encoded"},
+]},
 {Check: "AnyOne", Of: [
    {Check: "StatusCode", Expect: 303},
    {Check: "Body", Contains: "all good"},
+   {Check: "ValidHTML"},
 ]},
 ]`)
 
@@ -209,74 +213,33 @@ func TestChecklistUnmarshalJSON(t *testing.T) {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 
-	if len(cl) != 4 {
-		t.Fatalf("Wrong len, got %d", len(cl))
+	want := CheckList{
+		ResponseTime{Lower: Duration(1230 * time.Millisecond)},
+		&Body{Prefix: "BEGIN", Regexp: "foo", Count: 3},
+		None{Of: CheckList{
+			StatusCode{Expect: 500},
+			UTF8Encoded{},
+		}},
+		AnyOne{Of: CheckList{
+			StatusCode{Expect: 303},
+			&Body{Contains: "all good"},
+			ValidHTML{},
+		}},
 	}
 
-	if rt, ok := cl[0].(*ResponseTime); !ok {
-		t.Errorf("Check 0, got %T, %#v", cl[0], cl[0])
-	} else {
-		if rt.Lower != 1.23*1e9 {
-			t.Errorf("Got Lower=%d", rt.Lower)
-		}
+	gots, err := json5.MarshalIndent(cl, "", "    ")
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	wants, err := json5.MarshalIndent(want, "", "    ")
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
 	}
 
-	if rt, ok := cl[1].(*Body); !ok {
-		t.Errorf("Check 1, got %T, %#v", cl[1], cl[1])
-	} else {
-		if rt.Regexp != "foo" {
-			t.Errorf("Got Reqexp=%q", rt.Regexp)
-		}
-		if rt.Prefix != "BEGIN" {
-			t.Errorf("Got Prefix=%q", rt.Prefix)
-		}
-		ce := rt.Prepare()
-		if ce != nil {
-			t.Errorf("Unexpected error: %#v", ce)
-		}
-		if len(rt.re.FindAllString("The foo made foomuh", -1)) != 2 {
-			t.Errorf("Got %v", rt.re.FindAllString("The foo made foomuh", -1))
-		}
+	if string(gots) != string(wants) {
+		t.Errorf("Got:\n%s\nWant:\n%s", gots, wants)
 	}
 
-	if n, ok := cl[2].(*None); !ok {
-		t.Errorf("Check 2, got %T, %#v", cl[2], cl[2])
-	} else {
-		if len(n.Of) != 1 {
-			t.Errorf("Check 2, Of=%v", n.Of)
-		} else if sc, ok := n.Of[0].(*StatusCode); !ok {
-			t.Errorf("Check 2, Of[0], got %#v", n.Of[0])
-		} else {
-			if sc.Expect != 500 {
-				t.Errorf("Check 2, Of[0].Expect==%d", sc.Expect)
-			}
-		}
-	}
-
-	if any, ok := cl[3].(*AnyOne); !ok {
-		t.Errorf("Check 3, got %T, %#v", cl[3], cl[3])
-	} else {
-		if len(any.Of) != 2 {
-			t.Errorf("Wrong count of clauses, got %d", len(any.Of))
-		} else {
-			/*
-				if sc, ok := okc.Clauses[0].(*StatusCode); !ok {
-					t.Errorf("Clause 0, got %#v", okc.Clauses[0])
-				} else {
-					if sc.Expect != 303 {
-						t.Errorf("Clause 0, got StatusCode.Expect==%d", sc.Expect)
-					}
-				}
-				if bc, ok := okc.Clauses[1].(*Body); !ok {
-					t.Errorf("Clause 1, got %#v", okc.Clauses[1])
-				} else {
-					if bc.Contains != "all good" {
-						t.Errorf("Clause 1, got Body.Contains==%q", bc.Contains)
-					}
-				}
-			*/
-		}
-	}
 }
 
 // ----------------------------------------------------------------------------
