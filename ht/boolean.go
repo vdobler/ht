@@ -95,7 +95,7 @@ func (n None) Prepare() error {
 // failures is returned.
 func (n None) Execute(t *Test) error {
 	for i, c := range n.Of {
-		err := c.Prepare()
+		err := c.Execute(t)
 		if err == nil {
 			return fmt.Errorf("check %d passed", i+1)
 		}
