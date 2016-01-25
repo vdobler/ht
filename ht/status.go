@@ -18,13 +18,26 @@ func init() {
 
 // StatusCode checks the HTTP statuscode.
 type StatusCode struct {
+	// Expect is the value to expect, e.g. 302.
+	//
+	// If Expect <= 9 it matches a whole range of status codes, e.g.
+	// with Expect==4 any of the 4xx status codes would fulfill this check.
 	Expect int
 }
 
 // Execute implements Check's Execute method.
 func (c StatusCode) Execute(t *Test) error {
+	if c.Expect < 10 {
+		if t.Response.Response.StatusCode/100 != c.Expect {
+			return fmt.Errorf("got %d, want %dxx",
+				t.Response.Response.StatusCode, c.Expect)
+		}
+		return nil
+	}
+
 	if t.Response.Response.StatusCode != c.Expect {
-		return fmt.Errorf("got %d, want %d", t.Response.Response.StatusCode, c.Expect)
+		return fmt.Errorf("got %d, want %d",
+			t.Response.Response.StatusCode, c.Expect)
 	}
 	return nil
 }

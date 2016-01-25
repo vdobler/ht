@@ -28,6 +28,7 @@ func TestStatusCode(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: code},
+				StatusCode{Expect: code / 100},
 			},
 		}
 
