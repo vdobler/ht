@@ -10,6 +10,7 @@ import (
 )
 
 func TestModify(t *testing.T) {
+	r := Resilience{}
 	for _, tc := range [][]string{
 		[]string{"hello"},
 		[]string{"12"},
@@ -19,7 +20,7 @@ func TestModify(t *testing.T) {
 		[]string{""},
 		[]string{"foo", "bar"},
 	} {
-		modvals := modify(tc, modAll)
+		modvals := r.modify(tc, modAll)
 		fmt.Printf("Original: %v\n", tc)
 		for _, mv := range modvals {
 			fmt.Printf("  %#v\n", mv)

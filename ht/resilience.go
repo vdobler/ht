@@ -37,33 +37,37 @@ func init() {
 // modifications
 //   * all:       all the individual modifications below
 //   * drop:      don't send at all
-//   * double:    send same value two times
-//   * twice:     send two different values
-//   * change:    change a single character (first, middle and last one)
-//   * delete:    drop single character (first, middle and last one)
-//   * nonsense:  "hubba%12bubba(!"
-//   * malicious: "\000\ufeff<script>\r\r\n"  (not suitable for headers)
-//   * empty:     ""
-//   * type:      change the type (if obvious)
-//       - "1234"     -->  "xxxx"
-//       - "i@you.me" -->  "iXyouYme"
-//       - "foobar  " -->  "12345"
-//       - "08:45"    -->  "zz:zz"
-//       - "#0c12ff   -->  "blün"
-//   * large:     produce much larger values
-//       - "1234"  -->  "98765432123456789"
-//       - "56.78" -->  "8888888888888888.9999999999"
-//       - "foo"   -->  "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ....ZZZZZZZZ"
-//       - "08:45" -->  "25:65"
-//   * negative   produce negative values
-//       - "1234"  -->  "-2"
-//       - "56.78" -->  "-3.0"
-//   * tiny:      produce 0 or short values
-//       - "1234"   -->  "0"
-//       - "12.3"   -->  "0"
-//       - "foobar" --> "f"
 //   * none:      don't modify the individual parameters or header but
 //                don't send any parameters or headers
+//   * double:    send same value two times
+//   * twice:     send two different values (original and "extraValue")
+//   * change:    change a single character (first, middle and last one)
+//   * delete:    drop single character (first, middle and last one)
+//   * nonsense:  the values "p,f1u;p5c:h*", "hubba%12bubba(!" and "\t \v \r \n "
+//   * malicious: the values "\x00\x00", "\uFEFF\u200B\u2029", "ʇunpᴉpᴉɔuᴉ",
+//                "http://a/%%30%30" and "' OR 1=1 -- 1"
+//   * user       use user defined values from Values
+//   * empty:     ""
+//   * type:      change the type (if obvious)
+//       - "1234"     -->  "wwww"
+//       - "3.1415"   -->  "wwwwww"
+//       - "i@you.me" -->  "iXyouYme"
+//       - "foobar  " -->  "123"
+//   * large:     produce much larger values
+//       - "1234"     -->  "9999999" (just large), "2147483648" (MaxInt32 + 1)
+//                         "9223372036854775808" (MaxInt64 + 1)
+//                         "18446744073709551616" (MaxUInt64 + 1)
+//       - "56.78"    -->  "888888888.9999", "123.456e12",
+//                         "3.5e38" (larger than MaxFloat32)
+//                         "1.9e308" (larger than MaxFloat64)
+//       - "foo"      -->  50 * "X", 160 * "Y" and 270 * "Z"
+//   * tiny:      produce 0 or short values
+//       - "1234"      -->  "0" and "1"
+//       - "12.3"      -->  "0", "0.02", "0.0003", "1e-12" and "4.7e-324"
+//       - "foobar"    --> "f"
+//   * negative   produce negative values
+//       - "1234"      -->  "-2"
+//       - "56.78"     -->  "-3.3"
 //
 // This check will make a wast amount of request to the given URL including
 // the modifying and non-idempotent methods POST, PUT, and DELETE. Some
@@ -76,8 +80,9 @@ type Resilience struct {
 
 	// ModParam and ModHeader control which modifications of parameter values
 	// and header values are checked.
-	// It is a space seprated string if the modifications explained above
+	// It is a space seperated string of the modifications explained above
 	// e.g. "drop nonsense empty".
+	// An empty value turns off resilience testing.
 	ModParam, ModHeader string `json:",omitempty"`
 
 	// ParamsAs controls how parameter values are transmitted, it
@@ -91,6 +96,21 @@ type Resilience struct {
 	// SaveFailuresTo is the filename to which all failed checks shall
 	// be logged. The data is appended to the file.
 	SaveFailuresTo string `json:",omitempty"`
+
+	// Checks is the list of checks to perform on the received responses.
+	// In most cases the -- correct -- behaviour of the server will differ
+	// from the response to a valid, unscrambled request; typically by
+	// returning one of the 4xx status codes.
+	// If Checks is empty, only a simple NoServerError will be executed.
+	Checks CheckList `json:",omitempty"`
+
+	// Values contains a list of values to use as header and parmater values.
+	// Note that header and parameter checking uses the same list of Values,
+	// you might want to do two Resilience checks, one for the headers and one
+	// for the parameters.
+	// If values is empty, then only the builtin modifications selected by
+	// Mod{Param,Header} are used.
+	Values []string
 }
 
 // Execute implements Check's Execute method.
@@ -102,7 +122,7 @@ func (r Resilience) Execute(t *Test) error {
 	for _, method := range r.methods(t) {
 		// Just an other method.
 		if method != t.Request.Method {
-			suite.Tests = append(suite.Tests, resilienceTest(t, method, t.Request.ParamsAs))
+			suite.Tests = append(suite.Tests, r.resilienceTest(t, method, t.Request.ParamsAs))
 		}
 
 		// Fiddle with HTTP header.
@@ -111,15 +131,15 @@ func (r Resilience) Execute(t *Test) error {
 			// Keep in sync or refactore once.
 
 			// No headers at all.
-			rt := resilienceTest(t, method, t.Request.ParamsAs)
+			rt := r.resilienceTest(t, method, t.Request.ParamsAs)
 			rt.Request.Header = nil
 			suite.Tests = append(suite.Tests, rt)
 
 			// Modify each header individually.
 			wantedMods, _ := parseModifications(r.ModHeader)
 			for name, origvals := range t.Request.Header {
-				for _, modvals := range modify(origvals, wantedMods) {
-					rt := resilienceTest(t, method, t.Request.ParamsAs)
+				for _, modvals := range r.modify(origvals, wantedMods) {
+					rt := r.resilienceTest(t, method, t.Request.ParamsAs)
 					rt.Name += prettyprintParams(name, modvals)
 					if modvals == nil {
 						// drop parameter
@@ -141,20 +161,20 @@ func (r Resilience) Execute(t *Test) error {
 
 			// Just an other parameter transmission type.
 			if pas != t.Request.ParamsAs {
-				suite.Tests = append(suite.Tests, resilienceTest(t, method, pas))
+				suite.Tests = append(suite.Tests, r.resilienceTest(t, method, pas))
 			}
 
 			if r.ModParam != "" {
 				// No parameters at all.
-				rt := resilienceTest(t, method, pas)
+				rt := r.resilienceTest(t, method, pas)
 				rt.Request.Params = nil
 				suite.Tests = append(suite.Tests, rt)
 
 				// Modify each parameter individually.
 				wantedMods, _ := parseModifications(r.ModParam)
 				for name, origvals := range t.Request.Params {
-					for _, modvals := range modify(origvals, wantedMods) {
-						rt := resilienceTest(t, method, pas)
+					for _, modvals := range r.modify(origvals, wantedMods) {
+						rt := r.resilienceTest(t, method, pas)
 						rt.Name += prettyprintParams(name, modvals)
 						if modvals == nil {
 							// drop parameter
@@ -264,6 +284,7 @@ const (
 	modDelete
 	modNonsense
 	modMalicious
+	modUser
 	modEmpty
 	modType
 	modLarge
@@ -273,7 +294,7 @@ const (
 	modAll = 2*modTiny - 1
 )
 
-var modNames = strings.Split("none drop double twice change delete nonsense malicious empty type large negative tiny", " ")
+var modNames = strings.Split("none drop double twice change delete nonsense malicious user empty type large negative tiny", " ")
 
 func parseModifications(s string) (modification, error) {
 	m := modNone
@@ -306,7 +327,7 @@ func parseModifications(s string) (modification, error) {
 
 // modify takes an original set of parameter or header values and produces a
 // list of new ones based on the desired modifications.
-func modify(orig []string, mod modification) [][]string {
+func (r Resilience) modify(orig []string, mod modification) [][]string {
 	list := [][]string{}
 
 	if mod&modDrop != 0 {
@@ -356,6 +377,7 @@ func modify(orig []string, mod modification) [][]string {
 	if mod&modNonsense != 0 {
 		list = append(list, []string{"p,f1u;p5c:h*"})    // arbitary garbage
 		list = append(list, []string{"hubba%12bubba(!"}) // arbitary garbage
+		list = append(list, []string{"\t \v \r \n "})    // arbitary garbage
 	}
 
 	if mod&modMalicious != 0 {
@@ -365,6 +387,12 @@ func modify(orig []string, mod modification) [][]string {
 		list = append(list, []string{"ʇunpᴉpᴉɔuᴉ"})
 		list = append(list, []string{"http://a/%%30%30"})
 		list = append(list, []string{"' OR 1=1 -- 1"})
+	}
+
+	if mod&modUser != 0 {
+		for _, v := range r.Values {
+			list = append(list, []string{v})
+		}
 	}
 
 	if mod&modEmpty != 0 {
@@ -380,6 +408,8 @@ func modify(orig []string, mod modification) [][]string {
 			val := strings.Replace(orig[0], "@", "X", -1)
 			val = strings.Replace(val, ".", "Y", -1)
 			list = append(list, []string{val})
+		case stringType:
+			list = append(list, []string{"123"})
 		default:
 			// Unknown type, no extra modifications done
 		}
@@ -393,7 +423,9 @@ func modify(orig []string, mod modification) [][]string {
 			list = append(list, []string{"9223372036854775808"})  // MaxInt64 + 1
 			list = append(list, []string{"18446744073709551616"}) // MaxUInt64 + 1
 		case floatType:
-			list = append(list, []string{"999999999.9999"}) // just large
+			list = append(list, []string{"888888888.9999"}) // just large
+			list = append(list, []string{"3.5e38"})         //  (larger than MaxFloat32)
+			list = append(list, []string{"1.9e308"})        //  (larger than MaxFloat64)
 		case stringType:
 			list = append(list, []string{strings.Repeat("X", 50)})
 			list = append(list, []string{strings.Repeat("Y", 160)})
@@ -410,6 +442,8 @@ func modify(orig []string, mod modification) [][]string {
 			list = append(list, []string{"0"})
 			list = append(list, []string{"0.02"})
 			list = append(list, []string{"0.0003"})
+			list = append(list, []string{"1e-12"})
+			list = append(list, []string{"4.7e-324"}) // maler than tiniest float64
 		case stringType:
 			if len(orig[0]) > 0 {
 				list = append(list, []string{orig[0][:1]})
@@ -433,7 +467,7 @@ func modify(orig []string, mod modification) [][]string {
 // paramater transport type paramsAs and has just one check, a No ServerError.
 // Header fields and parameters are deep copied. The actual set of cookies is
 // copied from the orig's jar.
-func resilienceTest(orig *Test, method string, paramsAs string) *Test {
+func (r Resilience) resilienceTest(orig *Test, method string, paramsAs string) *Test {
 	cpy := &Test{
 		Name: fmt.Sprintf("%s %s", method, paramsAs),
 		Request: Request{
@@ -460,8 +494,12 @@ func resilienceTest(orig *Test, method string, paramsAs string) *Test {
 		cpy.Request.Params[p] = vc
 	}
 
-	cpy.Checks = CheckList{
-		NoServerError{},
+	if len(r.Checks) == 0 {
+		cpy.Checks = CheckList{
+			NoServerError{},
+		}
+	} else {
+		cpy.Checks = r.Checks
 	}
 
 	cpy.PopulateCookies(orig.Jar, orig.Request.Request.URL)
