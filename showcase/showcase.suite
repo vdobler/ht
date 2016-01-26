@@ -1,0 +1,28 @@
+{
+    Name: "Showcase",
+    Description: "Show off all features; nonsensical but impressive",
+    KeepCookies: true,
+
+    Setup: [
+        "wait-for-startup.ht",
+        "load-sampledata.ht",
+    ],
+
+    Tests: [
+        "homepage.ht",  // Shows a lot of checks
+	"login.ht",     // Redirections and Cookies
+	"logo.ht",      // Logical OR of checks and image checing
+	"xml.ht",       // Logicla NOR of checks and XML checking
+	"json-api.ht",  // Checking JSON responses
+	"pdf.ht",       
+    ],
+
+    Teardown: [
+    ],
+
+    // Variables can be set or overwritten from the command line.
+    Variables: {
+         HOST: "www.example.org",
+    }
+
+}

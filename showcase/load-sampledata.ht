@@ -1,0 +1,17 @@
+{
+    Name: "Load sample data",
+    Description: "",
+    Request: {
+        Method: "POST",
+        URL: "http://{{HOST}}/admin/load",
+        ParamsAs: "multipart",  // send parameter as multipart/form-data
+        Params: {
+            load: "@file:sampledata.zip", // attach content of file
+            username: "admin",
+            password: "admin123",
+        },
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 201},
+    ],
+}

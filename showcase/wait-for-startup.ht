@@ -1,0 +1,14 @@
+{
+    Name: "Poll server until started",
+    Description: "Try once every 10 seconds for at most 100 seconds.",
+    Request: {
+        URL: "http://{{HOST}}/"
+    },
+    Timeout: "5s",
+    Checks: [
+        {Check: "StatusCode", Expect: 200},
+    ],
+    // Poll for a maximum of 10 times for success, sleeping 5s after each
+    // failure (which might take up to 5s due to the 5s timeout above).
+    Poll: {Max: 10, Sleep: "5s"},
+}

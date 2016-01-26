@@ -1,0 +1,24 @@
+{
+    Name: "XML checking",
+    Description: "",
+    Request: {
+        URL: "http://{{HOST}}/api/v1/books",
+        Header: {
+	    Accept: [ "application/xml" ],
+        },
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 200},
+	{Check: "XML", Path: "/library/book/character[2]/name",
+	    Equals: "Snoopy"},
+	{Check: "XML", Path: "//book[author/@id='CMS']/title",
+	    Prefix: "Being", Contains: "Dog"},
+
+	// Some books are undiscoveral through the API:
+	// None is the boolean NOR of several checks.
+	{Check: "None", Of: [
+	    	{Check: "XML", Path: "/library/book[@id='299,792,459']"},
+	    	{Check: "XML", Path: "/library/book[@unpublished]"},
+	]},
+    ],
+}

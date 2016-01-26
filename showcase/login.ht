@@ -1,0 +1,22 @@
+{
+    Name: "Login",
+    Description: "Proper login process",
+    Request: {
+        Method: "POST",
+        URL: "http://{{HOST}}/login",
+	ParamsAs: "body",
+	Params: { user: "john.q.public", pass: "secret" },
+	FollowRedirects: false,
+    },
+    Checks: [
+        {Check: "Redirect", To: "https://.../welcome.html", StatusCode: 303},
+	{Check: "DeleteCookie", Name: "history"},
+	{Check: "SetCookie", Name: "username", Value: {Contains: "Public"}},
+	{Check: "SetCookie",
+	    Name: "session",
+	    Path: {Equals: "/"},
+	    MinLifetime: "90m",
+	    Type: "httpOnly session secure",
+	}
+    ],
+}
