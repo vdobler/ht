@@ -236,7 +236,7 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	for _, c := range raw {
+	for i, c := range raw {
 		checkName, checkDef, err := extractSingleFieldFromJSON5("Check", c)
 		if err != nil {
 			return err
@@ -251,7 +251,7 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		rcheck := reflect.New(typ)
 		err = json5.Unmarshal(checkDef, rcheck.Interface())
 		if err != nil {
-			return err
+			return fmt.Errorf("%d. check: %s", i+1, err)
 		}
 
 		*cl = append(*cl, rcheck.Interface().(Check))

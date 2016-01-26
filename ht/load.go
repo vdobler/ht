@@ -126,7 +126,7 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 // loaded already it is returned from the pool otherwise it is read from the
 // filesystem. The directory the file was found is returned as basedir.
 // If the data parameter is non nil it will be used instead of the
-// data read from the filesyetem to allow testing.
+// data read from the filesystem to allow testing.
 func findRawTest(curdir string, name string, testPool map[string]*rawTest, data []byte) (raw *rawTest, basedir string, err error) {
 	name = path.Join(curdir, name)
 	basedir = path.Dir(name)
@@ -153,7 +153,7 @@ func loadRawTest(all []byte, filename string) (*rawTest, error) {
 	t := &rawTest{}
 	err := json5.Unmarshal(all, t)
 	if err != nil {
-		err := fmt.Errorf(beautifyJSONError(err, all, filename))
+		err := fmt.Errorf("%s", beautifyJSONError(err, all, filename))
 		return nil, err
 	}
 	return t, nil
