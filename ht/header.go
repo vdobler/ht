@@ -16,8 +16,8 @@ import (
 
 func init() {
 	RegisterCheck(&Header{})
-	RegisterCheck(&FinalURL{})
 	RegisterCheck(&ContentType{})
+	RegisterCheck(&FinalURL{})
 	RegisterCheck(&Redirect{})
 	RegisterCheck(&RedirectChain{})
 }
@@ -52,27 +52,6 @@ func (h Header) Execute(t *Test) error {
 // Prepare implements Check's Prepare method.
 func (h *Header) Prepare() error {
 	return h.Condition.Compile()
-}
-
-// ----------------------------------------------------------------------------
-// FinalURL
-
-// FinalURL checks the last URL after following all redirects.
-// This check is useful only for tests with Request.FollowRedirects=true
-type FinalURL Condition
-
-// Execute implements Check's Execute method.
-func (f FinalURL) Execute(t *Test) error {
-	if t.Response.Response == nil || t.Response.Response.Request == nil ||
-		t.Response.Response.Request.URL == nil {
-		return fmt.Errorf("no request URL to analyze")
-	}
-	return Condition(f).Fullfilled(t.Response.Response.Request.URL.String())
-}
-
-// Prepare implements Check's Prepare method.
-func (f *FinalURL) Prepare() error {
-	return ((*Condition)(f)).Compile()
 }
 
 // ----------------------------------------------------------------------------
@@ -128,6 +107,27 @@ func (c ContentType) Execute(t *Test) error {
 
 // Prepare implements Check's Prepare method.
 func (ContentType) Prepare() error { return nil }
+
+// ----------------------------------------------------------------------------
+// FinalURL
+
+// FinalURL checks the last URL after following all redirects.
+// This check is useful only for tests with Request.FollowRedirects=true
+type FinalURL Condition
+
+// Execute implements Check's Execute method.
+func (f FinalURL) Execute(t *Test) error {
+	if t.Response.Response == nil || t.Response.Response.Request == nil ||
+		t.Response.Response.Request.URL == nil {
+		return fmt.Errorf("no request URL to analyze")
+	}
+	return Condition(f).Fullfilled(t.Response.Response.Request.URL.String())
+}
+
+// Prepare implements Check's Prepare method.
+func (f *FinalURL) Prepare() error {
+	return ((*Condition)(f)).Compile()
+}
 
 // ----------------------------------------------------------------------------
 // Redirect
