@@ -72,3 +72,54 @@ func TestRedirect(t *testing.T) {
 		runTest(t, i, tc)
 	}
 }
+
+func TestDotMatch(t *testing.T) {
+	for i, tc := range []struct {
+		g, w  string
+		match bool
+	}{
+		{"foo", "foo", true},
+		{"foo 123 bar", "foo...", true},
+		{"foo 123 bar", "...bar", true},
+		{"foo 123 bar", "f...r", true},
+		{"wuz", "wuz...", true},
+		{"wuz", "...wuz", true},
+		{"wuz", "wu...z", true},
+		{"foo", "qux", false},
+		{"foo", "qux...", false},
+		{"foo", "...qux", false},
+		{"foo", "q...ux", false},
+	} {
+		if got := dotMatch(tc.g, tc.w); got != tc.match {
+			t.Errorf("%d: dotMatch(%q, %q)=%t, want %t",
+				i, tc.g, tc.w, got, tc.match)
+		}
+	}
+
+}
+
+func TestRedirectChain(t *testing.T) {
+	resp := Response{Redirections: []string{
+		"http://www.example.org/foo/bar",
+		"http://www.example.org/foo",
+		"http://www.example.org/foo/qux",
+		"http://www.example.org/foo/qux/wiz",
+	}}
+
+	rdChainTests := []TC{
+		{resp, &RedirectChain{
+			Via: []string{".../bar", ".../foo", ".../qux", ".../wiz"}},
+			nil},
+		{resp, &RedirectChain{Via: []string{".../bar"}}, nil},
+		{resp, &RedirectChain{Via: []string{".../foo"}}, nil},
+		{resp, &RedirectChain{Via: []string{".../wiz"}}, nil},
+		{resp, &RedirectChain{Via: []string{".../foo", ".../wiz"}}, nil},
+
+		{resp, &RedirectChain{Via: []string{".../XXX"}}, someError},
+		{resp, &RedirectChain{Via: []string{".../foo", ".../bar"}}, someError},
+	}
+
+	for i, tc := range rdChainTests {
+		runTest(t, i, tc)
+	}
+}

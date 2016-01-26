@@ -19,6 +19,7 @@ func init() {
 	RegisterCheck(&FinalURL{})
 	RegisterCheck(&ContentType{})
 	RegisterCheck(&Redirect{})
+	RegisterCheck(&RedirectChain{})
 }
 
 // Header provides a textual test of single-valued HTTP headers.
@@ -177,20 +178,7 @@ func (r Redirect) Execute(t *Test) error {
 			err = append(err, fmt.Errorf("got %d Location header", len(location)))
 		}
 		loc := location[0]
-		if strings.HasPrefix(r.To, "...") {
-			if !strings.HasSuffix(loc, r.To[3:]) {
-				err = append(err, fmt.Errorf("Location = %s", loc))
-			}
-		} else if strings.HasSuffix(r.To, "...") {
-			if !strings.HasPrefix(loc, r.To[:len(r.To)-3]) {
-				err = append(err, fmt.Errorf("Location = %s", loc))
-			}
-		} else if i := strings.Index(r.To, "..."); i != -1 {
-			a, e := r.To[:i], r.To[i+3:]
-			if !(strings.HasPrefix(loc, a) && strings.HasSuffix(loc, e)) {
-				err = append(err, fmt.Errorf("Location = %s", loc))
-			}
-		} else if loc != r.To {
+		if !dotMatch(loc, r.To) {
 			err = append(err, fmt.Errorf("Location = %s", loc))
 		}
 	}
@@ -201,6 +189,20 @@ func (r Redirect) Execute(t *Test) error {
 	return nil
 }
 
+// dotMatch returns whether got ...-equals want, e.g.
+// got "foo 123 bar" ...-matches "foo 12..."
+func dotMatch(got, want string) bool {
+	if strings.HasPrefix(want, "...") {
+		return strings.HasSuffix(got, want[3:])
+	} else if strings.HasSuffix(want, "...") {
+		return strings.HasPrefix(got, want[:len(want)-3])
+	} else if i := strings.Index(want, "..."); i != -1 {
+		a, e := want[:i], want[i+3:]
+		return strings.HasPrefix(got, a) && strings.HasSuffix(got, e)
+	}
+	return got == want
+}
+
 // Prepare implements Check's Prepare method.
 func (r Redirect) Prepare() error {
 	if r.To == "" {
@@ -209,6 +211,51 @@ func (r Redirect) Prepare() error {
 
 	if r.StatusCode > 0 && (r.StatusCode < 300 || r.StatusCode > 399) {
 		return MalformedCheck{fmt.Errorf("status code %d out of redirect range", r.StatusCode)}
+	}
+	return nil
+}
+
+// ----------------------------------------------------------------------------
+// RedirectChain
+
+// RedirectChain checks steps in a redirect chain.
+// The check passes if all stations in Via have been accessed in order; the
+// actual redirect chain may hit additional stations.
+//
+// Note that this check can be used on tests with
+//     Request.FollowRedirects = true
+type RedirectChain struct {
+	// Via contains the necessary URLs accessed during a redirect chain.
+	//
+	// Any URL may start with, end with or contain three dots "..." which
+	// indicate a suffix, prefix or suffix+prefix match like in the To
+	// field of Redirect.
+	Via []string
+}
+
+// Execute implements Check's Execute method.
+func (r RedirectChain) Execute(t *Test) error {
+	reds := t.Response.Redirections
+	if len(reds) == 0 {
+		return errors.New("no redirections at all")
+	}
+	j := 0
+	for i, via := range r.Via {
+		for ; j < len(reds) && !dotMatch(reds[j], via); j++ {
+		}
+		if j >= len(reds) {
+			return fmt.Errorf("redirect step %d (%s) not hit", i+1, via)
+		}
+		j++
+	}
+
+	return nil
+}
+
+// Prepare implements Check's Prepare method.
+func (r RedirectChain) Prepare() error {
+	if len(r.Via) == 0 {
+		return MalformedCheck{fmt.Errorf("Via must not be empty")}
 	}
 	return nil
 }
