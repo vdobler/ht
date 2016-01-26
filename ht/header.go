@@ -131,16 +131,21 @@ func (ContentType) Prepare() error { return nil }
 // ----------------------------------------------------------------------------
 // Redirect
 
-// Redirect checks for HTTP redirections.
+// Redirect checks for a singe HTTP redirection.
+//
+// Note that this check cannot be used on tests with
+//     Request.FollowRedirects = true
+// as Redirect checks only the final response which will not be a
+// redirection if redirections are followed automatically.
 type Redirect struct {
 	// To is matched against the Location header. It may begin with,
-	// or end with contain three dots "..." which inicate that To should
-	// match the end or the start or both ends of the Location header
+	// end with or contain three dots "..." which indicate that To should
+	// match the end, the start or both ends of the Location header
 	// value. (Note that only one occurence of "..." is supported."
 	To string
 
 	// If StatusCode is greater zero it is the required HTTP status code
-	// expected in this response. If zero the valid status codes are
+	// expected in this response. If zero, the valid status codes are
 	// 301 (Moved Permanently), 302 (Found), 303 (See Other) and
 	// 307 (Temporary Redirect)
 	StatusCode int `json:",omitempty"`
@@ -148,7 +153,7 @@ type Redirect struct {
 
 // Execute implements Check's Execute method.
 func (r Redirect) Execute(t *Test) error {
-	err := []string{}
+	err := ErrorList{}
 
 	if t.Response.Response == nil {
 		return errors.New("no response to check")
@@ -157,43 +162,42 @@ func (r Redirect) Execute(t *Test) error {
 	sc := t.Response.Response.StatusCode
 	if r.StatusCode > 0 {
 		if sc != r.StatusCode {
-			err = append(err, fmt.Sprintf("got status code %d", sc))
+			err = append(err, fmt.Errorf("got status code %d", sc))
 		}
 	} else {
 		if !(sc == 301 || sc == 302 || sc == 303 || sc == 307) {
-			err = append(err, fmt.Sprintf("got status code %d", sc))
+			err = append(err, fmt.Errorf("got status code %d", sc))
 		}
 	}
 
 	if location, ok := t.Response.Response.Header["Location"]; !ok {
-		err = append(err, "no Location header received")
+		err = append(err, fmt.Errorf("no Location header received"))
 	} else {
 		if len(location) > 1 {
-			err = append(err, fmt.Sprintf("got %d Location header", len(location)))
+			err = append(err, fmt.Errorf("got %d Location header", len(location)))
 		}
 		loc := location[0]
 		if strings.HasPrefix(r.To, "...") {
 			if !strings.HasSuffix(loc, r.To[3:]) {
-				err = append(err, fmt.Sprintf("Location = %s", loc))
+				err = append(err, fmt.Errorf("Location = %s", loc))
 			}
 		} else if strings.HasSuffix(r.To, "...") {
 			if !strings.HasPrefix(loc, r.To[:len(r.To)-3]) {
-				err = append(err, fmt.Sprintf("Location = %s", loc))
+				err = append(err, fmt.Errorf("Location = %s", loc))
 			}
 		} else if i := strings.Index(r.To, "..."); i != -1 {
 			a, e := r.To[:i], r.To[i+3:]
 			if !(strings.HasPrefix(loc, a) && strings.HasSuffix(loc, e)) {
-				err = append(err, fmt.Sprintf("Location = %s", loc))
+				err = append(err, fmt.Errorf("Location = %s", loc))
 			}
 		} else if loc != r.To {
-			err = append(err, fmt.Sprintf("Location = %s", loc))
+			err = append(err, fmt.Errorf("Location = %s", loc))
 		}
 	}
 
 	if len(err) > 0 {
-		return errors.New(strings.Join(err, "; "))
+		return err
 	}
-
 	return nil
 }
 
