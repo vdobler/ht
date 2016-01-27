@@ -1,8 +1,0 @@
-{
-  Name: "Reddit: Golang",
-  Request: {
-    URL: "https://www.reddit.com/r/golang",
-    Body: "This is an example body (which is ignored by reddit)."
-  },
-  Checks: [{Check: "StatusCode", Expect: 200}],
-}

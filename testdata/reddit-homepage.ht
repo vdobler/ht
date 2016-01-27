@@ -1,8 +1,0 @@
-{
-    Name: "Reddit: Homepage",
-    Request: { URL: "https://www.reddit.com" },
-    Checks: [
-        {Check: "StatusCode", Expect: 200},
-        {Check: "Body", Contains: "<!doctype html>", Count: 1},
-    ],
-}

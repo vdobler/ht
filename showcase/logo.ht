@@ -6,18 +6,18 @@
         {Check: "StatusCode", Expect: 200},
 
         // A 380x56 png is fine as well as a 70px high jpeg.
-	// The check AnyOne is the boolean OR of a list of checks.
+        // The check AnyOne is the boolean OR of a list of checks.
         {Check: "AnyOne", Of: [
-    	    {Check: "Image",
-    	        Format: "png", Width: 380, Height: 56,
-    	        Fingerprint: "00000007000001420000000v", // ColorHist fingerprint
-    	        Threshold: 0.01, 
-    	    },   
-    	    {Check: "Image",
-    	        Format: "jpeg", Height: 70,
-    	        Fingerprint: "c0803f7fdfff0004", // 8-byte BMV fingerprint
-    	        Threshold: 0.03, 
-    	    },
+                {Check: "Image",
+                    Format: "png", Width: 380, Height: 56,
+                    Fingerprint: "00000007000001420000000v", // ColorHist fingerprint
+                    Threshold: 0.01, 
+                },   
+                {Check: "Image",
+                    Format: "jpeg", Height: 70,
+                    Fingerprint: "c0803f7fdfff0004", // 8-byte BMV fingerprint
+                    Threshold: 0.03, 
+                },
         ]},
     ],
 }

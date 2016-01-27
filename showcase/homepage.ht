@@ -1,83 +1,89 @@
 {
     Name: "Homepage",
     Description: "Check an awful lot of stuff on the homepage.",
+    BasedOn: [
+        // BasedOn allows to 'merge' mixins (non-complete tests).
+        // Useful for std headers or default checks.
+        "german-chrome.mixin",
+        "default-webpage.mixin",
+    ],
     Request: {
         Method: "GET",  // default, but be explicit
         URL: "http://{{HOST}}/",
-	ParamsAs: "URL",  // query parameters, default, but be explicit
-	Params: {
-	    when: "today",             // results in index.html/?when=today
-	    primes: [ "2", "7", "13"], // multiple values are possible
-	    info: "A<?>B €",           // proper encoding is done automatically
-	    weight: "12.34",
-	},
-	FollowRedirects: true,
+        ParamsAs: "URL",  // query parameters, default, but be explicit
+        Params: {
+            when: "today",             // results in index.html/?when=today
+            primes: [ "2", "7", "13"], // multiple values are possible
+            info: "A<?>B €",           // proper encoding is done automatically
+            weight: "12.34",
+        },
+        FollowRedirects: true,
     },
     Checks: [
         {Check: "StatusCode", Expect: 200},
-	{Check: "ContentType", Is: "html"}, // short for text/html
-	{Check: "UTF8Encoded"},
+        {Check: "ContentType", Is: "html"}, // short for text/html
+        {Check: "UTF8Encoded"},
 
-	// Any ETag, no Warning and deny'ed X-Frame-Options.
-	{Check: "Header", Header: "ETag"},
-	{Check: "Header", Header: "X-Frame-Options", Equals: "deny"},
-	{Check: "Header", Header: "Warning", Absent: true},
+        // Any ETag, no Warning and deny'ed X-Frame-Options.
+        {Check: "Header", Header: "ETag"},
+        {Check: "Header", Header: "X-Frame-Options", Equals: "deny"},
+        {Check: "Header", Header: "Warning", Absent: true},
 
-	{Check: "FinalURL", Equals: "http://{{HOST}}/en/index.html"},
-	{Check: "RedirectChain",
-	    Via: [
-	        "https://{{HOST}}...",   // switch to https first
-		".../en/?anon=1",
-		".../en/",
-		"http://{{HOST}}/en/index.html",
-	    ],
+        {Check: "FinalURL", Equals: "http://{{HOST}}/en/index.html"},
+        {Check: "RedirectChain",
+            Via: [
+                "https://{{HOST}}...",   // switch to https first
+                ".../en/?anon=1",
+                ".../en/",
+                "http://{{HOST}}/en/index.html",
+            ],
         },
 
-	{Check: "ResponseTime", Lower: "1.5s"},
+        {Check: "ResponseTime", Lower: "1.5s"},
 
-	// non-unique ids and references to non-existing ids is okay
-	{Check: "ValidHTML", Ignore: "uniqueids label"},
+        // non-unique ids and references to non-existing ids is okay
+        {Check: "ValidHTML", Ignore: "uniqueids label"},
 
-	// Textual checks of the body
+        // Textual checks of the body
         {Check: "Body", Contains: "Welcome"},
         {Check: "Body", Contains: "Oooops: Something went wrong...", Count: -1},
         {Check: "Body", Prefix: "<!DOCTYPE html>"},
-	{Check: "Body", Regexp: "^foo-[aeiou]+ .* blob$"},
-	{Check: "Sorted", Text: [ "New York", "Rio", "Tokyo" ]},
+        {Check: "Body", Regexp: "^foo-[aeiou]+ .* blob$"},
+        {Check: "Sorted", Text: [ "New York", "Rio", "Tokyo" ]},
 
-	// Check the HTML structure
-	{Check: "HTMLTag", Selector: "#teaser div.promo", Count: 3},
-	{Check: "HTMLContains", Selector: "div.special-offer h3",
-	    Text: [ "Less Bugs", "More Performance", "Happiness" ],
+        // Check the HTML structure
+        {Check: "HTMLTag", Selector: "#teaser div.promo", Count: 3},
+        {Check: "HTMLContains", Selector: "div.special-offer h3",
+            Text: [ "Less Bugs", "More Performance", "Happiness" ],
             Complete: true, InOrder: true,
-	},
-	
-	// The following checks make additional request to the same
-	// or different URLs.
+        },
+        
+        // The following checks make additional request to the same
+        // or different URLs.
 
-	// Latency distribution.
-	{Check: "Latency",
-	    N: 200,         // measure 100 request
-	    Concurrent: 5,  // at 5 concurrent request
+        // Latency distribution.
+        {Check: "Latency",
+            N: 200,         // measure 100 request
+            Concurrent: 5,  // at 5 concurrent request
             IndividualSessions: true,
             SkipChecks: true,
             Limits: "50% ≤ 6ms; 80% ≤ 8ms; 99% ≤ 9ms",
-	},
+        },
 
-	// Links (href for a- and link-tags and src for img- and script-tags)
-	{Check: "Links",
+        // Links (href for a- and link-tags and src for img- and script-tags)
+        {Check: "Links",
             Head: true,
             Which: "a img link script",
-	    Concurrency: 8,
-	    OnlyLinks: [
-	        {Prefix: "http://{{HOST}}/"},
-	        {Prefix: "https://{{HOST}}/"},
-	        {Prefix: "http://promo.{{HOST}}/"},
-	        {Prefix: "http://dam.{{HOST}}/"},
-	    ],
-	    IgnoredLinks: [
-	        {Prefix: "http://{{HOST}}/no/need/to/check"},
-	    ],
+            Concurrency: 8,
+            OnlyLinks: [
+                {Prefix: "http://{{HOST}}/"},
+                {Prefix: "https://{{HOST}}/"},
+                {Prefix: "http://promo.{{HOST}}/"},
+                {Prefix: "http://dam.{{HOST}}/"},
+            ],
+            IgnoredLinks: [
+                {Prefix: "http://{{HOST}}/no/need/to/check"},
+            ],
         },
 
     ],

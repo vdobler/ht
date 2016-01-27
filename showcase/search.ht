@@ -4,19 +4,19 @@
     Request: {
         Method: "GET",
         URL: "http://{{HOST}}/search",
-	ParamsAs: "URL",
-	Params: {
-	    // TERM is a loop variable
-	    q: "{{TERM}}",
-	},
+        ParamsAs: "URL",
+        Params: {
+            // TERM is a loop variable
+            q: "{{TERM}}",
+        },
     },
     Checks: [
         {Check: "StatusCode", Expect: 200},
         {Check: "Body", Contains: "Search for '{{TERM}}' found {{RESULTS}} results."},
 
-	// The nonsensical value 98765 is a replaced by the value
-	// of the variable name "#98765" below.
-	{Check: "Body", Contains: "Please try again", Count: 98765},
+        // The nonsensical value 98765 is a replaced by the value
+        // of the variable name "#98765" below.
+        {Check: "Body", Contains: "Please try again", Count: 98765},
     ],
 
     // This is just one test-file, but it gets 'unrolled' 3 times with
@@ -24,7 +24,7 @@
     Unroll: {
         TERM:     [ "gluon", "quark", "tachyon", "axion"     ],
         RESULTS:  [ "12",    "8",     "no"     , "really no" ],
-	"#98765": [ "-1",    "-1",    "1"      , "1"         ],
+        "#98765": [ "-1",    "-1",    "1"      , "1"         ],
     },
 
 }

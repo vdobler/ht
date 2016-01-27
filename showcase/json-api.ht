@@ -4,7 +4,7 @@
     Request: {
         URL: "http://{{HOST}}/api/v1",
         Header: {
-	    Accept: [ "application/json" ], 
+            Accept: [ "application/json" ], 
         },
         Params: {
             q: "jo nesbo", 
@@ -12,11 +12,11 @@
     },
     Checks: [
         {Check: "StatusCode", Expect: 200},
-	{Check: "JSON", Expression: ".query == \"jo nesbo\""},
-	{Check: "JSON", Expression: "$len(.result) > 3"},
-	{Check: "JSON", Expression: ".result[0] == \"Pupspulver\""},
-	{Check: "JSON", Expression: "(.n == 3) || (.n == 7)"},
+        {Check: "JSON", Expression: ".query == \"jo nesbo\""},
+        {Check: "JSON", Expression: "$len(.result) > 3"},
+        {Check: "JSON", Expression: ".result[0] == \"Pupspulver\""},
+        {Check: "JSON", Expression: "(.n == 3) || (.n == 7)"},
 
-	{Check: "JSON", Path: "result.1", Regexp: "Book [1-9]+"},
+        {Check: "JSON", Path: "result.1", Regexp: "Book [1-9]+"},
     ],
 }
