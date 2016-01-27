@@ -20,14 +20,22 @@ var testfiles = []string{
 }
 
 func TestString(t *testing.T) {
-	ch := ColorHist{0, 4, 8, 12, 16, 20, 24, 28, 32,
-		126, 127, 128, 129,
-		255, 234, 233, 232, 0,
-		150, 180, 200,
+	ch := ColorHist{0, 5, // 0 0
+		6, 11, // 1 1
+		12, 18, // 2 2
+		19, 25, // 3 3
+		26, 32, // 4 4
+		33, 0, // 5 0
+		255, 248, // v v  step 7
+		247, 239, // u u  step 8
+		238, 230, // t t  step 8
+		229, 221, // s s  step 8
+		220, 0, // r r
+		102, 103, //
 	}
 	s := ch.String()
-	if s != "0011222339999feee0acd000" {
-		t.Errorf("got %s, want 0011222339999feee0acd000")
+	if s != "001122334450vvuuttssr0de" {
+		t.Errorf("got %s, want 001122334450vvuuttssr0de", s)
 	}
 	re, err := ColorHistFromString(s)
 	if err != nil {
@@ -103,9 +111,9 @@ func TestUniformColorHist(t *testing.T) {
 	gh := NewColorHist(green)
 	bh := NewColorHist(blue)
 
-	if rh.String() != "00000000000000f000000000" ||
-		gh.String() != "0000000000000f0000000000" ||
-		bh.String() != "000000000000f0000000000f" {
+	if rh.String() != "00000000000000v000000000" ||
+		gh.String() != "0000000000000v0000000000" ||
+		bh.String() != "000000000000v0000000000v" {
 		t.Fatalf("Got rh=%s gh=%s bh=%s", rh.String(), gh.String(), bh.String())
 	}
 

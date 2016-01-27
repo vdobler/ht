@@ -29,22 +29,21 @@ type ColorHist [24]byte
 // gamma is the exponent used to rescale the histogram before en- and
 // decoding to a string. The value encoded is (original/265)^gamma
 // which prevents dropping colors used sparingly.
-const gamma = 0.75
+const gamma = 0.9
 
 // String produces a string representation by renormalizing the histogram
 // to 16 so that it can be encoded in 24 hex digits.
 func (ch ColorHist) String() string {
 	buf := make([]byte, 0, 24)
 	for _, n := range ch {
-		x := 16 * math.Pow(float64(n)/256, gamma)
+		x := 32 * math.Pow(float64(n)/256, gamma)
 		v := int64(x)
 		if v < 0 {
 			v = 0
-		} else if v > 15 {
-			v = 15
+		} else if v > 32 {
+			v = 32
 		}
-		buf = strconv.AppendInt(buf, v, 16)
-		// fmt.Printf("  slot %d: %d  --> %d\n", i, n, v)
+		buf = strconv.AppendInt(buf, v, 32)
 	}
 	return string(buf)
 }
@@ -168,12 +167,12 @@ func ColorHistFromString(s string) (ColorHist, error) {
 			continue
 		}
 
-		a, err := strconv.ParseUint(s[i:i+1], 16, 64)
+		a, err := strconv.ParseUint(s[i:i+1], 32, 64)
 		if err != nil {
 			return ch, err
 		}
 		x := float64(a) + 0.5
-		n := 256 * math.Pow(x/16, 1/gamma)
+		n := 256 * math.Pow(x/32, 1/gamma)
 		m := int(n)
 		if m > 255 {
 			m = 255
