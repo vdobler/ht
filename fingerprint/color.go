@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 	"sort"
 	"strconv"
 )
@@ -25,16 +26,25 @@ import (
 // colors from the Greta Mecbeth Color Picker.
 type ColorHist [24]byte
 
+// gamma is the exponent used to rescale the histogram before en- and
+// decoding to a string. The value encoded is (original/265)^gamma
+// which prevents dropping colors used sparingly.
+const gamma = 0.75
+
 // String produces a string representation by renormalizing the histogram
 // to 16 so that it can be encoded in 24 hex digits.
 func (ch ColorHist) String() string {
 	buf := make([]byte, 0, 24)
 	for _, n := range ch {
-		v := (int64(n) + 7) >> 4 // proper rounding
-		if v > 15 {
+		x := 16 * math.Pow(float64(n)/256, gamma)
+		v := int64(x)
+		if v < 0 {
+			v = 0
+		} else if v > 15 {
 			v = 15
 		}
-		buf = strconv.AppendInt(buf, int64(n>>4), 16)
+		buf = strconv.AppendInt(buf, v, 16)
+		// fmt.Printf("  slot %d: %d  --> %d\n", i, n, v)
 	}
 	return string(buf)
 }
@@ -132,12 +142,9 @@ func (h ColorHist) l1Norm(g ColorHist) float64 {
 	} else {
 		rh = float64(ng) / float64(nh)
 	}
-	// 	fmt.Printf("%d  %d  rh=%.4f  rg=%.4f\n", nh, ng, rh, rg)
 	sum := 0.0
 	for i := 0; i < 24; i++ {
 		d := (rh*float64(h[i]) - rg*float64(g[i])) / 255
-		// fmt.Printf("  %2d (%3d,%3d) [%.4f,%.4f] %.4f\n", i, h[i], g[i],
-		//	rh*float64(h[i]), rg*float64(g[i]), d)
 		if d >= 0 {
 			sum += d
 		} else {
@@ -155,37 +162,29 @@ func ColorHistFromString(s string) (ColorHist, error) {
 		return ch, fmt.Errorf("fingerprint: Bad format for ColorHist string %q", s)
 	}
 
-	a, err := strconv.ParseUint(s[0:16], 16, 64)
-	if err != nil {
-		return ch, err
-	}
-	b, err := strconv.ParseUint(s[16:24], 16, 64)
-	if err != nil {
-		return ch, err
-	}
+	for i := range s {
+		if s[i] == '0' {
+			ch[i] = 0
+			continue
+		}
 
-	mask := uint64(0xfffffffffffffff)
-	shift := uint(60) // TODO: combine mark and shift
-	for i := 0; i < 16; i++ {
-		h := a >> shift
-		t := h<<4 | h
-		a &= mask
-		mask >>= 4
-		shift -= 4
-		ch[i] = byte(t)
-	}
-	mask = uint64(0xfffffff)
-	shift = 28 // TODO: combine mark and shift
-	for i := 16; i < 24; i++ {
-		h := b >> shift
-		t := h<<4 | h
-		b &= mask
-		mask >>= 4
-		shift -= 4
-		ch[i] = byte(t)
+		a, err := strconv.ParseUint(s[i:i+1], 16, 64)
+		if err != nil {
+			return ch, err
+		}
+		x := float64(a) + 0.5
+		n := 256 * math.Pow(x/16, 1/gamma)
+		m := int(n)
+		if m > 255 {
+			m = 255
+		} else if m < 0 {
+			m = 0
+		}
+		ch[i] = byte(m)
 	}
 
 	return ch, nil
+
 }
 
 // NewColorHist computest the color histogram of img.

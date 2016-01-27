@@ -14,6 +14,31 @@ import (
 	"testing"
 )
 
+var testfiles = []string{
+	"boat.jpg", "clock.jpg", "lena.jpg",
+	"baboon.jpg", "pepper.jpg", "logo.png",
+}
+
+func TestString(t *testing.T) {
+	ch := ColorHist{0, 4, 8, 12, 16, 20, 24, 28, 32,
+		126, 127, 128, 129,
+		255, 234, 233, 232, 0,
+		150, 180, 200,
+	}
+	s := ch.String()
+	if s != "0011222339999feee0acd000" {
+		t.Errorf("got %s, want 0011222339999feee0acd000")
+	}
+	re, err := ColorHistFromString(s)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	r := re.String()
+	if s != r {
+		t.Errorf("r=%s, want %s", r, s)
+	}
+}
+
 func readImage(fn string) image.Image {
 	file, err := os.Open(fn)
 	if err != nil {
@@ -30,8 +55,8 @@ func readImage(fn string) image.Image {
 }
 
 func TestBinColor(t *testing.T) {
-	for _, file := range []string{"boat", "clock", "lena", "baboon", "pepper"} {
-		img := readImage("testdata/" + file + ".jpg")
+	for _, file := range testfiles {
+		img := readImage("testdata/" + file)
 		bounds := img.Bounds()
 		bined := image.NewRGBA(bounds)
 		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
@@ -125,13 +150,11 @@ func TestMaxDiffColorHist(t *testing.T) {
 }
 
 func TestNewColorHist(t *testing.T) {
-	files := []string{"boat", "clock", "lena", "lenal", "lenas", "lenat",
-		"lenaf", "baboon", "pepper"}
 	hists := make(map[string]ColorHist)
 	bmvs := make(map[string]BMVHash)
 
-	for _, file := range files {
-		img := readImage("testdata/" + file + ".jpg")
+	for _, file := range testfiles {
+		img := readImage("testdata/" + file)
 		ch := NewColorHist(img)
 		chstr := ch.String()
 		ch2, err := ColorHistFromString(chstr)
@@ -142,27 +165,27 @@ func TestNewColorHist(t *testing.T) {
 		if chstr != ch2str {
 			t.Errorf("%s %s != %s", file, chstr, ch2str)
 		}
-		fmt.Printf("%10s: %s\n", file, chstr)
+		fmt.Printf("%12s: %s\n", file, chstr)
 		hists[file] = ch
 		bmvs[file] = NewBMVHash(img)
 	}
 
-	fmt.Printf("           ")
-	for _, a := range files {
-		fmt.Printf("%-8s", a)
+	fmt.Printf("              ")
+	for _, a := range testfiles {
+		fmt.Printf("%-11s", a)
 	}
 	fmt.Println()
-	for _, a := range files {
+	for _, a := range testfiles {
 		h := hists[a]
-		fmt.Printf("%9s  ", a)
-		for _, b := range files {
+		fmt.Printf("%12s  ", a)
+		for _, b := range testfiles {
 			g := hists[b]
-			fmt.Printf("%.4f  ", ColorHistDelta(h, g))
+			fmt.Printf("%.4f     ", ColorHistDelta(h, g))
 		}
 		fmt.Println()
-		fmt.Printf("           ")
-		for _, b := range files {
-			fmt.Printf("%.4f  ", BMVDelta(bmvs[a], bmvs[b]))
+		fmt.Printf("              ")
+		for _, b := range testfiles {
+			fmt.Printf("%.4f     ", BMVDelta(bmvs[a], bmvs[b]))
 
 		}
 		fmt.Println()
@@ -170,20 +193,31 @@ func TestNewColorHist(t *testing.T) {
 
 }
 
+func savePngImage(t *testing.T, img *image.RGBA, name string) {
+	out, err := os.Create(name)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer out.Close()
+	err = png.Encode(out, img)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	out.Close()
+}
+
 func TestColorImage(t *testing.T) {
-	for _, file := range []string{"boat", "clock", "lena", "baboon", "pepper"} {
-		img := readImage("testdata/" + file + ".jpg")
+	for _, file := range testfiles {
+		img := readImage("testdata/" + file)
 		ch := NewColorHist(img)
 		reconstructed := ch.Image(64, 64)
-		out, err := os.Create("testdata/" + file + ".colrec.png")
+		savePngImage(t, reconstructed, "testdata/"+file+".colrec.png")
+		ch2, err := ColorHistFromString(ch.String())
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Errorf("%s", err)
 		}
-		err = png.Encode(out, reconstructed)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		out.Close()
+		reconstructed2 := ch2.Image(64, 64)
+		savePngImage(t, reconstructed2, "testdata/"+file+".colrec2.png")
 	}
 }
 
