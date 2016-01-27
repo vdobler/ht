@@ -10,7 +10,7 @@
         {Check: "AnyOne", Of: [
     	    {Check: "Image",
     	        Format: "png", Width: 380, Height: 56,
-    	        Fingerprint: "00000003000000100000000f", // 12-byte ColorHist fingerprint
+    	        Fingerprint: "00000007000001420000000v", // ColorHist fingerprint
     	        Threshold: 0.01, 
     	    },   
     	    {Check: "Image",
