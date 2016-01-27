@@ -11,7 +11,17 @@ Open Issues
    clients and reuse/sharing them e.g. in Latency checks.  This is done
    headless and without any concept or proper design.
 
-
+*  Image fingerprinting treats transparent background as black which
+   make using these fingerprint techniques almost useless in images with
+   lots of transparent parts (e.g. the Google logo) as black will dominate
+   the color histogram. For BMV hashes the same problem exists.
+   The solution for color histograms would be simple: Just ignore transparent
+   pixels, but that makes comparison complicated: What is the fingerprint
+   was taken with 75% transparent pixel but the image to check is fully
+   opaque and uses white for these 75% pixels? For BMV hashes ignoring pixels
+   even more strange.
+   Replacing transparent with a fixed or user-setable checkboard could work.
+   But a fixed one is inflexible and user-defined ones are awfull.
 
 Resolved TODOs
 --------------

@@ -27,8 +27,7 @@ ht is not the jack of all trades in testing web applications:
 Installation
 ------------
 
-Installing ht should be simple if Go 1.5 (pre beta is okay) and
-git are available and working:
+Installing ht should be simple if Go 1.5 and git are available and working:
 * Run `GO15VENDOREXPERIMENT=1 go get github.com/vdobler/ht/cmd/ht`
   which should download, compile and install everything.
 * Run `$GOPATH/bin/ht help` to get you started.
@@ -46,6 +45,10 @@ For a start have a look at the
 
 Tutorial https://github.com/vdobler/ht/blob/master/cmd/ht/Tutorial.md
 
+or the completely nonsensical
+
+Showcase here https://github.com/vdobler/ht/tree/master/showcase
+
 and see the the godoc for reference:
 
 * Tests, Checks and their options:
@@ -59,4 +62,3 @@ and see the the godoc for reference:
   Run `ht help` for details
 * An example test suite can be found in
   https://github.com/vdobler/ht/blob/master/testdata/sample.suite
-
