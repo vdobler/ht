@@ -5,10 +5,10 @@
 
     Setup: [
         "wait-for-startup.ht",
-        "load-sampledata.ht",
     ],
 
     Tests: [
+        "load-sampledata.ht",
         "homepage.ht",  // Shows a lot of checks
 	"login.ht",     // Redirections and Cookies
 	"logo.ht",      // Logical OR of checks and image checing
@@ -22,7 +22,7 @@
 
     // Variables can be set or overwritten from the command line.
     Variables: {
-         HOST: "www.example.org",
+         HOST: "localhost:8080",
     }
 
 }

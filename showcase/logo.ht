@@ -1,7 +1,7 @@
 {
     Name: "The corporate logo",
     Description: "",
-    Request: { URL: "http://{{HOST}}/static/img/logo.png" },
+    Request: { URL: "http://{{HOST}}/static/image/logo.png" },
     Checks: [ 
         {Check: "StatusCode", Expect: 200},
 

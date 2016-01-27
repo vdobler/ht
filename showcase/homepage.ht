@@ -61,7 +61,7 @@
 	    Concurrent: 5,  // at 5 concurrent request
             IndividualSessions: true,
             SkipChecks: true,
-            Limits: "50% ≤ 800ms; 80% ≤ 1s; 95% ≤ 1.25s; 99% ≤ 2s",
+            Limits: "50% ≤ 6ms; 80% ≤ 8ms; 99% ≤ 9ms",
 	},
 
 	// Links (href for a- and link-tags and src for img- and script-tags)
