@@ -8,6 +8,5 @@ cmd/ht/ht
 cmd/ht/ht_linux
 cmd/ht/ht_darwin
 cmd/ht/ht_windows.exe
-cmd/fingerprint/fingerprint
-cmd/recorder/recorder
 *.bined.jpg
+2016_*
