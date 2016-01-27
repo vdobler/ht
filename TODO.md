@@ -23,6 +23,14 @@ Open Issues
    Replacing transparent with a fixed or user-setable checkboard could work.
    But a fixed one is inflexible and user-defined ones are awfull.
 
+*  Parameters may be files with the "@file:/path/to/file" syntax.
+   Unfortunately relative path names are relative to the current working
+   directory of the ht command and not relative to the test file.
+   This is dead ugly and probably wrong.  Probably the best solution would
+   be to use the cwd of ht if the test was not loaded from JSON and the
+   directory of the test JSON otherwise.
+
+
 Resolved TODOs
 --------------
 
@@ -46,3 +54,6 @@ Resolved TODOs
 
 *  Link checking does not properly keep the cookie jar: t.Jar is overwritten
    during suite preparation.  This might be a general bug.
+
+*  Fingerprinting transparent images: Effect of problem is reduced due to
+   mor bits representing the histogram.
