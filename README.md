@@ -45,11 +45,17 @@ For a start have a look at the
 
 Tutorial https://github.com/vdobler/ht/blob/master/cmd/ht/Tutorial.md
 
-or the completely nonsensical
+or the 
 
 Showcase here https://github.com/vdobler/ht/tree/master/showcase
 
-and see the the godoc for reference:
+The showcase is pretty nonsensical but show almost all features
+in just a few files.  You might want to `$ go run showcase.go` to
+have a dummy server listening on localhost:8080 to run the tests
+against: `$ ht exec showcase.suite`
+
+
+For details see the the godoc for reference:
 
 * Tests, Checks and their options:
   https://godoc.org/github.com/vdobler/ht/ht

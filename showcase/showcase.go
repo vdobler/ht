@@ -27,6 +27,7 @@ func main() {
 	http.HandleFunc("/api/v1/books", booksHandler)
 	http.HandleFunc("/api/v1", jsonHandler)
 	http.HandleFunc("/static/image/", logoHandler)
+	http.HandleFunc("/search", searchHandler)
 	log.Fatal(http.ListenAndServe(*port, nil))
 }
 
@@ -58,6 +59,8 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
  <a href="/api/v1/books">some XML</>
 
  <div><a href="/login">Login</a></div>
+
+ <div><a href="/search?q=gluon">Look for gluons</a></div>
 
  <p></ul>
 </body>
@@ -153,4 +156,22 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
   "query": "jo nesbo",
   "result: [ 1, 2 ]
 }`)
+}
+
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	q := r.FormValue("q")
+	switch q {
+	case "gluon":
+		fmt.Fprintf(w, "Search for 'gluon' found 12 results.\n")
+	case "quark":
+		fmt.Fprintf(w, "Search for 'quark' found 8^16 results.\n")
+	case "tachyon":
+		fmt.Fprintf(w, "Search for 'tachyon' found no results.\n")
+		fmt.Fprintf(w, "Please try again.")
+	case "axion":
+		fmt.Fprintf(w, "Search for 'axion' found really no results.\n")
+		fmt.Fprintf(w, "But please keep looking.\n")
+	default:
+		fmt.Fprintf(w, "Nothing to see here. try 'gluon' or 'axion'.\n")
+	}
 }

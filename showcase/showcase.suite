@@ -11,9 +11,10 @@
         "load-sampledata.ht",
         "homepage.ht",  // Shows a lot of checks
 	"login.ht",     // Redirections and Cookies
-	"logo.ht",      // Logical OR of checks and image checing
-	"xml.ht",       // Logicla NOR of checks and XML checking
+	"logo.ht",      // Logical OR of checks and image checking
+	"xml.ht",       // Logilal NOR of checks and XML checking
 	"json-api.ht",  // Checking JSON responses
+	"search.ht",    // Loops 
 	"pdf.ht",       
     ],
 

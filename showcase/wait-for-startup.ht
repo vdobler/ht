@@ -10,5 +10,7 @@
     ],
     // Poll for a maximum of 10 times for success, sleeping 5s after each
     // failure (which might take up to 5s due to the 5s timeout above).
+    // Usefull if it is okay that a test fails as long at is does not
+    // fail constantly.
     Poll: {Max: 10, Sleep: "5s"},
 }
