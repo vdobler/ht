@@ -376,7 +376,7 @@ func TestPolling(t *testing.T) {
 				Max:   tc.max,
 				Sleep: Duration(200),
 			},
-			Timeout: Duration(50 * time.Millisecond),
+			Timeout: Duration(100 * time.Millisecond),
 		}
 		test.Run(nil)
 		if got := test.Status; got != tc.want {

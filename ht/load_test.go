@@ -366,7 +366,7 @@ func checklistDifference(a, b CheckList) []string {
 }
 
 func TestLoadSuite(t *testing.T) {
-	suite, err := LoadSuite("../testdata/sample.suite")
+	suite, err := LoadSuite("../showcase/showcase.suite")
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
