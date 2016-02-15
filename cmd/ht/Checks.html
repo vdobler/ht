@@ -1,7 +1,27 @@
 <!DOCTYPE html>
 <html><head><title>Availbale Checks</title><meta charset="UTF-8"></head>
 <body><h1>Available Checks</h1>
-<p>Version: v0.8.0</p>
+<p>Version: v1.0.0beta1</p>
+<h2>AnyOne</h2>
+<pre>
+type AnyOne struct {
+	// Of is the list of checks to execute.
+	Of CheckList
+}
+    AnyOne checks that at least one Of the embeded checks passes. It is the
+    short circuiting boolean OR of the underlying checks. Check execution stops
+    once the first passing check is found. Example (in JSON5 notation) to check
+    status code for '202 OR 404':
+
+    {
+        Check: "AnyOne", Of: [
+            {Check: "StatusCode", Expect: 202},
+            {Check: "StatusCode", Expect: 404},
+        ]
+    }
+
+
+</pre>
 <h2>Body</h2>
 <pre>
 type Body Condition
@@ -208,13 +228,20 @@ type Latency struct {
 	Concurrent int `json:",omitempty"`
 
 	// Limits is a string of the following form:
-	//    "50% ≤ 150; 80% ≤ 200; 95% ≤ 250; 0.9995 ≤ 900"
+	//    "50% ≤ 150ms; 80% ≤ 200ms; 95% ≤ 250ms; 0.9995 ≤ 0.9s"
 	// The limits above would require the median of the response
 	// times to be &lt;= 150 ms and would allow only 1 request in 2000 to
 	// exced 900ms.
-	// Note that it must be the ≤ signe (U+2264), a plain &lt; or a &lt;=
+	// Note that it must be the ≤ sign (U+2264), a plain &lt; or a &lt;=
 	// is not recognized.
 	Limits string `json:",omitempty"`
+
+	// IndividualSessions tries to run the concurrent requests in
+	// individual sessions: A new one for each of the Concurrent many
+	// requests (not N many sessions).
+	// This is done by using a fresh cookiejar so it won't work if the
+	// request requires prior login.
+	IndividualSessions bool `json:",omitempty"`
 
 	// If SkipChecks is true no checks are performed i.e. only the
 	// requests are executed.
@@ -226,17 +253,19 @@ type Latency struct {
 
 	// Has unexported fields.
 }
+    Latency provides checks against percentils of the response time latency.
+
 
 </pre>
 <h2>Links</h2>
 <pre>
 type Links struct {
-	// Head triggers HEAD requests instead of GET requests.
-	Head bool
-
 	// Which links to test; a combination of "a", "img", "link" and "script".
 	// E.g. use "a img" to check the href of all a tags and src of all img tags.
 	Which string
+
+	// Head triggers HEAD requests instead of GET requests.
+	Head bool `json:",omitempty"`
 
 	// Concurrency determines how many of the found links are checked
 	// concurrently. A zero value indicates sequential checking.
@@ -275,6 +304,25 @@ type Logfile struct {
 
 
 </pre>
+<h2>None</h2>
+<pre>
+type None struct {
+	// Of is the list of checks to execute.
+	Of CheckList
+}
+    None checks that none Of the embeded checks passes. It is the NOT of the
+    short circuiting boolean AND of the underlying checks. Check execution stops
+    once the first passing check is found. It Example (in JSON5 notation) to
+    check for non-occurence of 'foo' in body.:
+
+    {
+        Check: "None", Of: [
+            {Check: "Body", Contains: "foo"},
+        ]
+    }
+
+
+</pre>
 <h2>NoServerError</h2>
 <pre>
 type NoServerError struct{}
@@ -287,18 +335,45 @@ type NoServerError struct{}
 <pre>
 type Redirect struct {
 	// To is matched against the Location header. It may begin with,
-	// or end with contain three dots "..." which inicate that To should
-	// match the end or the start or both ends of the Location header
+	// end with or contain three dots "..." which indicate that To should
+	// match the end, the start or both ends of the Location header
 	// value. (Note that only one occurence of "..." is supported."
 	To string
 
 	// If StatusCode is greater zero it is the required HTTP status code
-	// expected in this response. If zero the valid status codes are
+	// expected in this response. If zero, the valid status codes are
 	// 301 (Moved Permanently), 302 (Found), 303 (See Other) and
 	// 307 (Temporary Redirect)
 	StatusCode int `json:",omitempty"`
 }
-    Redirect checks for HTTP redirections.
+    Redirect checks for a singe HTTP redirection.
+
+    Note that this check cannot be used on tests with
+
+    Request.FollowRedirects = true
+
+    as Redirect checks only the final response which will not be a redirection
+    if redirections are followed automatically.
+
+
+</pre>
+<h2>RedirectChain</h2>
+<pre>
+type RedirectChain struct {
+	// Via contains the necessary URLs accessed during a redirect chain.
+	//
+	// Any URL may start with, end with or contain three dots "..." which
+	// indicate a suffix, prefix or suffix+prefix match like in the To
+	// field of Redirect.
+	Via []string
+}
+    RedirectChain checks steps in a redirect chain. The check passes if all
+    stations in Via have been accessed in order; the actual redirect chain may
+    hit additional stations.
+
+    Note that this check can be used on tests with
+
+    Request.FollowRedirects = true
 
 
 </pre>
@@ -310,10 +385,11 @@ type Resilience struct {
 	// method of the test.
 	Methods string `json:",omitempty"`
 
-	// ModParam and ModHeader controll which modifications of parameter values
+	// ModParam and ModHeader control which modifications of parameter values
 	// and header values are checked.
-	// It is a space seprated string if the modifications explained above
+	// It is a space seperated string of the modifications explained above
 	// e.g. "drop nonsense empty".
+	// An empty value turns off resilience testing.
 	ModParam, ModHeader string `json:",omitempty"`
 
 	// ParamsAs controls how parameter values are transmitted, it
@@ -326,7 +402,22 @@ type Resilience struct {
 
 	// SaveFailuresTo is the filename to which all failed checks shall
 	// be logged. The data is appended to the file.
-	SaveFailuresTo string
+	SaveFailuresTo string `json:",omitempty"`
+
+	// Checks is the list of checks to perform on the received responses.
+	// In most cases the -- correct -- behaviour of the server will differ
+	// from the response to a valid, unscrambled request; typically by
+	// returning one of the 4xx status codes.
+	// If Checks is empty, only a simple NoServerError will be executed.
+	Checks CheckList `json:",omitempty"`
+
+	// Values contains a list of values to use as header and parmater values.
+	// Note that header and parameter checking uses the same list of Values,
+	// you might want to do two Resilience checks, one for the headers and one
+	// for the parameters.
+	// If values is empty, then only the builtin modifications selected by
+	// Mod{Param,Header} are used.
+	Values []string
 }
     Resilience checks the resilience of an URL against unexpected requests like
     different HTTP methods, changed or garbled parameters, different parameter
@@ -335,34 +426,39 @@ type Resilience struct {
     Parameters and Header values can undergo several different types of
     modifications
 
+    * all:       all the individual modifications below
     * drop:      don't send at all
-    * double:    send same value two times
-    * twice:     send two different values
-    * change:    change a single character (first, middle and last one)
-    * delete:    drop single character (first, middle and last one)
-    * nonsense:  "hubba%12bubba(!"
-    * malicious: "\000\ufeff&lt;script&gt;\r\r\n"  (not suitable for headers)
-    * empty:     ""
-    * type:      change the type (if obvious)
-        - "1234"     --&gt;  "xxxx"
-        - "i@you.me" --&gt;  "iXyouYme"
-        - "foobar  " --&gt;  "12345"
-        - "08:45"    --&gt;  "zz:zz"
-        - "#0c12ff   --&gt;  "blün"
-    * large:     produce much larger values
-        - "1234"  --&gt;  "98765432123456789"
-        - "56.78" --&gt;  "8888888888888888.9999999999"
-        - "foo"   --&gt;  "fooooooooooooooooooooooooooooooooooooooooooooooooooooo"
-        - "08:45" --&gt;  "25:65"
-    * negative   produce negative values
-        - "1234"  --&gt;  "-2"
-        - "56.78" --&gt;  "-3.0"
-    * tiny:      produce 0 or short values
-        - "1234"   --&gt;  "0"
-        - "12.3"   --&gt;  "0"
-        - "foobar" --&gt; "f"
     * none:      don't modify the individual parameters or header but
                  don't send any parameters or headers
+    * double:    send same value two times
+    * twice:     send two different values (original and "extraValue")
+    * change:    change a single character (first, middle and last one)
+    * delete:    drop single character (first, middle and last one)
+    * nonsense:  the values "p,f1u;p5c:h*", "hubba%12bubba(!" and "\t \v \r \n "
+    * malicious: the values "\x00\x00", "\uFEFF\u200B\u2029", "ʇunpᴉpᴉɔuᴉ",
+                 "http://a/%%30%30" and "' OR 1=1 -- 1"
+    * user       use user defined values from Values
+    * empty:     ""
+    * type:      change the type (if obvious)
+        - "1234"     --&gt;  "wwww"
+        - "3.1415"   --&gt;  "wwwwww"
+        - "i@you.me" --&gt;  "iXyouYme"
+        - "foobar  " --&gt;  "123"
+    * large:     produce much larger values
+        - "1234"     --&gt;  "9999999" (just large), "2147483648" (MaxInt32 + 1)
+                          "9223372036854775808" (MaxInt64 + 1)
+                          "18446744073709551616" (MaxUInt64 + 1)
+        - "56.78"    --&gt;  "888888888.9999", "123.456e12",
+                          "3.5e38" (larger than MaxFloat32)
+                          "1.9e308" (larger than MaxFloat64)
+        - "foo"      --&gt;  50 * "X", 160 * "Y" and 270 * "Z"
+    * tiny:      produce 0 or short values
+        - "1234"      --&gt;  "0" and "1"
+        - "12.3"      --&gt;  "0", "0.02", "0.0003", "1e-12" and "4.7e-324"
+        - "foobar"    --&gt; "f"
+    * negative   produce negative values
+        - "1234"      --&gt;  "-2"
+        - "56.78"     --&gt;  "-3.3"
 
     This check will make a wast amount of request to the given URL including the
     modifying and non-idempotent methods POST, PUT, and DELETE. Some care using
@@ -438,6 +534,10 @@ type Sorted struct {
 <h2>StatusCode</h2>
 <pre>
 type StatusCode struct {
+	// Expect is the value to expect, e.g. 302.
+	//
+	// If Expect &lt;= 9 it matches a whole range of status codes, e.g.
+	// with Expect==4 any of the 4xx status codes would fulfill this check.
 	Expect int
 }
     StatusCode checks the HTTP statuscode.
@@ -453,9 +553,32 @@ type UTF8Encoded struct{}
 </pre>
 <h2>ValidHTML</h2>
 <pre>
-type ValidHTML struct{}
-    ValidHTML checks for valid HTML 5. Kinda: It never fails. TODO: make it
-    useful.
+type ValidHTML struct {
+	// Ignore is a space seperated list of issues to ignore.
+	// You normaly won't skip detection of these issues as all issues
+	// are fundamental flaw which are easy to fix.
+	Ignore string `json:",omitempty"`
+}
+    ValidHTML checks for valid HTML 5; well kinda: It make sure that some common
+    but easy to detect fuckups are not present. The following issues are
+    detected:
+
+    * 'doctype':   not exactly one DOCTYPE
+    * 'structure': ill-formed tag nesting / tag closing
+    * 'uniqueids': uniqness of id attribute values
+    * 'lang':      ill-formed lang attributes
+    * 'attr':      dupplicate attributes
+    * 'escaping':  unescaped &amp;, &lt; and &gt; characters or unknown entities
+    * 'label':     reference to nonexisting id in label tags
+    * 'url':       malformed URLs
+
+    Notes:
+
+    - HTML5 allows unescaped &amp; in several circumstances but ValidHTML
+      reports all stray &amp; as an error.
+    - The lang attributes are parse very lax, e.g. the non-canonical form
+      'de_CH' is considered valid (and equivalent to 'de-CH'). I don't
+      know how browser handle this.
 
 
 </pre>
