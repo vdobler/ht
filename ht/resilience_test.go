@@ -20,10 +20,15 @@ func TestModify(t *testing.T) {
 		[]string{""},
 		[]string{"foo", "bar"},
 	} {
+		// TODO: some proper automated test?
 		modvals := r.modify(tc, modAll)
-		fmt.Printf("Original: %v\n", tc)
-		for _, mv := range modvals {
-			fmt.Printf("  %#v\n", mv)
+		if testing.Verbose() {
+			fmt.Printf("Original: %v\n", tc)
+			for _, mv := range modvals {
+				fmt.Printf("  %#v\n", mv)
+			}
+		} else if n := len(modvals); n < 10 {
+			t.Errorf("Got only %d modified values for 'all'", n)
 		}
 	}
 }
@@ -59,5 +64,4 @@ func TestParseModification(t *testing.T) {
 
 		}
 	}
-
 }

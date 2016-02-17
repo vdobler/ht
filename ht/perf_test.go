@@ -77,9 +77,11 @@ func TestThroughputLoadTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}
-	fmt.Printf("Throughput Test:\n")
-	ltr := AnalyseLoadtest(results)
-	fmt.Println(ltr)
+	if testing.Verbose() {
+		fmt.Printf("Throughput Test:\n")
+		ltr := AnalyseLoadtest(results)
+		fmt.Println(ltr)
+	}
 }
 
 func TestConcurrencyLoadTest(t *testing.T) {
@@ -101,7 +103,9 @@ func TestConcurrencyLoadTest(t *testing.T) {
 		t.Fatalf("Unexpected error %v", err)
 	}
 
-	fmt.Printf("Concurrency Test:\n")
-	ltr := AnalyseLoadtest(results)
-	fmt.Println(ltr)
+	if testing.Verbose() {
+		fmt.Printf("Concurrency Test:\n")
+		ltr := AnalyseLoadtest(results)
+		fmt.Println(ltr)
+	}
 }
