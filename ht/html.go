@@ -223,7 +223,7 @@ type HTMLContains struct {
 	// Selector is the CSS selector of the HTML elements.
 	Selector string
 
-	// Text contains the expected plain text content of the HTL elements
+	// Text contains the expected plain text content of the HTML elements
 	// selected through the given selector.
 	Text []string `json:",omitempty"`
 

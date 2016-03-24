@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-var br = Response{BodyStr: "foo bar baz foo foo"}
+var br = Response{BodyStr: "foo bar baz foo foo 15\""}
 var bodyTests = []TC{
 	{br, &Body{Contains: "foo"}, nil},
 	{br, &Body{Contains: "bar"}, nil},
@@ -23,12 +23,12 @@ var bodyTests = []TC{
 	{br, &Body{Contains: "sit"}, ErrNotFound},
 	{br, &Body{Contains: "bar", Count: -1}, ErrFoundForbidden},
 	{br, &Body{Contains: "bar", Count: 2}, someError}, // TODO: real error checking
-	{br, &Body{Prefix: "foo bar", Suffix: "foo foo"}, nil},
+	{br, &Body{Prefix: "foo bar", Suffix: "foo foo 15\""}, nil},
 	{br, &Body{Min: 5, Max: 500}, nil},
 	{br, &Body{Min: 500}, someError},
 	{br, &Body{Max: 10}, someError},
-	{br, &Body{Equals: "foo bar baz foo foo"}, nil},
-	{br, &Body{Equals: "foo bar baZ foo foo"}, someError},
+	{br, &Body{Equals: "foo bar baz foo foo 15\""}, nil},
+	{br, &Body{Equals: "foo bar baZ foo foo 15\""}, someError},
 }
 
 func TestBody(t *testing.T) {

@@ -38,6 +38,8 @@ var sampleHtml = `<!doctype html>
   <ul class="items"><li>Foo</li><li>Bar</li><li>Waz</li></ul>
   <ul class="fancy"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>
 </div>
+<p>Large 24&#034; Monitor</p>
+<p>Small 12" Monitor</p>
 </body>
 </html>
 `
@@ -45,7 +47,7 @@ var sampleHtml = `<!doctype html>
 var hcr = Response{
 	BodyStr: sampleHtml}
 
-var htmlContainsTests = []TC{
+var htmlTagTests = []TC{
 	{hcr, &HTMLTag{Selector: "h1"}, nil},
 	{hcr, &HTMLTag{Selector: "p.X", Count: 2}, nil},
 	{hcr, &HTMLTag{Selector: "#mt", Count: 1}, nil},
@@ -57,12 +59,12 @@ var htmlContainsTests = []TC{
 }
 
 func TestHTMLTag(t *testing.T) {
-	for i, tc := range htmlContainsTests {
+	for i, tc := range htmlTagTests {
 		runTest(t, i, tc)
 	}
 }
 
-var htmlContainsTextTests = []TC{
+var htmlContainsTests = []TC{
 	{hcr, &HTMLContains{Selector: "p.X",
 		Text: []string{"Hello World", "Thanks!"}}, nil},
 	{hcr, &HTMLContains{Selector: "#mt",
@@ -97,10 +99,14 @@ var htmlContainsTextTests = []TC{
 		Text: []string{"One", "Waz", "Bar", "Foo", "Three", "Second"}}, someError},
 	{hcr, &HTMLContains{Selector: "li", Complete: true, InOrder: true,
 		Text: []string{"Foo", "Bar", "Waz", "One", "Second", "Three"}}, nil},
+	{hcr, &HTMLContains{Selector: "p",
+		Text: []string{`Large 24" Monitor`}}, nil},
+	{hcr, &HTMLContains{Selector: "p",
+		Text: []string{`Small 12" Monitor`}}, nil},
 }
 
 func TestHTMLContains(t *testing.T) {
-	for i, tc := range htmlContainsTextTests {
+	for i, tc := range htmlContainsTests {
 		runTest(t, i, tc)
 	}
 }
