@@ -126,7 +126,7 @@ func (c Condition) Fulfilled(s string) error {
 	return nil
 }
 
-// FullfilledBytes provides a optimized version for Fullfilled(string(byteSlice)).
+// FulfilledBytes provides a optimized version for Fullfilled(string(byteSlice)).
 // TODO: Make this a non-lie.
 func (c Condition) FulfilledBytes(b []byte) error {
 	return c.Fulfilled(string(b))

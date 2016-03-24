@@ -87,7 +87,7 @@ func TestBodyExtractor(t *testing.T) {
 	}
 
 	test.Response.BodyStr = "blablabla"
-	val, err = ex.Extract(test)
+	_, err = ex.Extract(test)
 	if err == nil || err.Error() != `no match found in "blablabla"` {
 		t.Errorf("Missing or wrong error: %v", err)
 	}

@@ -391,7 +391,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 			Checks: checks,
 		}
 
-		name := sanitize.SanitizeFilename(e.Name) + ".ht"
+		name := sanitize.Filename(e.Name) + ".ht"
 		suite.Tests = append(suite.Tests, name)
 		filename := path.Join(directory, name)
 		err = writeTest(test, filename)
@@ -436,12 +436,12 @@ func scanRequestBody(e *Event) (body string, params url.Values, as string) {
 	switch {
 	case strings.HasPrefix(contentType, "application/x-www-form-urlencoded"):
 		if err := e.Request.ParseForm(); err != nil {
-			log.Printf("Error parsing form: %s")
+			log.Printf("Error parsing form: %s", err)
 		}
 		as = "body"
 	case strings.HasPrefix(contentType, "multipart/form-data"):
 		if err := e.Request.ParseMultipartForm(1 << 26); err != nil {
-			log.Printf("Error parsing multipart form: %s")
+			log.Printf("Error parsing multipart form: %s", err)
 		}
 		as = "multipart"
 	default:
@@ -683,6 +683,7 @@ func createSetCookieCheck(c *http.Cookie, now time.Time) *ht.SetCookie {
 // ----------------------------------------------------------------------------
 // Handling of headers
 
+// ExtractCommonResponseHeaders from events.
 func ExtractCommonResponseHeaders(events []Event) http.Header {
 	headers := make([]http.Header, len(events))
 	for i := range events {
@@ -691,6 +692,7 @@ func ExtractCommonResponseHeaders(events []Event) http.Header {
 	return extractCommonHeaders(headers)
 }
 
+// ExtractCommonRequestHeaders from events.
 func ExtractCommonRequestHeaders(events []Event) http.Header {
 	headers := make([]http.Header, len(events))
 	for i := range events {

@@ -24,7 +24,7 @@ The exit code is 3 if bogus tests or checks are found, and 0 otherwise.
 `,
 }
 
-var repsFlag int = 1
+var repsFlag = 1
 
 func init() {
 	cmdWarmup.Flag.IntVar(&repsFlag, "reps", 2,

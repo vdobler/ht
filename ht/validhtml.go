@@ -52,7 +52,7 @@ func (v ValidHTML) Execute(t *Test) error {
 	}
 
 	mask, _ := ignoreMask(v.Ignore)
-	state := newHtmlState(t.Response.BodyStr, mask)
+	state := newHTMLState(t.Response.BodyStr, mask)
 
 	// Parse document and record local errors in state.
 	z := html.NewTokenizer(state)
@@ -230,7 +230,7 @@ type htmlState struct {
 	badNesting bool
 }
 
-func newHtmlState(body string, ignore htmlIssue) *htmlState {
+func newHTMLState(body string, ignore htmlIssue) *htmlState {
 	return &htmlState{
 		body:         body,
 		i:            0,

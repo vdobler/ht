@@ -33,9 +33,9 @@ const gamma = 0.9
 
 // String produces a string representation by renormalizing the histogram
 // to 16 so that it can be encoded in 24 hex digits.
-func (ch ColorHist) String() string {
+func (h ColorHist) String() string {
 	buf := make([]byte, 0, 24)
-	for _, n := range ch {
+	for _, n := range h {
 		x := 32 * math.Pow(float64(n)/256, gamma)
 		v := int64(x)
 		if v < 0 {
@@ -49,10 +49,10 @@ func (ch ColorHist) String() string {
 }
 
 // Image reconstructs the original image from the color histogram.
-func (ch ColorHist) Image(width, height int) *image.RGBA {
+func (h ColorHist) Image(width, height int) *image.RGBA {
 	cbs := make(colorBinSlice, 24)
 	total := 0
-	for i, cnt := range ch {
+	for i, cnt := range h {
 		cbs[i].count = int(cnt)
 		cbs[i].cidx = i
 		total += int(cnt)

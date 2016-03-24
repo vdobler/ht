@@ -20,9 +20,9 @@ var sfTests = []struct {
 	{"le été garçon ŷ", "le_ete_garcon_y"},
 }
 
-func TestSanitizeFilename(t *testing.T) {
+func TestFilename(t *testing.T) {
 	for i, tc := range sfTests {
-		if got := SanitizeFilename(tc.name); got != tc.want {
+		if got := Filename(tc.name); got != tc.want {
 			t.Errorf("%d: SanitizeFilename(%q) = %q, want %q",
 				i, tc.name, got, tc.want)
 		}

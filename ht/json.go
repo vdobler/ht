@@ -22,7 +22,7 @@ func init() {
 // ----------------------------------------------------------------------------
 // JSONExpr
 
-// JSONExp allows checking JSON documents via gojee expressions.
+// JSONExpr allows checking JSON documents via gojee expressions.
 // See github.com/nytlabs/gojee (or the vendored version) for details.
 //
 // Consider this JSON:

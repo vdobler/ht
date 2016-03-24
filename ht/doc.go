@@ -66,7 +66,7 @@
 // all suitable string fields of Request in the form:
 //     {{VARNAME}}
 // The variable substitution is performed during compilation of a Test which
-// includes compilation of the embeded Checks.
+// includes compilation of the embedded Checks.
 //
 // The current time with an optional offset can be substituted by a special
 // construct:

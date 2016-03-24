@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var brokenHtml = `<html>
+var brokenHTML = `<html>
 <head>
     <title>CSS Selectors</title>
 </head>
@@ -36,7 +36,7 @@ var brokenHtml = `<html>
 </html>
 `
 
-var expectedErrorsInBrokenHtml = []string{
+var expectedErrorsInBrokenHTML = []string{
 	"line 6: unescaped '<'",
 	"line 7: duplicate id 'foo'",
 	"line 8: duplicate attribute 'class'",
@@ -50,7 +50,7 @@ var expectedErrorsInBrokenHtml = []string{
 	"line 26: label references unknown id 'other'",
 }
 
-var okayHtml = `<!DOCTYPE html><html>
+var okayHTML = `<!DOCTYPE html><html>
 <head>
     <title>CSS Selectors</title>
 </head>
@@ -80,13 +80,13 @@ var okayHtml = `<!DOCTYPE html><html>
 </html>
 `
 
-var brokenHtmlResponse = Response{
-	BodyStr: brokenHtml,
+var brokenHTMLResponse = Response{
+	BodyStr: brokenHTML,
 }
 
 func TestValidHTMLBroken(t *testing.T) {
 	test := &Test{
-		Response: Response{BodyStr: brokenHtml},
+		Response: Response{BodyStr: brokenHTML},
 	}
 
 	check := ValidHTML{}
@@ -106,9 +106,9 @@ func TestValidHTMLBroken(t *testing.T) {
 		if testing.Verbose() {
 			fmt.Println(e)
 		}
-		if i >= len(expectedErrorsInBrokenHtml) {
+		if i >= len(expectedErrorsInBrokenHTML) {
 			t.Errorf("Unexpected extra error: %s", e)
-		} else if want := expectedErrorsInBrokenHtml[i]; e != want {
+		} else if want := expectedErrorsInBrokenHTML[i]; e != want {
 			t.Errorf("Got %s, want %s", e, want)
 		}
 	}
@@ -116,7 +116,7 @@ func TestValidHTMLBroken(t *testing.T) {
 
 func TestValidHTMLOkay(t *testing.T) {
 	test := &Test{
-		Response: Response{BodyStr: okayHtml},
+		Response: Response{BodyStr: okayHTML},
 	}
 
 	check := ValidHTML{}
@@ -148,7 +148,7 @@ func TestCheckHTMLEscaping(t *testing.T) {
 	}
 
 	for i, tc := range testcases {
-		state := newHtmlState(tc.raw, issueIgnoreNone)
+		state := newHTMLState(tc.raw, issueIgnoreNone)
 		state.checkEscaping(tc.raw)
 		if tc.okay && len(state.errors) > 0 {
 			t.Errorf("%d. %q: Unexpected error %s", i, tc.raw, state.errors[0])

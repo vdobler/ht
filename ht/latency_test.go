@@ -43,8 +43,8 @@ func primeHandler(w http.ResponseWriter, r *http.Request) {
 
 var (
 	sessionMu      sync.Mutex
-	nextSessionID  int               = 3414
-	activeSessions map[string]string = make(map[string]string)
+	nextSessionID  = 3414
+	activeSessions = make(map[string]string)
 )
 
 // sessionHandler sleeps for a random time. The sleep times are drawn from

@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package json implements encoding and decoding of JSON objects as defined in
+// Package json5 implements encoding and decoding of JSON objects as defined in
 // RFC 4627. The mapping between JSON objects and Go values is described
 // in the documentation for the Marshal and Unmarshal functions.
+//
+// JSON5 adds comments and makes some qutation marks optional and allows
+// trailing commas.
 //
 // See "JSON and Go" for an introduction to this package:
 // http://golang.org/doc/articles/json_and_go.html

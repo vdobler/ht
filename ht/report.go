@@ -37,6 +37,7 @@ func (s Status) String() string {
 	return []string{"NotRun", "Skipped", "Pass", "Fail", "Error", "Bogus"}[int(s)]
 }
 
+// MarshalText implements encoding.TextMarshaler.
 func (s Status) MarshalText() ([]byte, error) {
 	if s < 0 || s > Bogus {
 		return []byte(""), fmt.Errorf("no such status %d", s)
@@ -134,6 +135,7 @@ func (r *SuiteResult) Account(s *Suite, setup bool, teardown bool) {
 	}
 }
 
+// Merge result o into r.
 func (r *SuiteResult) Merge(o *SuiteResult) {
 	if r.Started.IsZero() || o.Started.Before(r.Started) {
 		r.Started = o.Started
@@ -147,6 +149,7 @@ func (r *SuiteResult) Merge(o *SuiteResult) {
 	}
 }
 
+// Tests returns the total number of tests recorded.
 func (r *SuiteResult) Tests() int {
 	return r.Count[Bogus+1][CritFatal+1]
 }
@@ -516,14 +519,17 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlJavascriptTmpl))
 }
 
+// PrintReport of t to w.
 func (t Test) PrintReport(w io.Writer) error {
 	return TestTmpl.Execute(w, t)
 }
 
-func (r Suite) PrintReport(w io.Writer) error {
-	return SuiteTmpl.Execute(w, r)
+// PrintReport of s to w.
+func (s Suite) PrintReport(w io.Writer) error {
+	return SuiteTmpl.Execute(w, s)
 }
 
+// HTMLReport generates a report of the outcome ofs to directory dir.
 func (s Suite) HTMLReport(dir string) error {
 	report, err := os.Create(path.Join(dir, "Report.html"))
 	if err != nil {

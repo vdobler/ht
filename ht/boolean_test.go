@@ -23,7 +23,7 @@ func (b *bCheck) Execute(t *Test) error {
 	if strings.Contains(t.Response.BodyStr, b.want) {
 		return nil
 	}
-	return fmt.Errorf("%s missing")
+	return fmt.Errorf("%s missing", b.want)
 }
 
 func TestAnyOne(t *testing.T) {

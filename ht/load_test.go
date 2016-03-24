@@ -73,7 +73,7 @@ func TestFindRawTest(t *testing.T) {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 	if basedir != "/the/current/qux" {
-		t.Errorf("Got basedir=%q, want /the/current/qux")
+		t.Errorf("Got basedir=%q, want /the/current/qux", basedir)
 	}
 
 	// Check some simple values

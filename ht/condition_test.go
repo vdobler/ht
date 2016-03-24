@@ -68,7 +68,7 @@ func TestFullfilled(t *testing.T) {
 		if tc.c.Regexp != "" {
 			tc.c.re = regexp.MustCompile(tc.c.Regexp)
 		}
-		err := tc.c.Fullfilled(tc.s)
+		err := tc.c.Fulfilled(tc.s)
 		switch {
 		case tc.w == "" && err != nil:
 			t.Errorf("%d. %s, unexpected error %s", i, tc.s, err)

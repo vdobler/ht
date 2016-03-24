@@ -132,8 +132,8 @@ func saveEvents(form url.Values) error {
 		suite = "suite"
 	}
 
-	dir = sanitize.SanitizeFilename(dir)
-	suite = sanitize.SanitizeFilename(suite)
+	dir = sanitize.Filename(dir)
+	suite = sanitize.Filename(suite)
 
 	err := recorder.DumpEvents(ets, dir, suite)
 	if err != nil {

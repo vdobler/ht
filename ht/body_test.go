@@ -52,7 +52,7 @@ func TestUTF8Encoded(t *testing.T) {
 
 var srb = Response{BodyStr: "foo 1 bar 2 waz 3 tir 4 kap 5"}
 var srbh = Response{
-	BodyStr: sampleHtml,
+	BodyStr: sampleHTML,
 	Response: &http.Response{
 		Header: http.Header{"Content-Type": []string{"text/html; charset=UTF-8"}},
 	},

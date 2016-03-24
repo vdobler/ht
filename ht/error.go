@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// LocError is an error with optinaly attached position information.
+// PosError is an error with optinaly attached position information.
 type PosError struct {
 	Err  error  // Err is the actual error.
 	Line int    // Line is the line number counting from 1.
@@ -45,6 +45,7 @@ func (el ErrorList) Error() string {
 	return strings.Join(el.AsStrings(), "; \u2029")
 }
 
+// AsStrings returns the error list as as string slice.
 func (el ErrorList) AsStrings() []string {
 	s := []string{}
 	for _, e := range el {

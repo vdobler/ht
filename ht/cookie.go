@@ -211,8 +211,8 @@ func (c DeleteCookie) Execute(t *Test) error {
 	for _, cookie := range findCookiesByName(t, c.Name) {
 		// Report malformed (because of path) cookies.
 		if !isProperCookiePath(u, cookie.Path) {
-			em := fmt.Sprintf("invalid cookie path %s for URL %s",
-				c.Name, cookie.Path, u.String())
+			em := fmt.Sprintf("invalid path %s on cookie %s for URL %s",
+				cookie.Path, c.Name, u.String())
 			errors = append(errors, em)
 			continue
 		}

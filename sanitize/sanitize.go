@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package norm contains functions to sanitize filenames.
+// Package sanitize contains functions to sanitize filenames.
 package sanitize
 
 import (
@@ -31,9 +31,9 @@ var commonCharacterReplacements = []struct{ orig, repl string }{
 	{"€", "Euro"}, {"£", "Pound"}, {"$", "Dollar"}, {"¥", "Yen"},
 }
 
-// SanitizeFilename produces something resembling name but being
+// Filename produces something resembling name but being
 // suitable as a filename.
-func SanitizeFilename(name string) string {
+func Filename(name string) string {
 	// Eradicate sick charcters and perform common replacements.
 	for _, sick := range sickCharactersInFilenames {
 		name = strings.Replace(name, sick, "_", -1)

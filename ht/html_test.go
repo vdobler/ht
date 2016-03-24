@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-var sampleHtml = `<!doctype html>
+var sampleHTML = `<!doctype html>
 <html>
 <link href="/css/base.css">
 <head><title>CSS Selectors</title></head>
@@ -45,7 +45,7 @@ var sampleHtml = `<!doctype html>
 `
 
 var hcr = Response{
-	BodyStr: sampleHtml}
+	BodyStr: sampleHTML}
 
 var htmlTagTests = []TC{
 	{hcr, &HTMLTag{Selector: "h1"}, nil},

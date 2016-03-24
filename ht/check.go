@@ -125,7 +125,7 @@ var (
 	// not found.
 	ErrNotFound = errors.New("not found")
 
-	// ErrFoundFirbidden is returned by checks if a forbidden value
+	// ErrFoundForbidden is returned by checks if a forbidden value
 	// is found.
 	ErrFoundForbidden = errors.New("found forbidden")
 
@@ -170,7 +170,7 @@ func (m MalformedCheck) Error() string {
 // attaching JSON (un)marshaling methods.
 type CheckList []Check
 
-// MarshalJSON produces a JSON arry of the checks in cl.
+// MarshalJSON5 produces a JSON5 arry of the checks in cl.
 // Each check is serialized in the form
 //     { Check: "NameOfCheckAsRegistered", Field1OfCheck: Value1, Field2: Value2, ... }
 func (cl CheckList) MarshalJSON5() ([]byte, error) {
