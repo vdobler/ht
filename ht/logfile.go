@@ -53,7 +53,7 @@ func (f *Logfile) Execute(t *Test) error {
 		return err
 	}
 
-	if err := f.FullfilledBytes(written); err != nil {
+	if err := f.FulfilledBytes(written); err != nil {
 		return err
 	}
 	for _, disallow := range f.Disallow {

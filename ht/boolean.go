@@ -13,7 +13,7 @@ func init() {
 
 // Boolean combinations of Checks
 
-// AnyOne checks that at least one Of the embeded checks passes.
+// AnyOne checks that at least one Of the embedded checks passes.
 // It is the short circuiting boolean OR of the underlying checks.
 // Check execution stops once the first passing check is found.
 // Example (in JSON5 notation) to check status code for '202 OR 404':
@@ -59,11 +59,11 @@ func (a AnyOne) Execute(t *Test) error {
 	return errs
 }
 
-// None checks that none Of the embeded checks passes.
+// None checks that none Of the embedded checks passes.
 // It is the NOT of the short circuiting boolean AND of the underlying checks.
 // Check execution stops once the first passing check is found.
 // It
-// Example (in JSON5 notation) to check for non-occurence of 'foo' in body.:
+// Example (in JSON5 notation) to check for non-occurrence of 'foo' in body:
 //     {
 //         Check: "None", Of: [
 //             {Check: "Body", Contains: "foo"},

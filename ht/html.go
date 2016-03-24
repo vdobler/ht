@@ -91,7 +91,7 @@ outer:
 	for _, ve := range w3cValidatorErrSel.MatchAll(doc) {
 		vi := extractValidationIssue(ve)
 		for _, c := range w.IgnoredErrors {
-			if c.Fullfilled(vi.Message) == nil {
+			if c.Fulfilled(vi.Message) == nil {
 				noIgnored++
 				continue outer
 			}
@@ -428,7 +428,7 @@ func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 	outer:
 		for _, u := range c.linkURL(doc, tag, t.Request.Request.URL) {
 			for i, cond := range c.OnlyLinks {
-				if cond.Fullfilled(u) == nil {
+				if cond.Fulfilled(u) == nil {
 					break
 				}
 				if i == len(c.OnlyLinks)-1 {
@@ -436,7 +436,7 @@ func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 				}
 			}
 			for _, cond := range c.IgnoredLinks {
-				if cond.Fullfilled(u) == nil {
+				if cond.Fulfilled(u) == nil {
 					continue outer
 				}
 			}

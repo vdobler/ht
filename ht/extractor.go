@@ -24,7 +24,7 @@ type Extractor interface {
 	Extract(t *Test) (string, error)
 }
 
-// Extract all values defined by VarEx from the sucessfully executed Test t.
+// Extract all values defined by VarEx from the successfully executed Test t.
 func (t *Test) Extract() map[string]string {
 	data := make(map[string]string)
 	for varname, ex := range t.VarEx {
@@ -239,7 +239,7 @@ type JSONExtractor struct {
 	// Path in the flattened JSON map to extract.
 	Path string `json:",omitempty"`
 
-	// Sep is the seperator in Path.
+	// Sep is the separator in Path.
 	// A zero value is equivalent to "."
 	Sep string `json:",omitempty"`
 }

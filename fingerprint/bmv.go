@@ -5,14 +5,14 @@
 // Block Mean Value Fingerprinting
 //
 // blockMeanValue calculates the 64bit block mean value hash of img.
-// It uses an algorithm accoring to Di Wu, Xuebing Zhou, and Xiamu Niu. 2009.
+// It uses an algorithm according to Di Wu, Xuebing Zhou, and Xiamu Niu. 2009.
 // A novel image hash algorithm resistant to print-scan. Signal Process. 89,
 // 12 (December 2009), 2415-2424.  As described in Christoph Zauner:
 // "Implementation and Benchmarking of Perceptual Image Hash Functions"
 // DIPLOMARBEIT, FH Hagenberg, Juli 2010.
 // The following algorithm is used:
 //   *  The image is converted to a 8-bit gray scale image
-//   *  The image is devided into 8x8 non-overlapping blocks, for each block
+//   *  The image is divided into 8x8 non-overlapping blocks, for each block
 //      the mean gray value is calculated
 //   *  The average and median of the 64 blocks is calculated.
 //      If the median is >= 250 than the limit is set to the average

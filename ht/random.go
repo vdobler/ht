@@ -16,7 +16,7 @@ import (
 var Random *rand.Rand
 
 func init() {
-	Random = rand.New(rand.NewSource(34)) // Seed choosen truely random by Sabine.
+	Random = rand.New(rand.NewSource(34)) // Seed chosen truly random by Sabine.
 }
 
 // randomFunc is one of the random functions.

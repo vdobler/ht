@@ -68,7 +68,7 @@ type SetCookie struct {
 	// Absent indicates that the cookie with the given Name must not be received.
 	Absent bool `json:",omitempty"`
 
-	// Type is the type of the cookie. It is a space seperated string of
+	// Type is the type of the cookie. It is a space separated string of
 	// the following (case-insensitive) keywords:
 	//   - "session": a session cookie
 	//   - "persistent": a persistent cookie
@@ -99,13 +99,13 @@ func (c SetCookie) Execute(t *Test) error {
 		return fmt.Errorf("Found cookie %s=%s", c.Name, cookie.Value)
 	}
 
-	if err := c.Value.Fullfilled(cookie.Value); err != nil {
+	if err := c.Value.Fulfilled(cookie.Value); err != nil {
 		return err
 	}
-	if err := c.Path.Fullfilled(cookie.Path); err != nil {
+	if err := c.Path.Fulfilled(cookie.Path); err != nil {
 		return err
 	}
-	if err := c.Value.Fullfilled(cookie.Domain); err != nil {
+	if err := c.Value.Fulfilled(cookie.Domain); err != nil {
 		return err
 	}
 
@@ -209,7 +209,7 @@ func (c DeleteCookie) Execute(t *Test) error {
 	deleted := false
 	u := t.Response.Response.Request.URL
 	for _, cookie := range findCookiesByName(t, c.Name) {
-		// Report malformed (becuase of path) cookies
+		// Report malformed (because of path) cookies.
 		if !isProperCookiePath(u, cookie.Path) {
 			em := fmt.Sprintf("invalid cookie path %s for URL %s",
 				c.Name, cookie.Path, u.String())

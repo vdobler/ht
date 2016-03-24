@@ -73,7 +73,7 @@ func intFormValue(r *http.Request, name string) int {
 
 // echoHandler answers the request based on the parameters status (HTTP status
 // code), text (the response body) and header and value (any HTTP header).
-// The handler sleeps for a random duration beteen smin and smax milliseconds.
+// The handler sleeps for a random duration between smin and smax milliseconds.
 // If echoHandler is called with parameter fail it timeout with the given
 // probability. The parameter bad controls the probability if bad responses.
 func echoHandler(w http.ResponseWriter, r *http.Request) {

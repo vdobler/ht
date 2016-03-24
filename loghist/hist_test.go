@@ -22,7 +22,7 @@ func TestLogHist(t *testing.T) {
 				t.Errorf("bits=%d Max=%d, want>=%d", bits, h.max, max)
 			}
 
-			// Check buckets beeing continous and of proper size.
+			// Check buckets being continuous and of proper size.
 			lastBucket := 0
 			bs := 1
 			blockstart := 0

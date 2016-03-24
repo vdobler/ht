@@ -59,7 +59,7 @@ type Latency struct {
 	SkipChecks bool `json:",omitempty"`
 
 	// DumpTo is the filename where the latencies are reported.
-	// The special values "stdout" and "stderr" are recognised.
+	// The special values "stdout" and "stderr" are recognized.
 	DumpTo string `json:",omitempty"`
 
 	limits []latLimit

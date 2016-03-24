@@ -251,7 +251,7 @@ func AnalyseLoadtest(results []Test) LoadtestResult {
 // Before doing the measurements warmup many request are made and discarded.
 // Conc determines the concurrency level. If conc==1 the given pause
 // is made between request. A conc > 1 will execute conc many request
-// in paralell (without pauses).
+// in parallell (without pauses).
 // TODO: move this into an BenmarkOptions
 func (t *Test) Benchmark(variables map[string]string, warmup int, count int, pause time.Duration, conc int) []Test {
 	for n := 0; n < warmup; n++ {

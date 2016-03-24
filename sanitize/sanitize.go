@@ -31,7 +31,7 @@ var commonCharacterReplacements = []struct{ orig, repl string }{
 	{"€", "Euro"}, {"£", "Pound"}, {"$", "Dollar"}, {"¥", "Yen"},
 }
 
-// SanitizeFilename produces something resembling name but beeing
+// SanitizeFilename produces something resembling name but being
 // suitable as a filename.
 func SanitizeFilename(name string) string {
 	// Eradicate sick charcters and perform common replacements.

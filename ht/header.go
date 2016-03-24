@@ -46,7 +46,7 @@ func (h Header) Execute(t *Test) error {
 	} else if len(values) > 0 && h.Absent {
 		return fmt.Errorf("forbidden header %s received", h.Header)
 	}
-	return h.Fullfilled(values[0])
+	return h.Fulfilled(values[0])
 }
 
 // Prepare implements Check's Prepare method.
@@ -121,7 +121,7 @@ func (f FinalURL) Execute(t *Test) error {
 		t.Response.Response.Request.URL == nil {
 		return fmt.Errorf("no request URL to analyze")
 	}
-	return Condition(f).Fullfilled(t.Response.Response.Request.URL.String())
+	return Condition(f).Fulfilled(t.Response.Response.Request.URL.String())
 }
 
 // Prepare implements Check's Prepare method.
@@ -142,7 +142,7 @@ type Redirect struct {
 	// To is matched against the Location header. It may begin with,
 	// end with or contain three dots "..." which indicate that To should
 	// match the end, the start or both ends of the Location header
-	// value. (Note that only one occurence of "..." is supported."
+	// value. (Note that only one occurrence of "..." is supported."
 	To string
 
 	// If StatusCode is greater zero it is the required HTTP status code

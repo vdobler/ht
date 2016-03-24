@@ -234,7 +234,7 @@ func handler(p *httputil.ReverseProxy, events chan Event, rewrite bool, local, r
 		if rewrite && strings.HasPrefix(rr.HeaderMap.Get("Content-Type"), "text/html") {
 			// Rewrite absolute hrefs and srcs.
 			// The way the rewrite happens is clearly bogus: A non-context
-			// sensitive text replacement will replace too many occurences
+			// sensitive text replacement will replace too many occurrences
 			// of remote. But parsing the HTML seems inappropriate
 			// complicated.
 			oldhref := []byte(`href="` + remote)

@@ -39,7 +39,7 @@ func init() {
 //    'de_CH' is considered valid (and equivalent to 'de-CH'). I don't
 //    know how browser handle this.
 type ValidHTML struct {
-	// Ignore is a space seperated list of issues to ignore.
+	// Ignore is a space separated list of issues to ignore.
 	// You normaly won't skip detection of these issues as all issues
 	// are fundamental flaw which are easy to fix.
 	Ignore string `json:",omitempty"`

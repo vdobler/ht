@@ -73,20 +73,20 @@ func init() {
 // the modifying and non-idempotent methods POST, PUT, and DELETE. Some
 // care using this check is advisable.
 type Resilience struct {
-	// Methods is the space seperated list of HTTP methods to check,
+	// Methods is the space separated list of HTTP methods to check,
 	// e.g. "GET POST HEAD". The empty value will test the original
 	// method of the test.
 	Methods string `json:",omitempty"`
 
 	// ModParam and ModHeader control which modifications of parameter values
 	// and header values are checked.
-	// It is a space seperated string of the modifications explained above
+	// It is a space separated string of the modifications explained above
 	// e.g. "drop nonsense empty".
 	// An empty value turns off resilience testing.
 	ModParam, ModHeader string `json:",omitempty"`
 
 	// ParamsAs controls how parameter values are transmitted, it
-	// is a space seperated list of all transmission types like in
+	// is a space separated list of all transmission types like in
 	// the Request.ParamsAs field, e.g. "URL body multipart" to check
 	// URL query parameters, x-www-form-urlencoded and multipart/formdata.
 	// The empty value will just check the type used in the original
@@ -375,9 +375,9 @@ func (r Resilience) modify(orig []string, mod modification) [][]string {
 	}
 
 	if mod&modNonsense != 0 {
-		list = append(list, []string{"p,f1u;p5c:h*"})    // arbitary garbage
-		list = append(list, []string{"hubba%12bubba(!"}) // arbitary garbage
-		list = append(list, []string{"\t \v \r \n "})    // arbitary garbage
+		list = append(list, []string{"p,f1u;p5c:h*"})    // arbitrary garbage
+		list = append(list, []string{"hubba%12bubba(!"}) // arbitrary garbage
+		list = append(list, []string{"\t \v \r \n "})    // arbitrary garbage
 	}
 
 	if mod&modMalicious != 0 {

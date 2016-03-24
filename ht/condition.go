@@ -31,7 +31,7 @@ type Condition struct {
 	// Regexp is a regular expression to look for.
 	Regexp string `json:",omitempty"`
 
-	// Count determines how many occurences of Contains or Regexp
+	// Count determines how many occurrences of Contains or Regexp
 	// are required for a match:
 	//     0: Any positive number of matches is okay
 	//   > 0: Exactly that many matches required
@@ -45,10 +45,10 @@ type Condition struct {
 	re *regexp.Regexp
 }
 
-// Fullfilled returns whether s matches all requirements of c.
+// Fulfilled returns whether s matches all requirements of c.
 // A nil return value indicates that s matches the defined conditions.
 // A non-nil return indicates missmatch.
-func (c Condition) Fullfilled(s string) error {
+func (c Condition) Fulfilled(s string) error {
 	if c.Equals != "" {
 		if s == c.Equals {
 			return nil
@@ -128,8 +128,8 @@ func (c Condition) Fullfilled(s string) error {
 
 // FullfilledBytes provides a optimized version for Fullfilled(string(byteSlice)).
 // TODO: Make this a non-lie.
-func (c Condition) FullfilledBytes(b []byte) error {
-	return c.Fullfilled(string(b))
+func (c Condition) FulfilledBytes(b []byte) error {
+	return c.Fulfilled(string(b))
 }
 
 // Compile pre-compiles the regular expression if part of c.

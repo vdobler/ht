@@ -48,7 +48,7 @@ func (StatusCode) Prepare() error { return nil }
 // ----------------------------------------------------------------------------
 // NoServerError
 
-// NoServerError checks the HTTP status code for not beeing a 5xx server error
+// NoServerError checks the HTTP status code for not being a 5xx server error
 // and that the body could be read without errors or timeouts.
 type NoServerError struct{}
 

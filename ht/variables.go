@@ -17,7 +17,7 @@ import (
 
 // Repeat returns count copies of test with variables replaced based
 // on vars. The keys of vars are the variable names. The values of a
-// variable v are choosen from vars[v] by cycling through the list:
+// variable v are chosen from vars[v] by cycling through the list:
 // In the n'th repetition is vars[v][n%N] with N=len(vars[v])).
 func Repeat(test *Test, count int, vars map[string][]string) ([]*Test, error) {
 	reps := make([]*Test, count)
@@ -165,7 +165,7 @@ func isNormalVarnameChar(b byte) bool {
 		(b >= 'A' && b <= 'Z') || b == '_'
 }
 
-// findSpecialVariables return all occurences of special variables
+// findSpecialVariables returns all occurrences of special variables
 // as defined in addSpecialVariables. The enclosing {{ and }} are not
 // part of the variable name. The resulting list is sorted to have
 // a fixed order for a reproducable asignment to random variables.

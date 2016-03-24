@@ -20,7 +20,7 @@ type XML struct {
 	// Path is a XPath expression understood by launchpad.net/xmlpath.
 	Path string
 
-	// Condition the first element addressed by Path must fullfill.
+	// Condition the first element addressed by Path must fulfill.
 	Condition
 
 	path *xmlpath.Path
@@ -39,7 +39,7 @@ func (x *XML) Execute(t *Test) error {
 
 	if s, ok := x.path.String(root); !ok {
 		return ErrNotFound
-	} else if e := x.Fullfilled(s); err != nil {
+	} else if e := x.Fulfilled(s); err != nil {
 		return e
 	}
 

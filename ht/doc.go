@@ -24,7 +24,7 @@
 //     Body{Contains: "foobar", Count: 2}
 //     Body{Contains: "illegal", Count: -1}
 // The last three examples show how zero values of optional fields are
-// commonly used: The zero value of Count means "any number of occurences".
+// commonly used: The zero value of Count means "any number of occurrences".
 // Forbidding the occurenc of "foobar" thus requires a negative Count.
 //
 // The following checks are provided
@@ -41,7 +41,7 @@
 //     * Links           checks accesability of hrefs and srcs in HTML
 //     * Logfile         checks data written to a logfile
 //     * Redirect        checks for redirections
-//     * ResponseTime    checks lower and higer bounds on the response time
+//     * ResponseTime    checks lower and higher bounds on the response time
 //     * SetCookie       checks properties of received cookies
 //     * StatusCode      checks the received HTTP status code
 //     * UTF8Encoded     checks that the HTTP body is UTF-8 encoded
@@ -51,7 +51,7 @@
 // Requests
 //
 // Requests allow to specify a HTTP request in a declarative manner.
-// A wide varity of request can be generated from a purly textual
+// A wide variety of request can be generated from a purly textual
 // representation of the Request.
 //
 // All the ugly stuff like parameter encoding, generation of multipart
@@ -61,7 +61,7 @@
 //
 // Hardcoding e.g. the hostname in a test has obvious drawbacks. To overcome
 // these the Request and Checks may be parametrised. This is done by a simple
-// variable expansion in which occurences of variables are replaced by their
+// variable expansion in which occurrences of variables are replaced by their
 // values. Variables may occur in all (exported) string fields of Checks and
 // all suitable string fields of Request in the form:
 //     {{VARNAME}}
@@ -111,12 +111,12 @@
 // writing these repeated tests it is possible to treat a Test as a
 // template which is instantiated with different parametrizations.
 // This process is called unrolling. The field UnrollWith of a test
-// controlls this unrolling: It is a map of variabe names to variable
+// controls this unrolling: It is a map of variabe names to variable
 // values. The simplest definition is
 //     UnrollWith: map[string][]string{"query": {"foo", "bar", "wuz"}}
 // with the test and probably the checks too containing references
 // to the query variabel like "{{query}}". Unrolling such a test produces
-// three different, new test, one with all occurences of "{{query}}"
+// three different, new test, one with all occurrences of "{{query}}"
 // replaced by "foo", one with "bar" as the replacement and a third
 // with "wuz". The unrolled tests do no longer contain the "{{query}}"
 // variabel. If more than one variable is used during unrolling the
@@ -140,7 +140,7 @@
 // Such suite may share a common cookie jar (and a common logger)
 // and may contain setup and teardown actions. Any action on a Suite
 // normaly requires its setup tests to pass, afterwards the main tests
-// are executed and finaly the teardown tests are run (but no errors or
+// are executed and finally the teardown tests are run (but no errors or
 // failures are reported for teardown tests).
 //
 //

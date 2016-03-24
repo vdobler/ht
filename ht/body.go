@@ -61,7 +61,7 @@ func (b Body) Execute(t *Test) error {
 	if err != nil {
 		return ErrBadBody
 	}
-	return Condition(b).Fullfilled(body)
+	return Condition(b).Fulfilled(body)
 }
 
 // Prepare implements Check's Prepare method.
@@ -72,10 +72,10 @@ func (b *Body) Prepare() error {
 // ----------------------------------------------------------------------------
 // Sorted
 
-// Sorted checks for an ordered occurence of items.
+// Sorted checks for an ordered occurrence of items.
 // The check Sorted could be replaced by a Regexp based Body test
 // without loss of functionality; Sorted just makes the idea of
-// "looking for a sorted occurence" clearer.
+// "looking for a sorted occurrence" clearer.
 //
 // If the response has a Content-Type header indicating a HTML
 // response the HTML will be parsed and the text content normalized

@@ -31,11 +31,11 @@ import (
 
 var (
 	// DefaultUserAgent is the user agent string to send in http requests
-	// if no user agent header is specified explicitely.
+	// if no user agent header is specified explicitly.
 	DefaultUserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36"
 
 	// DefaultAccept is the accept header to be sent if no accept header
-	// is set explicitely in the test.
+	// is set explicitly in the test.
 	DefaultAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 
 	// DefaultClientTimeout is the timeout used by the http clients.
@@ -143,7 +143,7 @@ type Request struct {
 
 	// Header contains the specific http headers to be sent in this request.
 	// User-Agent and Accept headers are set automaticaly to the global
-	// default values if not set explicitely.
+	// default values if not set explicitly.
 	Header http.Header `json:",omitempty"`
 
 	// Cookies contains the cookies to send in the request.
@@ -164,7 +164,7 @@ type Request struct {
 // Response captures information about a http response.
 type Response struct {
 	// Response is the received HTTP response. Its body has bean read and
-	// closed allready.
+	// closed already.
 	Response *http.Response `json:",omitempty"`
 
 	// Duration to receive response and read the whole body.
@@ -190,7 +190,7 @@ type Cookie struct {
 }
 
 // Poll determines if and how to redo a test after a failure or if the
-// test should be skipped alltogether. The zero value of Poll means "Just do
+// test should be skipped altogether. The zero value of Poll means "Just do
 // the test once."
 type Poll struct {
 	// Maximum number of redos. Both 0 and 1 mean: "Just one try. No redo."
@@ -205,7 +205,7 @@ type Poll struct {
 // Test
 
 // Test is a single logical test which does one HTTP request and checks
-// a number of Checks on the recieved Response.
+// a number of Checks on the received Response.
 type Test struct {
 	Name        string
 	Description string `json:",omitempty"`
@@ -264,7 +264,7 @@ const (
 )
 
 // DefaultCriticality is the criticality assigned to tests loaded from JSON5
-// which do not explicitely set the criticality.
+// which do not explicitly set the criticality.
 var DefaultCriticality = CritError
 
 const criticalityName = "CritDefaultCritIgnoreCritInfoCritWarnCritErrorCritFatal"
@@ -970,7 +970,7 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 	// File parameters at bottom
 	for n, v := range param {
 		if !(len(v) > 0 && strings.HasPrefix(v[0], "@file:")) {
-			continue // allready written
+			continue // already written
 		}
 		filename := v[0][6:]
 		var file io.Reader
