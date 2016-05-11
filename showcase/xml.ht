@@ -10,23 +10,23 @@
     Checks: [
         {Check: "StatusCode", Expect: 200},
 
-	// check existence of element only
+        // check existence of element only
         {Check: "XML",
-	    Path: "/library/book/character[2]/name",
- 	},
+            Path: "/library/book/character[2]/name",
+         },
 
-	// check existence and value
+        // check existence and value
         {Check: "XML",
-	    Path: "/library/book/character[2]/name",
+            Path: "/library/book/character[2]/name",
             Equals: "Snoopy"
- 	},
+         },
 
-	// check several Conditions on the value
+        // check several Conditions on the value
         {Check: "XML",
-	    Path: "//book[author/@id='CMS']/title",
+            Path: "//book[author/@id='CMS']/title",
             Prefix: "Being",
-	    Contains: "Dog"
- 	},
+            Contains: "Dog"
+         },
 
         // Some books are undiscoveral through the API:
         // None is the boolean NOR of several checks.

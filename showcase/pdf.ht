@@ -9,7 +9,7 @@
         {Check: "StatusCode", Expect: 200},
         {Check: "Identity", SHA1: "0054333bab8a3a3d520f94c87e10a231d71348d4"},
 
-	// check some header fields.
+        // check some header fields.
         {Check: "ContentType", Is: "pdf"},
         {Check: "Header", Header: "Content-Disposition",
             Equals: "attachment; filename=\"tac.pdf\""},

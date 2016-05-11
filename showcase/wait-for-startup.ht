@@ -1,6 +1,6 @@
 {
     Name: "Poll server until started",
-    Description: "Try until server reports rediness",
+    Description: "Try until server reports readiness",
     Request: {
         URL: "http://{{HOST}}/server/ready"
     },

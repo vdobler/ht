@@ -9,8 +9,8 @@
             // TERM is a 'loop variable', see below.
             q: "{{TERM}}",
 
-	    // SESSIONID is a variable extracted in extract-session.ht
-	    s: "{{SESSIONID}}",
+            // SESSIONID is a variable extracted in extract-session.ht
+            s: "{{SESSIONID}}",
         },
     },
     Checks: [

@@ -17,7 +17,7 @@
             info: "A<?>B €",           // proper encoding is done automatically
             weight: "12.34",           
         },
-	// run checks after following all redirects
+        // run checks after following all redirects
         FollowRedirects: true,
     },
     Checks: [
@@ -30,8 +30,8 @@
         {Check: "Header", Header: "X-Frame-Options", Equals: "deny"},
         {Check: "Header", Header: "Warning", Absent: true},
 
-	// We automaticaly followed redirects (see above FollowRedirects: true).
-	// Now lets check where we landed and how we got there. 
+        // We automaticaly followed redirects (see above FollowRedirects: true).
+        // Now lets check where we landed and how we got there. 
         {Check: "FinalURL", Equals: "http://{{HOST}}/en/index.html"},
         {Check: "RedirectChain",
             Via: [
@@ -42,11 +42,11 @@
             ],
         },
 
-	// fail if much to slow
+        // fail if much to slow
         {Check: "ResponseTime", Lower: "1.5s"},  
 
         // HTML should be proper HTML5 but non-unique ids and references
-	// to non-existing ids is okay for us.
+        // to non-existing ids is okay for us.
         {Check: "ValidHTML", Ignore: "uniqueids label"},
 
         // Textual checks of the body
@@ -76,12 +76,12 @@
         },
 
         // There should not be any dead links.
-	// (href/src attributes in a/link and img/script tags)
+        // (href/src attributes in a/link and img/script tags)
         {Check: "Links",
             Head: true,                  // just a HEAD request
             Which: "a img link script",  // check all link types
             Concurrency: 8,              // run 8 cheks in parallel
-	    // Limit links to check (e.g. omit totaly external links)
+            // Limit links to check (e.g. omit totaly external links)
             OnlyLinks: [
                 {Prefix: "http://{{HOST}}/"},
                 {Prefix: "https://{{HOST}}/"},

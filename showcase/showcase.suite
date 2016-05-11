@@ -7,15 +7,15 @@
         // Retrying and polling
         "wait-for-startup.ht",
 
-	// Initiate session and extract variables
-	"extract-session.ht",
+        // Initiate session and extract variables
+        "extract.ht",
     ],
 
     Tests: [
         // Prepare system by loading data
         "load-data.ht", 
 
-	// Shows a lot of checks
+        // Shows a lot of checks
         "homepage.ht",
 
         // Redirections and Cookies
@@ -24,16 +24,16 @@
         // Logical OR of checks and image checking
         "logo.ht",
 
-        // Logical NOR of checks and XML checking	
+        // Logical NOR of checks and XML checking        
         "xml.ht",
 
-	 // Checking JSON responses
+         // Checking JSON responses
         "json-api.ht",
 
-	 // Looping/iterating tests and variables	
+         // Looping/iterating tests and variables	
         "search.ht",
 
-	// Checking binary response bodies and HTTP headers.
+        // Checking binary response bodies and HTTP headers.
         "pdf.ht",       
     ],
 

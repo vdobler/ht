@@ -12,13 +12,13 @@
         // Successful login redirects to welcome page; elipsis ... works like *.
         {Check: "Redirect", To: "https://.../welcome.html", StatusCode: 303},
 
-	// Make sure the "history" cookie is cleared.
+        // Make sure the "history" cookie is cleared.
         {Check: "DeleteCookie", Name: "history"},
 
-	// Ensure username cookie contains last name of John. Q. Average
+        // Ensure username cookie contains last name of John. Q. Average
         {Check: "SetCookie", Name: "username", Value: {Contains: "Average"}},
 
-	// Proper session cookie
+        // Proper session cookie
         {Check: "SetCookie",
             Name: "session",
             Path: {Equals: "/"},

@@ -1,0 +1,21 @@
+{
+    Name: "Extract Session",
+    Description: "Extract value of session cookie into variable SESSION",
+    Request: {
+        Method: "GET",
+        URL: "http://{{HOST}}/",
+        Cookies: [
+            {Name: "sessionid", Value: ""},
+        ],
+    },
+    Checks: [
+        {Check: "SetCookie", 
+            Name: "sessionid", 
+            Value: { Regexp: "^[[:xdigit:]]{6,10}$" }
+        },
+    ],
+
+    VarEx: {
+        "SESSION": {Extractor: "CookieExtractor", Name: "sessionid"}
+    }   
+}
