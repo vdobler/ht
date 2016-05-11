@@ -194,7 +194,8 @@ func (e HTMLExtractor) Extract(t *Test) (string, error) {
 // ----------------------------------------------------------------------------
 // BodyExtractor
 
-// BodyExtractor extracts a value from the uninterpreted response body.
+// BodyExtractor extracts a value from the uninterpreted response body
+// via a regular expression.
 type BodyExtractor struct {
 	// Regexp is the regular expression to look for in the body.
 	Regexp string
