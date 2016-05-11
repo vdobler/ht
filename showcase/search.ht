@@ -6,7 +6,7 @@
         URL: "http://{{HOST}}/search",
         ParamsAs: "URL",
         Params: {
-            // TERM is a loop variable
+            // TERM is a 'loop variable'.
             q: "{{TERM}}",
         },
     },
@@ -20,7 +20,10 @@
     ],
 
     // This is just one test-file, but it gets 'unrolled' 3 times with
-    // different values substituted for the variable {{TERM}} and {{RESULTS}}.
+    // different values substituted for the variable {{TERM}}, {{RESULTS}}.
+    // and the 'numeric variable' 98765.
+    // As all variables have the same number of values the values are
+    // cycled in lockstep and unrolling produces 4 tests in total.
     Unroll: {
         TERM:     [ "gluon", "quark", "tachyon", "axion"     ],
         RESULTS:  [ "12",    "8",     "no"     , "really no" ],

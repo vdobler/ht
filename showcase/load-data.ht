@@ -1,13 +1,13 @@
 {
     Name: "Load sample data",
-    Description: "",
+    Description: "Post sampledate.zip to server",
     Request: {
         Method: "POST",
         URL: "http://{{HOST}}/admin/load",
         ParamsAs: "multipart",  // send parameter as multipart/form-data
         Params: {
-            load: "@file:sampledata.zip", // attach content of file
-            username: "admin",
+            username: "admin",                // normal form field
+            load:     "@file:sampledata.zip", // attach content of file
             password: "admin123",
         },
     },

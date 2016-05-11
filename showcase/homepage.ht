@@ -15,33 +15,38 @@
             when: "today",             // results in index.html/?when=today
             primes: [ "2", "7", "13"], // multiple values are possible
             info: "A<?>B €",           // proper encoding is done automatically
-            weight: "12.34",
+            weight: "12.34",           
         },
+	// run checks after following all redirects
         FollowRedirects: true,
     },
     Checks: [
-        {Check: "StatusCode", Expect: 200},
+        {Check: "StatusCode", Expect: 200}, // we expect status OK
         {Check: "ContentType", Is: "html"}, // short for text/html
-        {Check: "UTF8Encoded"},
+        {Check: "UTF8Encoded"},             // what else?
 
         // Any ETag, no Warning and deny'ed X-Frame-Options.
         {Check: "Header", Header: "ETag"},
         {Check: "Header", Header: "X-Frame-Options", Equals: "deny"},
         {Check: "Header", Header: "Warning", Absent: true},
 
+	// We automaticaly followed redirects (see above FollowRedirects: true).
+	// Now lets check where we landed and how we got there. 
         {Check: "FinalURL", Equals: "http://{{HOST}}/en/index.html"},
         {Check: "RedirectChain",
             Via: [
-                "https://{{HOST}}...",   // switch to https first
-                ".../en/?anon=1",
-                ".../en/",
-                "http://{{HOST}}/en/index.html",
+                "https://{{HOST}}...",  // switch to https first
+                ".../en/?anon=1",       // the ellipsis "..." matches anything
+                ".../en/",         
+                "http://{{HOST}}/en/index.html", 
             ],
         },
 
-        {Check: "ResponseTime", Lower: "1.5s"},
+	// fail if much to slow
+        {Check: "ResponseTime", Lower: "1.5s"},  
 
-        // non-unique ids and references to non-existing ids is okay
+        // HTML should be proper HTML5 but non-unique ids and references
+	// to non-existing ids is okay for us.
         {Check: "ValidHTML", Ignore: "uniqueids label"},
 
         // Textual checks of the body
@@ -65,16 +70,18 @@
         {Check: "Latency",
             N: 200,         // measure 100 request
             Concurrent: 5,  // at 5 concurrent request
+            Limits: "50% ≤ 6ms; 80% ≤ 8ms; 99% ≤ 9ms",
             IndividualSessions: true,
             SkipChecks: true,
-            Limits: "50% ≤ 6ms; 80% ≤ 8ms; 99% ≤ 9ms",
         },
 
-        // Links (href for a- and link-tags and src for img- and script-tags)
+        // There should not be any dead links.
+	// (href/src attributes in a/link and img/script tags)
         {Check: "Links",
-            Head: true,
-            Which: "a img link script",
-            Concurrency: 8,
+            Head: true,                  // just a HEAD request
+            Which: "a img link script",  // check all link types
+            Concurrency: 8,              // run 8 cheks in parallel
+	    // Limit links to check (e.g. omit totaly external links)
             OnlyLinks: [
                 {Prefix: "http://{{HOST}}/"},
                 {Prefix: "https://{{HOST}}/"},

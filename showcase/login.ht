@@ -5,13 +5,20 @@
         Method: "POST",
         URL: "http://{{HOST}}/login",
         ParamsAs: "body",
-        Params: { user: "john.q.public", pass: "secret" },
+        Params: { user: "john.q.average", pass: "secret" },
         FollowRedirects: false,
     },
     Checks: [
+        // Successful login redirects to welcome page; elipsis ... works like *.
         {Check: "Redirect", To: "https://.../welcome.html", StatusCode: 303},
+
+	// Make sure the "history" cookie is cleared.
         {Check: "DeleteCookie", Name: "history"},
-        {Check: "SetCookie", Name: "username", Value: {Contains: "Public"}},
+
+	// Ensure username cookie contains last name of John. Q. Average
+        {Check: "SetCookie", Name: "username", Value: {Contains: "Average"}},
+
+	// Proper session cookie
         {Check: "SetCookie",
             Name: "session",
             Path: {Equals: "/"},

@@ -4,17 +4,33 @@
     KeepCookies: true,
 
     Setup: [
+        // Retrying and polling
         "wait-for-startup.ht",
     ],
 
     Tests: [
-        "load-sampledata.ht",
-        "homepage.ht",  // Shows a lot of checks
-        "login.ht",     // Redirections and Cookies
-        "logo.ht",      // Logical OR of checks and image checking
-        "xml.ht",       // Logilal NOR of checks and XML checking
-        "json-api.ht",  // Checking JSON responses
-        "search.ht",    // Loops
+        // Prepare system by loading data
+        "load-data.ht", 
+
+	// Shows a lot of checks
+        "homepage.ht",
+
+        // Redirections and Cookies
+        "login.ht",
+
+        // Logical OR of checks and image checking
+        "logo.ht",
+
+        // Logical NOR of checks and XML checking	
+        "xml.ht",
+
+	 // Checking JSON responses
+        "json-api.ht",
+
+	 // Looping/iterating tests	
+        "search.ht",
+
+	// Checking binary response bodies and HTTP headers.
         "pdf.ht",       
     ],
 
@@ -22,6 +38,7 @@
     ],
 
     // Variables can be set or overwritten from the command line.
+    // Use -D name=value (e.g. -D HOST=demo.mycoorp.com)
     Variables: {
          HOST: "localhost:8080",
     }

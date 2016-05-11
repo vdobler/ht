@@ -2,7 +2,7 @@
     Name: "JSON API",
     Description: "",
     Request: {
-        URL: "http://{{HOST}}/api/v1",
+        URL: "http://{{HOST}}/api/v1/foo",
         Header: {
             Accept: [ "application/json" ], 
         },
