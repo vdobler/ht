@@ -600,7 +600,13 @@ func (t *Test) prepare(variables map[string]string) error {
 	if t.specialVars == nil {
 		t.specialVars = t.findSpecialVariables()
 	}
-	allVars := variables
+
+	// Make a deep copy of variables.
+	allVars := make(map[string]string)
+	for n, v := range variables {
+		allVars[n] = v
+	}
+
 	if len(t.specialVars) > 0 {
 		sv, err := specialVariables(time.Now(), t.specialVars)
 		if err != nil {
