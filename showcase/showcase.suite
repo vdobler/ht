@@ -6,6 +6,9 @@
     Setup: [
         // Retrying and polling
         "wait-for-startup.ht",
+
+	// Initiate session and extract variables
+	"extract-session.ht",
     ],
 
     Tests: [
@@ -27,7 +30,7 @@
 	 // Checking JSON responses
         "json-api.ht",
 
-	 // Looping/iterating tests	
+	 // Looping/iterating tests and variables	
         "search.ht",
 
 	// Checking binary response bodies and HTTP headers.

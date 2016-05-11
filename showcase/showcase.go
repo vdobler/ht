@@ -28,11 +28,16 @@ func main() {
 	http.HandleFunc("/api/v1", jsonHandler)
 	http.HandleFunc("/static/image/", logoHandler)
 	http.HandleFunc("/search", searchHandler)
+	http.HandleFunc("/server/ready", readyHandler)
 	log.Fatal(http.ListenAndServe(*port, nil))
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(time.Duration(rand.Intn(9)+1) * time.Millisecond)
+	if sc, err := r.Cookie("sessionid"); err != nil || sc.Value == "" {
+		sc = &http.Cookie{Name: "sessionid", Value: "abc123E", Path: "/"}
+		http.SetCookie(w, sc)
+	}
 	w.Header().Set("Warning", "Demo only!")
 	w.Header().Set("X-Frame-Options", "none")
 	fmt.Fprintf(w, `<!doctype html>
@@ -86,6 +91,19 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: "session", Value: "123random",
 		Path: "/", MaxAge: 300})
 	fmt.Fprintf(w, "Welcome Joe Average!")
+}
+
+var readyPolled int
+
+func readyHandler(w http.ResponseWriter, r *http.Request) {
+	readyPolled++
+	if readyPolled < 3 {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprintln(w, "System not ready jet")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "System up and running")
 }
 
 func missingHandler(w http.ResponseWriter, r *http.Request) {
