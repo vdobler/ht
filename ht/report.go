@@ -290,6 +290,9 @@ var htmlTestTmpl = `{{define "TEST"}}
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
         Request Duration: {{.Duration}}
+        {{if .Variables}}<br/>Variables:
+          {{range $k, $v := .Variables}}{{printf "%s=%q;  " $k $v}}{{end}}
+        {{end}}
         {{if .Error}}</br>Error: {{.Error}}{{end}}
       </div>
       {{if eq .Status 2 3 4 5}}{{if .CheckResults}}
