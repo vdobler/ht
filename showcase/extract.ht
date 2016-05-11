@@ -1,6 +1,6 @@
 {
-    Name: "Extract Session",
-    Description: "Extract value of session cookie into variable SESSION",
+    Name: "Extraction of values",
+    Description: "Extract value of session cookie and from HTML page",
     Request: {
         Method: "GET",
         URL: "http://{{HOST}}/",
@@ -15,7 +15,29 @@
         },
     ],
 
+    // Variable values can be defined in three ways:
+    //   *  in the Variables section of the Suite (see showcase.suite)
+    //   *  on the command line (with -D or Dfile)
+    //   *  dynamicaly read from a HTTP response; some variants shown below
     VarEx: {
-        "SESSION": {Extractor: "CookieExtractor", Name: "sessionid"}
+        // Populate SESSION variable from a cookie.
+        "SESSION": {
+            Extractor: "CookieExtractor", Name: "sessionid"
+        },
+
+        // Populate REGION variabel from attribute of a HTML element.
+	"REGION": {
+            Extractor: "HTMLExtractor", Selector: "#server", Attribute: "data-region"
+        },
+
+	// Populate SERVERTYPE from text content of a HTML element.
+	"SERVERTYPE": {
+            Extractor: "HTMLExtractor", Selector: "#server", Attribute: "~text~"
+        },
+
+	// Populate THE-END from the last 7 bytes in the body.
+	"THE-END": {
+            Extractor: "BodyExtractor", Regexp: ".{7}$"
+        },
     }   
 }

@@ -68,6 +68,10 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
  <div><a href="/search?q=gluon">Look for gluons</a></div>
 
  <p></ul>
+
+ <div style="display: none">
+  Host: <span id="server" data-region="Europe">Atari 1040 ST</span>
+ </div>
 </body>
 </html>`)
 }
