@@ -100,13 +100,13 @@ func (c SetCookie) Execute(t *Test) error {
 	}
 
 	if err := c.Value.Fulfilled(cookie.Value); err != nil {
-		return err
+		return fmt.Errorf("Bad value: ", err)
 	}
 	if err := c.Path.Fulfilled(cookie.Path); err != nil {
-		return err
+		return fmt.Errorf("Bad path: ", err)
 	}
-	if err := c.Value.Fulfilled(cookie.Domain); err != nil {
-		return err
+	if err := c.Domain.Fulfilled(cookie.Domain); err != nil {
+		return fmt.Errorf("Bad Domain: ", err)
 	}
 
 	if c.MinLifetime > 0 {
