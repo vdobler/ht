@@ -6,6 +6,8 @@ package ht
 
 import (
 	"bytes"
+	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -94,8 +96,10 @@ func TestBodyExtractor(t *testing.T) {
 }
 
 var jsonExtractorTests = []struct {
-	body, path, want string
-	err              error
+	body string
+	path string
+	want string
+	err  error
 }{
 	{`{"a":"foo", "b":"bar", "c": [1,2,3]}`, "a", "foo", nil},
 	{`{"a":"foo", "b":"bar", "c": [1,2,3]}`, "b", "bar", nil},
@@ -122,6 +126,58 @@ func TestJSONExtractor(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("%d. Path=%q: got %q, want %q",
 				i, tc.path, got, tc.want)
+		}
+	}
+}
+
+var cookieExtractorTests = []struct {
+	name string
+	want string
+	err  error
+}{
+	{"sessionid", "123abc456", nil},
+	{"missing", "", fmt.Errorf("cookie missing not received")},
+	{"foo", "bar", nil},
+}
+
+func TestCookieExtractor(t *testing.T) {
+	resp := &http.Response{
+		Header: http.Header{
+			"Set-Cookie": []string{
+				"foo=bar",
+				"sessionid=123abc456",
+				"foo=wuz",
+			},
+		},
+	}
+
+	for i, tc := range cookieExtractorTests {
+		test := &Test{
+			Response: Response{Response: resp},
+		}
+		ex := CookieExtractor{Name: tc.name}
+		got, err := ex.Extract(test)
+
+		if tc.err != nil && err == nil {
+			t.Errorf("%d. name=%s, missing error, want %s",
+				i, tc.name, tc.err)
+			continue
+		}
+		if tc.err == nil && err != nil {
+			t.Errorf("%d. name=%s, unexpected error, got %s",
+				i, tc.name, err)
+			continue
+		}
+		if tc.err != nil && err != nil {
+			if tc.err.Error() != err.Error() {
+				t.Errorf("%d. name=%s, wrong error, got %s, want %s",
+					i, tc.name, err, tc.err)
+			}
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("%d. name=%s, got %s, want %s",
+				i, tc.name, got, tc.want)
 		}
 	}
 }

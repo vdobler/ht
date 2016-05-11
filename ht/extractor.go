@@ -60,6 +60,7 @@ func init() {
 	RegisterExtractor(HTMLExtractor{})
 	RegisterExtractor(BodyExtractor{})
 	RegisterExtractor(JSONExtractor{})
+	RegisterExtractor(CookieExtractor{})
 }
 
 // ----------------------------------------------------------------------------
@@ -278,4 +279,23 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 		s = s[1 : len(s)-1]
 	}
 	return s, nil
+}
+
+// ----------------------------------------------------------------------------
+// CookieExtractor
+
+// CookieExtractor extracts the value of a cookie received in a Set-Cookie
+// header.  The value of the first cookie with the given name is extracted.
+type CookieExtractor struct {
+	Name string // Name is the name of the cookie.
+}
+
+// Extract implements Extractor's Extract method.
+func (e CookieExtractor) Extract(t *Test) (string, error) {
+	cookies := findCookiesByName(t, e.Name)
+	if len(cookies) == 0 {
+		return "", fmt.Errorf("cookie %s not received", e.Name)
+	}
+
+	return cookies[0].Value, nil
 }
