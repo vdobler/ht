@@ -257,13 +257,13 @@ type latencyResult struct {
 }
 
 // https://en.wikipedia.org/wiki/Quantile formula R-8
-func quantile(x []int, p float64) int {
+func quantile(x []int, p float64) float64 {
 	N := float64(len(x))
 	if p < 2.0/(3.0*(N+1.0/3.0)) {
-		return x[0]
+		return float64(x[0])
 	}
 	if p >= (N-1.0/3.0)/(N+1.0/3.0) {
-		return x[len(x)-1]
+		return float64(x[len(x)-1])
 	}
 
 	h := (N+1.0/3.0)*p + 1.0/3.0
@@ -271,7 +271,7 @@ func quantile(x []int, p float64) int {
 	xl := x[int(fh)-1]
 	xr := x[int(fh)]
 
-	return xl + int((h-fh)*float64(xr-xl)+0.5)
+	return float64(xl) + (h-fh)*float64(xr-xl)
 }
 
 // Prepare implements Check's Prepare method.
