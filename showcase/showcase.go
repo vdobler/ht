@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -29,6 +30,7 @@ func main() {
 	http.HandleFunc("/static/image/", logoHandler)
 	http.HandleFunc("/search", searchHandler)
 	http.HandleFunc("/server/ready", readyHandler)
+	http.HandleFunc("/shut/down/now", shutdownHandler)
 	log.Fatal(http.ListenAndServe(*port, nil))
 }
 
@@ -196,4 +198,11 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		fmt.Fprintf(w, "Nothing to see here. try 'gluon' or 'axion'.\n")
 	}
+}
+
+func shutdownHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusServiceUnavailable)
+	fmt.Fprintln(w, "System shuting down")
+	time.Sleep(100 * time.Millisecond)
+	os.Exit(0)
 }

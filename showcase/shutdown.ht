@@ -1,0 +1,8 @@
+{
+    Name: "Shutdown Demo Server",
+    Description: "Much more teardown work than a test or a check",
+    Request: {
+        Method: "GET",
+        URL: "http://{{HOST}}/shut/down/now",
+    },
+}

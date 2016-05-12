@@ -38,6 +38,8 @@
     ],
 
     Teardown: [
+        // Turn demo server off
+        "shutdown.ht"
     ],
 
     // Variables can be set or overwritten from the command line.
