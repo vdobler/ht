@@ -5,9 +5,9 @@
 package ht
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"mime"
 	"mime/multipart"
@@ -19,6 +19,8 @@ import (
 
 	"github.com/vdobler/ht/internal/json5"
 )
+
+var verboseTest = flag.Bool("ht.verbose", false, "be verbose during testing")
 
 func TestSkippingChecks(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
@@ -449,7 +451,7 @@ func TestMarshalTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	if testing.Verbose() {
+	if *verboseTest {
 		fmt.Println(string(data))
 	}
 	recreated := Test{}
@@ -528,12 +530,12 @@ func TestMerge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %#v", err)
 	}
-	if testing.Verbose() {
+	if *verboseTest {
 		jr, err := json5.Marshal(c)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		t.Log(string(jr))
+		fmt.Println(string(jr))
 	}
 	if len(c.Request.Params) != 3 ||
 		c.Request.Params["a"][0] != "aa" ||
@@ -641,12 +643,10 @@ func bodyReadTestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Hello World", http.StatusOK)
 	case "/redirect-plain":
 		r.URL.Path = "/hello"
-		log.Printf("Redirect plain to %s", r.URL.String())
 		w.Header().Set("Location", r.URL.String())
 		w.WriteHeader(302)
 	case "/redirect-content":
 		r.URL.Path = "/hello"
-		log.Printf("Redirect content to %s", r.URL.String())
 		w.Header().Set("Location", r.URL.String())
 		w.WriteHeader(302)
 		fmt.Fprintln(w, "Please go to /hello")

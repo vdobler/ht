@@ -22,7 +22,7 @@ func TestModify(t *testing.T) {
 	} {
 		// TODO: some proper automated test?
 		modvals := r.modify(tc, modAll)
-		if testing.Verbose() {
+		if *verboseTest {
 			fmt.Printf("Original: %v\n", tc)
 			for _, mv := range modvals {
 				fmt.Printf("  %#v\n", mv)

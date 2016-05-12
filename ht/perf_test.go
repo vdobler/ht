@@ -36,7 +36,7 @@ func setupPerfSuites(t *testing.T) ([]*Suite, *httptest.Server) {
 		Timeout:   Duration(400 * time.Millisecond),
 		Verbosity: 0,
 	}
-	if testing.Verbose() {
+	if *verboseTest {
 		test.Verbosity = 1
 	}
 
@@ -77,7 +77,7 @@ func TestThroughputLoadTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}
-	if testing.Verbose() {
+	if *verboseTest {
 		fmt.Printf("Throughput Test:\n")
 		ltr := AnalyseLoadtest(results)
 		fmt.Println(ltr)
@@ -103,7 +103,7 @@ func TestConcurrencyLoadTest(t *testing.T) {
 		t.Fatalf("Unexpected error %v", err)
 	}
 
-	if testing.Verbose() {
+	if *verboseTest {
 		fmt.Printf("Concurrency Test:\n")
 		ltr := AnalyseLoadtest(results)
 		fmt.Println(ltr)

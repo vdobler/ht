@@ -57,7 +57,7 @@ func PerformanceLoadTest(suites []*Suite, opts LoadTestOptions) ([]Test, error) 
 		}
 	}
 
-	log.Printf("Running load test with %+v", opts)
+	// log.Printf("Running load test with %+v", opts)
 
 	// rc provides a stream of prepared test taken from suites.
 	rc := makeTestChannel(suites, opts.Count, opts.Timeout)

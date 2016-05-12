@@ -103,7 +103,7 @@ func TestValidHTMLBroken(t *testing.T) {
 
 	es := el.AsStrings()
 	for i, e := range es {
-		if testing.Verbose() {
+		if *verboseTest {
 			fmt.Println(e)
 		}
 		if i >= len(expectedErrorsInBrokenHTML) {

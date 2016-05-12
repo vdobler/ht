@@ -103,7 +103,12 @@ func TestLatency(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(primeHandler))
 	defer ts.Close()
 
-	for _, conc := range []int{1, 4, 16, 64} {
+	concLevels := []int{1, 4, 16}
+	if !testing.Short() {
+		concLevels = append(concLevels, 64)
+	}
+
+	for _, conc := range concLevels {
 		test := Test{
 			Name: "Prime-Handler",
 			Request: Request{
@@ -123,12 +128,14 @@ func TestLatency(t *testing.T) {
 					// DumpTo:     "foo.xxx",
 				},
 			},
-			Verbosity: 1,
+			Verbosity: 0,
 		}
-
+		if *verboseTest {
+			test.Verbosity = 1
+		}
 		test.Run(nil)
 
-		if testing.Verbose() {
+		if *verboseTest {
 			test.PrintReport(os.Stdout)
 		}
 	}
@@ -137,6 +144,11 @@ func TestLatency(t *testing.T) {
 func TestSessionLatency(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(sessionHandler))
 	defer ts.Close()
+
+	concLevels := []int{1, 4}
+	if !testing.Short() {
+		concLevels = append(concLevels, 16)
+	}
 
 	for _, kind := range []string{"indiv", "shared"} {
 		for _, conc := range []int{1, 4, 16} {
@@ -164,8 +176,11 @@ func TestSessionLatency(t *testing.T) {
 						IndividualSessions: kind == "indiv",
 					},
 				},
-				Verbosity: 1,
+				Verbosity: 0,
 				Jar:       jar,
+			}
+			if *verboseTest {
+				test.Verbosity = 1
 			}
 
 			test.Run(nil)

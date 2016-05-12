@@ -36,7 +36,7 @@ func TestStatusCode(t *testing.T) {
 		if test.Status != Pass {
 			t.Errorf("Unexpected error for %d: %s", code, test.Error)
 		}
-		if testing.Verbose() {
+		if *verboseTest {
 			test.PrintReport(os.Stdout)
 		}
 	}
@@ -71,7 +71,7 @@ func TestNoServerError(t *testing.T) {
 				t.Errorf("Unexpected error for %d: %s", code, test.Error)
 			}
 		}
-		if testing.Verbose() {
+		if *verboseTest {
 			test.PrintReport(os.Stdout)
 		}
 	}
