@@ -9,7 +9,6 @@ package ht
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -26,26 +25,6 @@ func findCookiesByName(t *Test, name string) (cookies []*http.Cookie) {
 		}
 	}
 	return cookies
-}
-
-// isProperCookiePath determins whether path is a sensible Path value
-// in a Set-Cookie header received from u. E.g. a cookie of the form
-//     Set-Cookie: foo=bar; Path=/abc/123
-// which is received while accessing
-//     http://example.org/some/other/path
-// will be rejected by browser because the ath value is not suitable for
-// the path in the URL. See RFC 6265 section 5.1.4 for reference.
-func isProperCookiePath(u *url.URL, path string) bool {
-	if path == "" || u.Path == path {
-		return true // Empyt path defaults to actual path, so it is okay.
-	}
-	if strings.HasPrefix(u.Path, path) {
-		if u.Path[len(path)] == '/' || path[len(path)-1] == '/' {
-			// "/abc" and "/abc/" both are proper for "/abc/foo" URL path.
-			return true
-		}
-	}
-	return false
 }
 
 // ----------------------------------------------------------------------------
@@ -196,7 +175,7 @@ func (c *SetCookie) Prepare() error {
 
 // DeleteCookie checks that the HTTP response properly deletes all cookies
 // matching Name, Path and Domain. Path and Domain are optional in which case
-// all cookies with the given Name are checkd for deletion.
+// all cookies with the given Name are checked for deletion.
 type DeleteCookie struct {
 	Name   string
 	Path   string `json:",omitempty"`
@@ -207,24 +186,7 @@ type DeleteCookie struct {
 func (c DeleteCookie) Execute(t *Test) error {
 	errors := []string{}
 	deleted := false
-	u := t.Response.Response.Request.URL
 	for _, cookie := range findCookiesByName(t, c.Name) {
-		// Report malformed (because of path) cookies.
-		if !isProperCookiePath(u, cookie.Path) {
-			em := fmt.Sprintf("invalid path %s on cookie %s for URL %s",
-				cookie.Path, c.Name, u.String())
-			errors = append(errors, em)
-			continue
-		}
-		if c.Path != "" && !isProperCookiePath(u, c.Path) {
-			// Well this should be reported during Prepare, not
-			// here. Unfortunately Prepare knows nothing about
-			// the URL the request will go to. So do it here.
-			em := fmt.Sprintf("bogus path %s in check", c.Path)
-			errors = append(errors, em)
-			continue
-		}
-
 		// Work only on cookies matching the optional Path and Domain.
 		if c.Path != "" && cookie.Path != c.Path {
 			continue
@@ -235,7 +197,7 @@ func (c DeleteCookie) Execute(t *Test) error {
 
 		// Check for deletion.
 		if cookie.MaxAge == 0 && cookie.Expires.IsZero() {
-			em := fmt.Sprintf("cookie %s;%s;%s not deleted",
+			em := fmt.Sprintf("cookie (%s;%s;%s) not deleted",
 				c.Name, cookie.Path, cookie.Domain)
 			errors = append(errors, em)
 			continue
@@ -249,7 +211,7 @@ func (c DeleteCookie) Execute(t *Test) error {
 		if !cookie.Expires.IsZero() {
 			// Deletion via Expires value is problematic due to
 			// clock variations. Play it safe and require at least
-			// 90 seconds backdatedExpires.
+			// 90 seconds backdated Expires.
 			now := time.Now().Add(-90 * time.Second)
 			if cookie.Expires.After(now) {
 				em := fmt.Sprintf("cookie (%s;%s;%s) not deleted, Expires=%s",
@@ -261,15 +223,6 @@ func (c DeleteCookie) Execute(t *Test) error {
 		// Here not both of MaxAge and Expires are unset
 		// and none is positive, so at least one is negative.
 		// Thus the cookie is properly deleted.
-
-		// Sanity check: Do not send values when deleting cookies.
-		// It technically works but it is _strange_.
-		if cookie.Value != "" {
-			em := fmt.Sprintf("cookie (%s;%s;%s) deleted but has value %s",
-				c.Name, cookie.Path, cookie.Domain, cookie.Value)
-			errors = append(errors, em)
-			continue
-		}
 
 		deleted = true
 	}
