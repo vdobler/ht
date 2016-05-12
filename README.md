@@ -1,5 +1,8 @@
-HTTP Testing Made Easy
-======================
+HT: HTTP Testing Made Easy
+==========================
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/vdobler/ht)](https://goreportcard.com/report/github.com/vdobler/ht)
+[![GoDoc](https://godoc.org/github.com/vdobler/ht?status.svg)](https://godoc.org/github.com/vdobler/ht)
 
 End-to-end testing of HTTP requests/responses is easy with Go.
 
