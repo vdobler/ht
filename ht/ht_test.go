@@ -420,7 +420,7 @@ func TestClientTimeout(t *testing.T) {
 
 func TestMarshalTest(t *testing.T) {
 	test := &Test{
-		Name:        "Unic: Search",
+		Name:        "Search",
 		Description: "Some searches",
 		Request: Request{
 			URL: "https://{{HOST}}/de/tools/suche.html",
@@ -441,7 +441,7 @@ func TestMarshalTest(t *testing.T) {
 		},
 		Checks: []Check{
 			StatusCode{200},
-			&Body{Contains: "© 2014 Unic", Count: 1},
+			&Body{Contains: "© 2014", Count: 1},
 		},
 	}
 
@@ -466,7 +466,6 @@ func TestMarshalTest(t *testing.T) {
 
 	if string(data) != string(data2) {
 		t.Fatalf("Missmatch. Got\n%s\nWant\n%s\n", data2, data)
-
 	}
 }
 
