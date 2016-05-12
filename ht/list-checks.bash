@@ -1,13 +1,13 @@
 #! /bin/bash
 
-checks=$(oracle -pos ./check.go:#332 implements | \
-    cut -f 2 | cut -d " " -f 6 | tr -d "*" | sort)
+checks=$(guru -scope  . implements "check.go:#332" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]")
 
+{
 echo '<!DOCTYPE html>'
 echo '<html><head><title>Availbale Checks</title><meta charset="UTF-8"></head>'
 echo "<body><h1>Available Checks</h1>"
 
-echo "<p>Version: $(git describe)</p>"
+echo "<p>ht version $(git describe)</p>"
 
 for c in $checks Condition; do
     [[ -n "$c" ]] || continue
@@ -21,9 +21,9 @@ for c in $checks Condition; do
     go doc "$c" \
 	| sed -e "s/&/\\&amp;/g; s/</\\&lt;/g; s/>/\\&gt;/g"
     echo "</pre>"
-done | grep -v -E "^func "
-
-
-
+done | grep -v -E "^func " | sed -e "s/\t/        /; s/^    //; s/^}$/}\n/"
 
 echo "</body></html>"
+} > Checks.html
+
+wkhtmltopdf --minimum-font-size 16 -s A4 -L 24 -R 24 -T 24 -B 24 Checks.html Checks.pdf

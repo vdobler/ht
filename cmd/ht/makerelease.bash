@@ -2,11 +2,15 @@
 
 set -e
 
+# Build using a released version of the compiler.
+GO=/usr/local/go/bin/go
+echo "### Using $($GO version)"
+
+
 version=$(git describe)
 export GO15VENDOREXPERIMENT="1" 
 rm -f ht*
 
-echo "### Using $(go version)"
 
 LDFLAGS="-X main.version=$version -s"
 
@@ -19,18 +23,19 @@ goupx --strip-binary ht_linux
 
 echo
 echo "### Mac OS X version"
-GOOS=darwin GOARCH=amd64 go build -o ht_darwin -ldflags "$LDFLAGS"
+GOOS=darwin GOARCH=amd64 $GO build -o ht_darwin -ldflags "$LDFLAGS"
 
 echo
 echo "### Windows version"
-GOOS=windows GOARCH=amd64 go build -o ht_windows.exe -ldflags "$LDFLAGS"
+GOOS=windows GOARCH=amd64 $GO build -o ht_windows.exe -ldflags "$LDFLAGS"
 
 echo
 echo "### Check documentation"
-(cd ../../ht/; ./list-checks.bash;) > Checks.html
-ls -l Checks.html
+(cd ../../ht/; ./list-checks.bash;)
+mv ../../ht/Checks.{html,pdf} .
+ls -l Checks.{html,pdf}
 
-source <(go env)
+source <($GO env)
 echo
 echo "Successfully built $(./ht_$GOHOSTOS version)"
 
