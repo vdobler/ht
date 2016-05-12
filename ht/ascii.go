@@ -39,7 +39,3 @@ func Box(title string, prefix string) string {
 	top := prefix + "+" + strings.Repeat("-", n+6) + "+"
 	return fmt.Sprintf("%s\n%s|   %s   |\n%s", top, prefix, title, top)
 }
-
-func ToUpper(s string) string {
-	return strings.ToUpper(s)
-}

@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"text/template"
 	"time"
 	"unicode/utf8"
@@ -497,7 +498,7 @@ func init() {
 	fm := make(template.FuncMap)
 	fm["Underline"] = Underline
 	fm["Box"] = Box
-	fm["ToUpper"] = ToUpper
+	fm["ToUpper"] = strings.ToUpper
 
 	TestTmpl = template.New("TEST")
 	TestTmpl.Funcs(fm)
@@ -511,7 +512,7 @@ func init() {
 	SuiteTmpl = template.Must(SuiteTmpl.Parse(defaultCheckTmpl))
 
 	HtmlSuiteTmpl = htmltemplate.New("SUITE")
-	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{"ToUpper": ToUpper})
+	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{"ToUpper": strings.ToUpper})
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlSuiteTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlCheckTmpl))

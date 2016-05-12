@@ -151,7 +151,7 @@ func TestSessionLatency(t *testing.T) {
 	}
 
 	for _, kind := range []string{"indiv", "shared"} {
-		for _, conc := range []int{1, 4, 16} {
+		for _, conc := range concLevels {
 			sessionMu.Lock()
 			activeSessions = make(map[string]string)
 			sessionMu.Unlock()
