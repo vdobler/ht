@@ -9,11 +9,13 @@ import "testing"
 var sfTests = []struct {
 	name, want string
 }{
+	{"", ""},
 	{"foo", "foo"},
 	{"*", "_"},
 	{":#", "_"},
 	{"foo&bar", "foo_and_bar"},
 	{"-foo-", "foo"},
+	{"-", ""},
 	{"Hütte", "Huette"},
 	{"© 2015", "_2015"},
 	{"bis-¼-voll", "bis-_-voll"},
@@ -27,5 +29,20 @@ func TestFilename(t *testing.T) {
 				i, tc.name, got, tc.want)
 		}
 
+	}
+}
+
+var benchmarkFilename string
+
+func BenchmarkFilename(b *testing.B) {
+	const have = `le été garçon ŷ-`
+	const want = `le_ete_garcon_y`
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		benchmarkFilename = Filename(have)
+		if benchmarkFilename != want {
+			b.Errorf("%d: SanitizeFilename(%q) = %q, want %q",
+				i, have, benchmarkFilename, want)
+		}
 	}
 }
