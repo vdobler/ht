@@ -23,7 +23,7 @@ func init() {
 	RegisterCheck(&Screenshot{})
 }
 
-const debugScreenshot = false
+const debugScreenshot = true // false
 
 // ----------------------------------------------------------------------------
 // Screenshot
@@ -49,6 +49,12 @@ type Screenshot struct {
 	// differ between the two screenshots while still passing this check.
 	AllowedDifference int `json:",omitempty"`
 
+	// IgnoreRegion is a list of regions which are ignored during
+	// comparing the actual screenshot to the golden record.
+	// The entries are specify rectangles in the form of the Geometry
+	// (with ignored zoom factor).
+	IgnoreRegion []string `json:",omitempty"`
+
 	// Script is JavaScript code to be evaluated after page loading but
 	// before rendering the page. You can use it e.g. to hide elements
 	// which are non-deterministic using code like:
@@ -59,11 +65,10 @@ type Screenshot struct {
 	// "phantomjs" which works if phantomjs is on your PATH.
 	Path string `json:",omitempty"`
 
-	width, height, top, left, scale int // parsed geometry
-
-	path string // path of PhantomJS executable
-
-	golden image.Image // Expected screenshot.
+	geom    geometry          // parsed Geometry
+	ignored []image.Rectangle // parsed IgnoreRegion
+	path    string            // path of PhantomJS executable
+	golden  image.Image       // Expected screenshot.
 }
 
 // Prepare implements Check's Prepare method.
@@ -79,18 +84,24 @@ func (s *Screenshot) Prepare() error {
 	// Prepare Geoometry.
 	if s.Geometry == "" {
 		s.Geometry = "1280x720+0+0*100"
-		s.width, s.height = 1280, 720
-		s.top, s.left = 0, 0
-		s.scale = 100
-	} else {
-		err := s.parseGeometry()
+	}
+	var err error
+	s.geom, err = parseGeometry(s.Geometry)
+	if err != nil {
+		return err
+	}
+
+	// Parse IgnoredRegion
+	for _, ign := range s.IgnoreRegion {
+		geom, err := parseGeometry(ign)
 		if err != nil {
 			return err
 		}
+		r := image.Rect(geom.left, geom.top, geom.left+geom.width, geom.top+geom.height)
+		s.ignored = append(s.ignored, r)
 	}
 
 	// Prepare golden record.
-	var err error
 	s.golden, err = readImage(s.Expected)
 	if err != nil {
 		if _, ok := err.(*os.PathError); !ok {
@@ -101,55 +112,61 @@ func (s *Screenshot) Prepare() error {
 	return nil
 }
 
-func (s *Screenshot) parseGeometry() error {
-	s.width, s.height, s.top, s.left, s.scale = 0, 0, 0, 0, 1.0
+type geometry struct {
+	width, height int
+	left, top     int
+	zoom          int // in percent
+}
+
+func parseGeometry(s string) (geometry, error) {
+	geom := geometry{}
 	var err error
 
-	// "* scale" is optional
-	p := strings.Split(s.Geometry, "*")
+	// "* zoom" is optional
+	p := strings.Split(s, "*")
 	if len(p) > 2 {
-		return fmt.Errorf("malformed geometry %q", s.Geometry)
+		return geom, fmt.Errorf("malformed geometry %q", s)
 	}
 	if len(p) == 2 {
-		s.scale, err = strconv.Atoi(strings.Trim(p[1], " \t%"))
+		geom.zoom, err = strconv.Atoi(strings.Trim(p[1], " \t%"))
 		if err != nil {
-			return fmt.Errorf("malformed geometry %q: %s", s.Geometry, err)
+			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 		}
 	}
 
 	// "+ top + left" are optional
 	p = strings.Split(p[0], "+")
 	if len(p) > 3 {
-		return fmt.Errorf("malformed geometry %q", s.Geometry)
+		return geom, fmt.Errorf("malformed geometry %q", s)
 	}
 	if len(p) == 3 {
-		s.top, err = strconv.Atoi(strings.TrimSpace(p[2]))
+		geom.top, err = strconv.Atoi(strings.TrimSpace(p[2]))
 		if err != nil {
-			return fmt.Errorf("malformed geometry %q: %s", s.Geometry, err)
+			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 		}
 	}
 	if len(p) >= 2 {
-		s.left, err = strconv.Atoi(strings.TrimSpace(p[1]))
+		geom.left, err = strconv.Atoi(strings.TrimSpace(p[1]))
 		if err != nil {
-			return fmt.Errorf("malformed geometry %q: %s", s.Geometry, err)
+			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 		}
 	}
 
 	// "width x height" is mandatory
 	p = strings.Split(p[0], "x")
 	if len(p) != 2 {
-		return fmt.Errorf("malformed geometry %q", s.Geometry)
+		return geom, fmt.Errorf("malformed geometry %q", s)
 	}
-	s.width, err = strconv.Atoi(strings.TrimSpace(p[0]))
+	geom.width, err = strconv.Atoi(strings.TrimSpace(p[0]))
 	if err != nil {
-		return fmt.Errorf("malformed geometry %q: %s", s.Geometry, err)
+		return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 	}
-	s.height, err = strconv.Atoi(strings.TrimSpace(p[1]))
+	geom.height, err = strconv.Atoi(strings.TrimSpace(p[1]))
 	if err != nil {
-		return fmt.Errorf("malformed geometry %q: %s", s.Geometry, err)
+		return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 	}
 
-	return nil
+	return geom, nil
 }
 
 var screenshotScript = `
@@ -183,9 +200,9 @@ func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 	_, err := fmt.Fprintf(file, screenshotScript,
 		t.Name, 15000,
 		t.Response.BodyStr, t.Request.Request.URL.String(),
-		s.width, s.height,
-		s.top, s.left, s.width, s.height,
-		float64(s.scale)/100,
+		s.geom.width, s.geom.height,
+		s.geom.top, s.geom.left, s.geom.width, s.geom.height,
+		float64(s.geom.zoom)/100,
 		s.Script,
 		out,
 	)
@@ -231,7 +248,7 @@ func (s *Screenshot) Execute(t *Test) error {
 		return err
 	}
 
-	delta, low, high := imageDelta(s.golden, actual)
+	delta, low, high := imageDelta(s.golden, actual, s.ignored)
 	if debugScreenshot {
 		deltaFile, err := os.Create(s.Expected + "_delta.png")
 		if err != nil {
@@ -262,7 +279,10 @@ func readImage(filename string) (image.Image, error) {
 	return img, nil
 }
 
-func imageDelta(a, b image.Image) (image.Image, int, int) {
+// imageDelta computes the difference of a and b while ignoring the given
+// rectangles. In the result black means identical, dark gray means almost
+// equal, light gray means really different and white means ignored.
+func imageDelta(a, b image.Image, ignore []image.Rectangle) (image.Image, int, int) {
 	width := a.Bounds().Dx()
 	if bw := b.Bounds().Dx(); bw < width {
 		width = bw
@@ -275,15 +295,27 @@ func imageDelta(a, b image.Image) (image.Image, int, int) {
 	diff := image.NewGray(image.Rect(0, 0, width, height))
 
 	none := color.Gray{0}
-	low := color.Gray{85}
-	high := color.Gray{255}
-
+	low := color.Gray{80}
+	high := color.Gray{160}
+	skip := color.Gray{255}
 	lowN, highN := 0, 0
 
 	ax0, ay0 := a.Bounds().Min.X, a.Bounds().Min.Y
 	bx0, by0 := b.Bounds().Min.X, b.Bounds().Min.Y
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
+			ign := false
+			for _, r := range ignore {
+				if x < r.Min.X || x >= r.Max.X || y < r.Min.Y || y >= r.Max.Y {
+					continue
+				}
+				diff.SetGray(x, y, skip)
+				ign = true
+				break
+			}
+			if ign {
+				continue
+			}
 			delta := colorDistance(a.At(ax0+x, ay0+y), b.At(bx0+x, by0+y))
 			if delta < 15 {
 				diff.SetGray(x, y, none)
@@ -314,6 +346,3 @@ func colorDistance(a, b color.Color) int {
 	delta := d(ar, br) + d(ag, bg) + d(ab, bb)
 	return delta
 }
-
-// 921600 64614 240949
-// Low 7.01%   High 26.14%
