@@ -1,4 +1,4 @@
-// Copyright 2015 Volker Dobler.  All rights reserved.
+// Copyright 2016 Volker Dobler.  All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -17,8 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/hawx/rgoybiv/distance"
 )
 
 func init() {
@@ -286,10 +284,10 @@ func imageDelta(a, b image.Image) (image.Image, int, int) {
 	bx0, by0 := b.Bounds().Min.X, b.Bounds().Min.Y
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			delta := distance.Distance(a.At(ax0+x, ay0+y), b.At(bx0+x, by0+y))
-			if delta < 1.5 {
+			delta := colorDistance(a.At(ax0+x, ay0+y), b.At(bx0+x, by0+y))
+			if delta < 15 {
 				diff.SetGray(x, y, none)
-			} else if delta < 10 {
+			} else if delta < 77 {
 				diff.SetGray(x, y, low)
 				lowN++
 			} else {
@@ -301,3 +299,21 @@ func imageDelta(a, b image.Image) (image.Image, int, int) {
 
 	return diff, lowN, highN
 }
+
+// colorDistance computes the L¹ norm of a-b in RGB space.
+// It ranges from 0 (equal) to 765 (white vs black).
+func colorDistance(a, b color.Color) int {
+	ar, ag, ab, _ := a.RGBA()
+	br, bg, bb, _ := b.RGBA()
+	d := func(x, y uint32) int {
+		if x > y {
+			return int((x - y) >> 8)
+		}
+		return int((y - x) >> 8)
+	}
+	delta := d(ar, br) + d(ag, bg) + d(ab, bb)
+	return delta
+}
+
+// 921600 64614 240949
+// Low 7.01%   High 26.14%
