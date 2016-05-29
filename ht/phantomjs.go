@@ -23,6 +23,10 @@ func init() {
 	RegisterCheck(&Screenshot{})
 }
 
+// PhantomJSExecutable is command to run PhantomJS. Use an absolute path if
+// phantomjs is not on your PATH or you whish to use a special version.
+var PhantomJSExecutable = "phantomjs"
+
 const debugScreenshot = true // false
 
 // ----------------------------------------------------------------------------
@@ -61,25 +65,13 @@ type Screenshot struct {
 	//    $("#keyvisual > div.slides").css("visibility", "hidden");
 	Script string `json:",omitempty"`
 
-	// Path is the full file path to the PhantomJS executable. It defaults to
-	// "phantomjs" which works if phantomjs is on your PATH.
-	Path string `json:",omitempty"`
-
 	geom    geometry          // parsed Geometry
 	ignored []image.Rectangle // parsed IgnoreRegion
-	path    string            // path of PhantomJS executable
 	golden  image.Image       // Expected screenshot.
 }
 
 // Prepare implements Check's Prepare method.
 func (s *Screenshot) Prepare() error {
-	// Prepare PhantomJS executable.
-	if s.Path != "" {
-		s.path = s.Path
-		// TODO: check for existence and executability.
-	} else {
-		s.path = "phantomjs"
-	}
 
 	// Prepare Geoometry.
 	if s.Geometry == "" {
@@ -229,7 +221,7 @@ func (s *Screenshot) Execute(t *Test) error {
 		fmt.Println("Created PhantomJS script:", script)
 	}
 
-	cmd := exec.Command(s.path, script)
+	cmd := exec.Command(PhantomJSExecutable, script)
 	output, err := cmd.CombinedOutput()
 	if debugScreenshot {
 		fmt.Println("PhantomJS output:", output)
