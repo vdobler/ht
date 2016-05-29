@@ -27,7 +27,7 @@ var cmdExec = &Command{
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
 Exec loads the given suites, unrolls the tests, prepares the tests and
-executes them. The flags -skip and -only allow to fine controll which
+executes them. The flags -skip and -only allow to fine control which
 tests in the suite(s) are executed. Variables set with the -D flag overwrite
 variables read from file with -Dfile.
 The exit code is 3 if bogus tests or checks are found, 2 if test errors
@@ -38,14 +38,10 @@ are present, 1 if only check failures occured and 0 if everything passed.
 func init() {
 	cmdExec.Flag.BoolVar(&serialFlag, "serial", false,
 		"run suites one after the other instead of concurrently")
-	addVariablesFlag(cmdExec.Flag)
-	addDfileFlag(cmdExec.Flag)
 	addOnlyFlag(cmdExec.Flag)
 	addSkipFlag(cmdExec.Flag)
-	addVerbosityFlag(cmdExec.Flag)
-	addSeedFlag(cmdExec.Flag)
-	addOutputFlag(cmdExec.Flag)
-	addSkiptlsverifyFlag(cmdExec.Flag)
+
+	addTestFlags(cmdExec.Flag)
 }
 
 var (
@@ -160,15 +156,22 @@ func prepareExecution() {
 	}
 	os.MkdirAll(outputDir, 0766)
 
+	prepareHT()
+}
+
+func prepareHT() {
+	// Set parameters of package ht.
 	if randomSeed == 0 {
 		randomSeed = time.Now().UnixNano()
 	}
 	log.Printf("Seeding random number generator with %d", randomSeed)
 	ht.Random = rand.New(rand.NewSource(randomSeed))
 	if skipTLSVerify {
-		log.Printf("Skipping verification of TLS certificates presented by any server.")
+		log.Println("Skipping verification of TLS certificates presented by any server.")
 		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
 	}
+	ht.PhantomJSExecutable = phantomjs
+	log.Printf("Using %q as PhantomJS executable", phantomjs)
 
 	// Log variables and values sorted by variable name.
 	varnames := make([]string, 0, len(variablesFlag))

@@ -57,10 +57,10 @@ func init() {
 		"calculate running average over `n,m,..` runs")
 	cmdMonitor.Flag.BoolVar(&inclSetupFlag, "includesetup", false,
 		"include setup tests in reported numbers")
-	addVariablesFlag(cmdMonitor.Flag)
 	addOnlyFlag(cmdMonitor.Flag)
 	addSkipFlag(cmdMonitor.Flag)
-	addVerbosityFlag(cmdMonitor.Flag)
+
+	addTestFlags(cmdMonitor.Flag)
 
 	reportTmpl = template.New("Report")
 	reportTmpl = template.Must(reportTmpl.Parse(defaultReportTemplate))
@@ -117,6 +117,7 @@ var (
 )
 
 func runMonitor(cmd *Command, suites []*ht.Suite) {
+	prepareHT()
 	maxAverages = 1
 	for _, avg := range strings.Split(averageFlag, ",") {
 		i, err := strconv.Atoi(avg)

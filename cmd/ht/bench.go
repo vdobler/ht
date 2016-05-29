@@ -46,15 +46,15 @@ func init() {
 		"sleep `duration` between requests")
 	cmdBench.Flag.BoolVar(&runTests, "check", false,
 		"execute checks defined in test")
-	addVariablesFlag(cmdBench.Flag)
 	addLimitFlag(cmdBench.Flag)
 	addOnlyFlag(cmdBench.Flag)
 	addSkipFlag(cmdBench.Flag)
-	addVerbosityFlag(cmdBench.Flag)
 
+	addTestFlags(cmdBench.Flag)
 }
 
 func runBench(cmd *Command, suites []*ht.Suite) {
+	prepareHT()
 	failed := false
 	for s, suite := range suites {
 		suite.ExecuteSetup()

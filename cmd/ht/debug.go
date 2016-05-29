@@ -23,17 +23,14 @@ var cmdDebug = &Command{
 Debug executes a single test given directly on the command line in
 JSON5 format without the need to save the test to a file.
 Technically the test is saved to a temporary file in the current
-folder and thus may access mixins via the 'BasedOn' mechanism."
+folder and thus may access mixins via the 'BasedOn' mechanism.
 	`,
 }
 
 func init() {
-	addVariablesFlag(cmdDebug.Flag)
-	addDfileFlag(cmdDebug.Flag)
-	addVerbosityFlag(cmdDebug.Flag)
-	addSeedFlag(cmdDebug.Flag)
 	addOutputFlag(cmdDebug.Flag)
-	addSkiptlsverifyFlag(cmdDebug.Flag)
+
+	addTestFlags(cmdDebug.Flag)
 }
 
 func runDebug(cmd *Command, args []string) {

@@ -83,7 +83,17 @@ var (
 	outputDir     string            // flag -output
 	randomSeed    int64             // flag -seed
 	skipTLSVerify bool              // flag -skiptlsverify
+	phantomjs     string            // flag -phantomjs
 )
+
+func addTestFlags(fs *flag.FlagSet) {
+	addVariablesFlag(fs)
+	addDfileFlag(fs)
+	addVerbosityFlag(fs)
+	addSeedFlag(fs)
+	addSkiptlsverifyFlag(fs)
+	addPhantomJSFlag(fs)
+}
 
 func addDfileFlag(fs *flag.FlagSet) {
 	fs.StringVar(&variablesFile, "Dfile", "",
@@ -103,6 +113,11 @@ func addSeedFlag(fs *flag.FlagSet) {
 func addSkiptlsverifyFlag(fs *flag.FlagSet) {
 	fs.BoolVar(&skipTLSVerify, "skiptlsverify", false,
 		"do not verify TLS certificate chain of servers")
+}
+
+func addPhantomJSFlag(fs *flag.FlagSet) {
+	fs.StringVar(&phantomjs, "phantomjs", "phantomjs",
+		"PhantomJS executable")
 }
 
 func addVariablesFlag(fs *flag.FlagSet) {

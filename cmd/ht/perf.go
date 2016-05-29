@@ -34,11 +34,10 @@ func init() {
 		"use uniformly distributed requests instead of exponentialy distributed")
 	cmdPerf.Flag.BoolVar(&concFlag, "conc", false,
 		"do a concurrency test instead of a throughput test")
-	addVariablesFlag(cmdPerf.Flag)
 	addOnlyFlag(cmdPerf.Flag)
 	addSkipFlag(cmdPerf.Flag)
-	addVerbosityFlag(cmdPerf.Flag)
 
+	addTestFlags(cmdPerf.Flag)
 }
 
 var (

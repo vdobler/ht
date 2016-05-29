@@ -29,13 +29,10 @@ var repsFlag = 1
 func init() {
 	cmdWarmup.Flag.IntVar(&repsFlag, "reps", 2,
 		"execute suites `n` times")
-	addVariablesFlag(cmdWarmup.Flag)
-	addDfileFlag(cmdWarmup.Flag)
 	addOnlyFlag(cmdWarmup.Flag)
 	addSkipFlag(cmdWarmup.Flag)
-	addVerbosityFlag(cmdWarmup.Flag)
-	addSeedFlag(cmdWarmup.Flag)
-	addSkiptlsverifyFlag(cmdWarmup.Flag)
+
+	addTestFlags(cmdWarmup.Flag)
 }
 
 func runWarmup(cmd *Command, suites []*ht.Suite) {

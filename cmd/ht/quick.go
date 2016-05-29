@@ -32,9 +32,8 @@ var defaultHeader = http.Header{}
 var fullChecksFlag = false
 
 func init() {
-	addSkiptlsverifyFlag(cmdQuick.Flag)
-	addVerbosityFlag(cmdQuick.Flag)
 	addOutputFlag(cmdQuick.Flag)
+	addTestFlags(cmdQuick.Flag)
 	cmdQuick.Flag.BoolVar(&fullChecksFlag, "full", false,
 		"check links, latency and resilience too")
 
