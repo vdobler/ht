@@ -6,7 +6,7 @@
 
 Loading via (relative) file name
 
-Suites have a dir they live in, this dir is the staring base dir for all
+Suites have a dir they live in, this dir is the starting base dir for all
 subsequent actions.
 
     basedir/some.suite       references "a.ht", "../b.ht", and "folder/c.ht"
@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/vdobler/ht/internal/json5"
@@ -49,8 +50,9 @@ type rawTest struct {
 	Description string   `json:",omitempty"`
 	BasedOn     []string `json:",omitempty"`
 	Request     Request
-	Checks      CheckList    `json:",omitempty"`
-	VarEx       ExtractorMap `json:",omitempty"`
+	Checks      CheckList         `json:",omitempty"`
+	TestVars    map[string]string `json:",omitempty"`
+	VarEx       ExtractorMap      `json:",omitempty"`
 
 	// Unroll contains values to be used during unrolling the Test
 	// generated from the deserialized data to several real Tests.
@@ -72,6 +74,7 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 		Description: raw.Description,
 		Request:     raw.Request,
 		Checks:      raw.Checks,
+		TestVars:    raw.TestVars,
 		VarEx:       raw.VarEx,
 		Poll:        raw.Poll,
 		Timeout:     raw.Timeout,
@@ -144,6 +147,15 @@ func findRawTest(curdir string, name string, testPool map[string]*rawTest, data 
 	if err != nil {
 		return nil, basedir, err
 	}
+	raw.TestVars = make(map[string]string)
+	raw.TestVars["TEST_NAME"] = path.Base(name)
+	raw.TestVars["TEST_DIR"] = path.Dir(name)
+	if abspath, err := filepath.Abs(name); err == nil {
+		raw.TestVars["TEST_PATH"] = filepath.ToSlash(abspath)
+	} else {
+		raw.TestVars["TEST_PATH"] = path.Dir(name) // best effort
+	}
+
 	testPool[name] = raw
 	return raw, basedir, nil
 }
@@ -161,7 +173,10 @@ func loadRawTest(all []byte, filename string) (*rawTest, error) {
 
 // LoadTest reads a test from filename. Tests and mixins are read relative
 // to the directory the test lives in. Unrolling is performed.
-// TODO
+//
+// The TestVars TEST_DIR, TEST_NAME and TEST_PATH are set to the relative
+// directory path, the basename and the absolute path of the file the test
+// was read.
 func LoadTest(filename string) ([]*Test, error) {
 	dir := path.Dir(filename)
 	name := path.Base(filename)

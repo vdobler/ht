@@ -216,7 +216,7 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
-	// VarEx may be used to popultate variables from the response.
+	// VarEx may be used to popultate variables from the response. TODO: Rename.
 	VarEx map[string]Extractor `json:",omitempty"`
 
 	Poll        Poll        `json:",omitempty"`
@@ -232,9 +232,13 @@ type Test struct {
 	// Jar is the cookie jar to use
 	Jar http.CookieJar `json:"-"`
 
-	Response Response `json:",omitempty"`
+	// TestVars contains variables attached to the Test itself. Variables
+	// provided during Run will overwrite variables in TestVars.
+	TestVars map[string]string `json:",omitempty"`
 
 	// The following results are filled during Run.
+	// This should be collected into something like struct TestResult{...}.
+	Response     Response      `json:",omitempty"`
 	Status       Status        `json:"-"`
 	Started      time.Time     `json:"-"`
 	Error        error         `json:"-"`
@@ -393,6 +397,7 @@ outer:
 //       FollowRdr  Last wins
 //     Checks       Append all checks
 //     VarEx        Merge, same keys must have same value
+//     TestVars     Use values from first only.
 //     Poll
 //       Max        Use largest
 //       Sleep      Use largest
@@ -415,6 +420,11 @@ func Merge(tests ...*Test) (*Test, error) {
 		s = append(s, t.Description)
 	}
 	m.Description = strings.TrimSpace(strings.Join(s, "\n"))
+
+	m.TestVars = make(map[string]string)
+	for n, v := range tests[0].TestVars {
+		m.TestVars[n] = v
+	}
 
 	m.Request.Params = make(URLValues)
 	m.Request.Header = make(http.Header)
@@ -471,7 +481,7 @@ func (t *Test) PopulateCookies(jar http.CookieJar, u *url.URL) {
 // the checks are performed on the received response. This whole process
 // is repeated on failure or skipped entirely according to t.Poll.
 //
-// The given variables are subsitutet into the relevant parts of the reuestt
+// The given variables are subsituted into the relevant parts of the request
 // and the checks.
 //
 // Normally all checks in t.Checks are executed. If the first check in
@@ -603,6 +613,9 @@ func (t *Test) prepare(variables map[string]string) error {
 
 	// Make a deep copy of variables.
 	allVars := make(map[string]string)
+	for n, v := range t.TestVars {
+		allVars[n] = v
+	}
 	for n, v := range variables {
 		allVars[n] = v
 	}

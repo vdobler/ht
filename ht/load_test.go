@@ -136,6 +136,16 @@ func TestFindRawTest(t *testing.T) {
 		t.Errorf("Got Test == %#v", *rt)
 	}
 
+	if len(rt.TestVars) != 3 {
+		t.Errorf("Got TestVars == %#v", rt.TestVars)
+	} else {
+		if rt.TestVars["TEST_DIR"] != "/the/current/qux" ||
+			rt.TestVars["TEST_NAME"] != "sample.ht" ||
+			rt.TestVars["TEST_PATH"] != "/the/current/qux/sample.ht" {
+
+			t.Errorf("Got TestVars == %#v", rt.TestVars)
+		}
+	}
 }
 
 var baseTestJSON = `{
@@ -216,6 +226,11 @@ func TestRawTestToTest(t *testing.T) {
 			},
 			Body:            "RequestBody",
 			FollowRedirects: true,
+		},
+		TestVars: map[string]string{
+			"TEST_NAME": "sample.ht",
+			"TEST_DIR":  "/the/current/qux",
+			"TEST_PATH": "/the/current/qux/sample.ht",
 		},
 		Checks: CheckList{
 			&StatusCode{Expect: 200},
@@ -305,6 +320,17 @@ func differences(t1, t2 *Test) (d []string) {
 	}
 	if t1.PostSleep != t2.PostSleep {
 		d = append(d, fmt.Sprintf("PostSleep: %s != %s", t1.PostSleep, t2.PostSleep))
+	}
+
+	for n, v := range t1.TestVars {
+		if v2, ok := t2.TestVars[n]; !ok || v2 != v {
+			d = append(d, fmt.Sprintf("TestVar[%q]=%q != %q", n, v, v2))
+		}
+	}
+	for n, v := range t2.TestVars {
+		if v1, ok := t1.TestVars[n]; !ok || v1 != v {
+			d = append(d, fmt.Sprintf("%q != TestVar[%q]=%q", v1, n, v))
+		}
 	}
 
 	return d
