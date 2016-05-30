@@ -16,7 +16,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func init() {
@@ -48,6 +47,11 @@ type Screenshot struct {
 	// Expected is the file path of the 'golden record' image to test
 	// the actual screenshot against.
 	Expected string `json:",omitempty"`
+
+	// Actual is the name of the file the actual rendered screenshot is
+	// saved to.
+	// An empty value disables storing the generated screenshot.
+	Actual string `json:",omitempty"`
 
 	// AllowedDifference is the total number of pixels which may
 	// differ between the two screenshots while still passing this check.
@@ -110,6 +114,7 @@ type geometry struct {
 	zoom          int // in percent
 }
 
+// "640x480+16+32*125%"  -->  geometry
 func parseGeometry(s string) (geometry, error) {
 	geom := geometry{}
 	var err error
@@ -212,8 +217,19 @@ func (s *Screenshot) Execute(t *Test) error {
 		defer os.Remove(script)
 	}
 
-	out := s.Expected + "_" + time.Now().Format("2006-01-02_15h04m05s") + ".png"
-	err = s.writeScript(file, t, out)
+	actual := s.Actual
+	if actual == "" {
+		file, err := ioutil.TempFile("", "actual-ss-")
+		if err != nil {
+			return err // TODO: wrap to mark as bogus ?
+		}
+		actual = file.Name()
+		file.Close()
+		if s.golden != nil {
+			defer os.Remove(actual)
+		}
+	}
+	err = s.writeScript(file, t, actual)
 	if err != nil {
 		return err // TODO: wrap to mark as bogus ?
 	}
@@ -232,15 +248,15 @@ func (s *Screenshot) Execute(t *Test) error {
 
 	if s.golden == nil {
 		return fmt.Errorf("Golden record %s not found; actual screenshot saved to %s",
-			s.Expected, out)
+			s.Expected, actual)
 	}
 
-	actual, err := readImage(out)
+	screenshot, err := readImage(actual)
 	if err != nil {
 		return err
 	}
 
-	delta, low, high := imageDelta(s.golden, actual, s.ignored)
+	delta, low, high := imageDelta(s.golden, screenshot, s.ignored)
 	if debugScreenshot {
 		deltaFile, err := os.Create(s.Expected + "_delta.png")
 		if err != nil {
