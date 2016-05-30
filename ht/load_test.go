@@ -227,7 +227,7 @@ func TestRawTestToTest(t *testing.T) {
 			Body:            "RequestBody",
 			FollowRedirects: true,
 		},
-		TestVars: map[string]string{
+		Variables: map[string]string{
 			"TEST_NAME": "sample.ht",
 			"TEST_DIR":  "/the/current/qux",
 			"TEST_PATH": "/the/current/qux/sample.ht",
@@ -322,13 +322,13 @@ func differences(t1, t2 *Test) (d []string) {
 		d = append(d, fmt.Sprintf("PostSleep: %s != %s", t1.PostSleep, t2.PostSleep))
 	}
 
-	for n, v := range t1.TestVars {
-		if v2, ok := t2.TestVars[n]; !ok || v2 != v {
+	for n, v := range t1.Variables {
+		if v2, ok := t2.Variables[n]; !ok || v2 != v {
 			d = append(d, fmt.Sprintf("TestVar[%q]=%q != %q", n, v, v2))
 		}
 	}
-	for n, v := range t2.TestVars {
-		if v1, ok := t1.TestVars[n]; !ok || v1 != v {
+	for n, v := range t2.Variables {
+		if v1, ok := t1.Variables[n]; !ok || v1 != v {
 			d = append(d, fmt.Sprintf("%q != TestVar[%q]=%q", v1, n, v))
 		}
 	}

@@ -132,7 +132,7 @@ func (L *Latency) Execute(t *Test) error {
 			prewarmed++
 			wg.Add(1)
 			go func(ex *Test) {
-				ex.Run(t.Variables)
+				ex.Run(t.VarValues)
 				wg.Done()
 			}(tests[i])
 		}
@@ -149,7 +149,7 @@ func (L *Latency) Execute(t *Test) error {
 		go func(ex *Test, id int) {
 			for {
 				wg2.Add(1)
-				ex.Run(t.Variables)
+				ex.Run(t.VarValues)
 				results <- latencyResult{
 					status:   ex.Status,
 					started:  ex.Started,

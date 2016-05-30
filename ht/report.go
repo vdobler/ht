@@ -266,8 +266,8 @@ var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{i
   Error: {{.Error}}{{end}}
 {{if eq .Status 2 3 4 5}}  {{if .CheckResults}}Checks:
 {{range $i, $c := .CheckResults}}{{printf "    %2d. " $i}}{{template "CHECK" .}}
-{{end}}{{end}}{{end}}{{if .Variables}}  Variables:
-{{range $k, $v := .Variables}}{{printf "    %s == %s\n" $k $v}}{{end}}{{end}}{{end}}`
+{{end}}{{end}}{{end}}{{if .VarValues}}  Variables:
+{{range $k, $v := .VarValues}}{{printf "    %s == %s\n" $k $v}}{{end}}{{end}}{{end}}`
 
 var htmlTestTmpl = `{{define "TEST"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}">
@@ -291,8 +291,8 @@ var htmlTestTmpl = `{{define "TEST"}}
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
         Request Duration: {{.Duration}}
-        {{if .Variables}}<br/>Variables:
-          {{range $k, $v := .Variables}}{{printf "%s=%q;  " $k $v}}{{end}}
+        {{if .VarValues}}<br/>Variables:
+          {{range $k, $v := .VarValues}}{{printf "%s=%q;  " $k $v}}{{end}}
         {{end}}
         {{if .Error}}</br>Error: {{.Error}}{{end}}
       </div>

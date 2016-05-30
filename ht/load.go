@@ -74,7 +74,7 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 		Description: raw.Description,
 		Request:     raw.Request,
 		Checks:      raw.Checks,
-		TestVars:    raw.TestVars,
+		Variables:   raw.TestVars,
 		VarEx:       raw.VarEx,
 		Poll:        raw.Poll,
 		Timeout:     raw.Timeout,

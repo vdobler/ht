@@ -232,9 +232,9 @@ type Test struct {
 	// Jar is the cookie jar to use
 	Jar http.CookieJar `json:"-"`
 
-	// TestVars contains variables attached to the Test itself. Variables
+	// Variables contains variables attached to the Test itself. Variables
 	// provided during Run will overwrite variables in TestVars.
-	TestVars map[string]string `json:",omitempty"`
+	Variables map[string]string `json:",omitempty"`
 
 	// The following results are filled during Run.
 	// This should be collected into something like struct TestResult{...}.
@@ -247,7 +247,7 @@ type Test struct {
 	Tries        int           `json:"-"`
 	CheckResults []CheckResult `json:"-"` // The individual checks.
 	SeqNo        string        `json:"-"`
-	Variables    map[string]string
+	VarValues    map[string]string
 
 	client      *http.Client
 	specialVars []string
@@ -421,9 +421,9 @@ func Merge(tests ...*Test) (*Test, error) {
 	}
 	m.Description = strings.TrimSpace(strings.Join(s, "\n"))
 
-	m.TestVars = make(map[string]string)
-	for n, v := range tests[0].TestVars {
-		m.TestVars[n] = v
+	m.Variables = make(map[string]string)
+	for n, v := range tests[0].Variables {
+		m.Variables[n] = v
 	}
 
 	m.Request.Params = make(URLValues)
@@ -613,7 +613,7 @@ func (t *Test) prepare(variables map[string]string) error {
 
 	// Make a deep copy of variables.
 	allVars := make(map[string]string)
-	for n, v := range t.TestVars {
+	for n, v := range t.Variables {
 		allVars[n] = v
 	}
 	for n, v := range variables {
@@ -633,7 +633,7 @@ func (t *Test) prepare(variables map[string]string) error {
 		// which might come handy.
 		allVars = mergeVariables(allVars, sv)
 	}
-	t.Variables = allVars
+	t.VarValues = allVars
 	repl, err := newReplacer(allVars)
 	if err != nil {
 		return err
