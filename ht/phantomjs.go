@@ -16,6 +16,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/vdobler/ht/cookiejar"
 )
 
 func init() {
@@ -208,6 +210,10 @@ func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 
 // Execute implements Check's Execute method.
 func (s *Screenshot) Execute(t *Test) error {
+	cookies := t.allCookies()
+	for _, c := range cookies {
+		fmt.Printf("%s=%s %s %s\n", c.Name, c.Value, c.Path, c.Domain)
+	}
 	file, err := ioutil.TempFile("", "screenshot-")
 	if err != nil {
 		return err // TODO: wrap to mark as bogus ?
@@ -353,4 +359,18 @@ func colorDistance(a, b color.Color) int {
 	}
 	delta := d(ar, br) + d(ag, bg) + d(ab, bb)
 	return delta
+}
+
+func (t *Test) allCookies() []cookiejar.Entry {
+	if t.Jar == nil {
+		fmt.Println("nil jar")
+		return nil
+	}
+	cookies := []cookiejar.Entry{}
+	for _, tld := range t.Jar.ETLDsPlus1(nil) {
+		fmt.Println(tld)
+		cookies = t.Jar.Entries(tld, cookies)
+	}
+
+	return cookies
 }

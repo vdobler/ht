@@ -7,10 +7,10 @@ package ht
 import (
 	"fmt"
 	"log"
-	"net/http"
-	"net/http/cookiejar"
 	"sync"
 	"time"
+
+	"github.com/vdobler/ht/cookiejar"
 )
 
 // A Suite is a collection of tests which are run together. A Suite must be prepared
@@ -69,11 +69,10 @@ func (s *Suite) Prepare() error {
 		},
 	*/
 	// Create cookie jar if needed.
-	var jar http.CookieJar
+	var jar *cookiejar.Jar
 	if s.KeepCookies {
 		jar, _ = cookiejar.New(nil)
 	}
-
 	// Try to prepare all tests and inject jar if not already set.
 	prepare := func(t *Test, which string, omit bool) error {
 		if t.Jar == nil {

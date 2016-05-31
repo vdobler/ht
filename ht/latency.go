@@ -12,13 +12,14 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
-	"net/http/cookiejar"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/vdobler/ht/cookiejar"
 )
 
 func init() {

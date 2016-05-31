@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/internal/json5"
 )
 
@@ -230,7 +231,7 @@ type Test struct {
 	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
 
 	// Jar is the cookie jar to use
-	Jar http.CookieJar `json:"-"`
+	Jar *cookiejar.Jar `json:"-"`
 
 	// Variables contains variables attached to the Test itself. Variables
 	// provided during Run will overwrite variables in TestVars.
@@ -705,16 +706,19 @@ func (t *Test) prepare(variables map[string]string) error {
 		t.client = &http.Client{
 			Transport:     Transport,
 			CheckRedirect: cr,
-			Jar:           t.Jar,
+			Jar:           nil,
 			Timeout:       time.Duration(to),
 		}
 	} else {
 		t.client = &http.Client{
 			Transport:     Transport,
 			CheckRedirect: dontFollowRedirects,
-			Jar:           t.Jar,
+			Jar:           nil,
 			Timeout:       time.Duration(to),
 		}
+	}
+	if t.Jar != nil {
+		t.client.Jar = t.Jar
 	}
 
 	return nil

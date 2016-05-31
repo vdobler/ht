@@ -9,12 +9,13 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/vdobler/ht/cookiejar"
 )
 
 func TestQuantile(t *testing.T) {
