@@ -790,16 +790,15 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 
 	// The body.
 	if t.Request.Body != "" {
-		rbody := ""
-		if strings.HasPrefix(t.Request.Body, "@file:") {
-			data, err := ioutil.ReadFile(t.Request.Body[6:])
+		rbody := t.Request.Body
+		if strings.HasPrefix(rbody, "@file:") {
+			data, err := ioutil.ReadFile(rbody[6:])
 			if err != nil {
 				return "", fmt.Errorf("connot read Body file: %s", err)
 			}
 			rbody = string(data)
-		} else {
-			rbody = repl.str.Replace(t.Request.Body)
 		}
+		rbody = repl.str.Replace(rbody)
 		t.Request.SentBody = rbody
 		body = ioutil.NopCloser(strings.NewReader(rbody))
 	}
