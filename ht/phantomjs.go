@@ -242,10 +242,6 @@ func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 
 // Execute implements Check's Execute method.
 func (s *Screenshot) Execute(t *Test) error {
-	cookies := t.allCookies()
-	for _, c := range cookies {
-		fmt.Printf("%s=%s %s %s\n", c.Name, c.Value, c.Path, c.Domain)
-	}
 	file, err := ioutil.TempFile("", "screenshot-")
 	if err != nil {
 		return err // TODO: wrap to mark as bogus ?
@@ -261,7 +257,7 @@ func (s *Screenshot) Execute(t *Test) error {
 		if err != nil {
 			return err // TODO: wrap to mark as bogus ?
 		}
-		actual = file.Name()
+		actual = file.Name() + ".png" // Aaaaaaahhhhrrrggggggg !!!!!! I'll burn in hell.
 		file.Close()
 		if s.golden != nil {
 			defer os.Remove(actual)
@@ -395,12 +391,10 @@ func colorDistance(a, b color.Color) int {
 
 func (t *Test) allCookies() []cookiejar.Entry {
 	if t.Jar == nil {
-		fmt.Println("nil jar")
 		return nil
 	}
 	cookies := []cookiejar.Entry{}
 	for _, tld := range t.Jar.ETLDsPlus1(nil) {
-		fmt.Println(tld)
 		cookies = t.Jar.Entries(tld, cookies)
 	}
 

@@ -136,13 +136,10 @@ func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, cookie)
 		http.Redirect(w, r, "/screenshot/home", http.StatusSeeOther)
 	case "/screenshot/greet":
-		user := ""
-		if cookie, err := r.Cookie("user"); err == nil {
-			user = cookie.Value
-		}
+		name := r.FormValue("name")
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, screenshotGreetHTML, user)
+		fmt.Fprintf(w, screenshotGreetHTML, name)
 	case "/screenshot/css":
 		user := "white"
 		if cookie, err := r.Cookie("user"); err == nil {
@@ -154,46 +151,95 @@ func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var passingScreenshotTests = []*Test{
+	&Test{
+		Name:    "Basic Screenshot of Home",
+		Request: Request{URL: "/home"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry: "128x64+0+0",
+				Expected: "./testdata/home.png",
+				Actual:   "./testdata/home_actual.png",
+			},
+		},
+	},
+
+	// Anonymous user are greeted with white background.
+	&Test{
+		Name:    "Greet Anonymous (white bg)",
+		Request: Request{URL: "/greet"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry: "96x32",
+				Expected: "./testdata/greet-anon.png",
+				Actual:   "./testdata/greet-anon_actual.png",
+			},
+		},
+	},
+
+	// Loged in users are greeted with their username as background.
+	&Test{Request: Request{URL: "/login?user=red"}},
+	&Test{
+		Name:    "Greet Red user (red bg)",
+		Request: Request{URL: "/greet?name=Red"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry: "96x32",
+				Expected: "./testdata/greet-red.png",
+				Actual:   "./testdata/greet-red_actual.png",
+			},
+		},
+	},
+
+	// Log out again.
+	&Test{Request: Request{URL: "/login?user"}},
+	// Golden record has size 96x32: Compare to larger/smaller screenshot.
+	&Test{
+		Name:    "Greet Anonymous (different sizes)",
+		Request: Request{URL: "/greet"},
+		Checks: []Check{
+			&Screenshot{Geometry: "64x16", Expected: "./testdata/greet-anon.png"},
+			&Screenshot{Geometry: "128x48", Expected: "./testdata/greet-anon.png"},
+		},
+	},
+
+	// White background (no cookie) but with name Bob.
+	&Test{
+		Name:    "Greet Bob, ignoring name",
+		Request: Request{URL: "/greet?name=Bob"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry:     "96x32",
+				Expected:     "./testdata/greet-anon.png",
+				IgnoreRegion: []string{"30x40+57+18"},
+			},
+		},
+	},
+	&Test{
+		Name:    "Greet Bob, tollerating difference",
+		Request: Request{URL: "/greet?name=Bob"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry:          "96x32",
+				Expected:          "./testdata/greet-anon.png",
+				AllowedDifference: 60, // 51 is the hard limit
+			},
+		},
+	},
+}
+
 func TestScreenshotPass(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(screenshotHandler))
 	defer ts.Close()
 	println(ts.URL)
-	concLevels := []int{1, 4, 16}
-	if !testing.Short() {
-		concLevels = append(concLevels, 64)
-	}
 
-	makeTest := func(name, path, geom, expect string) *Test {
-		return &Test{
-			Name: name,
-			Request: Request{
-				URL: ts.URL + "/screenshot/" + path,
-			},
-			Checks: []Check{
-				&Screenshot{
-					Geometry: geom,
-					Expected: "./testdata/" + expect + ".png",
-					Actual:   "./testdata/" + expect + "_actual.png",
-				},
-			},
-		}
+	for i := range passingScreenshotTests {
+		u := ts.URL + "/screenshot" + passingScreenshotTests[i].Request.URL
+		passingScreenshotTests[i].Request.URL = u
 	}
-
 	suite := Suite{
 		KeepCookies: true,
-		Tests: []*Test{
-			makeTest("Basic Screenshot", "home", "128x64+0+0", "home"),
-			makeTest("Anon Greet", "greet", "64x32", "greet-anon"),
-
-			&Test{Request: Request{URL: ts.URL + "/screenshot/login?user=red"}},
-			makeTest("Red Greet", "greet", "64x32", "greet-red"),
-
-			// Log out again.
-			&Test{Request: Request{URL: ts.URL + "/screenshot/login?user"}},
-			// Golden record has size 64x32: Compare to larger/smaller screenshot.
-			makeTest("Anon Greet", "greet", "32x16", "greet-anon"),
-			makeTest("Anon Greet", "greet", "80x48", "greet-anon"),
-		},
+		Tests:       passingScreenshotTests,
 	}
 
 	err := suite.Prepare()
