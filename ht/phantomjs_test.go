@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 )
@@ -83,4 +85,136 @@ func TestDeltaImage(t *testing.T) {
 	fmt.Println(N, low, high)
 	fmt.Printf("Low %.2f%%   High %.2f%%\n",
 		float64(100*low)/float64(N), float64(100*high)/float64(N))
+}
+
+var screenshotHomeHTML = []byte(`<!doctype html>
+<html>
+  <head><title>Hello</title>
+  <style>
+    body { background-color: lightyellow; }
+  </style>
+  <body>
+    <h1>Home</h1>
+  </body>
+</html>
+`)
+
+var screenshotGreetHTML = `<!doctype html>
+<html>
+  <head><title>Hello</title>
+  <link rel="stylesheet" href="/screenshot/css">
+  <body>
+    <p id="p">Hello %s</p>
+  </body>
+</html>
+`
+
+var screenshotCSS = `
+body {
+  background-color: %s;
+}
+`
+
+func screenshotHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	default:
+		http.Redirect(w, r, "/screenshot/home", http.StatusSeeOther)
+	case "/screenshot/home":
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write(screenshotHomeHTML)
+	case "/screenshot/login":
+		user := r.FormValue("user")
+		cookie := &http.Cookie{
+			Name:  "user",
+			Value: user,
+			Path:  "/screenshot",
+		}
+		if user == "" {
+			cookie.MaxAge = -1
+		}
+		http.SetCookie(w, cookie)
+		http.Redirect(w, r, "/screenshot/home", http.StatusSeeOther)
+	case "/screenshot/greet":
+		user := ""
+		if cookie, err := r.Cookie("user"); err == nil {
+			user = cookie.Value
+		}
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, screenshotGreetHTML, user)
+	case "/screenshot/css":
+		user := "white"
+		if cookie, err := r.Cookie("user"); err == nil {
+			user = cookie.Value
+		}
+		w.Header().Set("Content-Type", "text/css")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, screenshotCSS, user)
+	}
+}
+
+func TestScreenshotPass(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(screenshotHandler))
+	defer ts.Close()
+	println(ts.URL)
+	concLevels := []int{1, 4, 16}
+	if !testing.Short() {
+		concLevels = append(concLevels, 64)
+	}
+
+	makeTest := func(name, path, geom, expect string) *Test {
+		return &Test{
+			Name: name,
+			Request: Request{
+				URL: ts.URL + "/screenshot/" + path,
+			},
+			Checks: []Check{
+				&Screenshot{
+					Geometry: geom,
+					Expected: "./testdata/" + expect + ".png",
+					Actual:   "./testdata/" + expect + "_actual.png",
+				},
+			},
+		}
+	}
+
+	suite := Suite{
+		KeepCookies: true,
+		Tests: []*Test{
+			makeTest("Basic Screenshot", "home", "128x64+0+0", "home"),
+			makeTest("Anon Greet", "greet", "64x32", "greet-anon"),
+
+			&Test{Request: Request{URL: ts.URL + "/screenshot/login?user=red"}},
+			makeTest("Red Greet", "greet", "64x32", "greet-red"),
+
+			// Log out again.
+			&Test{Request: Request{URL: ts.URL + "/screenshot/login?user"}},
+			// Golden record has size 64x32: Compare to larger/smaller screenshot.
+			makeTest("Anon Greet", "greet", "32x16", "greet-anon"),
+			makeTest("Anon Greet", "greet", "80x48", "greet-anon"),
+		},
+	}
+
+	err := suite.Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	suite.Execute()
+	if *verboseTest {
+		suite.PrintReport(os.Stdout)
+	}
+
+	if suite.Status != Pass {
+		for i, test := range suite.Tests {
+			if test.Status != Pass {
+				t.Errorf("%d. %s, %s: %s",
+					i, test.Name, test.Status, test.Error)
+			}
+		}
+	}
+
+	fmt.Println(suite.Tests[0].Response.BodyStr)
+
+	// time.Sleep(time.Minute)
 }

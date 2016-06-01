@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/vdobler/ht/cookiejar"
 )
@@ -87,6 +88,9 @@ func (s *Screenshot) Prepare() error {
 	s.geom, err = parseGeometry(s.Geometry)
 	if err != nil {
 		return err
+	}
+	if s.geom.zoom == 0 {
+		s.geom.zoom = 100
 	}
 
 	// Parse IgnoredRegion
@@ -180,6 +184,7 @@ var theURL = %q;
 page.viewportSize = { width: %d, height: %d };
 page.clipRect = { top: %d, left: %d, width: %d, height: %d };
 page.zoomFactor = %.4f;
+%s
 page.onLoadFinished = function(status){
     if(status === 'success') {
         page.evaluate(function() {
@@ -194,14 +199,41 @@ page.onLoadFinished = function(status){
 page.setContent(theContent, theURL);
 `
 
+var addCookieScript = `
+phantom.addCookie({
+  'name'    : %q,
+  'value'   : %q,
+  'domain'  : %q,
+  'path'    : %q,
+  'httponly': %t,
+  'secure'  : %t,
+  'expires' : %q
+});
+`
+
 func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 	defer file.Close() // eat error, sorry
+
+	cc := ""
+	for _, c := range t.allCookies() {
+		// Something is bogus here. If the domain is unset or does not
+		// start with a dot than PhantomJS will ignore it (addCookie
+		// returns flase). So it seems as if it is impossible in
+		// PhantomJS to distinguish a host-only form a domain cookie?
+		c.Domain = "." + c.Domain
+		expires := c.Expires.Format(time.RFC1123)
+		cc += fmt.Sprintf(addCookieScript,
+			c.Name, c.Value, c.Domain, c.Path,
+			c.HttpOnly, c.Secure, expires)
+	}
+
 	_, err := fmt.Fprintf(file, screenshotScript,
 		t.Name, 15000,
 		t.Response.BodyStr, t.Request.Request.URL.String(),
 		s.geom.width, s.geom.height,
 		s.geom.top, s.geom.left, s.geom.width, s.geom.height,
 		float64(s.geom.zoom)/100,
+		cc,
 		s.Script,
 		out,
 	)
