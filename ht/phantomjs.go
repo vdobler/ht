@@ -11,7 +11,6 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/internal/tempfile"
 )
 
 func init() {
@@ -242,7 +242,7 @@ func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 
 // Execute implements Check's Execute method.
 func (s *Screenshot) Execute(t *Test) error {
-	file, err := ioutil.TempFile("", "screenshot-")
+	file, err := tempfile.TempFile("", "screenshot-", ".js")
 	if err != nil {
 		return err // TODO: wrap to mark as bogus ?
 	}
@@ -253,11 +253,11 @@ func (s *Screenshot) Execute(t *Test) error {
 
 	actual := s.Actual
 	if actual == "" {
-		file, err := ioutil.TempFile("", "actual-ss-")
+		file, err := tempfile.TempFile("", "actual-ss-", ".png")
 		if err != nil {
 			return err // TODO: wrap to mark as bogus ?
 		}
-		actual = file.Name() + ".png" // Aaaaaaahhhhrrrggggggg !!!!!! I'll burn in hell.
+		actual = file.Name()
 		file.Close()
 		if s.golden != nil {
 			defer os.Remove(actual)
