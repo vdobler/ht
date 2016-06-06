@@ -32,8 +32,8 @@ func init() {
 // phantomjs is not on your PATH or you whish to use a special version.
 var PhantomJSExecutable = "phantomjs"
 
-const debugScreenshot = true   // false
-const debugRenderedHTML = true // false
+const debugScreenshot = false
+const debugRenderedHTML = false
 
 // ----------------------------------------------------------------------------
 // Screenshot

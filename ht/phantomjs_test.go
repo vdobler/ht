@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 )
 
 var geometryTests = []struct {
@@ -275,7 +274,6 @@ var passingScreenshotTests = []*Test{
 func TestScreenshotPass(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(screenshotHandler))
 	defer ts.Close()
-	println(ts.URL)
 
 	for i := range passingScreenshotTests {
 		u := ts.URL + "/screenshot" + passingScreenshotTests[i].Request.URL
@@ -303,8 +301,6 @@ func TestScreenshotPass(t *testing.T) {
 			}
 		}
 	}
-
-	// time.Sleep(time.Minute)
 }
 
 var failingScreenshotTests = []*Test{
@@ -430,7 +426,6 @@ var passingRenderedHTMLTests = []*Test{
 func TestRenderedHTMLPassing(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(screenshotHandler))
 	defer ts.Close()
-	println(ts.URL)
 
 	for i := range passingRenderedHTMLTests {
 		u := ts.URL + "/screenshot" + passingRenderedHTMLTests[i].Request.URL
@@ -458,6 +453,4 @@ func TestRenderedHTMLPassing(t *testing.T) {
 			}
 		}
 	}
-
-	time.Sleep(2 * time.Minute)
 }
