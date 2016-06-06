@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 )
 
 var geometryTests = []struct {
@@ -115,6 +116,33 @@ body {
 }
 `
 
+var screenshotWelcomeHTML = `<!doctype html>
+<html>
+  <head>
+    <title>Welcome</title>
+    <style>body { background-color: pink; }</style>
+    <script src="/screenshot/script.js"></script>
+  </head>
+  <body onload="ChangeLink();">
+    <h1>Welcome</h1>
+    <p><script>YouAre()</script></p>
+    <p>
+      <a id="a1" href="/">Original</a>
+    </p>
+  </body>
+</html>
+`
+
+var screenshotJavaScript = `
+function YouAre() {
+  document.write('You are: %s');
+}
+function ChangeLink() {
+  document.getElementById("a1").innerHTML = "Changed";
+  document.getElementById("a1").href = "http://www.example.com";
+}
+`
+
 func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	default:
@@ -148,6 +176,18 @@ func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, screenshotCSS, user)
+	case "/screenshot/welcome":
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, screenshotWelcomeHTML)
+	case "/screenshot/script.js":
+		user := "Anon"
+		if cookie, err := r.Cookie("user"); err == nil {
+			user = cookie.Value
+		}
+		w.Header().Set("Content-Type", "application/javascript")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, screenshotJavaScript, user)
 	}
 }
 
@@ -335,4 +375,89 @@ func TestScreenshotFail(t *testing.T) {
 			}
 		}
 	}
+}
+
+// ----------------------------------------------------------------------------
+// RenderedHTML
+
+var passingRenderedHTMLTests = []*Test{
+	&Test{
+		Name:    "Welcome Anonymous, raw body",
+		Request: Request{URL: "/welcome"},
+		Checks: []Check{
+			&Body{Contains: "Welcome"},
+			&Body{Contains: "Anon", Count: -1},
+			&Body{Contains: "Joe", Count: -1},
+			&Body{Contains: "Changed", Count: -1},
+		},
+	},
+	&Test{
+		Name:    "Welcome Anonymous, rendered body",
+		Request: Request{URL: "/welcome"},
+		Checks: []Check{
+			&RenderedHTML{
+				Checks: []Check{
+					&Body{Contains: "Welcome"},
+					&Body{Contains: "Anon", Count: 1},
+					&Body{Contains: "Joe", Count: -1},
+					&Body{Contains: "Changed", Count: 1},
+				},
+			},
+		},
+	},
+
+	// Loged in users are greeted with their username as background.
+	&Test{Request: Request{URL: "/login?user=Joe"}},
+	&Test{
+		Name:    "Welcome Joe",
+		Request: Request{URL: "/welcome"},
+		Checks: []Check{
+			&Body{Contains: "Welcome"},
+			&RenderedHTML{
+				Checks: []Check{
+					&Body{Contains: "You are: Joe"},
+					&HTMLContains{
+						Selector: "a",
+						Text:     []string{"Changed"},
+					},
+				},
+				KeepAs: "testdata/welcome-rendered.html",
+			},
+		},
+	},
+}
+
+func TestRenderedHTMLPassing(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(screenshotHandler))
+	defer ts.Close()
+	println(ts.URL)
+
+	for i := range passingRenderedHTMLTests {
+		u := ts.URL + "/screenshot" + passingRenderedHTMLTests[i].Request.URL
+		passingRenderedHTMLTests[i].Request.URL = u
+	}
+	suite := Suite{
+		KeepCookies: true,
+		Tests:       passingRenderedHTMLTests,
+	}
+
+	err := suite.Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	suite.Execute()
+	if *verboseTest {
+		suite.PrintReport(os.Stdout)
+	}
+
+	if suite.Status != Pass {
+		for i, test := range suite.Tests {
+			if test.Status != Pass {
+				t.Errorf("%d. %s, %s: %s",
+					i, test.Name, test.Status, test.Error)
+			}
+		}
+	}
+
+	time.Sleep(2 * time.Minute)
 }

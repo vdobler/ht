@@ -7,10 +7,12 @@
 package ht
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/color"
 	"image/png"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -23,13 +25,15 @@ import (
 
 func init() {
 	RegisterCheck(&Screenshot{})
+	RegisterCheck(&RenderedHTML{})
 }
 
 // PhantomJSExecutable is command to run PhantomJS. Use an absolute path if
 // phantomjs is not on your PATH or you whish to use a special version.
 var PhantomJSExecutable = "phantomjs"
 
-const debugScreenshot = true // false
+const debugScreenshot = true   // false
+const debugRenderedHTML = true // false
 
 // ----------------------------------------------------------------------------
 // Screenshot
@@ -242,6 +246,10 @@ func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 
 // Execute implements Check's Execute method.
 func (s *Screenshot) Execute(t *Test) error {
+	if t.Response.BodyErr != nil {
+		return ErrBadBody
+	}
+
 	file, err := tempfile.TempFile("", "screenshot-", ".js")
 	if err != nil {
 		return err // TODO: wrap to mark as bogus ?
@@ -274,7 +282,7 @@ func (s *Screenshot) Execute(t *Test) error {
 	cmd := exec.Command(PhantomJSExecutable, script)
 	output, err := cmd.CombinedOutput()
 	if debugScreenshot {
-		fmt.Println("PhantomJS output:", output)
+		fmt.Println("PhantomJS output:", string(output))
 	}
 	if err != nil {
 		return err
@@ -399,4 +407,179 @@ func (t *Test) allCookies() []cookiejar.Entry {
 	}
 
 	return cookies
+}
+
+// ----------------------------------------------------------------------------
+// RenderedHTML
+
+// RenderedHTML applies checks to the HTML after processing through the
+// headless browser PhantomJS. This processing will load external resources
+// and evaluate the JavaScript. The checks are run against this 'rendered'
+// HTML code.
+type RenderedHTML struct {
+	// Checks to perform on the renderd HTML.
+	// Sensible checks are those operating on the response body.
+	Checks []Check
+
+	// KeepAs is the file name to store the rendered HTML to.
+	// Usefull for debugging purpose.
+	KeepAs string `json:",omitempty"`
+}
+
+// Prepare implements Check's Prepare method.
+func (r RenderedHTML) Prepare() error {
+	if len(r.Checks) == 0 {
+		return fmt.Errorf("RenderedHTML without checks") // TODO: improve
+	}
+
+	// Prepare each sub-check.
+	errs := ErrorList{}
+	for i, check := range r.Checks {
+		err := check.Prepare()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%d. %s: %s", i, NameOf(check), err))
+		}
+	}
+
+	if len(errs) != 0 {
+		return errs
+	}
+	return nil
+}
+
+// Execute implements Check's Execute method.
+func (r RenderedHTML) Execute(t *Test) error {
+	if t.Response.BodyErr != nil {
+		return ErrBadBody
+	}
+
+	content, err := r.content(t)
+	if err != nil {
+		return err
+	}
+
+	// rt is a fake test which contains the PhantomJS rendered body.
+	rt := &Test{
+		Name: t.Name,
+		Request: Request{
+			URL: t.Request.URL,
+		},
+		Response: Response{
+			Response:     t.Response.Response,
+			Duration:     t.Response.Duration,
+			BodyStr:      content,
+			Redirections: t.Response.Redirections,
+		},
+	}
+
+	// Execute all sub-checks, collecting the errors.
+	errs := ErrorList{}
+	for i, check := range r.Checks {
+		err := check.Execute(rt)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%d. %s: %s",
+				i, NameOf(check), err))
+		}
+	}
+
+	// Optionally save the rendered HTML.
+	if r.KeepAs != "" {
+		err := ioutil.WriteFile(r.KeepAs, []byte(content), 0666)
+		if err != nil {
+			errs = append(errs,
+				fmt.Errorf("failed to save rendered HTML: %s",
+					err))
+		}
+	}
+
+	if len(errs) != 0 {
+		return errs
+	}
+	return nil
+}
+
+// content returns the page content after rendering (and evaluating JavaScript)
+// via PhantomJS.
+func (r RenderedHTML) content(t *Test) (string, error) {
+	file, err := tempfile.TempFile("", "renderedhtml-", ".js")
+	if err != nil {
+		return "", err // TODO: wrap to mark as bogus ?
+	}
+	script := file.Name()
+	if !debugRenderedHTML {
+		defer os.Remove(script)
+	}
+
+	err = r.writeScript(file, t)
+	if err != nil {
+		return "", err // TODO: wrap to mark as bogus ?
+	}
+	if debugRenderedHTML {
+		fmt.Println("Created PhantomJS script:", script)
+	}
+
+	cmd := exec.Command(PhantomJSExecutable, script)
+	output, err := cmd.CombinedOutput()
+	if debugScreenshot {
+		fmt.Println("PhantomJS output:", string(output))
+	}
+	if err != nil {
+		return "", err
+	}
+	if bytes.HasPrefix(output, []byte("PASS\n")) {
+		return string(output[5:]), nil
+	}
+
+	if i := bytes.Index(output, []byte("\n")); i != -1 {
+		output = output[:i]
+	}
+	return "", fmt.Errorf("%s", output)
+
+}
+
+var renderedHTMLScript = `
+// Screenshot during test %q.
+setTimeout(function() {
+    console.log('FAIL timeout');
+    phantom.exit();
+}, %d);
+var page = require('webpage').create();
+var theContent = %q;
+var theURL = %q;
+%s
+page.onLoadFinished = function(status){
+    if(status === 'success') {
+        console.log('PASS');
+        console.log(''+page.content);
+    } else {
+        console.log('FAIL rendering');
+    }
+    phantom.exit();
+};
+page.setContent(theContent, theURL);
+`
+
+// TODO: refactor by extracting common stuff from Screenshot.writeScript
+func (r *RenderedHTML) writeScript(file *os.File, t *Test) error {
+	defer file.Close() // eat error, sorry
+
+	phantomCookies := ""
+	for _, c := range t.allCookies() {
+		// Something is bogus here. If the domain is unset or does not
+		// start with a dot than PhantomJS will ignore it (addCookie
+		// returns flase). So it seems as if it is impossible in
+		// PhantomJS to distinguish a host-only form a domain cookie?
+		c.Domain = "." + c.Domain
+		expires := c.Expires.Format(time.RFC1123)
+		phantomCookies += fmt.Sprintf(addCookieScript,
+			c.Name, c.Value, c.Domain, c.Path,
+			c.HttpOnly, c.Secure, expires)
+	}
+
+	_, err := fmt.Fprintf(file, renderedHTMLScript,
+		t.Name, 15000,
+		t.Response.BodyStr, t.Request.Request.URL.String(),
+		phantomCookies,
+	)
+	return err
 }
