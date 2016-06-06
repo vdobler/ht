@@ -32,6 +32,10 @@ func init() {
 // phantomjs is not on your PATH or you whish to use a special version.
 var PhantomJSExecutable = "phantomjs"
 
+// TODO: PhantomJS is something external which might not be available
+// Check via sync.Once and report PhantomJS based tests as bogus if not
+// available.
+
 const debugScreenshot = false
 const debugRenderedHTML = false
 
