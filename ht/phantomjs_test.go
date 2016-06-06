@@ -152,6 +152,7 @@ func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var passingScreenshotTests = []*Test{
+	// Plain screenshot of homepage.
 	&Test{
 		Name:    "Basic Screenshot of Home",
 		Request: Request{URL: "/home"},
@@ -191,8 +192,9 @@ var passingScreenshotTests = []*Test{
 		},
 	},
 
-	// Log out again.
+	// Log out again, clear cookie.
 	&Test{Request: Request{URL: "/login?user"}},
+
 	// Golden record has size 96x32: Compare to larger/smaller screenshot.
 	&Test{
 		Name:    "Greet Anonymous (different sizes)",
@@ -203,7 +205,7 @@ var passingScreenshotTests = []*Test{
 		},
 	},
 
-	// White background (no cookie) but with name Bob.
+	// White background (no cookie) but with name Bob. Ignoring the rectangle.
 	&Test{
 		Name:    "Greet Bob, ignoring name",
 		Request: Request{URL: "/greet?name=Bob"},
@@ -215,6 +217,8 @@ var passingScreenshotTests = []*Test{
 			},
 		},
 	},
+
+	// White background (no cookie) but with name Bob. Allowing some pixels to differ.
 	&Test{
 		Name:    "Greet Bob, tollerating difference",
 		Request: Request{URL: "/greet?name=Bob"},
@@ -260,7 +264,75 @@ func TestScreenshotPass(t *testing.T) {
 		}
 	}
 
-	fmt.Println(suite.Tests[0].Response.BodyStr)
-
 	// time.Sleep(time.Minute)
+}
+
+var failingScreenshotTests = []*Test{
+	&Test{
+		Name:    "Screenshot of Home copared to Greeting",
+		Request: Request{URL: "/home"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry: "128x64+0+0",
+				Expected: "./testdata/greet-anon.png",
+			},
+		},
+	},
+
+	&Test{
+		Name:    "Greet Bob, Ignore region too small",
+		Request: Request{URL: "/greet?name=Bob"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry:     "96x32",
+				Expected:     "./testdata/greet-anon.png",
+				IgnoreRegion: []string{"30x30+57+18"},
+			},
+		},
+	},
+
+	&Test{
+		Name:    "Greet Bob, tolerating difference, but not enough",
+		Request: Request{URL: "/greet?name=Bob"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry:          "96x32",
+				Expected:          "./testdata/greet-anon.png",
+				AllowedDifference: 20, // 51 is the hard limit
+			},
+		},
+	},
+}
+
+func TestScreenshotFail(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(screenshotHandler))
+	defer ts.Close()
+	println(ts.URL)
+
+	for i := range failingScreenshotTests {
+		u := ts.URL + "/screenshot" + failingScreenshotTests[i].Request.URL
+		failingScreenshotTests[i].Request.URL = u
+	}
+	suite := Suite{
+		KeepCookies: true,
+		Tests:       failingScreenshotTests,
+	}
+
+	err := suite.Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	suite.Execute()
+	if *verboseTest {
+		suite.PrintReport(os.Stdout)
+	}
+
+	if suite.Status != Fail {
+		for i, test := range suite.Tests {
+			if test.Status != Fail {
+				t.Errorf("%d. %s, %s: %s",
+					i, test.Name, test.Status, test.Error)
+			}
+		}
+	}
 }
