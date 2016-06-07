@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,7 +85,7 @@ func TestParameterHandling(t *testing.T) {
 			"single":  []string{"abc"},
 			"multi":   []string{"1", "2"},
 			"special": []string{"A%+& &?/Z"},
-			"file":    []string{"@file:../cmd/ht/main.go"},
+			"file":    []string{"@file:testdata/somefile.txt"},
 		},
 		ParamsAs: "URL",
 	}}
@@ -97,7 +98,7 @@ func TestParameterHandling(t *testing.T) {
 	if test.Request.Body != "" {
 		t.Errorf("Expected empty body, got %q", test.Request.Body)
 	}
-	if got := test.Request.Request.URL.String(); got != "http://www.test.org?file=%40file%3A..%2Fcmd%2Fht%2Fmain.go&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
+	if got := test.Request.Request.URL.String(); got != "http://www.test.org?file=%40file%3Atestdata%2Fsomefile.txt&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
 		t.Errorf("Bad URL, got %s", got)
 	}
 	test.Request.Body = ""
@@ -112,13 +113,27 @@ func TestParameterHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
-	if string(full) != "file=%40file%3A..%2Fcmd%2Fht%2Fmain.go&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
+	if string(full) != "file=%40file%3Atestdata%2Fsomefile.txt&multi=1&multi=2&single=abc&special=A%25%2B%26+%26%3F%2FZ" {
 		t.Errorf("Bad body, got %s", full)
 	}
-	test.Request.Body = ""
+}
 
-	test.Request.ParamsAs = "multipart"
-	err = test.prepare(nil)
+func TestMultipartParameterHandling(t *testing.T) {
+	test := Test{Request: Request{
+		Method: "POST",
+		URL:    "http://www.test.org",
+		Params: URLValues{
+			"single":  []string{"abc"},
+			"multi":   []string{"1", "2"},
+			"special": []string{"A%+& &?/Z"},
+			"file":    []string{"@file:testdata/somefile.txt", "@file:testdata/home.png"},
+			"vfile":   []string{"@vfile:testdata/somefile.txt"},
+			"dfile":   []string{"@file:@name:the-data"},
+		},
+		ParamsAs: "multipart",
+	}}
+
+	err := test.prepare(map[string]string{"XYZ": "+++"})
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -139,8 +154,68 @@ func TestParameterHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
-	if len(f.Value) != 3 || len(f.Value["single"]) != 1 || len(f.Value["multi"]) != 2 {
-		t.Errorf("Got\n%#v\n", f)
+
+	value := f.Value
+	if len(value) != 3 || len(value["single"]) != 1 || len(value["multi"]) != 2 ||
+		len(value["special"]) != 1 {
+		t.Errorf("Wrong size, got \n%#v\n", value)
+	} else if value["single"][0] != "abc" ||
+		value["multi"][0] != "1" || value["multi"][1] != "2" ||
+		value["special"][0] != "A%+& &?/Z" {
+		t.Errorf("Wrong content, got \n%#v\n", value)
+	}
+
+	files := f.File
+	if len(files) != 3 || len(files["file"]) != 2 ||
+		len(files["dfile"]) != 1 || len(files["vfile"]) != 1 {
+		t.Errorf("Wrong size, got \n%#v\n", files)
+	} else {
+		file0 := files["file"][0]
+		if file0.Filename != "somefile.txt" ||
+			!strings.Contains(file0.Header["Content-Type"][0], "text/plain") ||
+			!strings.Contains(file0.Header["Content-Disposition"][0], `filename="somefile.txt"`) {
+			t.Errorf("Wrong file[0], got %+v", file0)
+		}
+		compareMPFileContent(t, "Hello {{XYZ}} World.\n", file0)
+
+		file1 := files["file"][1]
+		if file1.Filename != "home.png" ||
+			!strings.Contains(file1.Header["Content-Type"][0], "image/png") ||
+			!strings.Contains(file1.Header["Content-Disposition"][0], `filename="home.png"`) {
+			t.Errorf("Wrong file[1], got %+v", file1)
+		}
+
+		vfile := files["vfile"][0]
+		if vfile.Filename != "somefile.txt" ||
+			!strings.Contains(vfile.Header["Content-Type"][0], "text/plain") ||
+			!strings.Contains(vfile.Header["Content-Disposition"][0], `filename="somefile.txt"`) {
+			t.Errorf("Wrong file[0], got %+v", vfile)
+		}
+		compareMPFileContent(t, "Hello +++ World.\n", vfile)
+
+		dfile := files["dfile"][0]
+		if dfile.Filename != "name" ||
+			!strings.Contains(dfile.Header["Content-Type"][0], "application/octet-stream") ||
+			!strings.Contains(dfile.Header["Content-Disposition"][0], `filename="name"`) {
+			t.Errorf("Wrong dfile, got %+v", dfile)
+		}
+		compareMPFileContent(t, "the-data", dfile)
+	}
+}
+
+func compareMPFileContent(t *testing.T, want string, fh *multipart.FileHeader) {
+	file, err := fh.Open()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	got, err := ioutil.ReadAll(file)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if g := string(got); g != want {
+		t.Errorf("Got %q want %q", g, want)
 	}
 }
 

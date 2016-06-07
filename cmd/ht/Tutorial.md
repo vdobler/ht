@@ -88,7 +88,8 @@ success but it is almost pointless as no checks are done.
 
 ### Checks
 
-Checks provide high- (some low-) level checks on the received response.
+Checks provide high- (some low-) level checks on the received response,
+some might even trigger additional request and check these.
 We'll start with low-level checks as these are easier to understand.
 
     {
@@ -289,9 +290,8 @@ file uploads for which `ht` has a special `@file`-syntax:
         ],
     }
 
-The inline form is useful if you want to POST e.g. a tiny JSON file which
-can be typed into the test while the explicit form reads e.g. a larger image
-file from the filesystem. 
+The inline form is impractical for larger data and probably not that usefull
+in the JSON5 representation. 
 
 
 ### Sending multiple values for one parameter
@@ -558,6 +558,10 @@ If `VARNAME="foo 123" the resulting string will be:
 
 This works basically just like using ${VARNAME} in bash.
 (Variables may have lowercase letters too.)
+Please note that while we call it here "variables" it is just a brain dead
+text substitution: If you set a "variable" `FOO` to the value `bar` than any
+occurence of "{{FOO}}" will be replaced by "bar". If there is no "variable"
+`FOO` defined than "{{FOO}}" will stay "{{FOO}}".
 
 Take a look at the example suite above, 
 `HOST` is a good example why variables exist:  You may want to write _one_ test
@@ -581,7 +585,7 @@ variable values during invocation of `ht`:
 
 The `-Dfile` flags are handled first, you can overwrite the values with `-D`.
 
-    $ ./ht -D HOST=127.0.0.1:8080 
+    $ ./ht -Dfile uat.json -D HOST=127.0.0.1:8080 
  
 
 ### Replacing integer values with variable value
@@ -595,10 +599,82 @@ this 9999 with a variable amount by defining a variable `#9999` (that is the
 name!) and value 4.
 
 This is a deadly hack, just think what you'll be testing when running a
-suite with `-D "#200=900"`. But this hack its use when unrolling tests (see
+suite with `-D "#200=900"`. But this hack has its use when unrolling tests (see
 table driven tests below).
 
 
+### Preset variables
+
+Some variables are preset on a per Test basis if loaded from a .ht file:
+
+ * `TEST_PATH` : The absolute path to the test file (the JSON5 .ht file), e.g.
+        /home/me/project/test/homepage.ht
+ * `TEST_NAME` : The basename of the test file, e.g.
+        homepage.ht
+ * `TEST_DIR`  : The (relative) directory path the test was loaded from, e.g.
+        ./test/
+
+
+### Special variables
+
+There are two types of "special" variables which are kinda builtin and need
+not be set manually: `NOW` and `RANDOM`.
+I am not proud of the ad hoc syntax.
+
+#### `NOW` variable for current date/time
+
+The curent time may be offset by a duration and be formated by a format
+string:
+
+    {{NOW}}                       -->  Wed, 01 Oct 2014 12:22:36 CEST
+    {{NOW + 15s}}                 -->  Wed, 01 Oct 2014 12:22:51 CEST
+    {{NOW + 25m | "15:04"}}       -->  12:47
+    {{NOW + 3d | "2006-Jan-02"}}  -->  2014-Oct-04
+
+#### `RANDOM` variable
+
+A random number, text or email address can be genarated and with
+various option, e.g. range, formating and language:
+
+    {{RANDOM NUMBER 99}}          -->  22				       
+    {{RANDOM NUMBER 32-99}}       -->  45				       
+    {{RANDOM NUMBER 99 %04x}}     -->  002d				       
+    {{RANDOM TEXT 8}}             -->  que la victoire Accoure à tes mâles  
+    {{RANDOM TEXT 2-5}}           -->  Accoure à tes			       
+    {{RANDOM TEXT de 5}}          -->  Denn die fromme Seele		       
+    {{RANDOM EMAIL}}              -->  Leon.Schneider@gmail.com	       
+    {{RANDOM EMAIL web.de}}       -->  Meier.Anna@web.de                    
+
+Numbers are integers in the given range (or maximum) formated by the
+option format string (defaulting to "%d").
+
+Texts are number of words (range or maximum) and you can force a language
+with "en", "de", "fr" or "tlh".
+
+Email addresses are random addresses, you can force a certain domain.
+
+
+### Replacing variables in data loaded from files
+
+You may upload files in mutlipart request or send the content of a file as the
+request body with the special syntax "@file:/path/to/file" (see above).
+The file content is sent "as is" without applying variable replacements.
+
+You may perform variable replacements on the loaded file content with the
+special syntax "@vfile:/path/to/file".
+
+Combining this with the "normal" variable substitution and the predefined
+variables described in the last chapter allows you to use
+
+    "@vfile:{{TEST_DIR}}/file-template"
+
+with a file named `file-template` in the folder where the test lives
+which may itself contain variables, e.g. the following file could be
+uploaded or sent as the body:
+
+    Start-Time: {{NOW | 15:04}} 
+    User:       {{RANDOM EMAIL mydomain.com}}
+    Comment:    {{RANDOM TEXT fr 10-40}}
 
 
 Details of a Test
@@ -612,20 +688,21 @@ discussed. Some are useful when crafting a test.
 
 Sometimes a failure is anticipated, e.g. while you wait for a server to start.
 For such cases you may retry a tests several times.  This retrying is done
-through the `Poll` field of a test: AN URL is polled until success:
+through the `Poll` field of a test: An URL is polled until success:
 
     {
         Name:    "Unic homepage german",
         Request: { URL: "https://www.unic.com/de/html" },
         Poll: {
             Max: 12,
-            Sleep: "7654ms",
+            Sleep: "5432ms",
         },
         Checks:  [ {Check: "StatusCode", Expect: 200} ],
     }
 
-This test will be done up to 12 times. If it passes earlier the test succeeds
-and if it fails for all 12 tries it fails.
+This test will be done up to 12 times with 5.4 seconds pause between retries.
+If it passes earlier the test succeeds and if it fails for all 12 tries it
+fails. 
 
 
 ### Debug related stuff
@@ -653,9 +730,9 @@ Tests have some more fields which control timing:
         Timeout:     "5.3s",
         Request:     { URL: "https://www.unic.com/de.html" },
         Checks:      [{Check:"StatusCode",Expect:200},{Check:"Body",Contains:"Unic"}],
-        PreSleep:    0.5,     //  number means seconds,
-        InterSleep:  "9ms"    //  strings are durations
-        PostSleep:   "3m15s"  //     "     "      " 
+        PreSleep:    0.5,      //  \   Floating point numbers
+        InterSleep:  "9ms",    //   >  are seconds while strings
+        PostSleep:   "3m15s"   //  /   are durations.
     }
 
 If you want tot set a different timeout for the requests (dial, send request,
@@ -664,7 +741,7 @@ is part of Test, not Request.
 
 The `Pre`-, `Inter`- and `Post`-Sleep fields control how much time is slept
 before starting the test, between the request and the checks and after the
-checks.  There usefulness is not obvious at this stage of the tutorial.
+checks.  Its usefulness is not obvious at this stage of the tutorial.
 
 
 
@@ -721,7 +798,7 @@ test can be made successful:
         }
     }
 
-Note that the text to look for is empty fro the HEAD request and "Forbidden"
+Note that the text to look for is empty for the HEAD request and "Forbidden"
 for the POST request.  For the status code which is an integer (and you cannot
 use normal variables with integers) the ugly hack from above is used.
 
@@ -745,8 +822,8 @@ Let's take a look at an synthectic example:
         },
     }
 
-This would be unrolled to 6 = 2 values for AAA * 3 values for BBB tests with
-the following paths beeing requested:
+This would be unrolled to 6 = (2 values for AAA) * (3 values for BBB) tests
+with the following paths beeing requested:
 
     /java/hybris.html
     /java/magento.html

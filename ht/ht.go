@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -128,10 +127,20 @@ type Request struct {
 	// the request.
 	//
 	// If the parameters are sent as multipart it is possible to include
-	// files by letting the parameter values start with "@file:". Two
-	// version are possible "@file:path/to/file" will send a file read
-	// from the given filesystem path while "@file:@name:the-file-data"
-	// will use the-file-data as the content.
+	// files by special formated values.
+	// The following formats are recognized:
+	//    @file:/path/to/thefile
+	//         read in /path/to/thefile and use its content as the
+	//         parameter value. The path may be relative.
+	//    @vfile:/path/to/thefile
+	//         read in /path/to/thefile and perform variable substitution
+	//         in its content to yield the parameter value.
+	//    @file:@name-of-file:direct-data
+	//    @vfile:@name-of-file:direct-data
+	//         use direct-data as the parameter value and name-of-file
+	//         as the filename. (There is no difference between the
+	//         @file and @vfile variants; variable substitution has
+	//         been performed already and is not done twice on direct-data.
 	Params URLValues `json:",omitempty"`
 
 	// ParamsAs determines how the parameters in the Param field are sent:
@@ -736,6 +745,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 		t.Request.ParamsAs = "URL"
 	}
 
+	// Apply variable substitution.
 	rurl := repl.str.Replace(t.Request.URL)
 	urlValues := make(URLValues)
 	for param, vals := range t.Request.Params {
@@ -771,7 +781,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 			t.Request.SentBody = encoded
 			body = ioutil.NopCloser(strings.NewReader(encoded))
 		case "multipart":
-			b, boundary, err := multipartBody(t.Request.Params)
+			b, boundary, err := multipartBody(t.Request.Params, repl)
 			if err != nil {
 				return "", err
 			}
@@ -790,17 +800,12 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 
 	// The body.
 	if t.Request.Body != "" {
-		rbody := t.Request.Body
-		if strings.HasPrefix(rbody, "@file:") {
-			data, err := ioutil.ReadFile(rbody[6:])
-			if err != nil {
-				return "", fmt.Errorf("connot read Body file: %s", err)
-			}
-			rbody = string(data)
+		bodydata, _, err := fileData(repl.str.Replace(t.Request.Body), repl)
+		if err != nil {
+			return "", err
 		}
-		rbody = repl.str.Replace(rbody)
-		t.Request.SentBody = rbody
-		body = ioutil.NopCloser(strings.NewReader(rbody))
+		t.Request.SentBody = bodydata
+		body = ioutil.NopCloser(strings.NewReader(bodydata))
 	}
 
 	t.Request.Request, err = http.NewRequest(t.Request.Method, rurl, body)
@@ -809,6 +814,51 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	}
 
 	return contentType, nil
+}
+
+// fileData allows to reading file data to be used as the value for s.
+// Handled cases if s is of the form:
+//    @file:/path/to/thefile
+//               read in /path/to/thefile and use its content as s
+//               basename is thefile
+//    @vfile:/path/to/thefile
+//               read in /path/to/thefile and apply repl on its content
+//               basename is thefile
+//    @[v]file:@name-of-file:direct-data
+//               use direct-data as s (variable substitutions not performed again)
+//               basename is name-of-file
+//    anything-else
+//               s is anything-else and basename is ""
+func fileData(s string, repl replacer) (data string, basename string, err error) {
+	if !strings.HasPrefix(s, "@file:") && !strings.HasPrefix(s, "@vfile:") {
+		return s, "", nil
+	}
+
+	i := strings.Index(s, ":") // != -1 as proper @[v]file: prefix present
+	typ, file := s[:i], s[i+1:]
+	if len(file) == 0 {
+		return "", "", fmt.Errorf("missing filename in @[v]file: parameter")
+	}
+
+	// Handle the follwoing syntax:
+	//     @file:@filename:direct-file-data
+	// which does not read from the filesystem.
+	if j := strings.Index(file, ":"); j != -1 && file[0] == '@' {
+		basename = file[1:j]
+		data = file[j+1:]
+		return data, basename, nil
+	}
+
+	basename = path.Base(file)
+	raw, err := ioutil.ReadFile(file)
+	if err != nil {
+		return "", "", err
+	}
+	data = string(raw)
+	if typ == "@vfile" {
+		data = repl.str.Replace(data)
+	}
+	return data, basename, nil
 }
 
 var (
@@ -975,18 +1025,22 @@ func escapeQuotes(s string) string {
 // multipartBody formats the given param as a proper multipart/form-data
 // body and returns a reader ready to use as the body as well as the
 // multipart boundary to be include in the content type.
-func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
+func multipartBody(param map[string][]string, repl replacer) (io.ReadCloser, string, error) {
 	var body = &bytes.Buffer{}
 
+	isFile := func(v string) bool {
+		return strings.HasPrefix(v, "@file:") || strings.HasPrefix(v, "@vfile:")
+	}
+
 	var mpwriter = multipart.NewWriter(body)
-	// All non-file parameters come first
+
+	// All non-file parameters come first.
 	for n, v := range param {
-		if len(v) > 0 && strings.HasPrefix(v[0], "@file:") {
-			continue // files go at the end
-		}
-		// TODO: handle errors
 		if len(v) > 0 {
 			for _, vv := range v {
+				if isFile(vv) {
+					continue // files go at the end
+				}
 				if err := mpwriter.WriteField(n, vv); err != nil {
 					return nil, "", err
 				}
@@ -998,58 +1052,56 @@ func multipartBody(param map[string][]string) (io.ReadCloser, string, error) {
 		}
 	}
 
-	// File parameters at bottom
+	// File parameters go to the end.
 	for n, v := range param {
-		if !(len(v) > 0 && strings.HasPrefix(v[0], "@file:")) {
-			continue // already written
-		}
-		filename := v[0][6:]
-		var file io.Reader
-		var basename string
-		if filename[0] == '@' {
-			i := strings.Index(filename, ":")
-			basename = filename[1:i]
-			file = strings.NewReader(filename[i+1:])
-		} else {
-			fsfile, err := os.Open(filename)
+		for _, vv := range v {
+			if !isFile(vv) {
+				continue // already written
+			}
+			err := addFilePart(mpwriter, n, vv, repl)
 			if err != nil {
-				return nil, "", fmt.Errorf(
-					"Unable to read file %q for multipart parameter %q: %s",
-					filename, n, err.Error())
-			}
-			defer fsfile.Close()
-			file = fsfile
-			basename = path.Base(filename)
-		}
-
-		// Doing fw, err := mpwriter.CreateFormFile(n, basename) would
-		// be much simpler but would fix the content type to
-		// application/octet-stream. We can do a bit better.
-		h := make(textproto.MIMEHeader)
-		h.Set("Content-Disposition",
-			fmt.Sprintf(`form-data; name="%s"; filename="%s"`,
-				escapeQuotes(n), escapeQuotes(basename)))
-		var ct = "application/octet-stream"
-		if i := strings.LastIndex(basename, "."); i != -1 {
-			ct = mime.TypeByExtension(basename[i:])
-			if ct == "" {
-				ct = "application/octet-stream"
+				return nil, "", err
 			}
 		}
-		h.Set("Content-Type", ct)
-		fw, err := mpwriter.CreatePart(h)
-
-		if err != nil {
-			return nil, "", fmt.Errorf(
-				"Unable to create part for parameter %q: %s",
-				n, err.Error())
-		}
-
-		io.Copy(fw, file)
 	}
 	mpwriter.Close()
 
 	return ioutil.NopCloser(body), mpwriter.Boundary(), nil
+}
+
+// addFilePart to mpwriter where the parameter n has a @file:-value vv.
+func addFilePart(mpwriter *multipart.Writer, n, vv string, repl replacer) error {
+	data, basename, err := fileData(vv, repl)
+	if err != nil {
+		return err
+	}
+
+	// Doing fw, err := mpwriter.CreateFormFile(n, basename) would
+	// be much simpler but would fix the content type to
+	// application/octet-stream. We can do a bit better.
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition",
+		fmt.Sprintf(`form-data; name="%s"; filename="%s"`,
+			escapeQuotes(n), escapeQuotes(basename)))
+	var ct = "application/octet-stream"
+	if i := strings.LastIndex(basename, "."); i != -1 {
+		ct = mime.TypeByExtension(basename[i:])
+		if ct == "" {
+			ct = "application/octet-stream"
+		}
+	}
+	h.Set("Content-Type", ct)
+	fw, err := mpwriter.CreatePart(h)
+	if err != nil {
+		return fmt.Errorf("Unable to create part for parameter %q: %s",
+			n, err.Error())
+	}
+
+	_, err = io.WriteString(fw, data)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // -------------------------------------------------------------------------
