@@ -467,7 +467,7 @@ func Merge(tests ...*Test) (*Test, error) {
 
 // PopulateCookies populates t.Request.Cookies with the those
 // cookies from jar which would be sent to u.
-func (t *Test) PopulateCookies(jar http.CookieJar, u *url.URL) {
+func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 	if jar == nil || u == nil {
 		return
 	}
