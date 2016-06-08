@@ -219,6 +219,24 @@ func compareMPFileContent(t *testing.T, want string, fh *multipart.FileHeader) {
 	}
 }
 
+func TestSendBody(t *testing.T) {
+	test := Test{Request: Request{
+		Method: "POST",
+		URL:    "http://www.test.org",
+		Body:   "@vfile:testdata/{{FILENAME}}",
+	}}
+	err := test.prepare(map[string]string{
+		"FILENAME": "somefile.txt",
+		"XYZ":      "+++",
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error %s", err.Error())
+	}
+	if test.Request.SentBody != "Hello +++ World.\n" {
+		t.Errorf("got %q", test.Request.SentBody)
+	}
+}
+
 func TestRTStats(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
 	defer ts.Close()
