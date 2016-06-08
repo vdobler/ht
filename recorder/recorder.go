@@ -564,6 +564,15 @@ func extractHTMLChecks(e Event) ht.CheckList {
 		},
 	})
 
+	// Allways add Screenshot check.
+	list = append(list, &ht.Screenshot{
+		Geometry:          "256x144+0+0*20%", // 256x144 at 20% zoom is 1280x720 at 100%
+		Expected:          "{{TEST_DIR}}/screenshot-XYZ.png",
+		Actual:            "{{TEST_DIR}}/screenshot-XYZ-_actual.png",
+		AllowedDifference: 12,
+		IgnoreRegion:      []string{"2x3+1+1"},
+	})
+
 	doc, err := html.Parse(bytes.NewBufferString(e.ResponseBody))
 	if err != nil {
 		log.Println(err)
