@@ -84,8 +84,12 @@ func randomNumber(args []interface{}) (string, error) {
 func randomEmail(args []interface{}) (string, error) {
 	domain := args[0].(string)
 	first := emailNameCorpus[Random.Intn(len(emailNameCorpus))]
+	middle := ""
 	last := emailNameCorpus[Random.Intn(len(emailNameCorpus))]
-	return fmt.Sprintf("%s.%s@%s", first, last, domain), nil
+	if r := Random.Intn(30); r < 26 {
+		middle = fmt.Sprintf(".%c", 'A'+r)
+	}
+	return fmt.Sprintf("%s%s.%s@%s", first, middle, last, domain), nil
 }
 
 // the 20 most popular first names (2014) and the 20 most common last names
