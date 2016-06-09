@@ -423,7 +423,7 @@ func (t *Test) allCookies() []cookiejar.Entry {
 type RenderedHTML struct {
 	// Checks to perform on the renderd HTML.
 	// Sensible checks are those operating on the response body.
-	Checks []Check
+	Checks CheckList
 
 	// KeepAs is the file name to store the rendered HTML to.
 	// Usefull for debugging purpose.
