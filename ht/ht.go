@@ -167,6 +167,11 @@ type Request struct {
 	// redirects should be done.
 	FollowRedirects bool `json:",omitempty"`
 
+	// BasicAuthUser and BasicAuthPass contain optional username and
+	// password which will be sent in a Basic Authentication header.
+	BasicAuthUser string
+	BasicAuthPass string
+
 	Request  *http.Request `json:"-"` // the 'real' request
 	SentBody string        `json:"-"` // the 'real' body
 }
@@ -389,6 +394,14 @@ outer:
 	}
 
 	m.FollowRedirects = r.FollowRedirects
+
+	if err := onlyOneMayBeNonempty(&(m.BasicAuthUser), r.BasicAuthUser); err != nil {
+		return err
+	}
+	if err := onlyOneMayBeNonempty(&(m.BasicAuthPass), r.BasicAuthPass); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -811,6 +824,11 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	t.Request.Request, err = http.NewRequest(t.Request.Method, rurl, body)
 	if err != nil {
 		return "", err
+	}
+
+	// Basic Auth
+	if t.Request.BasicAuthUser != "" {
+		t.Request.Request.SetBasicAuth(t.Request.BasicAuthUser, t.Request.BasicAuthPass)
 	}
 
 	return contentType, nil

@@ -615,6 +615,8 @@ func TestMerge(t *testing.T) {
 				{Name: "session", Value: "othersession"},
 			},
 			FollowRedirects: false,
+			BasicAuthUser:   "foo.bar",
+			BasicAuthPass:   "secret",
 		},
 		InterSleep: Duration(300),
 	}
@@ -649,6 +651,11 @@ func TestMerge(t *testing.T) {
 		c.Request.Cookies[1].Value != "othersession" ||
 		c.Request.Cookies[2].Value != "vbbbbblue" {
 		t.Errorf("Bad cookies. Got %#v", c.Request.Cookies)
+	}
+
+	if c.Request.BasicAuthUser != "foo.bar" || c.Request.BasicAuthPass != "secret" {
+		t.Errorf("Bad BasicAuth. Got %q : %q", c.Request.BasicAuthUser,
+			c.Request.BasicAuthPass)
 	}
 
 	if c.PreSleep != 100 || c.InterSleep != 420 || c.PostSleep != 140 {
