@@ -475,6 +475,8 @@ func (r Resilience) resilienceTest(orig *Test, method string, paramsAs string) *
 			URL:             orig.Request.URL,
 			FollowRedirects: false,
 			ParamsAs:        paramsAs,
+			BasicAuthUser:   orig.Request.BasicAuthUser,
+			BasicAuthPass:   orig.Request.BasicAuthPass,
 		},
 		Verbosity: orig.Verbosity - 1,
 		PreSleep:  Duration(10 * time.Millisecond),

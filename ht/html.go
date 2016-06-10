@@ -412,7 +412,7 @@ type Links struct {
 }
 
 // collectURLs returns the URLs selected by Which and OnlyLinks and IgnoredLinks
-// as the map keys.
+// as the map keys. The URLs are absolute URLs.
 func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 	if t.Response.BodyErr != nil {
 		return nil, ErrBadBody
@@ -470,6 +470,8 @@ func (c *Links) Execute(t *Test) error {
 				Method:          method,
 				URL:             r,
 				FollowRedirects: true,
+				BasicAuthUser:   t.Request.BasicAuthUser,
+				BasicAuthPass:   t.Request.BasicAuthPass,
 			},
 			Checks: CheckList{
 				StatusCode{Expect: 200},
@@ -478,6 +480,11 @@ func (c *Links) Execute(t *Test) error {
 			Timeout:   timeout,
 		}
 		test.PopulateCookies(t.Jar, t.Request.Request.URL)
+		if ru, err := url.Parse(r); err == nil &&
+			ru.Host == t.Request.Request.URL.Host {
+			test.Request.BasicAuthUser = t.Request.BasicAuthUser
+			test.Request.BasicAuthPass = t.Request.BasicAuthPass
+		}
 		suite.Tests = append(suite.Tests, test)
 	}
 
