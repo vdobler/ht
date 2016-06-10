@@ -77,6 +77,8 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 			ParamsAs:        repl.str.Replace(t.Request.ParamsAs),
 			Body:            repl.str.Replace(t.Request.Body),
 			FollowRedirects: t.Request.FollowRedirects,
+			BasicAuthUser:   repl.str.Replace(t.Request.BasicAuthUser),
+			BasicAuthPass:   repl.str.Replace(t.Request.BasicAuthPass),
 		},
 		Poll:        t.Poll,
 		Timeout:     t.Timeout,
@@ -119,6 +121,14 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 	c.Checks = make([]Check, len(t.Checks))
 	for i := range t.Checks {
 		c.Checks[i] = SubstituteVariables(t.Checks[i], repl.str, repl.fn)
+	}
+
+	// Apply to test variables
+	if n := len(t.Variables); n > 0 {
+		c.Variables = make(map[string]string, n)
+		for k, v := range t.Variables {
+			c.Variables[k] = repl.str.Replace(v)
+		}
 	}
 
 	return c
