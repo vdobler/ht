@@ -670,8 +670,7 @@ func (t *Test) prepare(variables map[string]string) error {
 		return err
 	}
 
-	// Make a deep copy of the header and set standard stuff and cookies.
-	t.Request.Request.Header = make(http.Header)
+	// Prepare the HTTP header.
 	for h, v := range t.Request.Header {
 		rv := make([]string, len(v))
 		for i := range v {
@@ -692,6 +691,12 @@ func (t *Test) prepare(variables map[string]string) error {
 	for _, cookie := range t.Request.Cookies {
 		cv := repl.str.Replace(cookie.Value)
 		t.Request.Request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
+	}
+	// Basic Auth
+	if t.Request.BasicAuthUser != "" {
+		t.Request.Request.SetBasicAuth(
+			repl.str.Replace(t.Request.BasicAuthUser),
+			repl.str.Replace(t.Request.BasicAuthPass))
 	}
 
 	// Compile the checks.
@@ -826,11 +831,6 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 		return "", err
 	}
 
-	// Basic Auth
-	if t.Request.BasicAuthUser != "" {
-		t.Request.Request.SetBasicAuth(t.Request.BasicAuthUser, t.Request.BasicAuthPass)
-	}
-
 	return contentType, nil
 }
 
@@ -893,6 +893,7 @@ func (t *Test) executeRequest() error {
 	t.Response.Redirections = nil
 
 	start := time.Now()
+
 	resp, err := t.client.Do(t.Request.Request)
 	if ue, ok := err.(*url.Error); ok && ue.Err == redirectNofollow &&
 		!t.Request.FollowRedirects {
