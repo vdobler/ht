@@ -472,7 +472,7 @@ func (r Resilience) resilienceTest(orig *Test, method string, paramsAs string) *
 		Name: fmt.Sprintf("%s %s", method, paramsAs),
 		Request: Request{
 			Method:          method,
-			URL:             orig.Request.URL,
+			URL:             orig.Request.Request.URL.String(),
 			FollowRedirects: false,
 			ParamsAs:        paramsAs,
 			BasicAuthUser:   orig.Request.BasicAuthUser,
