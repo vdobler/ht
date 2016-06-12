@@ -81,14 +81,13 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 			BasicAuthPass:   repl.str.Replace(t.Request.BasicAuthPass),
 			Timeout:         t.Request.Timeout,
 		},
-		Poll:        t.Poll,
-		Verbosity:   t.Verbosity,
-		PreSleep:    t.PreSleep,
-		InterSleep:  t.InterSleep,
-		PostSleep:   t.PostSleep,
-		Jar:         t.Jar,
-		VarEx:       t.VarEx,
-		Criticality: t.Criticality,
+		Poll:       t.Poll,
+		Verbosity:  t.Verbosity,
+		PreSleep:   t.PreSleep,
+		InterSleep: t.InterSleep,
+		PostSleep:  t.PostSleep,
+		Jar:        t.Jar,
+		VarEx:      t.VarEx,
 	}
 
 	// Apply to request parameters.

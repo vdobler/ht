@@ -165,11 +165,20 @@ func showReports(w http.ResponseWriter, r *http.Request) {
 			lastN.Started.Format(time.RFC1123),
 			lastN.Duration.String(),
 			lastN.Tests())
-		fmt.Fprintf(w, "Error Index: %.1f%%    Real Bad: %.1f%%    All Wrong: %.1f%%\n",
-			100*lastN.KPI(ht.DefaultPenaltyFunc),
-			100*lastN.KPI(ht.JustBadPenaltyFunc),
-			100*lastN.KPI(ht.AllWrongPenaltyFunc))
-		fmt.Fprintf(w, "Details:\n%s\n\n\n", lastN.Matrix())
+		fmt.Fprintln(w, " Status: |  NotRun | Skipped |   Pass  |   Fail  |   Error |  Bogus  ")
+		fmt.Fprintln(w, "---------+---------+---------+---------+---------+---------+---------")
+		fmt.Fprintf(w, " Total:  | %6d  | %6d  | %6d  | %6d  | %6d  | %6d\n",
+			lastN.Count[ht.NotRun], lastN.Count[ht.Skipped], lastN.Count[ht.Pass],
+			lastN.Count[ht.Fail], lastN.Count[ht.Error], lastN.Count[ht.Bogus])
+		n := lastN.Tests()
+		r := func(s ht.Status) float64 { return 100 * float64(lastN.Count[s]) / float64(n) }
+		fmt.Fprintf(w, " Relat:  | %6.1f%% | %6.1f%% | %6.1f%% | %6.1f%% | %6.1f%% | %6.1f%%\n",
+			r(ht.NotRun), r(ht.Skipped), r(ht.Pass), r(ht.Fail), r(ht.Error), r(ht.Bogus))
+		fmt.Fprintln(w, "---------+---------+---------+---------+---------+---------+---------")
+		fue := lastN.Count[ht.Fail] + lastN.Count[ht.Error]
+		fmt.Fprintf(w, "BAD %d: %.1f\n", avg, 100*float64(fue)/float64(n))
+		fmt.Fprintln(w)
+		fmt.Fprintln(w)
 	}
 }
 

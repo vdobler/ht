@@ -58,9 +58,8 @@ type rawTest struct {
 	// generated from the deserialized data to several real Tests.
 	Unroll map[string][]string `json:",omitempty"`
 
-	Poll        Poll `json:",omitempty"`
-	Verbosity   int  `json:",omitempty"`
-	Criticality Criticality
+	Poll      Poll `json:",omitempty"`
+	Verbosity int  `json:",omitempty"`
 
 	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
 }
@@ -77,11 +76,10 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 		VarEx:       raw.VarEx,
 		Poll:        raw.Poll,
 		// Timeout:     raw.Timeout,
-		Verbosity:   raw.Verbosity,
-		PreSleep:    raw.PreSleep,
-		InterSleep:  raw.InterSleep,
-		PostSleep:   raw.PostSleep,
-		Criticality: raw.Criticality,
+		Verbosity:  raw.Verbosity,
+		PreSleep:   raw.PreSleep,
+		InterSleep: raw.InterSleep,
+		PostSleep:  raw.PostSleep,
 	}
 	if len(raw.BasedOn) > 0 {
 		origname, origfollow := t.Name, t.Request.FollowRedirects

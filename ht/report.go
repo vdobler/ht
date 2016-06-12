@@ -90,9 +90,8 @@ type SuiteResult struct {
 	Started  time.Time // Start time of earliest suite.
 	Duration Duration  // Cummulated duration of all accounted suites.
 
-	// Count is the histogram of test results indexed by (status x criticality)
-	// Row and column sums are provided.
-	Count [][]int
+	// Count is the histogram of test results indexed by status.
+	Count []int
 
 	Suites []*Suite // Suites contains references to all accounted suites.
 }
@@ -100,10 +99,7 @@ type SuiteResult struct {
 // NewSuiteResult returns an empty SuiteResult.
 func NewSuiteResult() *SuiteResult {
 	r := &SuiteResult{}
-	r.Count = make([][]int, int(Bogus)+2)
-	for s := NotRun; s <= Bogus+1; s++ {
-		r.Count[s] = make([]int, int(CritFatal)+2)
-	}
+	r.Count = make([]int, int(Bogus)+1)
 	return r
 }
 
@@ -118,12 +114,8 @@ func (r *SuiteResult) Account(s *Suite, setup bool, teardown bool) {
 	r.Suites = append(r.Suites, s)
 
 	account := func(tests []*Test) {
-		critSum, statSum := CritFatal+1, Bogus+1
 		for _, test := range tests {
-			r.Count[test.Status][test.Criticality]++
-			r.Count[test.Status][critSum]++
-			r.Count[statSum][test.Criticality]++
-			r.Count[statSum][critSum]++
+			r.Count[test.Status]++
 		}
 	}
 
@@ -143,89 +135,18 @@ func (r *SuiteResult) Merge(o *SuiteResult) {
 	}
 	r.Duration += o.Duration
 	r.Suites = append(r.Suites, o.Suites...)
-	for s := NotRun; s <= Bogus+1; s++ {
-		for c := CritDefault; c <= CritFatal+1; c++ {
-			r.Count[s][c] += o.Count[s][c]
-		}
+	for s := NotRun; s <= Bogus; s++ {
+		r.Count[s] += o.Count[s]
 	}
 }
 
 // Tests returns the total number of tests recorded.
 func (r *SuiteResult) Tests() int {
-	return r.Count[Bogus+1][CritFatal+1]
-}
-
-// PenaltyFunc is a function to calculate a penalty for a given test status and
-// criticality combination.
-type PenaltyFunc func(s Status, c Criticality) float64
-
-// DefaultPenaltyFunc penalises higher criticalities more than lower ones.
-func DefaultPenaltyFunc(s Status, c Criticality) float64 {
-	return defaultStatusPenalty[s] * defaultCriticalityPenalty[c]
-}
-
-// JustBadPenaltyFunc returns 1 for the (status,criticality)-pairs in
-// {NotRun, Fail, Error} X {CritError, CritFatal}.
-// Note that Bogus tests yield 0.
-func JustBadPenaltyFunc(s Status, c Criticality) float64 {
-	return justBadStatusPenalty[s] * justBadCriticalityPenalty[c]
-}
-
-// AllWrongPenaltyFunc ignores the criticality and returns 1 for all tests with
-// status NotRun (as this happens only if the test wasn't executed due to failing
-// setup tests), Fail, Error or Bogus.
-func AllWrongPenaltyFunc(s Status, c Criticality) float64 {
-	return allWrongStatusPenalty[s] * allWrongCriticalityPenalty[c]
-}
-
-var (
-	// NotRun is bad: happens only if Setup failed
-	defaultStatusPenalty      = []float64{1, 0, 0, 1, 1, 2}
-	defaultCriticalityPenalty = []float64{0, 0, 0.25, 0.5, 1, 2}
-
-	justBadStatusPenalty      = []float64{1, 0, 0, 1, 1, 0}
-	justBadCriticalityPenalty = []float64{0, 0, 0, 0, 1, 1}
-
-	allWrongStatusPenalty      = []float64{1, 0, 0, 1, 1, 1}
-	allWrongCriticalityPenalty = []float64{1, 1, 1, 1, 1, 1}
-)
-
-// KPI condeses the results of the accumulated suites of r into one single
-// float number by averaging the results after sending through the given penalty
-// function.
-func (r *SuiteResult) KPI(pf PenaltyFunc) float64 {
 	n := 0
-	penalty := 0.0
-	for s := NotRun; s <= Bogus; s++ {
-		for c := CritIgnore; c <= CritFatal; c++ {
-			cnt := r.Count[s][c]
-			n += cnt
-			penalty += float64(cnt) * pf(s, c)
-		}
+	for _, m := range r.Count {
+		n += m
 	}
-	return penalty / float64(n)
-}
-
-// Matrix returns the histogram data as a formated string.
-func (r *SuiteResult) Matrix() string {
-	s := "        | Total | Ignore  Info  Warn Error Fatal\n"
-	s += "--------+-------+-------------------------------\n"
-	for status := NotRun; status <= Bogus; status++ {
-		c := r.Count[status]
-		s += fmt.Sprintf("%-7s | %5d |  %5d %5d %5d %5d %5d\n",
-			status.String(), c[CritFatal+1], c[CritIgnore], c[CritInfo],
-			c[CritWarn], c[CritError], c[CritFatal])
-		if status == Pass {
-			s += "--------+-------+-------------------------------\n"
-		}
-	}
-	s += "--------+-------+-------------------------------\n"
-	c := r.Count[Bogus+1]
-	s += fmt.Sprintf("%-7s | %5d |  %5d %5d %5d %5d %5d\n",
-		"Total", c[CritFatal+1], c[CritIgnore], c[CritInfo], c[CritWarn],
-		c[CritError], c[CritFatal])
-
-	return s
+	return n
 }
 
 // ----------------------------------------------------------------------------

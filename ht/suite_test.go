@@ -68,10 +68,6 @@ func TestExecuteSuite(t *testing.T) {
 		fmt.Printf("\nJUnit 4 XML Output:\n%s", junit)
 		sr := NewSuiteResult()
 		sr.Account(suite, true, true)
-		fmt.Println(sr.Matrix())
-		fmt.Printf("Default KPI: %.3f   JustBad KPI: %.3f    KPI: %.3f\n",
-			sr.KPI(DefaultPenaltyFunc), sr.KPI(JustBadPenaltyFunc),
-			sr.KPI(AllWrongPenaltyFunc))
 	}
 
 	cmd.Wait()

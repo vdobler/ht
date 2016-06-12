@@ -57,7 +57,6 @@ var sampleTestJSON = `{
         Sleep: "5432ms",
     },
     Verbosity: 1,
-    Criticality: "Warn",
     PreSleep: "11ms",
     InterSleep: "22ms",
     PostSleep: "33ms",
@@ -98,7 +97,7 @@ func TestFindRawTest(t *testing.T) {
 	if len(rt.Checks) != 4 || len(rt.VarEx) != 1 {
 		t.Errorf("Got Test == %#v", *rt)
 	}
-	if rt.Verbosity != 1 || rt.Criticality != CritWarn {
+	if rt.Verbosity != 1 {
 		t.Errorf("Got Test == %#v", *rt)
 	}
 	if rt.Poll.Max != 3 || rt.Poll.Sleep != Duration(5432*time.Millisecond) {
@@ -248,11 +247,10 @@ func TestRawTestToTest(t *testing.T) {
 			Max:   3,
 			Sleep: 5432000000,
 		},
-		Verbosity:   1,
-		Criticality: 3,
-		PreSleep:    11000000,
-		InterSleep:  22000000,
-		PostSleep:   33000000,
+		Verbosity:  1,
+		PreSleep:   11000000,
+		InterSleep: 22000000,
+		PostSleep:  33000000,
 	}
 
 	diff := differences(tests[0], want)
@@ -308,9 +306,6 @@ func differences(t1, t2 *Test) (d []string) {
 	}
 	if t1.Verbosity != t2.Verbosity {
 		d = append(d, fmt.Sprintf("Verbosity: %d != %d", t1.Verbosity, t2.Verbosity))
-	}
-	if t1.Criticality != t2.Criticality {
-		d = append(d, fmt.Sprintf("Criticality: %d != %d", t1.Criticality, t2.Criticality))
 	}
 	if t1.PreSleep != t2.PreSleep {
 		d = append(d, fmt.Sprintf("PreSleep: %s != %s", t1.PreSleep, t2.PreSleep))
