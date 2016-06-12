@@ -53,11 +53,11 @@ func (w W3CValidHTML) Execute(t *Test) error {
 				"Accept":     {"text/html,application/xhtml+xml"},
 				"User-Agent": {"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36"},
 			},
+			Timeout: Duration(20 * time.Second),
 		},
 		Checks: CheckList{
 			StatusCode{Expect: 200},
 		},
-		Timeout: Duration(20 * time.Second),
 	}
 
 	// TODO: properly limit gloabl rate at which we fire to W3C validator
@@ -463,7 +463,7 @@ func (c *Links) Execute(t *Test) error {
 	if c.Head {
 		method = "HEAD"
 	}
-	timeout := t.Timeout
+	timeout := t.Request.Timeout
 	if c.Timeout > 0 {
 		timeout = c.Timeout
 	}
@@ -477,12 +477,12 @@ func (c *Links) Execute(t *Test) error {
 				FollowRedirects: true,
 				BasicAuthUser:   t.Request.BasicAuthUser,
 				BasicAuthPass:   t.Request.BasicAuthPass,
+				Timeout:         timeout,
 			},
 			Checks: CheckList{
 				StatusCode{Expect: 200},
 			},
 			Verbosity: t.Verbosity - 1,
-			Timeout:   timeout,
 		}
 		test.PopulateCookies(t.Jar, t.Request.Request.URL)
 		if ru, err := url.Parse(r); err == nil &&

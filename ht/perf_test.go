@@ -29,11 +29,11 @@ func setupPerfSuites(t *testing.T) ([]*Suite, *httptest.Server) {
 				"bad":  {"5"},
 			},
 			FollowRedirects: false,
+			Timeout:         Duration(400 * time.Millisecond),
 		},
 		Checks: []Check{
 			StatusCode{200},
 		},
-		Timeout:   Duration(400 * time.Millisecond),
 		Verbosity: 0,
 	}
 	if *verboseTest {

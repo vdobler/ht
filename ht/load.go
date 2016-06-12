@@ -58,9 +58,8 @@ type rawTest struct {
 	// generated from the deserialized data to several real Tests.
 	Unroll map[string][]string `json:",omitempty"`
 
-	Poll        Poll     `json:",omitempty"`
-	Timeout     Duration `json:",omitempty"`
-	Verbosity   int      `json:",omitempty"`
+	Poll        Poll `json:",omitempty"`
+	Verbosity   int  `json:",omitempty"`
 	Criticality Criticality
 
 	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
@@ -77,7 +76,7 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 		Variables:   raw.TestVars,
 		VarEx:       raw.VarEx,
 		Poll:        raw.Poll,
-		Timeout:     raw.Timeout,
+		// Timeout:     raw.Timeout,
 		Verbosity:   raw.Verbosity,
 		PreSleep:    raw.PreSleep,
 		InterSleep:  raw.InterSleep,

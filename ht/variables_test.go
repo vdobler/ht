@@ -34,6 +34,7 @@ var exampleTest = Test{
 		},
 		Body:            "body",
 		FollowRedirects: true,
+		Timeout:         Duration(101),
 	},
 	Checks: CheckList{},
 	VarEx: map[string]Extractor{
@@ -46,7 +47,6 @@ var exampleTest = Test{
 		Max:   106,
 		Sleep: Duration(107),
 	},
-	Timeout:    Duration(101),
 	Verbosity:  102,
 	PreSleep:   Duration(103),
 	InterSleep: Duration(104),

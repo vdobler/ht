@@ -2,9 +2,9 @@
     Name: "Poll server until started",
     Description: "Try until server reports readiness",
     Request: {
-        URL: "http://{{HOST}}/server/ready"
+        URL: "http://{{HOST}}/server/ready",
+        Timeout: "1s",
     },
-    Timeout: "1s",
     Checks: [
         {Check: "StatusCode", Expect: 200},
     ],

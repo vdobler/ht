@@ -172,6 +172,9 @@ type Request struct {
 	BasicAuthUser string
 	BasicAuthPass string
 
+	// Timeout of this request. If zero use DefaultClientTimeout.
+	Timeout Duration `json:",omitempty"`
+
 	Request  *http.Request `json:"-"` // the 'real' request
 	SentBody string        `json:"-"` // the 'real' body
 }
@@ -235,7 +238,6 @@ type Test struct {
 	VarEx map[string]Extractor `json:",omitempty"`
 
 	Poll        Poll        `json:",omitempty"`
-	Timeout     Duration    `json:",omitempty"` // If zero use DefaultClientTimeout.
 	Verbosity   int         `json:",omitempty"` // Verbosity level in logging.
 	Criticality Criticality `json:",omitempty"` // Business criticality of this test
 
@@ -464,8 +466,8 @@ func Merge(tests ...*Test) (*Test, error) {
 		if t.Poll.Sleep > m.Poll.Sleep {
 			m.Poll.Sleep = t.Poll.Sleep
 		}
-		if t.Timeout > m.Timeout {
-			m.Timeout = t.Timeout
+		if t.Request.Timeout > m.Request.Timeout {
+			m.Request.Timeout = t.Request.Timeout
 		}
 		if t.Verbosity > m.Verbosity {
 			m.Verbosity = t.Verbosity
@@ -718,8 +720,8 @@ func (t *Test) prepare(variables map[string]string) error {
 	}
 
 	to := DefaultClientTimeout
-	if t.Timeout > 0 {
-		to = t.Timeout
+	if t.Request.Timeout > 0 {
+		to = t.Request.Timeout
 	}
 
 	if t.Request.FollowRedirects {

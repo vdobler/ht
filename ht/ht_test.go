@@ -252,11 +252,11 @@ func TestRTStats(t *testing.T) {
 				"fail": {"5"},
 			},
 			FollowRedirects: false,
+			Timeout:         Duration(150 * time.Millisecond),
 		},
 		Checks: []Check{
 			StatusCode{200},
 		},
-		Timeout: Duration(150 * time.Millisecond),
 	}
 
 	rtimes := map[string][]string{
@@ -463,6 +463,7 @@ func TestPolling(t *testing.T) {
 					"n": {"3"},
 					"t": {tc.typ},
 				},
+				Timeout: Duration(100 * time.Millisecond),
 			},
 			Checks: []Check{
 				StatusCode{200},
@@ -471,7 +472,6 @@ func TestPolling(t *testing.T) {
 				Max:   tc.max,
 				Sleep: Duration(200),
 			},
-			Timeout: Duration(100 * time.Millisecond),
 		}
 		test.Run(nil)
 		if got := test.Status; got != tc.want {
@@ -496,11 +496,11 @@ func TestClientTimeout(t *testing.T) {
 				"smin": {"100"}, "smax": {"110"},
 			},
 			FollowRedirects: false,
+			Timeout:         Duration(40 * time.Millisecond),
 		},
 		Checks: []Check{
 			StatusCode{200},
 		},
-		Timeout: Duration(40 * time.Millisecond),
 	}
 	start := time.Now()
 	test.Run(nil)

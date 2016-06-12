@@ -723,21 +723,24 @@ during tests execution:
 
 ### Timeouts and Sleep
 
-Tests have some more fields which control timing:
+A Test and its Request have some more fields which control timing:
 
     {
         Name:        "Unic homepage german",
-        Timeout:     "5.3s",
-        Request:     { URL: "https://www.unic.com/de.html" },
+        Request:     {
+                         URL:      "https://www.unic.com/de.html",
+                         Timeout:  "5.3s",
+                     },
         Checks:      [{Check:"StatusCode",Expect:200},{Check:"Body",Contains:"Unic"}],
         PreSleep:    0.5,      //  \   Floating point numbers
         InterSleep:  "9ms",    //   >  are seconds while strings
         PostSleep:   "3m15s"   //  /   are durations.
     }
 
-If you want tot set a different timeout for the requests (dial, send request,
-read full response) you use the `Timeout` field.  Note that the Timeout field
-is part of Test, not Request.
+If you want to set a timeout different from the default timeout for the
+requests you use the Requests's `Timeout` field. The full request needs to
+finish in this time, i.e. dialing, sending the request and reading the full
+response.
 
 The `Pre`-, `Inter`- and `Post`-Sleep fields control how much time is slept
 before starting the test, between the request and the checks and after the

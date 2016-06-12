@@ -39,6 +39,7 @@ var sampleTestJSON = `{
         ],
         Body: "RequestBody",
         FollowRedirects: true,
+        Timeout: "3.5s",
     },
     Checks: [
         {Check: "StatusCode", Expect: 200},
@@ -55,7 +56,6 @@ var sampleTestJSON = `{
         Max: 3,
         Sleep: "5432ms",
     },
-    Timeout: "3.5s",
     Verbosity: 1,
     Criticality: "Warn",
     PreSleep: "11ms",
@@ -104,7 +104,7 @@ func TestFindRawTest(t *testing.T) {
 	if rt.Poll.Max != 3 || rt.Poll.Sleep != Duration(5432*time.Millisecond) {
 		t.Errorf("Got Test == %#v", *rt)
 	}
-	if rt.Timeout != Duration(3500*time.Millisecond) {
+	if rt.Request.Timeout != Duration(3500*time.Millisecond) {
 		t.Errorf("Got Test == %#v", *rt)
 	}
 	if rt.PreSleep != Duration(11*time.Millisecond) {
@@ -226,6 +226,7 @@ func TestRawTestToTest(t *testing.T) {
 			},
 			Body:            "RequestBody",
 			FollowRedirects: true,
+			Timeout:         3500000000,
 		},
 		Variables: map[string]string{
 			"TEST_NAME": "sample.ht",
@@ -247,7 +248,6 @@ func TestRawTestToTest(t *testing.T) {
 			Max:   3,
 			Sleep: 5432000000,
 		},
-		Timeout:     3500000000,
 		Verbosity:   1,
 		Criticality: 3,
 		PreSleep:    11000000,
@@ -286,6 +286,9 @@ func differences(t1, t2 *Test) (d []string) {
 		d = append(d, fmt.Sprintf("FollowRedirects: %t != %t",
 			t1.Request.FollowRedirects, t2.Request.FollowRedirects))
 	}
+	if t1.Request.Timeout != t2.Request.Timeout {
+		d = append(d, fmt.Sprintf("Timeout: %s != %s", t1.Request.Timeout, t2.Request.Timeout))
+	}
 
 	d = append(d, mapToSliceDifference("Params", t1.Request.Params, t2.Request.Params)...)
 	d = append(d, mapToSliceDifference("Header", t1.Request.Header, t2.Request.Header)...)
@@ -302,9 +305,6 @@ func differences(t1, t2 *Test) (d []string) {
 
 	if t1.Poll != t2.Poll {
 		d = append(d, fmt.Sprintf("Poll: %v != %v", t1.Poll, t2.Poll))
-	}
-	if t1.Timeout != t2.Timeout {
-		d = append(d, fmt.Sprintf("Timeout: %s != %s", t1.Timeout, t2.Timeout))
 	}
 	if t1.Verbosity != t2.Verbosity {
 		d = append(d, fmt.Sprintf("Verbosity: %d != %d", t1.Verbosity, t2.Verbosity))
