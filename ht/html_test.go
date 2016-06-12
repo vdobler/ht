@@ -103,6 +103,17 @@ var htmlContainsTests = []TC{
 		Text: []string{`Large 24" Monitor`}}, nil},
 	{hcr, &HTMLContains{Selector: "p",
 		Text: []string{`Small 12" Monitor`}}, nil},
+	// Nice error messages
+	{hcr, &HTMLContains{Selector: "p.X span.X",
+		Text: []string{"Foo"}}, fmt.Errorf(`missing "Foo", have ["World"]`)},
+	{hcr, &HTMLContains{Selector: "p.Y span.Y",
+		Text: []string{"Foo"}}, errTagNotFound},
+	{hcr, &HTMLContains{Selector: "li", InOrder: true,
+		Text: []string{"Foo", "Bar", "Waz", "One", "missing", "Second"}},
+		fmt.Errorf(`missing "missing", have ["Second" "Three"]`)},
+	{hcr, &HTMLContains{Selector: "p.X",
+		Text: []string{"missing"}},
+		fmt.Errorf(`missing "missing", have ["Hello World" "Thanks!"]`)},
 }
 
 func TestHTMLContains(t *testing.T) {

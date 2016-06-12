@@ -259,6 +259,9 @@ func (c *HTMLContains) Execute(t *Test) error {
 	}
 
 	matches := c.sel.MatchAll(doc)
+	if len(matches) == 0 {
+		return errTagNotFound
+	}
 	actual := make([]string, len(matches))
 	for i, m := range matches {
 		actual[i] = TextContent(m, c.Raw)
@@ -274,7 +277,7 @@ func (c *HTMLContains) Execute(t *Test) error {
 			}
 		}
 		if found < 0 {
-			return fmt.Errorf("missing %q", want)
+			return fmt.Errorf("missing %q, have %q", want, actual[last:])
 		}
 		if c.InOrder {
 			last = found + 1
@@ -289,6 +292,8 @@ func (c *HTMLContains) Execute(t *Test) error {
 	}
 	return nil
 }
+
+var errTagNotFound = fmt.Errorf("tag not found")
 
 // Prepare implements Check's Prepare method.
 func (c *HTMLContains) Prepare() (err error) {

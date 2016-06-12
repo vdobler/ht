@@ -290,8 +290,10 @@ func runTest(t *testing.T, i int, tc TC) {
 					i, NameOf(tc.c), tc.c, got, got)
 			}
 		default:
-			t.Errorf("%d. %s %v: got %T of type \"%v\", want %T",
-				i, NameOf(tc.c), tc.c, got, got, tc.e)
+			if tc.e.Error() != got.Error() {
+				t.Errorf("%d. %s %v: got \"%v\" of type %T , want \"%v\" %T",
+					i, NameOf(tc.c), tc.c, got, got, tc.e, tc.e)
+			}
 		}
 	}
 }
