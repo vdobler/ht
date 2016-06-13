@@ -34,10 +34,12 @@ func Filename(name string) string {
 		switch r {
 		// Some characters just do not belong into a filename.
 		// Several of these charaters are forbidden in Windows, others
-		// require quoting in normal shells and the rest is disliked by me.
-		// Note that '&' will be replaced by "_and_" and not just dropped.
-		case '"', ':', '/', '\\', '(', ')', '?', '*', '\n', '\t', '\r', ' ',
-			'{', '|', '}', '[', ']', '!', '#', '%', '<', '>', '~', '^', '\'':
+		// require quoting in normal shells and the rest is disliked
+		// by me. Note that '&' will be replaced by "_and_" and not
+		// just dropped.
+		case '"', ':', '/', '\\', '(', ')', '?', '*', '\n', '\t', '\r',
+			' ', '{', '|', '}', '[', '¦', ']', '!', '#', '%', '<',
+			'>', '~', '^', '\'', '`', '°', '§':
 			buf.WriteRune('_')
 		default:
 			buf.WriteRune(r)
@@ -46,7 +48,6 @@ func Filename(name string) string {
 	name = buf.String()
 	buf.Reset()
 	for _, r := range name {
-		// name = strings.Replace(name, ccr.orig, ccr.repl, -1)
 		if repl, ok := commonCharacterReplacements[r]; ok {
 			buf.WriteString(repl)
 		} else {
