@@ -13,11 +13,11 @@ import (
 	"os"
 	"path"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/sanitize"
 )
 
 var cmdExec = &Command{
@@ -46,44 +46,6 @@ func init() {
 
 var (
 	serialFlag bool
-	sanitizer  = strings.NewReplacer(
-		" ", "_",
-		":", "_",
-		"@", "_at_",
-		"/", "_",
-		"\\", "_",
-		"*", "_",
-		"?", "_",
-		"!", "_",
-		"|", "_",
-		"¦", "_",
-		"#", "_",
-		"$", "Dollar",
-		"€", "Euro",
-		"£", "Pound",
-		"<", "_gt_",
-		">", "_lt_",
-		"~", "_",
-		"%", "Percent",
-		"&", "+",
-		"(", "_", ")", "_",
-		"[", "_", "]", "_",
-		"{", "_", "}", "_",
-		"'", "_",
-		"`", "_",
-		"\"", "_",
-		"^", "_",
-		"°", "_",
-		"§", "_",
-		"ä", "ae", "ö", "oe", "ü", "ue",
-		"Ä", "Ae", "Ö", "Oe", "Ü", "Ue",
-		"é", "e", "è", "e", "ê", "e",
-		"á", "a", "à", "a", "â", "a",
-		"ó", "o", "ò", "o", "ô", "o",
-		"ú", "u", "ù", "u", "û", "u",
-		"ç", "c",
-		"ß", "ss",
-	)
 )
 
 func runExecute(cmd *Command, suites []*ht.Suite) {
@@ -112,7 +74,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			total++
 		}
 
-		dirname := outputDir + "/" + sanitizer.Replace(suites[s].Name)
+		dirname := outputDir + "/" + sanitize.Filename(suites[s].Name)
 		log.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
 		err := os.MkdirAll(dirname, 0766)
 		if err != nil {
