@@ -140,13 +140,17 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
 
 	if totalBogus > 0 {
+		fmt.Println("BOGUS")
 		os.Exit(3)
 	} else if totalError > 0 {
+		fmt.Println("ERROR")
 		os.Exit(2)
 	} else if totalFailed > 0 {
+		fmt.Println("FAIL")
 		os.Exit(1)
 	}
 
+	fmt.Println("PASS")
 	os.Exit(0)
 }
 
