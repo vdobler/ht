@@ -26,6 +26,7 @@ import (
 func init() {
 	RegisterCheck(&Screenshot{})
 	RegisterCheck(&RenderedHTML{})
+	RegisterCheck(RenderingTime{})
 }
 
 // PhantomJSExecutable is command to run PhantomJS. Use an absolute path if
@@ -38,6 +39,7 @@ var PhantomJSExecutable = "phantomjs"
 
 const debugScreenshot = false
 const debugRenderedHTML = false
+const debugRenderingTime = false
 
 // ----------------------------------------------------------------------------
 // Screenshot
@@ -514,7 +516,7 @@ func (r RenderedHTML) content(t *Test) (string, error) {
 		defer os.Remove(script)
 	}
 
-	err = r.writeScript(file, t)
+	err = writePhantomScript(file, t, "console.log(''+page.content);")
 	if err != nil {
 		return "", err // TODO: wrap to mark as bogus ?
 	}
@@ -550,11 +552,11 @@ setTimeout(function() {
 var page = require('webpage').create();
 var theContent = %q;
 var theURL = %q;
-%s
+%s  // <-- The cookies
 page.onLoadFinished = function(status){
     if(status === 'success') {
         console.log('PASS');
-        console.log(''+page.content);
+        %s // <-- the action
     } else {
         console.log('FAIL rendering');
     }
@@ -564,7 +566,7 @@ page.setContent(theContent, theURL);
 `
 
 // TODO: refactor by extracting common stuff from Screenshot.writeScript
-func (r *RenderedHTML) writeScript(file *os.File, t *Test) error {
+func writePhantomScript(file *os.File, t *Test, action string) error {
 	defer file.Close() // eat error, sorry
 
 	phantomCookies := ""
@@ -583,7 +585,74 @@ func (r *RenderedHTML) writeScript(file *os.File, t *Test) error {
 	_, err := fmt.Fprintf(file, renderedHTMLScript,
 		t.Name, 15000,
 		t.Response.BodyStr, t.Request.Request.URL.String(),
-		phantomCookies,
+		phantomCookies, action,
 	)
 	return err
+}
+
+// ----------------------------------------------------------------------------
+// RenderingTime
+
+// RenderingTime limits the maximal allowed time to render a whole HTML page.
+//
+// The "rendering time" is the response time plus how long it takes PhantomJS
+// to load all referenced assets and render the page. For obvious reason this
+// cannot be determined with absolute accuracy.
+type RenderingTime struct {
+	Max Duration
+}
+
+// Prepare implements Check's Prepare method.
+func (d RenderingTime) Prepare() error { return nil }
+
+// Execute implements Check's Execute method.
+func (d RenderingTime) Execute(t *Test) error {
+	if t.Response.BodyErr != nil {
+		return ErrBadBody
+	}
+
+	file, err := tempfile.TempFile("", "renderingtime-", ".js")
+	if err != nil {
+		return err // TODO: wrap to mark as bogus ?
+	}
+	script := file.Name()
+	if !debugRenderingTime {
+		defer os.Remove(script)
+	}
+	err = writePhantomScript(file, t, "")
+	if err != nil {
+		return err // TODO: wrap to mark as bogus ?
+	}
+	if debugRenderingTime {
+		fmt.Println("Created PhantomJS script:", script)
+	}
+
+	start := time.Now()
+	cmd := exec.Command(PhantomJSExecutable, script)
+	output, err := cmd.CombinedOutput()
+	took := time.Since(start)
+	if debugRenderingTime {
+		fmt.Println("PhantomJS output:", string(output))
+	}
+	if err != nil {
+		return err
+	}
+	if !bytes.HasPrefix(output, []byte("PASS\n")) {
+		return fmt.Errorf("Problems with PhantomJS: %q", string(output))
+	}
+
+	// Substract overhead for invoking PhantomJS.
+	// The overhead was determined by running TestRenderingTimeOffset
+	// with debugRenderingTime==true on my local machine.
+	// As TestRenderingTimeOffset does compute the arithemtic mean
+	// this must be considered a valid scientific studie. At least
+	// in social sience standards.
+	took -= time.Duration(99 * time.Millisecond)
+
+	total := took + time.Duration(t.Response.Duration)
+	if total <= time.Duration(d.Max) {
+		return nil
+	}
+
+	return fmt.Errorf("total time %s", total)
 }

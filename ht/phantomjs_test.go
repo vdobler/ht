@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"testing"
+	"time"
 )
 
 var geometryTests = []struct {
@@ -183,6 +186,8 @@ func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 		user := "Anon"
 		if cookie, err := r.Cookie("user"); err == nil {
 			user = cookie.Value
+		} else {
+			time.Sleep(80 * time.Millisecond)
 		}
 		w.Header().Set("Content-Type", "application/javascript")
 		w.WriteHeader(http.StatusOK)
@@ -452,5 +457,75 @@ func TestRenderedHTMLPassing(t *testing.T) {
 					i, test.Name, test.Status, test.Error)
 			}
 		}
+	}
+}
+
+// ----------------------------------------------------------------------------
+// RenderingTime
+
+func TestRenderingTimeOffset(t *testing.T) {
+	if !debugRenderingTime || !testing.Verbose() {
+		return
+	}
+	ioutil.WriteFile("testdata/exit.js", []byte("phantom.exit();\n"), 0666)
+	defer os.Remove("testdata/exit.js")
+
+	total := time.Duration(0)
+	for i := 0; i < 25; i++ {
+		start := time.Now()
+		cmd := exec.Command(PhantomJSExecutable, "exit.js")
+		cmd.CombinedOutput()
+		total += time.Since(start)
+	}
+	t.Logf("PhantomJS invocation takes %s.", total/25)
+}
+
+var passingRenderingTimeTests = []*Test{
+	&Test{
+		Name:    "Welcome Anonymous, rendered body",
+		Request: Request{URL: "/welcome"},
+		Checks: []Check{
+			&RenderingTime{Max: Duration(80 * time.Millisecond)},
+		},
+	},
+	&Test{Request: Request{URL: "/login?user=Joe"}},
+	&Test{
+		Name:    "Welcome Joe",
+		Request: Request{URL: "/welcome"},
+		Checks: []Check{
+			&RenderingTime{Max: Duration(120 * time.Millisecond)},
+		},
+	},
+}
+
+func TestRenderingTime(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(screenshotHandler))
+	defer ts.Close()
+
+	for i := range passingRenderingTimeTests {
+		u := ts.URL + "/screenshot" + passingRenderingTimeTests[i].Request.URL
+		passingRenderingTimeTests[i].Request.URL = u
+	}
+	suite := Suite{
+		KeepCookies: true,
+		Tests:       passingRenderingTimeTests,
+	}
+
+	err := suite.Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	suite.Execute()
+	if *verboseTest {
+		suite.PrintReport(os.Stdout)
+	}
+
+	if test := suite.Tests[0]; test.Status != Fail {
+		t.Errorf("%s, %s: %s",
+			test.Name, test.Status, test.Error)
+	}
+	if test := suite.Tests[1]; test.Status != Pass {
+		t.Errorf("%s, %s: %s",
+			test.Name, test.Status, test.Error)
 	}
 }

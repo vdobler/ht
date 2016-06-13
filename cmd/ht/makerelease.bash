@@ -30,10 +30,10 @@ echo "### Windows version"
 GOOS=windows GOARCH=amd64 $GO build -o ht_windows.exe -ldflags "$LDFLAGS"
 
 echo
-echo "### Check documentation"
-(cd ../../ht/; ./list-checks.bash;)
-mv ../../ht/Checks.{html,pdf} .
-ls -l Checks.{html,pdf}
+echo "### Documentation"
+(cd ../../ht/; ./generate-doc.bash;)
+mv ../../ht/Documentation.{html,pdf} .
+ls -l Documentation.{html,pdf}
 
 source <($GO env)
 echo
