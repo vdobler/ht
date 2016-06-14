@@ -198,7 +198,12 @@ func TestHTMLLinksExtraction(t *testing.T) {
   <a href="/path/link4#nav">Link4</a>
   <a href="http://www.google.com">Google</a>
   <a href="rel/path">Page</a>
-  <img src="http://www.amazon.com/logo.png">
+  <img src="http://www.amazon.com/logo.png" />
+  <iframe src="http://i.frame"></iframe>
+  <video src="/video/greet.mpg">
+    <source src='/video/greet.ogv' type='video/ogg'>
+  </video>
+  <audio src="/audio/sound.wav"> </audio>
 </body>
 </html>`
 
@@ -219,6 +224,10 @@ func TestHTMLLinksExtraction(t *testing.T) {
 		{"link", "http://www.example.org/impressum.html"},
 		{"a", "http://www.example.org/path/link4 http://www.google.com http://www.example.org/foo/rel/path"},
 		{"script", "http://www.example.org/js/jquery.js"},
+		{"iframe", "http://i.frame"},
+		{"video", "http://www.example.org/video/greet.mpg"},
+		{"audio", "http://www.example.org/audio/sound.wav"},
+		{"source", "http://www.example.org/video/greet.ogv"},
 	} {
 
 		check := Links{Which: tc.which}
@@ -380,5 +389,95 @@ func TestHTMLLinksBroken(t *testing.T) {
 	}
 	if len(called) != 5 {
 		t.Errorf("Unexpected error: %v", called)
+	}
+}
+
+var mixedContentBody = `<!doctype html>
+<html><body>
+  <img src="/absolute">
+  <img src="./relative">
+  <img src="http://%s/unsecure">
+  <img src="https://%s/secure">
+  <a href="http://%s/unsec-a"></a>
+</body></html>`
+
+func htmlDummyLinksHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Dummy Link Handler", http.StatusOK)
+}
+
+func TestLinksMixedContent(t *testing.T) {
+	ts1 := httptest.NewServer(http.HandlerFunc(htmlDummyLinksHandler))
+	defer ts1.Close()
+	ts2 := httptest.NewTLSServer(http.HandlerFunc(htmlDummyLinksHandler))
+	defer ts2.Close()
+	Transport.TLSClientConfig.InsecureSkipVerify = true
+	defer func() { Transport.TLSClientConfig.InsecureSkipVerify = false }()
+	u1, _ := url.Parse(ts1.URL + "/foo")
+	u2, _ := url.Parse(ts2.URL + "/foo")
+	body := fmt.Sprintf(mixedContentBody, u1.Host, u2.Host, u1.Host)
+
+	for i, tc := range []struct {
+		origin *url.URL
+		policy string
+		mixed  bool
+		want   string
+	}{
+		// HTML page is from http.
+		{u1, "blabla", false, ""},
+		{u1, "blabla", true, ""},
+		{u1, "upgrade-insecure-requests", false, ""},
+		{u1, "upgrade-insecure-requests", true, ""},
+
+		// HTML page via https, but dont fail on mixed content.
+		{u2, "blabla", false, ""},
+		{u2, "upgrade-insecure-requests", false, ""},
+
+		// HTML page via https, and fail on mixed content.
+		{u2, "blabla", true, "/unsecure  -->  un-upgraded"},
+		// The following is hard to test: Links upgrades
+		// http://localhost:<portOfHttp> to http://localhost:<portOfHttp>
+		// as upgrading just involes URL scheme changes (not the port).
+		// thus the error. But this error is expected.
+		{u2, "upgrade-insecure-requests", true, "/unsec-a: http: server gave HTTP response"},
+	} {
+		test := &Test{
+			Request: Request{
+				URL: tc.origin.String(),
+				Request: &http.Request{
+					URL: tc.origin,
+				},
+			},
+			Response: Response{
+				BodyStr: body,
+				Response: &http.Response{
+					Header: http.Header{
+						"Content-Security-Policy": []string{tc.policy},
+					},
+				},
+			},
+		}
+
+		check := &Links{Which: "img a", FailMixedContent: tc.mixed}
+		err := check.Prepare()
+		if err != nil {
+			t.Fatalf("%d: unexpected error: %#v", i, err)
+		}
+
+		err = check.Execute(test)
+		if err == nil {
+			if tc.want != "" {
+				t.Errorf("%d: missing error, want %s", i, tc.want)
+			}
+		} else {
+			if strings.Contains(err.Error(), "/unsec-a  -->  un-upgraded") {
+				t.Errorf("%d: anchor tag treated as mixed content: %s", i, err)
+			}
+			if tc.want == "" {
+				t.Errorf("%d: unexpected error %s", i, err)
+			} else if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("%d: wrong error %s, expecting %s in it", i, err, tc.want)
+			}
+		}
+
 	}
 }

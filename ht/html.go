@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -394,9 +395,17 @@ func textContentRec(n *html.Node, raw bool) string {
 // Links
 
 // Links checks links and references in HTML pages for availability.
+//
+// It can reports mixed content as a failure by setting FailMixedContent.
+// (See https://w3c.github.io/webappsec-mixed-content/). Links will
+// upgrade any non-anchor links if the original reqesponse contains
+//     Content-Security-Policy: upgrade-insecure-requests
+// in the HTTP header.
 type Links struct {
-	// Which links to test; a combination of "a", "img", "link" and "script".
-	// E.g. use "a img" to check the href of all a tags and src of all img tags.
+	// Which links to test; a space seperated list of tag tag names:
+	//     'a',   'link',  'img',  'script', 'video', 'audio', 'source'
+	// E.g. use "a img" to check the href attribute of all a-tags and
+	// the src attribute of all img-tags.
 	Which string
 
 	// Head triggers HEAD requests instead of GET requests.
@@ -413,12 +422,17 @@ type Links struct {
 	// all links.
 	OnlyLinks, IgnoredLinks []Condition `json:",omitempty"`
 
+	// FailMixedContent will report a failure for any mixed content
+	// if
+	FailMixedContent bool
+
 	tags []string
 }
 
 // collectURLs returns the URLs selected by Which and OnlyLinks and IgnoredLinks
-// as the map keys. The URLs are absolute URLs.
-func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
+// as the map keys. The URLs are absolute URLs. The map value reports if the
+// URL is t
+func (c *Links) collectURLs(t *Test) (map[string]bool, error) {
 	if t.Response.BodyErr != nil {
 		return nil, ErrBadBody
 	}
@@ -428,8 +442,9 @@ func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 	}
 
 	// Collect all non-ignored URL as map keys (for automatic deduplication).
-	refs := make(map[string]struct{})
+	refs := make(map[string]bool)
 	for _, tag := range c.tags {
+		isAnchor := tag == "a"
 	outer:
 		for _, u := range c.linkURL(doc, tag, t.Request.Request.URL) {
 			for i, cond := range c.OnlyLinks {
@@ -445,7 +460,10 @@ func (c *Links) collectURLs(t *Test) (map[string]struct{}, error) {
 					continue outer
 				}
 			}
-			refs[u] = struct{}{}
+			// As a-tags are processed first this will clear the
+			// isAnchor flag for URLs which are linked in a-tags
+			// and e.g. in an img-tag.
+			refs[u] = isAnchor
 		}
 	}
 
@@ -467,8 +485,36 @@ func (c *Links) Execute(t *Test) error {
 	if c.Timeout > 0 {
 		timeout = c.Timeout
 	}
+	upgrade := false
+	if resp := t.Response.Response; resp != nil {
+		csp := resp.Header.Get("Content-Security-Policy")
+		upgrade = strings.Contains(csp, "upgrade-insecure-requests") // sorry
+	}
 
-	for r := range refs {
+	broken := ErrorList{} // List of all "broken links".
+
+	// Check for mixed content if desired and needed
+	var urefs map[string]bool // links after possible upgrading
+	if !c.FailMixedContent || !strings.HasPrefix(t.Request.URL, "https") {
+		// Original request was not https, so no mixed content.
+		urefs = refs
+	} else {
+		urefs = make(map[string]bool)
+		for r, isA := range refs {
+			if strings.HasPrefix(r, "http:") {
+				if upgrade {
+					r = "https:" + r[5:]
+				} else if !isA {
+					broken = append(broken,
+						fmt.Errorf("%s  -->  un-upgraded mixed content", r))
+				}
+				urefs[r] = isA
+			}
+		}
+	}
+
+	// Construct suite which checks all links by making a request.
+	for r := range urefs {
 		test := &Test{
 			Name: r,
 			Request: Request{
@@ -503,7 +549,6 @@ func (c *Links) Execute(t *Test) error {
 	}
 	suite.ExecuteConcurrent(conc)
 	if suite.Status != Pass {
-		broken := ErrorList{}
 		for _, test := range suite.Tests {
 			if test.Status == Error || test.Status == Bogus {
 				broken = append(broken, fmt.Errorf("%s  -->  %s",
@@ -514,6 +559,9 @@ func (c *Links) Execute(t *Test) error {
 					test.Response.Response.StatusCode))
 			}
 		}
+	}
+
+	if len(broken) > 0 {
 		return broken
 	}
 	return nil
@@ -554,6 +602,10 @@ var linkURLattr = map[string]struct {
 	"img":    {"src", cascadia.MustCompile("img")},
 	"script": {"src", cascadia.MustCompile("script")},
 	"link":   {"href", cascadia.MustCompile("link")},
+	"video":  {"src", cascadia.MustCompile("video")},
+	"audio":  {"src", cascadia.MustCompile("audio")},
+	"source": {"src", cascadia.MustCompile("source")},
+	"iframe": {"src", cascadia.MustCompile("iframe")},
 }
 
 // Prepare implements Check's Prepare method.
@@ -563,7 +615,7 @@ func (c *Links) Prepare() (err error) {
 		tag = strings.TrimSpace(tag)
 		switch tag {
 		case "": // ignored
-		case "a", "img", "link", "script":
+		case "a", "img", "link", "script", "video", "audio", "source", "iframe":
 			c.tags = append(c.tags, tag)
 		default:
 			fmt.Println("Bad", tag)
@@ -574,5 +626,6 @@ func (c *Links) Prepare() (err error) {
 	if len(c.tags) == 0 {
 		return fmt.Errorf("Bad or missing value for Which: %q", c.Which)
 	}
+	sort.Strings(c.tags) // Move a (if present) to front.
 	return nil
 }
