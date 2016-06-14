@@ -41,7 +41,7 @@ func init() {
 type ValidHTML struct {
 	// Ignore is a space separated list of issues to ignore.
 	// You normaly won't skip detection of these issues as all issues
-	// are fundamental flaw which are easy to fix.
+	// are fundamental flaws which are easy to fix.
 	Ignore string `json:",omitempty"`
 }
 
