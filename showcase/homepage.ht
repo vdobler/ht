@@ -12,9 +12,9 @@
         URL: "http://{{HOST}}/",
         ParamsAs: "URL",  // query parameters, default, but be explicit
         Params: {
-            when: "today",             // results in index.html/?when=today
-            primes: [ "2", "7", "13"], // multiple values are possible
-            info: "A<?>B €",           // proper encoding is done automatically
+            when:   "today",            // results in index.html/?when=today
+            primes: [ "2", "7", "13"],  // multiple values are possible
+            info:   "A<?>B €",          // proper encoding is done automatically
             weight: "12.34",           
         },
         // run checks after following all redirects
@@ -68,11 +68,11 @@
 
         // Latency distribution.
         {Check: "Latency",
-            N: 200,         // measure 100 request
+            N:  200,         // measure 200 request
             Concurrent: 5,  // at 5 concurrent request
-            Limits: "50% ≤ 6ms; 80% ≤ 8ms; 99% ≤ 9ms",
-            IndividualSessions: true,
-            SkipChecks: true,
+            Limits:  "50% ≤ 6ms; 80% ≤ 8ms; 99% ≤ 9ms",  // several percentil limits
+            IndividualSessions: true,  //  each of the 5 parallel request have own session
+            SkipChecks:         true,
         },
 
         // There should not be any dead links.
@@ -93,5 +93,35 @@
             ],
         },
 
+	// Produce screenshot via PhantomJS and compare to expected screenshot
+	{Check: "Screenshot",
+            Geometry: "800x600+0+0*125%",   // Small (800x600) screen, top left, 125% Zoom
+            Expected: "{{TESTDIR}}/homepage.golden.png",  // golden record to compare to
+	    Actual:   "/tmp/homepage.png",  // keep actual for debugging purpose
+            AllowedDifference: 67,  // 67 pixels difference is okay
+            IgnoreRegion: [         // these rectangles are not compared at all
+	        "45x12+120+200", "80x80+720+520",
+            ],
+            // Evaluate this JavaScript in the page before screenshooting
+	    // to turn of external ads or that like.
+            Script: "$('#rmargin .external-ad').css('visibility', 'hidden');",
+        },
+
+	// Let PhantomJS evaluate the JavaScript and check the resulting HTML/DOM.
+        {Check: "RenderedHTML",
+            // Run these checks on the HTML after processing all JavaScript, e.g.
+	    // because the news list is populated dynamically.
+            Checks: [
+	        {Check: "HTMLContains",
+                    Selector: "#news li",
+                    Text: [ "Moon consists of chees!", "Pigs can fly", "P != NP" ],
+                    Complete: true,
+		    InOrder: true,
+                },
+            ],
+        },
+
+	// Check how long it takes to load everything needed (CSS, JavaScript, images).
+	{Check: "RenderingTime", Max: "421ms"},
     ],
 }
