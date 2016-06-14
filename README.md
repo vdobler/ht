@@ -14,17 +14,16 @@ Goals
 
 ht tries to achieve the following:
 * Make generating all common HTTP requests easy.
-* Provide high- and low-level checks on the received response. 
+* Provide high- and low-level checks on the received response.
 * Make measuring response times easy.
-* Make it easy to generate a certain load.
 
 
 Non-Goals
 ---------
 
 ht is not the jack of all trades in testing web applications:
-* Simulating browsers (evaluating JavaScript or even rendering
-  is not done.
+* Simulating different browsers is not done.
+* Simulating interactions in a browser is not done.
 
 
 Installation
@@ -39,6 +38,9 @@ Installing ht should be simple if Go 1.5 and git are available and working:
     `$GOPATH/bin/ht quick <URL-of-HTML-page>`
 
   and check the generated `Report.html` file.
+
+If you want to run checks on rendered HTML pages you need a local installation
+of PhantomJS in version >= 2.0. See http://phantomjs.org .
 
 
 Documentation

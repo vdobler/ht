@@ -348,7 +348,6 @@ var failingScreenshotTests = []*Test{
 func TestScreenshotFail(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(screenshotHandler))
 	defer ts.Close()
-	println(ts.URL)
 
 	for i := range failingScreenshotTests {
 		u := ts.URL + "/screenshot" + failingScreenshotTests[i].Request.URL

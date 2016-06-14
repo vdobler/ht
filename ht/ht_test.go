@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -355,6 +356,7 @@ func echoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var (
+	pollingHandlerMu       = &sync.Mutex{}
 	pollingHandlerFailCnt  = 0
 	pollingHandlerErrorCnt = 0
 )
@@ -414,6 +416,8 @@ func pollingHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err.Error())
 	}
 
+	pollingHandlerMu.Lock()
+	defer pollingHandlerMu.Unlock()
 	switch what := r.FormValue("t"); what {
 	case "fail":
 		pollingHandlerFailCnt++
@@ -453,7 +457,9 @@ func TestPolling(t *testing.T) {
 		{max: 1, typ: "error", want: Error},
 		{max: 5, typ: "error", want: Pass},
 	} {
+		pollingHandlerMu.Lock()
 		pollingHandlerFailCnt, pollingHandlerErrorCnt = 0, 0
+		pollingHandlerMu.Unlock()
 		test := Test{
 			Name: "Polling",
 			Request: Request{
