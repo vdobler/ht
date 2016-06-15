@@ -108,8 +108,7 @@ done:
 					state.recordLabel(val)
 				case key == "lang":
 					state.checkLang(val)
-				case (tag == "a" && key == "href") ||
-					(tag == "img" && key == "src"): // TODO link?
+				case isURLAttr(tag, key):
 					state.checkURL(val)
 				}
 			}
@@ -148,6 +147,14 @@ done:
 		return nil
 	}
 	return state.errors
+}
+
+// return true if attr contains the URL of the tag.
+func isURLAttr(tag, attr string) bool {
+	if a, ok := linkURLattr[tag]; ok {
+		return attr == a.attr
+	}
+	return false
 }
 
 // Prepare implements Check's Prepare method.
