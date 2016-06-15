@@ -35,7 +35,8 @@ func init() {
 //
 // Parameters and Header values can undergo several different types of
 // modifications
-//   * all:       all the individual modifications below
+//   * all:       all the individual modifications below (excluding 'space'
+//                for HTTP headers)
 //   * drop:      don't send at all
 //   * none:      don't modify the individual parameters or header but
 //                don't send any parameters or headers
@@ -43,8 +44,10 @@ func init() {
 //   * twice:     send two different values (original and "extraValue")
 //   * change:    change a single character (first, middle and last one)
 //   * delete:    drop single character (first, middle and last one)
-//   * nonsense:  the values "p,f1u;p5c:h*", "hubba%12bubba(!" and "\t \v \r \n "
-//   * malicious: the values "\x00\x00", "\uFEFF\u200B\u2029", "ʇunpᴉpᴉɔuᴉ",
+//   * nonsense:  the values "p,f1u;p5c:h*", "hubba%12bubba(!" and "   "
+//   * space:     the values " ", "       ", "\t", "\n", "\r", "\v", "\u00A0",
+//                "\u2003", "\u200B", "\x00\x00", and "\t \v \r \n "
+//   * malicious: the values "\uFEFF\u200B\u2029", "ʇunpᴉpᴉɔuᴉ",
 //                "http://a/%%30%30" and "' OR 1=1 -- 1"
 //   * user       use user defined values from Values
 //   * empty:     ""
@@ -75,7 +78,7 @@ func init() {
 type Resilience struct {
 	// Methods is the space separated list of HTTP methods to check,
 	// e.g. "GET POST HEAD". The empty value will test the original
-	// method of the test.
+	// method of the test only.
 	Methods string `json:",omitempty"`
 
 	// ModParam and ModHeader control which modifications of parameter values
@@ -104,7 +107,7 @@ type Resilience struct {
 	// If Checks is empty, only a simple NoServerError will be executed.
 	Checks CheckList `json:",omitempty"`
 
-	// Values contains a list of values to use as header and parmater values.
+	// Values contains a list of values to use as header and parameter values.
 	// Note that header and parameter checking uses the same list of Values,
 	// you might want to do two Resilience checks, one for the headers and one
 	// for the parameters.
@@ -137,6 +140,8 @@ func (r Resilience) Execute(t *Test) error {
 
 			// Modify each header individually.
 			wantedMods, _ := parseModifications(r.ModHeader)
+			// clear 'space' modification which is unsuitable for HTTP headers
+			wantedMods ^= modSpace
 			for name, origvals := range t.Request.Header {
 				for _, modvals := range r.modify(origvals, wantedMods) {
 					rt := r.resilienceTest(t, method, t.Request.ParamsAs)
@@ -283,6 +288,7 @@ const (
 	modChange
 	modDelete
 	modNonsense
+	modSpace
 	modMalicious
 	modUser
 	modEmpty
@@ -294,7 +300,7 @@ const (
 	modAll = 2*modTiny - 1
 )
 
-var modNames = strings.Split("none drop double twice change delete nonsense malicious user empty type large negative tiny", " ")
+var modNames = strings.Split("none drop double twice change delete nonsense space malicious user empty type large negative tiny", " ")
 
 func parseModifications(s string) (modification, error) {
 	m := modNone
@@ -377,12 +383,25 @@ func (r Resilience) modify(orig []string, mod modification) [][]string {
 	if mod&modNonsense != 0 {
 		list = append(list, []string{"p,f1u;p5c:h*"})    // arbitrary garbage
 		list = append(list, []string{"hubba%12bubba(!"}) // arbitrary garbage
-		list = append(list, []string{"\t \v \r \n "})    // arbitrary garbage
+
+	}
+
+	if mod&modSpace != 0 {
+		list = append(list, []string{" "})
+		list = append(list, []string{"       "})
+		list = append(list, []string{"\t"})
+		list = append(list, []string{"\n"})
+		list = append(list, []string{"\r"})
+		list = append(list, []string{"\v"})
+		list = append(list, []string{"\x00\x00"})
+		list = append(list, []string{"\u00A0"})
+		list = append(list, []string{"\u2003"})
+		list = append(list, []string{"\u200B"})
+		list = append(list, []string{"\t \v \r \n "})
 	}
 
 	if mod&modMalicious != 0 {
 		// list = append(list, []string{"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"})
-		list = append(list, []string{"\x00\x00"})
 		list = append(list, []string{"\uFEFF\u200B\u2029"})
 		list = append(list, []string{"ʇunpᴉpᴉɔuᴉ"})
 		list = append(list, []string{"http://a/%%30%30"})
