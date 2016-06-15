@@ -55,6 +55,7 @@ func init() {
 	commands = []*Command{
 		cmdVersion,
 		cmdHelp,
+		cmdDoc,
 		cmdRecord,
 		cmdList,
 		cmdQuick,
