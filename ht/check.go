@@ -8,9 +8,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"strings"
-
 	"reflect"
+	"strings"
 
 	"github.com/vdobler/ht/internal/json5"
 )
@@ -37,7 +36,6 @@ func NameOf(inst interface{}) string {
 // SubstituteVariables returns a deep copy of check with all exported string
 // fields in check modified by applying r and all int and int64 fields modified
 // by applying f.
-// TODO: applying r is not "variable replacing"
 func SubstituteVariables(check Check, r *strings.Replacer, f map[int64]int64) Check {
 	src := reflect.ValueOf(check)
 	dst := reflect.New(src.Type()).Elem()

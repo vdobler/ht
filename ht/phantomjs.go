@@ -258,7 +258,7 @@ func (s *Screenshot) Execute(t *Test) error {
 
 	file, err := tempfile.TempFile("", "screenshot-", ".js")
 	if err != nil {
-		return err // TODO: wrap to mark as bogus ?
+		return fmt.Errorf("cannot write temporary script: %s", err)
 	}
 	script := file.Name()
 	if !debugScreenshot {
@@ -269,7 +269,7 @@ func (s *Screenshot) Execute(t *Test) error {
 	if actual == "" {
 		file, err := tempfile.TempFile("", "actual-ss-", ".png")
 		if err != nil {
-			return err // TODO: wrap to mark as bogus ?
+			return fmt.Errorf("cannot write actual screenshot: %s", err)
 		}
 		actual = file.Name()
 		file.Close()
@@ -279,7 +279,7 @@ func (s *Screenshot) Execute(t *Test) error {
 	}
 	err = s.writeScript(file, t, actual)
 	if err != nil {
-		return err // TODO: wrap to mark as bogus ?
+		return fmt.Errorf("cannot write temporary script: %s", err)
 	}
 	if debugScreenshot {
 		fmt.Println("Created PhantomJS script:", script)
@@ -435,7 +435,7 @@ type RenderedHTML struct {
 // Prepare implements Check's Prepare method.
 func (r RenderedHTML) Prepare() error {
 	if len(r.Checks) == 0 {
-		return fmt.Errorf("RenderedHTML without checks") // TODO: improve
+		return fmt.Errorf("RenderedHTML without checks is a useless noop")
 	}
 
 	// Prepare each sub-check.
@@ -509,7 +509,7 @@ func (r RenderedHTML) Execute(t *Test) error {
 func (r RenderedHTML) content(t *Test) (string, error) {
 	file, err := tempfile.TempFile("", "renderedhtml-", ".js")
 	if err != nil {
-		return "", err // TODO: wrap to mark as bogus ?
+		return "", fmt.Errorf("cannot write temporary script: %s", err)
 	}
 	script := file.Name()
 	if !debugRenderedHTML {
@@ -518,7 +518,7 @@ func (r RenderedHTML) content(t *Test) (string, error) {
 
 	err = writePhantomScript(file, t, "console.log(''+page.content);")
 	if err != nil {
-		return "", err // TODO: wrap to mark as bogus ?
+		return "", fmt.Errorf("cannot write temporary script: %s", err)
 	}
 	if debugRenderedHTML {
 		fmt.Println("Created PhantomJS script:", script)
