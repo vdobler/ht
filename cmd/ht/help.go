@@ -21,8 +21,10 @@ var cmdHelp = &Command{
 	Flag:        flag.NewFlagSet("help", flag.ContinueOnError),
 	Help: `
 Help shows help for ht as well as for the different subcommands.
-Running 'ht help checks' displays the list of builtin checks.
-	`,
+Running 'ht help checks' displays the list of builtin checks and
+'ht help extractors' displays the builtin variable extractors.
+Running 'ht help doc <type>' displays detail information of <type>.
+`,
 }
 
 func runHelp(cmd *Command, args []string) {
@@ -39,6 +41,9 @@ func runHelp(cmd *Command, args []string) {
 	arg := args[0]
 	if arg == "check" || arg == "checks" {
 		displayChecks()
+	}
+	if arg == "extractor" || arg == "extractors" {
+		displayExtractors()
 	}
 
 	for _, cmd := range commands {
@@ -74,6 +79,21 @@ func displayChecks() {
 	fmt.Printf("Condition := {\n")
 	displayTypeAsPseudoJSON(reflect.TypeOf(ht.Condition{}))
 	fmt.Printf("}\n\n")
+	os.Exit(0)
+}
+
+func displayExtractors() {
+	exNames := []string{}
+	for name := range ht.ExtractorRegistry {
+		exNames = append(exNames, name)
+	}
+	sort.Strings(exNames)
+	for _, name := range exNames {
+		fmt.Printf("%s := {\n", name)
+		typ := ht.ExtractorRegistry[name]
+		displayTypeAsPseudoJSON(typ)
+		fmt.Printf("}\n\n")
+	}
 	os.Exit(0)
 }
 
