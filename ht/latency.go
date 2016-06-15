@@ -8,6 +8,7 @@ package ht
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -91,6 +92,8 @@ func (L *Latency) Execute(t *Test) error {
 		defer buffile.Flush()
 		dumper = buffile
 	}
+	csvWriter := csv.NewWriter(dumper)
+	defer csvWriter.Flush()
 
 	conc := L.Concurrent
 
@@ -171,8 +174,6 @@ func (L *Latency) Execute(t *Test) error {
 	// Collect results into data and signal end via done.
 	data := make([]latencyResult, 2*L.N)
 	counters := make([]int, Bogus)
-	// TODO: clean t.Name from ',' and other stuff illegal in csv files.
-	checkid := fmt.Sprintf("%s,%d", t.Name, L.Concurrent)
 	seen := uint64(0) // Bitmap of testinstances who returned.
 	all := (uint64(1) << uint(conc)) - 1
 	measureFrom := 0
@@ -210,13 +211,14 @@ func (L *Latency) Execute(t *Test) error {
 		completed = true
 	}
 	for _, r := range data {
-		fmt.Fprintf(dumper, "%s,%s,%s,%d,%t\n",
-			checkid,
+		csvWriter.Write([]string{
+			t.Name,
+			strconv.Itoa(L.Concurrent),
 			r.started.Format(time.RFC3339Nano),
-			r.status,
-			r.duration/Duration(time.Millisecond),
-			completed,
-		)
+			r.status.String(),
+			(r.duration / Duration(time.Millisecond)).String(),
+			fmt.Sprintf("%t", completed),
+		})
 	}
 
 	latencies := []int{}
