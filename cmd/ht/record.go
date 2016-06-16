@@ -212,6 +212,7 @@ const adminTemplate = `<!DOCTYPE html>
         <td style="background-color: red">Delete</td>
         <td>Name</td>
         <td>Method</td>
+        <td>Content Type</td>
         <td>URL</td>
       </tr>
     </thead>
@@ -226,6 +227,11 @@ const adminTemplate = `<!DOCTYPE html>
           </td>
           <td>
               {{$e.Request.Method}}
+          </td>
+          <td>
+              {{with index $e.Response.HeaderMap "Content-Type"}}
+                {{if gt (len .) 0}}{{index . 0}}{{end}}
+              {{end}}
           </td>
           <td>
               <a href="{{$e.Request.URL}}">{{$e.Request.URL}}</a>
