@@ -34,23 +34,26 @@ Tests can be generated for the captured reqest/response pairs.
 }
 
 func init() {
-	cmdRecord.Flag.StringVar(&recorderPort, "port", ":8080", "local service address")
+	cmdRecord.Flag.StringVar(&recorderPort, "port", ":8080", "local service port")
+	cmdRecord.Flag.StringVar(&recorderLocal, "local", "localhost:8080", "local service address")
 	cmdRecord.Flag.StringVar(&recorderIgnPath, "ignore.path", "",
 		"ignore path matching `regexp`")
 	cmdRecord.Flag.StringVar(&recorderIgnCT, "ignore.type", "",
 		"ignore content types matching `regexp`")
 	cmdRecord.Flag.DurationVar(&recorderDisarm, "disarm", 1*time.Second,
 		"disarm recorder for `period` after last capture")
-	cmdRecord.Flag.BoolVar(&recorderRewrite, "rewrite", true, "rewrite absolute redirects, href and src sttributes")
+	cmdRecord.Flag.IntVar(&recorderRewrite, "rewrite", 3,
+		"rewrite RespHeader=1 RespBody=2 ReqHeader=4 ReqBody=8")
 	addOutputFlag(cmdRecord.Flag)
 }
 
 var (
 	recorderPort    string
+	recorderLocal   string
 	recorderDisarm  time.Duration
 	recorderIgnPath string
 	recorderIgnCT   string
-	recorderRewrite bool
+	recorderRewrite int
 )
 
 func runRecord(cmd *Command, args []string) {
@@ -69,9 +72,11 @@ func runRecord(cmd *Command, args []string) {
 	templ = template.Must(template.New("admin").Parse(adminTemplate))
 	registerAdminHandlers()
 
+	rewrite := recorder.NewRewriter(recorderLocal, remote.Host, uint32(recorderRewrite))
+
 	opts := recorder.Options{
-		Disarm:              recorderDisarm,
-		RewriteAbsoluteURLs: recorderRewrite,
+		Disarm:  recorderDisarm,
+		Rewrite: rewrite,
 	}
 	if recorderIgnPath != "" {
 		opts.IgnoredPath = regexp.MustCompile(recorderIgnPath)

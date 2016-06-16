@@ -100,9 +100,8 @@ type Options struct {
 	// requested path,
 	IgnoredPath *regexp.Regexp
 
-	// RewriteAbsoluteURLs allows to rewrite Location headers an
-	// href and src attributes in HTML bodies.
-	RewriteAbsoluteURLs bool
+	// Rewrite determines what is rewritten.
+	Rewrite Rewriter
 }
 
 func (o Options) ignore(e Event) bool {
@@ -122,20 +121,108 @@ var (
 	remoteHost string
 )
 
+// Rewriter from remote to local host
+type Rewriter struct {
+	local  string
+	remote string
+
+	remoteRe  *regexp.Regexp
+	remoteSub string
+
+	localRe  *regexp.Regexp
+	localSub string
+
+	what uint32
+}
+
+const (
+	RewriteNothing        uint32 = 0
+	RewriteResponseHeader uint32 = 1 << (iota - 1)
+	RewriteResponseBody
+	RewriteRequestHeader
+	RewriteRequestBody
+)
+
+func NewRewriter(local, remote string, what uint32) Rewriter {
+	r := Rewriter{
+		local:  local,
+		remote: remote,
+		what:   what,
+	}
+
+	r.remoteRe = regexp.MustCompile(
+		`(^|[^a-zAZ0-9])` + regexp.QuoteMeta(remote) + `([^a-zAZ0-9]|$)`)
+	r.remoteSub = "${1}" + local + "${2}"
+
+	r.localRe = regexp.MustCompile(
+		`(^|[^a-zAZ0-9])` + regexp.QuoteMeta(local) + `([^a-zAZ0-9]|$)`)
+	r.localSub = "${1}" + remote + "${2}"
+
+	return r
+}
+
+func (r Rewriter) Response(header http.Header, body []byte) (http.Header, []byte) {
+	rheader := r.header(header, r.remoteRe, r.remoteSub, r.what&RewriteResponseHeader != 0)
+	rbody := r.body(body, r.remoteRe, r.remoteSub, r.what&RewriteResponseBody != 0)
+	return rheader, rbody
+}
+
+func (r Rewriter) Request(header http.Header, body []byte) (http.Header, []byte) {
+	rheader := r.header(header, r.localRe, r.localSub, r.what&RewriteRequestHeader != 0)
+	rbody := r.body(body, r.localRe, r.localSub, r.what&RewriteRequestBody != 0)
+	return rheader, rbody
+}
+
+func (r Rewriter) header(header http.Header, re *regexp.Regexp, sub string, do bool) http.Header {
+	// Header first, allways "rewritten"
+	rheader := http.Header{}
+	for h, vv := range header {
+		if h == "Content-Length" {
+			// Any gzip content will be rezipped and rewrting the
+			// body might change the content length too.
+			// So drop the header and let net/http recalculate it.
+			continue
+		}
+		if do {
+			for i, v := range vv {
+				w := r.remoteRe.ReplaceAllString(v, r.remoteSub)
+				if w != v {
+					fmt.Printf("Rewrite Reponse Header %q\n    from: %q\n    to:   %q\n",
+						h, v, w)
+				}
+				vv[i] = w
+			}
+		}
+		rheader[h] = vv
+	}
+	return rheader
+}
+
+func (r Rewriter) body(body []byte, re *regexp.Regexp, sub string, do bool) []byte {
+	if !do {
+		return body
+	}
+	rbody := r.remoteRe.ReplaceAll(body, []byte(r.remoteSub))
+	if !bytes.Equal(body, rbody) {
+		n := len(r.remoteRe.FindAllIndex(body, -1))
+		fmt.Printf("Rewrite Reponse Body: %d occurences\n", n)
+	}
+	return rbody
+}
+
 // StartReverseProxy listens on the local port and forwards request to remote
 // while capturing the request/response pairs selected by opts.
 func StartReverseProxy(port string, remoteURL *url.URL, opts Options) error {
 	remoteHost = remoteURL.Host
-	remote := remoteURL.String()
 	requests := make(chan Event, 10)
 	go process(requests, opts)
 
-	local := "http://localhost" + port
+	remote := remoteURL.Host
+
 	proxy := newSingleHostReverseProxy(remoteURL)
-	http.HandleFunc("/", handler(proxy, requests, opts.RewriteAbsoluteURLs, local, remote))
+	http.HandleFunc("/", handler(proxy, requests, opts.Rewrite))
 	log.Println("Staring reverse proxy")
-	log.Printf("Proxying from http://localhost%s to %s", port, remote)
-	log.Println("Rewriting absolute URLs: ", opts.RewriteAbsoluteURLs)
+	log.Printf("Proxying from http://recorder.ht%s to %s", port, remote)
 	return http.ListenAndServe(port, nil)
 }
 
@@ -178,14 +265,22 @@ func singleJoiningSlash(a, b string) string {
 // handler produces a http.HandlerFunc which routes the request via the
 // reverse proxy p, records the request and the response and sends these
 // to events.
-func handler(p *httputil.ReverseProxy, events chan Event, rewrite bool, local, remote string) func(http.ResponseWriter, *http.Request) {
+func handler(p *httputil.ReverseProxy, events chan Event, rewrite Rewriter) func(http.ResponseWriter, *http.Request) {
+
+	log.Printf("Rewriting %d\n", rewrite.what)
+	log.Printf("   %s  -->  %s\n", rewrite.remoteRe.String(), rewrite.remoteSub)
+	log.Printf("   %s  -->  %s\n", rewrite.localRe.String(), rewrite.localSub)
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Handling", r.URL.String())
 		rr := httptest.NewRecorder()
 		requestBody, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			panic(err.Error()) // Harsh but what else?
 		}
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+
+		fheader, fbody := rewrite.Request(r.Header, requestBody)
+		r.Header = fheader
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(fbody))
 
 		p.ServeHTTP(rr, r)
 
@@ -214,43 +309,17 @@ func handler(p *httputil.ReverseProxy, events chan Event, rewrite bool, local, r
 			Timestamp:    time.Now(),
 		}
 
-		for h, v := range rr.HeaderMap {
-			if gzipped && h == "Content-Length" {
-				// Any gzip content will be rezipped below which might
-				// result in a different content length (especially if
-				// rewriting absolute URLS): So drop the header and
-				// let net/http recalculate the content length.
-				continue
-			}
-			if rewrite && h == "Location" && strings.HasPrefix(v[0], remote) {
-				// Rewrite absolute redirects to the captured domain.
-				vl := local + v[0][len(remote):]
-				log.Printf("Redirect Location %q rewritten to %q", v, vl)
-				v = []string{vl}
-			}
-			w.Header()[h] = v
+		rheader, rbody := rewrite.Response(rr.HeaderMap, body)
+		for h, vv := range rheader {
+			w.Header()[h] = vv
 		}
 		w.WriteHeader(rr.Code)
-		if rewrite && strings.HasPrefix(rr.HeaderMap.Get("Content-Type"), "text/html") {
-			// Rewrite absolute hrefs and srcs.
-			// The way the rewrite happens is clearly bogus: A non-context
-			// sensitive text replacement will replace too many occurrences
-			// of remote. But parsing the HTML seems inappropriate
-			// complicated.
-			oldhref := []byte(`href="` + remote)
-			newhref := []byte(`href="` + local)
-			body = bytes.Replace(body, oldhref, newhref, -1)
-			oldsrc := []byte(`src="` + remote)
-			newsrc := []byte(`src="` + local)
-			body = bytes.Replace(body, oldsrc, newsrc, -1)
-		}
-
 		if gzipped {
 			gz := gzip.NewWriter(w)
-			gz.Write(body)
+			gz.Write(rbody)
 			gz.Close()
 		} else {
-			w.Write(body)
+			w.Write(rbody)
 		}
 	}
 }
