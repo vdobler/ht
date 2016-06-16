@@ -14,6 +14,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -34,7 +35,6 @@ Tests can be generated for the captured reqest/response pairs.
 }
 
 func init() {
-	cmdRecord.Flag.StringVar(&recorderPort, "port", ":8080", "local service port")
 	cmdRecord.Flag.StringVar(&recorderLocal, "local", "localhost:8080", "local service address")
 	cmdRecord.Flag.StringVar(&recorderIgnPath, "ignore.path", "",
 		"ignore path matching `regexp`")
@@ -83,6 +83,12 @@ func runRecord(cmd *Command, args []string) {
 	}
 	if recorderIgnCT != "" {
 		opts.IgnoredContentType = regexp.MustCompile(recorderIgnCT)
+	}
+
+	if i := strings.Index(recorderLocal, ":"); i != -1 {
+		recorderPort = recorderLocal[i:]
+	} else {
+		recorderPort = ":80"
 	}
 
 	err = recorder.StartReverseProxy(recorderPort, remote, opts)

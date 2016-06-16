@@ -129,9 +129,9 @@ typing (and getting the filenames right).
 
 To faciliate this `ht` comes with a reverse proxy which can record requests
 and responses and generate skeleton tests and suites from this recording.
-Let's assue you want to create test for `http://your.own.site/`:
+Let's assue you want to create test for `http://your.own.site`:
 
-    $ ./ht record http://your.own.site/
+    $ ./ht record http://your.own.site
 
 Point your browser to `http://localhost:8080` and request the pages
 you like to check. Wait more than 1 second between click to allow the
