@@ -5,6 +5,7 @@
     Setup: [
         "a.ht"
     ],
+    comment: "see Foo. B et al., Journal of examples and Comments 123, p456",
     Tests: [
         "a.ht",
         "b.ht",

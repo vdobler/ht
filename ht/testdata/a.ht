@@ -7,6 +7,6 @@
         },
     },
     Checks: [
-        {Check: "StatusCode", Expect: 200},
+        {Check: "StatusCode", Expect: 200, "comment": "222 is not good"},
     ],
 }

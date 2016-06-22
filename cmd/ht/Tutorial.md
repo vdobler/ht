@@ -54,13 +54,24 @@ to omit the quotation marks `"` around fields names (if they are "normal"
 field names) and the last element in an object or an array may have a trailing
 comma `,` and you may add comments:
 
-
     {
         // This is a line comment
         Name:    "Some descriptive name, but no fancy characters please",
         Request: { ... },
         Checks:  [ ... ],
     }
+
+If you prever to write plain JSON, e.g. because editor support is much better
+for plain JSON than for JSON5 you may put the comments into 'comment' fields.
+Above code would look like this:
+
+    {
+        "comment": "This is a line comment"
+        "Name":    "Some descriptive name, but no fancy characters please",
+        "Request": { ... },
+        "Checks":  [ ... ],
+    }
+
 
 
 ### The Request URL
