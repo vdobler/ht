@@ -169,6 +169,8 @@ type Request struct {
 
 	// BasicAuthUser and BasicAuthPass contain optional username and
 	// password which will be sent in a Basic Authentication header.
+	// If following redirects the authentication header is also sent
+	// on subsequent requests to the same host.
 	BasicAuthUser string
 	BasicAuthPass string
 
@@ -652,6 +654,12 @@ func (t *Test) prepare(variables map[string]string) error {
 		cr := func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return errors.New("stopped after 10 redirects")
+			}
+			if req.URL.Host == t.Request.Request.URL.Host &&
+				t.Request.BasicAuthUser != "" {
+				if user, pass, ok := t.Request.Request.BasicAuth(); ok {
+					req.SetBasicAuth(user, pass)
+				}
 			}
 			t.Response.Redirections = append(t.Response.Redirections, req.URL.String())
 			return nil
