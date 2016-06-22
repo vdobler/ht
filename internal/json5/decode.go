@@ -31,6 +31,8 @@ import (
 //   b) If a JSON field cannot be mapped to a field in a Go struct
 //      an error is created (the stdlib json silently ignores this
 //      fact). The error is of type &UnmarshalUnknownFieldError.
+//      There is one excpetion to this rule: A JSON5 field named
+//      "comment" is allowed everywhere and ignored.
 // So this Unmarshal provides 'strict' unmarshaling.
 //
 // Unmarshal uses the inverse of the encodings that
@@ -598,11 +600,16 @@ func (d *decodeState) object(v reflect.Value) {
 					subv = subv.Field(i)
 				}
 			} else {
-				d.saveError(&UnmarshalUnknownFieldError{
-					typ:    v.Type().Name(),
-					field:  string(key),
-					Offset: int64(start),
-				})
+				// Field is unknown in struct. Stdlib json ignores it.
+				// We fail as this probably is a typo. But we do
+				// ignore comments.
+				if !bytes.Equal(key, []byte("comment")) {
+					d.saveError(&UnmarshalUnknownFieldError{
+						typ:    v.Type().Name(),
+						field:  string(key),
+						Offset: int64(start),
+					})
+				}
 			}
 		}
 
