@@ -56,6 +56,11 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
 	for s := range suites {
 		suites[s].PrintReport(os.Stdout)
+	}
+
+	for s := range suites {
+		suites[s].PrintShortReport(os.Stdout)
+		fmt.Println()
 
 		// Statistics
 		for _, r := range suites[s].AllTests() {
@@ -75,7 +80,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		}
 
 		dirname := outputDir + "/" + sanitize.Filename(suites[s].Name)
-		log.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
+		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
 		err := os.MkdirAll(dirname, 0766)
 		if err != nil {
 			log.Panic(err)
@@ -87,7 +92,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		cwd, err := os.Getwd()
 		if err == nil {
 			reportURL := "file://" + path.Join(cwd, dirname, "Report.html")
-			log.Printf("See %s", reportURL)
+			fmt.Printf("See %s\n", reportURL)
 		}
 		junit, err := suites[s].JUnit4XML()
 		if err != nil {
@@ -98,6 +103,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			log.Panic(err)
 		}
 	}
+	fmt.Println()
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
 
