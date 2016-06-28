@@ -266,10 +266,17 @@ type Test struct {
 	CheckResults []CheckResult `json:"-"` // The individual checks.
 	SeqNo        string        `json:"-"`
 	VarValues    map[string]string
+	ExValues     map[string]Extraction
 
 	client      *http.Client
 	specialVars []string
 	checks      []Check // prepared checks.
+}
+
+// Extraction captures the result of a variable extraction.
+type Extraction struct {
+	Value string
+	Error error
 }
 
 // mergeRequest implements the merge strategy described in Merge for the Request.
