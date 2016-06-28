@@ -183,12 +183,14 @@ var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{i
   {{printf "(after %d tries)" .Tries}}{{end}}
   Started: {{.Started}}   Duration: {{.FullDuration}}   Request: {{.Duration}}{{if .Request.Request}}
   {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{range .Response.Redirections}}
-  GET {{.}}{{end}}{{end}}{{if .Error}}
+  GET {{.}}{{end}}{{end}}{{if .Response.Response}}
+  {{.Response.Response.Proto}} {{.Response.Response.Status}}{{end}}{{if .Error}}
   Error: {{.Error}}{{end}}
 {{if eq .Status 2 3 4 5}}  {{if .CheckResults}}Checks:
 {{range $i, $c := .CheckResults}}{{printf "    %2d. " $i}}{{template "CHECK" .}}
 {{end}}{{end}}{{end}}{{if .VarValues}}  Variables:
-{{range $k, $v := .VarValues}}{{printf "    %s == %s\n" $k $v}}{{end}}{{end}}{{end}}`
+{{range $k, $v := .VarValues}}{{printf "    %s == %q\n" $k $v}}{{end}}{{end}}{{if .ExValues}}  Extracted:
+{{range $k, $v := .ExValues}}{{if $v.Error}}{{printf "    %s : %s\n" $k $v.Error}}{{else}}{{printf "    %s == %q\n" $k $v.Value}}{{end}}{{end}}{{end}}{{end}}`
 
 var htmlTestTmpl = `{{define "TEST"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}">
