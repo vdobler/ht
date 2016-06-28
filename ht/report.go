@@ -192,6 +192,16 @@ var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{i
 {{range $k, $v := .VarValues}}{{printf "    %s == %q\n" $k $v}}{{end}}{{end}}{{if .ExValues}}  Extracted:
 {{range $k, $v := .ExValues}}{{if $v.Error}}{{printf "    %s : %s\n" $k $v.Error}}{{else}}{{printf "    %s == %q\n" $k $v.Value}}{{end}}{{end}}{{end}}{{end}}`
 
+var shortTestTmpl = `{{define "SHORTTEST"}}{{.Status.String}}: {{.Name}}{{if .Request.Request}}
+  {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{range .Response.Redirections}}
+  GET {{.}}{{end}}{{end}}{{if .Response.Response}}
+  {{.Response.Response.Proto}} {{.Response.Response.Status}}{{end}}{{if .Error}}
+  {{.Error}}{{end}}{{if gt .Status 2}}{{if .CheckResults}}{{range .CheckResults}}{{if eq .Status 3 5}}
+    {{printf "%-7s %-15s %s" .Status .Name .JSON}}{{range .Error}}
+      {{.Error}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .ExValues}}{{range $k, $v := .ExValues}}{{if $v.Error}}
+  {{printf "Extraction of %s : %s\n" $k $v.Error}}{{end}}{{end}}{{end}}
+{{end}}`
+
 var htmlTestTmpl = `{{define "TEST"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}">
   <div class="collapsed">
@@ -303,6 +313,10 @@ Started: {{.Started}}   Duration: {{.Duration}}
 {{end}}
 {{range .Teardown}}{{template "TEST" .}}
 {{end}}
+`
+
+var shortSuiteTmpl = `======  Result of {{.Name}} =======
+{{range .Setup}}{{template "SHORTTEST" .}}{{end}}{{range .Tests}}{{template "SHORTTEST" .}}{{end}}{{range .Teardown}}{{template "SHORTTEST" .}}{{end}}{{printf "===> %s <=== %s" (ToUpper .Status.String) .Name}}
 `
 
 var htmlStyleTmpl = `{{define "STYLE"}}
@@ -424,9 +438,11 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 `
 
 var (
-	TestTmpl      *template.Template
-	SuiteTmpl     *template.Template
-	HtmlSuiteTmpl *htmltemplate.Template
+	ShortTestTmpl  *template.Template
+	TestTmpl       *template.Template
+	SuiteTmpl      *template.Template
+	ShortSuiteTmpl *template.Template
+	HtmlSuiteTmpl  *htmltemplate.Template
 )
 
 func init() {
@@ -434,6 +450,10 @@ func init() {
 	fm["Underline"] = Underline
 	fm["Box"] = Box
 	fm["ToUpper"] = strings.ToUpper
+
+	ShortTestTmpl = template.New("SHORTTEST")
+	ShortTestTmpl.Funcs(fm)
+	ShortTestTmpl = template.Must(ShortTestTmpl.Parse(shortTestTmpl))
 
 	TestTmpl = template.New("TEST")
 	TestTmpl.Funcs(fm)
@@ -445,6 +465,11 @@ func init() {
 	SuiteTmpl = template.Must(SuiteTmpl.Parse(defaultSuiteTmpl))
 	SuiteTmpl = template.Must(SuiteTmpl.Parse(defaultTestTmpl))
 	SuiteTmpl = template.Must(SuiteTmpl.Parse(defaultCheckTmpl))
+
+	ShortSuiteTmpl = template.New("SHORTSUITE")
+	ShortSuiteTmpl.Funcs(fm)
+	ShortSuiteTmpl = template.Must(ShortSuiteTmpl.Parse(shortSuiteTmpl))
+	ShortSuiteTmpl = template.Must(ShortSuiteTmpl.Parse(shortTestTmpl))
 
 	HtmlSuiteTmpl = htmltemplate.New("SUITE")
 	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{"ToUpper": strings.ToUpper})
@@ -463,9 +488,19 @@ func (t Test) PrintReport(w io.Writer) error {
 	return TestTmpl.Execute(w, t)
 }
 
+// PrintShortReport of t to w.
+func (t Test) PrintShortReport(w io.Writer) error {
+	return ShortTestTmpl.Execute(w, t)
+}
+
 // PrintReport of s to w.
 func (s Suite) PrintReport(w io.Writer) error {
 	return SuiteTmpl.Execute(w, s)
+}
+
+// PrintShortReport of s to w.
+func (s Suite) PrintShortReport(w io.Writer) error {
+	return ShortSuiteTmpl.Execute(w, s)
 }
 
 // HTMLReport generates a report of the outcome ofs to directory dir.
