@@ -448,6 +448,16 @@ func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 func (t *Test) Run(variables map[string]string) error {
 	t.Started = time.Now()
 
+	maxTries := t.Poll.Max
+	if maxTries == 0 {
+		maxTries = 1
+	}
+	if maxTries < 0 {
+		// This test is deliberately skipped. A zero duration is okay.
+		t.Status = Skipped
+		return nil
+	}
+
 	time.Sleep(time.Duration(t.PreSleep))
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
@@ -458,16 +468,6 @@ func (t *Test) Run(variables map[string]string) error {
 			buf = []byte(err.Error())
 		}
 		t.CheckResults[i].JSON = string(buf)
-	}
-
-	maxTries := t.Poll.Max
-	if maxTries == 0 {
-		maxTries = 1
-	}
-	if maxTries < 0 {
-		// This test is deliberately skipped. A zero duration is okay.
-		t.Status = Skipped
-		return nil
 	}
 
 	// specialVars is the cached version of special variables (NOW, RANDOM)

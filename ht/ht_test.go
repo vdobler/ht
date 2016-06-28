@@ -408,8 +408,8 @@ func expectCheckFailures(t *testing.T, descr string, test Test) {
 }
 
 // pollingHandler
-//     /?t=faile&n=7   returns a 500 for 6 times and a 200 on the 7th request
-//     /?t=error&n=4   waits for 100ms for 4 times and responds with 200 on the 5th request
+//     /?t=fail&n=7   returns a 500 for 6 times and a 200 on the 7th request
+//     /?t=error&n=4   waits for 70ms for 4 times and responds with 200 on the 5th request
 func pollingHandler(w http.ResponseWriter, r *http.Request) {
 	n, err := strconv.Atoi(r.FormValue("n"))
 	if err != nil {
@@ -432,7 +432,7 @@ func pollingHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "All good", http.StatusOK)
 			return
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(70 * time.Millisecond)
 		http.Error(w, "sorry, busy", http.StatusInternalServerError)
 	default:
 		panic("Unknown type " + what)
@@ -469,7 +469,7 @@ func TestPolling(t *testing.T) {
 					"n": {"3"},
 					"t": {tc.typ},
 				},
-				Timeout: Duration(100 * time.Millisecond),
+				Timeout: Duration(60 * time.Millisecond),
 			},
 			Checks: []Check{
 				StatusCode{200},
