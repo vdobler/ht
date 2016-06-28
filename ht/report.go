@@ -213,11 +213,23 @@ var htmlTestTmpl = `{{define "TEST"}}
 	Started: {{.Started}}<br/>
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
-        Request Duration: {{.Duration}}
-        {{if .VarValues}}<br/>Variables:
-          {{range $k, $v := .VarValues}}{{printf "%s=%q;  " $k $v}}{{end}}
+        Request Duration: {{.Duration}} <br/>
+        {{if .Request.Request}}
+          {{.Request.Request.Method}} {{.Request.Request.URL.String}}<br/>
+          {{range .Response.Redirections}}
+            GET {{.}}<br/>
+          {{end}}
         {{end}}
-        {{if .Error}}</br>Error: {{.Error}}{{end}}
+        {{if .Response.Response}}
+          {{.Response.Response.Proto}} {{.Response.Response.Status}}</br>
+        {{end}}
+        {{if .VarValues}}Variables:
+          {{range $k, $v := .VarValues}}{{printf "%s=%q;  " $k $v}}{{end}}<br/>
+        {{end}}
+        {{if .ExValues}}Extractions:
+          {{range $k, $v := .ExValues}}{{printf "%s=%q;  " $k $v}}{{end}}<br/>
+        {{end}}
+        {{if .Error}}Error: {{.Error}}{{end}}<br/>
       </div>
       {{if eq .Status 2 3 4 5}}{{if .CheckResults}}
         <div class="checks">
