@@ -18,11 +18,13 @@ func init() {
 // ----------------------------------------------------------------------------
 // Logfile
 
-// Logfile provides checks on files (i.e. it ignores the response).
-// During preparation the current file size is determined and the checks
-// are run against the bytes written after preparation.
+// Logfile provides checks on a file (i.e. it ignores the HTTP response).
+//
+// During preparation the current size of the file identified by Path is
+// determined. When the check executes it seeks to that position and
+// examines anything written to the file since the preparation of the check.
 type Logfile struct {
-	// Path is the file system path to the logfile."
+	// Path is the file system path to the logfile.
 	Path string
 
 	// Condition the written stuff must fulfill.
