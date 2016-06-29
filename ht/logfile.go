@@ -9,6 +9,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
 
 func init() {
@@ -33,24 +37,47 @@ type Logfile struct {
 	// Disallow states what is forbidden in the written log.
 	Disallow []string `json:",omitempty"`
 
-	pos int64
+	Remote struct {
+		Host     string
+		User     string
+		Password string `json:",omitempty"`
+		KeyFile  string `json:",omitempty"`
+	} `json:",omitempty"`
+
+	pos    int64
+	client *ssh.Client
+}
+
+func (f *Logfile) prepareAuthMethods() ([]ssh.AuthMethod, error) {
+	am := []ssh.AuthMethod{}
+	if f.Remote.Password != "" {
+		am = append(am, ssh.Password(f.Remote.Password))
+	}
+	if f.Remote.KeyFile != "" {
+		buffer, err := ioutil.ReadFile(f.Remote.KeyFile)
+		if err != nil {
+			return am, err
+		}
+		key, err := ssh.ParsePrivateKey(buffer)
+		if err != nil {
+			return am, err
+		}
+		am = append(am, ssh.PublicKeys(key))
+	}
+
+	return am, nil
 }
 
 // Execute implements Check's Execute method.
 func (f *Logfile) Execute(t *Test) error {
-	file, err := os.Open(f.Path)
-	if err != nil {
-		return err
-	}
-	pos, err := file.Seek(f.pos, os.SEEK_SET)
-	if err != nil {
-		return err
-	}
+	var written []byte
+	var err error
 
-	if pos != f.pos {
-		return fmt.Errorf("ht: cannot seek to %d in file %s, got to %d", f.pos, f.Path, pos)
+	if f.Remote.Host == "" {
+		written, err = f.localFile()
+	} else {
+		written, err = f.remoteFile()
 	}
-	written, err := ioutil.ReadAll(file)
 	if err != nil {
 		return err
 	}
@@ -66,8 +93,85 @@ func (f *Logfile) Execute(t *Test) error {
 	return nil
 }
 
+func (f *Logfile) localFile() ([]byte, error) {
+	file, err := os.Open(f.Path)
+	if err != nil {
+		return nil, err
+	}
+	pos, err := file.Seek(f.pos, os.SEEK_SET)
+	if err != nil {
+		return nil, err
+	}
+
+	if pos != f.pos {
+		return nil, fmt.Errorf("ht: cannot seek to %d in file %s, got to %d", f.pos, f.Path, pos)
+	}
+	return ioutil.ReadAll(file)
+}
+
+func (f *Logfile) remoteFile() ([]byte, error) {
+	session, err := f.client.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	defer session.Close()
+	cmd := fmt.Sprintf("dd ibs=1 skip=%d status=none if=%s", f.pos, f.Path) // TODO: quote path
+	data, err := session.CombinedOutput(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 // Prepare implements Check's Prepare method.
 func (f *Logfile) Prepare() error {
+	if f.Remote.Host == "" {
+		return f.localFileSize()
+	}
+
+	// Establish ssh connection to remote host and keep for reuse in Execute.
+	ams, err := f.prepareAuthMethods()
+	if err != nil {
+		return err
+	}
+	sshConfig := &ssh.ClientConfig{
+		User: f.Remote.User,
+		Auth: ams,
+	}
+	host := f.Remote.Host
+	if strings.Index(host, ":") == -1 {
+		host += ":22"
+	}
+	client, err := ssh.Dial("tcp", host, sshConfig)
+	if err != nil {
+		return err
+	}
+	f.client = client
+
+	return f.remoteFileSize()
+}
+
+func (f *Logfile) remoteFileSize() error {
+	session, err := f.client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	cmd := fmt.Sprintf("cat %s | wc -c") // TODO: quote path
+	data, err := session.CombinedOutput(cmd)
+	if err != nil {
+		return err
+	}
+	n, err := strconv.ParseInt(string(data), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	f.pos = n
+	return nil
+}
+
+func (f *Logfile) localFileSize() error {
 	file, err := os.Open(f.Path)
 	if err != nil {
 		f.pos = 0
