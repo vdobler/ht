@@ -70,6 +70,7 @@ func (f *Logfile) prepareAuthMethods() ([]ssh.AuthMethod, error) {
 
 // Execute implements Check's Execute method.
 func (f *Logfile) Execute(t *Test) error {
+	fmt.Println("Prepare")
 	var written []byte
 	var err error
 
@@ -120,11 +121,13 @@ func (f *Logfile) remoteFile() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("New data: ", string(data))
 	return data, nil
 }
 
 // Prepare implements Check's Prepare method.
 func (f *Logfile) Prepare() error {
+	fmt.Println("Prepare")
 	if f.Remote.Host == "" {
 		return f.localFileSize()
 	}
@@ -152,22 +155,27 @@ func (f *Logfile) Prepare() error {
 }
 
 func (f *Logfile) remoteFileSize() error {
+	fmt.Println("remoteFileSize")
 	session, err := f.client.NewSession()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
-	cmd := fmt.Sprintf("cat %s | wc -c") // TODO: quote path
+	cmd := fmt.Sprintf("cat %s | wc -c", f.Path) // TODO: quote path
+	fmt.Println(cmd)
 	data, err := session.CombinedOutput(cmd)
 	if err != nil {
+		fmt.Println(string(data))
 		return err
 	}
-	n, err := strconv.ParseInt(string(data), 10, 64)
+	s := strings.TrimSpace(string(data))
+	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return err
 	}
 
 	f.pos = n
+	fmt.Println("Filesize befor: ", n)
 	return nil
 }
 
