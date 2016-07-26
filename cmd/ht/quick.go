@@ -144,11 +144,7 @@ func runQuick(cmd *Command, urls []string) {
 		log.Println(err.Error())
 		os.Exit(3)
 	}
-	if verbosity != -99 {
-		for i := range suite.Tests {
-			suite.Tests[i].Verbosity = verbosity
-		}
-	}
+	setVerbosity(suite)
 	suite.Variables = variablesFlag
 	runExecute(cmd, []*ht.Suite{suite})
 }

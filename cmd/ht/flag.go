@@ -74,16 +74,17 @@ func (l *cmdlLimit) Set(s string) error {
 // Common flags
 
 var (
-	variablesFlag = make(cmdlVar)   // flag -D
-	variablesFile string            // -Dfile
-	rtLimits      = make(cmdlLimit) // flag -L
-	onlyFlag      string            // flag -only
-	skipFlag      string            // flag -skip
-	verbosity     int               // flag -verbosity
-	outputDir     string            // flag -output
-	randomSeed    int64             // flag -seed
-	skipTLSVerify bool              // flag -skiptlsverify
-	phantomjs     string            // flag -phantomjs
+	variablesFlag    = make(cmdlVar)   // flag -D
+	variablesFile    string            // -Dfile
+	rtLimits         = make(cmdlLimit) // flag -L
+	onlyFlag         string            // flag -only
+	skipFlag         string            // flag -skip
+	verbosity        int               // flag -verbosity
+	outputDir        string            // flag -output
+	randomSeed       int64             // flag -seed
+	skipTLSVerify    bool              // flag -skiptlsverify
+	phantomjs        string            // flag -phantomjs
+	v, vv, vvv, vvvv bool              // flag -v, -vv, -vvv, -vvvv
 )
 
 func addTestFlags(fs *flag.FlagSet) {
@@ -121,26 +122,25 @@ func addPhantomJSFlag(fs *flag.FlagSet) {
 }
 
 func addVariablesFlag(fs *flag.FlagSet) {
-	fs.Var(&variablesFlag, "D",
-		"set `parameter=value`")
+	fs.Var(&variablesFlag, "D", "set `parameter=value`")
 }
 
 func addLimitFlag(fs *flag.FlagSet) {
-	fs.Var(&rtLimits, "L",
-		"set responste time limit of `quantile=millisecond`")
+	fs.Var(&rtLimits, "L", "set responste time limit of `quantile=millisecond`")
 }
 
 func addOnlyFlag(fs *flag.FlagSet) {
-	fs.StringVar(&onlyFlag, "only", "",
-		"run only tests given by `testID`")
+	fs.StringVar(&onlyFlag, "only", "", "run only tests given by `testID`")
 }
 
 func addSkipFlag(fs *flag.FlagSet) {
-	fs.StringVar(&skipFlag, "skip", "",
-		"skip tests identified by `testID`")
+	fs.StringVar(&skipFlag, "skip", "", "skip tests identified by `testID`")
 }
 
 func addVerbosityFlag(fs *flag.FlagSet) {
-	fs.IntVar(&verbosity, "verbosity", -99,
-		"verbosity to `level`")
+	fs.IntVar(&verbosity, "verbosity", -99, "set verbosity to `level`")
+	fs.BoolVar(&v, "v", false, "increase verbosity by 1")
+	fs.BoolVar(&vv, "vv", false, "increase verbosity by 2")
+	fs.BoolVar(&vvv, "vvv", false, "increase verbosity by 3")
+	fs.BoolVar(&vvvv, "vvvv", false, "increase verbosity by 4")
 }

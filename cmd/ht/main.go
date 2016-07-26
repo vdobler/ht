@@ -161,17 +161,7 @@ func loadSuites(args []string) []*ht.Suite {
 			log.Println(err.Error())
 			os.Exit(8)
 		}
-		if verbosity != -99 {
-			for i := range suite.Setup {
-				suite.Setup[i].Verbosity = verbosity
-			}
-			for i := range suite.Tests {
-				suite.Tests[i].Verbosity = verbosity
-			}
-			for i := range suite.Teardown {
-				suite.Teardown[i].Verbosity = verbosity
-			}
-		}
+		setVerbosity(suite)
 		suites = append(suites, suite)
 	}
 
@@ -189,6 +179,29 @@ func loadSuites(args []string) []*ht.Suite {
 	}
 
 	return suites
+}
+
+// set (-verbosity) or increase (-v ... -vvvv) test verbosities of s.
+func setVerbosity(s *ht.Suite) {
+	set := func(tests []*ht.Test) {
+		for i := range tests {
+			if verbosity != -99 {
+				tests[i].Verbosity = verbosity
+			} else if vvvv {
+				tests[i].Verbosity += 4
+			} else if vvv {
+				tests[i].Verbosity += 3
+			} else if vv {
+				tests[i].Verbosity += 2
+			} else if v {
+				tests[i].Verbosity += 1
+			}
+		}
+	}
+
+	set(s.Setup)
+	set(s.Tests)
+	set(s.Teardown)
 }
 
 // loadTests loads single Tests and combines them into an artificial
@@ -288,7 +301,7 @@ func addCWD(i *cmdlIncl) {
 }
 
 // fillVariablesFlagFrom reads in the file variablesFile and sets the
-// jet unset variables. This meass that the resulting variable/values in
+// jet unset variables. This means that the resulting variable/values in
 // variablesFlag looks like the variablesFile was loaded first and the
 // -D flags overwrite the ones loaded from file.
 func fillVariablesFlagFrom(variablesFile string) {
