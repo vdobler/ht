@@ -175,6 +175,10 @@ type Request struct {
 	BasicAuthUser string
 	BasicAuthPass string
 
+	// Chunked turns of setting of the Content-Length header resulting
+	// in chunked transfer encoding of POST bodies.
+	Chunked bool
+
 	// Timeout of this request. If zero use DefaultClientTimeout.
 	Timeout Duration `json:",omitempty"`
 
@@ -337,6 +341,7 @@ outer:
 	}
 
 	m.FollowRedirects = r.FollowRedirects
+	m.Chunked = r.Chunked
 
 	if err := onlyOneMayBeNonempty(&(m.BasicAuthUser), r.BasicAuthUser); err != nil {
 		return err
@@ -361,6 +366,7 @@ outer:
 //       Cookies    Merge by cookie name
 //       Body       Only one may be nonempty
 //       FollowRdr  Last wins
+//       Chunked    Last wins
 //     Checks       Append all checks
 //     VarEx        Merge, same keys must have same value
 //     TestVars     Use values from first only.
@@ -768,6 +774,12 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 	}
 
 	t.Request.Request, err = http.NewRequest(t.Request.Method, rurl, body)
+
+	// Content-Length
+	if cl := len(t.Request.SentBody); cl > 0 && !t.Request.Chunked {
+		t.Request.Request.ContentLength = int64(cl)
+	}
+
 	if err != nil {
 		return "", err
 	}

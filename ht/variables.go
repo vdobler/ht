@@ -79,6 +79,7 @@ func (t *Test) substituteVariables(repl replacer) *Test {
 			FollowRedirects: t.Request.FollowRedirects,
 			BasicAuthUser:   repl.str.Replace(t.Request.BasicAuthUser),
 			BasicAuthPass:   repl.str.Replace(t.Request.BasicAuthPass),
+			Chunked:         t.Request.Chunked,
 			Timeout:         t.Request.Timeout,
 		},
 		Poll:       t.Poll,

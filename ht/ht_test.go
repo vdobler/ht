@@ -597,6 +597,7 @@ func TestMerge(t *testing.T) {
 				{Name: "session", Value: "deadbeef"},
 			},
 			FollowRedirects: true,
+			Chunked:         false,
 		},
 		PreSleep:   Duration(100),
 		InterSleep: Duration(120),
@@ -621,6 +622,7 @@ func TestMerge(t *testing.T) {
 				{Name: "session", Value: "othersession"},
 			},
 			FollowRedirects: false,
+			Chunked:         true,
 			BasicAuthUser:   "foo.bar",
 			BasicAuthPass:   "secret",
 		},
@@ -662,6 +664,11 @@ func TestMerge(t *testing.T) {
 	if c.Request.BasicAuthUser != "foo.bar" || c.Request.BasicAuthPass != "secret" {
 		t.Errorf("Bad BasicAuth. Got %q : %q", c.Request.BasicAuthUser,
 			c.Request.BasicAuthPass)
+	}
+
+	if c.Request.FollowRedirects != false || c.Request.Chunked != true {
+		t.Errorf("FollowRedirect=%t Chunked=%t",
+			c.Request.FollowRedirects, c.Request.Chunked)
 	}
 
 	if c.PreSleep != 100 || c.InterSleep != 420 || c.PostSleep != 140 {

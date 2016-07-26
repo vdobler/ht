@@ -129,6 +129,9 @@ func TestSubstituteTestVariables(t *testing.T) {
 				"{{x}}head": []string{"{{x}}val"},
 			},
 			FollowRedirects: true,
+			BasicAuthUser:   "{{x}}user",
+			BasicAuthPass:   "{{x}}pass",
+			Chunked:         true,
 		},
 		Checks: []Check{
 			&Body{Contains: "bctext={{x}}", Count: 1},
@@ -142,6 +145,10 @@ func TestSubstituteTestVariables(t *testing.T) {
 		rt.Request.URL != "url=Y" ||
 		rt.Request.Params["pn={{x}}"][0] != "pv=Y" || // TODO: names too?
 		rt.Request.Header["{{x}}head"][0] != "Yval" || // TODO: header keys too?
+		rt.Request.Chunked != true ||
+		rt.Request.FollowRedirects != true ||
+		rt.Request.BasicAuthUser != "Yuser" ||
+		rt.Request.BasicAuthPass != "Ypass" ||
 		rt.Checks[0].(*Body).Contains != "bctext=Y" ||
 		rt.Checks[1].(*Header).Header != "LocationY" ||
 		rt.Checks[1].(*Header).Suffix != "fooYbar" {
