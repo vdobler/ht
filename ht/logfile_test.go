@@ -5,6 +5,7 @@
 package ht
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -73,19 +74,9 @@ func TestLogfile(t *testing.T) {
 	}
 }
 
-func TestLogfileRemote(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(loggingHandler))
-	defer ts.Close()
-
-	rand.Seed(time.Now().Unix())
-	data := fmt.Sprintf("Hello Remote %d", 1000+rand.Intn(9000))
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Ooops: %s", err)
-	}
-
+func testLogfileRemote(t *testing.T, ts *httptest.Server, wd string, m string, lfc *Logfile, data string) {
 	test := Test{
-		Name: "Testing the Logfile remote check",
+		Name: "Testing the Logfile remote check " + m,
 		Request: Request{
 			Method: "GET",
 			URL:    ts.URL + "/",
@@ -93,30 +84,50 @@ func TestLogfileRemote(t *testing.T) {
 		},
 		Checks: []Check{
 			&StatusCode{Expect: 200}, // pass
+			lfc,
 		},
 	}
+
+	err := test.Run(nil)
+	if err != nil {
+		t.Fatalf("%s file: Unexpected error: %+v", m, err)
+	}
+	if test.Status != Pass {
+		t.Fatalf("%s file, Unexpected status: %s; %v", m, test.Status, test.Error)
+	}
+}
+
+var (
+	remoteUser = flag.String("remote.user", "", "user for ssh logfile test")
+	remotePass = flag.String("remote.pass", "", "password for ssh logfile test")
+	remoteKey  = flag.String("remote.key", "", "keyfile for ssh logfile test")
+)
+
+func TestLogfileRemote(t *testing.T) {
+	if *remoteUser == "" {
+		t.Skip("Missing remote.user cmdline argument")
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(loggingHandler))
+	defer ts.Close()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Ooops: %s", err)
+	}
+	rand.Seed(time.Now().Unix())
+	data := fmt.Sprintf("Hello Remote %d", 1000+rand.Intn(90000))
+
 	lfc := &Logfile{}
 	lfc.Path = wd + "/testdata/logfile"
-	lfc.Condition = Condition{Min: 10}
+	lfc.Condition = Condition{Min: 10, Contains: data}
 	lfc.Remote.Host = "localhost"
-	lfc.Remote.User = ""
-	lfc.Remote.Password = ""
-	lfc.Remote.KeyFile = ""
-	test.Checks = append(test.Checks, lfc)
+	lfc.Remote.User = *remoteUser
+	lfc.Remote.Password = *remotePass
+	lfc.Remote.KeyFile = *remoteKey
 
-	err = test.Run(nil)
-	if err != nil {
-		t.Fatalf("Unexpected error: %+v", err)
-	}
-
-	if test.Status != Fail || len(test.CheckResults) != len(test.Checks) {
-		t.Fatalf("Unexpected test status %s or %d != %d", test.Status,
-			len(test.CheckResults), len(test.Checks))
-	}
-
-	for i, cr := range test.CheckResults {
-		if (i%2 == 0 && cr.Status != Pass) || (i%2 == 1 && cr.Status != Fail) {
-			t.Errorf("%d: %s -> %s", i, cr.JSON, cr.Status)
-		}
-	}
+	os.Remove(wd + "/testdata/logfile")
+	testLogfileRemote(t, ts, wd, "missing", lfc, data)
+	lfc.clientConf = nil
+	lfc.host = ""
+	testLogfileRemote(t, ts, wd, "existing", lfc, data)
 }

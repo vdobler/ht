@@ -27,25 +27,36 @@ func init() {
 // During preparation the current size of the file identified by Path is
 // determined. When the check executes it seeks to that position and
 // examines anything written to the file since the preparation of the check.
+//
+// Logfile on remote (Unix) machines may be accessed via ssh (experimental).
 type Logfile struct {
 	// Path is the file system path to the logfile.
 	Path string
 
-	// Condition the written stuff must fulfill.
+	// Condition the newly written stuff must fulfill.
 	Condition `json:",omitempty"`
 
 	// Disallow states what is forbidden in the written log.
 	Disallow []string `json:",omitempty"`
 
+	// Remote contains access data for a foreign (Unix) server which
+	// is contacted via ssh.
 	Remote struct {
-		Host     string
-		User     string
+		// Host is the hostname:port. A port of :22 is optional.
+		Host string
+
+		// User contains the name of the user used to make the
+		// ssh connection to Host
+		User string
+
+		// Password and/or Keyfile used to authenticate
 		Password string `json:",omitempty"`
 		KeyFile  string `json:",omitempty"`
 	} `json:",omitempty"`
 
-	pos    int64
-	client *ssh.Client
+	pos        int64
+	clientConf *ssh.ClientConfig
+	host       string
 }
 
 func (f *Logfile) prepareAuthMethods() ([]ssh.AuthMethod, error) {
@@ -70,15 +81,7 @@ func (f *Logfile) prepareAuthMethods() ([]ssh.AuthMethod, error) {
 
 // Execute implements Check's Execute method.
 func (f *Logfile) Execute(t *Test) error {
-	fmt.Println("Prepare")
-	var written []byte
-	var err error
-
-	if f.Remote.Host == "" {
-		written, err = f.localFile()
-	} else {
-		written, err = f.remoteFile()
-	}
+	written, err := f.newFileData()
 	if err != nil {
 		return err
 	}
@@ -94,7 +97,15 @@ func (f *Logfile) Execute(t *Test) error {
 	return nil
 }
 
-func (f *Logfile) localFile() ([]byte, error) {
+// newFileData returns what has been written to f.Path since Prepare.
+func (f *Logfile) newFileData() ([]byte, error) {
+	if f.Remote.Host != "" {
+		f.newRemoteFileData()
+	}
+	return f.newLocalFileData()
+}
+
+func (f *Logfile) newLocalFileData() ([]byte, error) {
 	file, err := os.Open(f.Path)
 	if err != nil {
 		return nil, err
@@ -110,72 +121,88 @@ func (f *Logfile) localFile() ([]byte, error) {
 	return ioutil.ReadAll(file)
 }
 
-func (f *Logfile) remoteFile() ([]byte, error) {
-	session, err := f.client.NewSession()
+func (f *Logfile) newRemoteFileData() ([]byte, error) {
+	client, err := ssh.Dial("tcp", f.host, f.clientConf)
+	if err != nil {
+		return nil, err
+	}
+	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
 	}
 	defer session.Close()
-	cmd := fmt.Sprintf("dd ibs=1 skip=%d status=none if=%s", f.pos, f.Path) // TODO: quote path
+	cmd := fmt.Sprintf("dd ibs=1 skip=%d status=none 'if=%s'", f.pos,
+		quoteShellFilename(f.Path))
 	data, err := session.CombinedOutput(cmd)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("New data: ", string(data))
 	return data, nil
 }
 
 // Prepare implements Check's Prepare method.
 func (f *Logfile) Prepare() error {
-	fmt.Println("Prepare")
 	if f.Remote.Host == "" {
 		return f.localFileSize()
 	}
 
-	// Establish ssh connection to remote host and keep for reuse in Execute.
-	ams, err := f.prepareAuthMethods()
-	if err != nil {
-		return err
+	// Prepare ssh client config only once.
+	if f.clientConf == nil {
+		ams, err := f.prepareAuthMethods()
+		if err != nil {
+			return err
+		}
+		f.clientConf = &ssh.ClientConfig{
+			User: f.Remote.User,
+			Auth: ams,
+		}
+		f.host = f.Remote.Host
+		if strings.Index(f.host, ":") == -1 {
+			f.host += ":22"
+		}
+
+		// Dail early.
+		client, err := ssh.Dial("tcp", f.host, f.clientConf)
+		if err != nil {
+			return err
+		}
+		client.Close()
 	}
-	sshConfig := &ssh.ClientConfig{
-		User: f.Remote.User,
-		Auth: ams,
-	}
-	host := f.Remote.Host
-	if strings.Index(host, ":") == -1 {
-		host += ":22"
-	}
-	client, err := ssh.Dial("tcp", host, sshConfig)
-	if err != nil {
-		return err
-	}
-	f.client = client
 
 	return f.remoteFileSize()
 }
 
+func quoteShellFilename(n string) string {
+	return strings.Replace(n, "'", "\\'", -1) // better than nothing
+}
+
 func (f *Logfile) remoteFileSize() error {
-	fmt.Println("remoteFileSize")
-	session, err := f.client.NewSession()
+	client, err := ssh.Dial("tcp", f.host, f.clientConf)
+	if err != nil {
+		return err
+	}
+	session, err := client.NewSession()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
-	cmd := fmt.Sprintf("cat %s | wc -c", f.Path) // TODO: quote path
-	fmt.Println(cmd)
+	cmd := fmt.Sprintf("wc -c '%s'", quoteShellFilename(f.Path))
 	data, err := session.CombinedOutput(cmd)
 	if err != nil {
-		fmt.Println(string(data))
-		return err
+		f.pos = 0
+		return nil // okay if file does not exist
 	}
-	s := strings.TrimSpace(string(data))
-	n, err := strconv.ParseInt(s, 10, 64)
+	s := string(data)
+	i := strings.Index(s, " ")
+	if i == -1 {
+		return fmt.Errorf("unexpected output of wc: %q", s)
+	}
+	n, err := strconv.ParseInt(s[:i], 10, 64)
 	if err != nil {
 		return err
 	}
 
 	f.pos = n
-	fmt.Println("Filesize befor: ", n)
 	return nil
 }
 
