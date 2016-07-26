@@ -42,6 +42,7 @@ func init() {
 	addSkipFlag(cmdExec.Flag)
 
 	addTestFlags(cmdExec.Flag)
+	addOutputFlag(cmdExec.Flag)
 }
 
 var (
