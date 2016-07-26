@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -543,8 +544,7 @@ func (t *Test) AsJSON5() ([]byte, error) {
 	return json5.MarshalIndent(t, "", "    ")
 }
 
-// execute does a single request and check the response, the outcome is put
-// into result.
+// execute does a single request and check the response.
 func (t *Test) execute() {
 	var err error
 	err = t.executeRequest()
@@ -835,12 +835,21 @@ func (t *Test) executeRequest() error {
 
 	start := time.Now()
 
+	if t.Verbosity >= 4 {
+		t.tracef("Full Request follows")
+		t.Request.Request.Write(os.Stderr)
+		// "Rewind body"
+		t.Request.Request.Body = ioutil.NopCloser(strings.NewReader(t.Request.SentBody))
+		t.tracef("Full Request end")
+	}
+
 	resp, err := t.client.Do(t.Request.Request)
 	if ue, ok := err.(*url.Error); ok && ue.Err == redirectNofollow &&
 		!t.Request.FollowRedirects {
 		// Clear err if it is just our redirect non-following policy.
 		err = nil
 		abortedRedirection = true
+		t.tracef("Aborted redirect chain")
 	}
 
 	t.Response.Response = resp
@@ -865,6 +874,16 @@ func (t *Test) executeRequest() error {
 		t.Response.BodyStr = string(bb)
 		t.Response.BodyErr = be
 		reader.Close()
+		if t.Verbosity >= 4 {
+			t.tracef("Full Response follows")
+			fmt.Fprintf(os.Stderr, "%s %s\n",
+				t.Response.Response.Proto,
+				t.Response.Response.Status)
+			t.Response.Response.Header.Write(os.Stderr)
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, t.Response.BodyStr)
+			t.tracef("Full Response end")
+		}
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())
 	}
