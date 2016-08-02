@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// latency.go contains checks against response time latency.
+// phantomjs.go contains checks through PhantomJS (phantomjs.org)
 
 package ht
 
