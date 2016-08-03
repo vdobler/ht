@@ -31,6 +31,9 @@ func init() {
 //
 // CustomJS can be usefull to log an excerpt of response (or the request)
 // via console.log.
+//
+// The JavaScript code is interpreted by otto. See the documentation at
+// https://godoc.org/github.com/robertkrimen/otto for details.
 type CustomJS struct {
 	// Script is JavaScript code to be evaluated.
 	//
