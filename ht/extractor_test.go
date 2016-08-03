@@ -182,6 +182,84 @@ func TestCookieExtractor(t *testing.T) {
 	}
 }
 
+var jsExtractorTests = []struct {
+	script string
+	want   string
+	error  string
+}{
+	// Simple stuff, passing.
+	{`123;`, "123", ""},
+	{`true;`, "true", ""},
+	{`false;`, "false", ""},
+	{`"abc";`, "abc", ""},
+	{`Test.Name;`, "JavaScript everywhere", ""},
+	{`["Ooops"];`, "", "Ooops"},
+
+	// Simple stuff, failing.
+	{`null;`, "", "null"},
+	{`var a; a;`, "", "undefined"},
+
+	// Reporting errors; ugly but works.
+	{`var err={"errmsg": "I'm sorry"}; err;`, "", "I'm sorry"},
+	{`[ "I'm sorry" ];`, "", "I'm sorry"},
+	{`var f = function() { return 7; }; f;`, "", "extracted Function"},
+
+	// Complex stuff
+	{`
+             var body = JSON.parse(Test.Response.BodyStr);
+             var zug = _.find(body, function(k){ return k.code=="ZG"; });
+             if ( zug === undefined ) {
+                 var err={"error": "Did not find ZG"};
+                 err;
+             } else {
+                 zug.id;
+             }
+            `, "78", "",
+	},
+	{`
+             var body = JSON.parse(Test.Response.BodyStr);
+             var zug = _.find(body, function(k){ return k.code=="SO"; });
+             if ( zug === undefined ) {
+                 [ "Did not find SO" ];  // Array signal error too.
+             } else {
+                 zug.id;
+             }
+            `, "", "Did not find SO",
+	},
+}
+
+func TestJSExtractor(t *testing.T) {
+	body := `[
+  { "id": 12, "code": "AG", "name": "Aargau" },
+  { "id": 34, "code": "BE", "name": "Bern" },
+  { "id": 56, "code": "ZH", "name": "Zürich" },
+  { "id": 78, "code": "ZG", "name": "Zug" },
+  { "id": 90, "code": "GE", "name": "Genf" }
+]`
+
+	for i, tc := range jsExtractorTests {
+		test := &Test{
+			Name: "JavaScript everywhere",
+			Response: Response{
+				BodyStr: body,
+			},
+		}
+		ex := JSExtractor{Script: tc.script}
+		got, err := ex.Extract(test)
+		if err != nil {
+			if tc.error == "" {
+				t.Errorf("%d. Unexpected error %v", i, err)
+			} else if egot := err.Error(); tc.error != egot {
+				t.Errorf("%d. Wrong error '%s', want '%s'", i, egot, tc.error)
+			}
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("%d. got %q, want %q", i, got, tc.want)
+		}
+	}
+}
+
 func TestMarshalExtractorMap(t *testing.T) {
 	em := ExtractorMap{
 		"Foo": HTMLExtractor{

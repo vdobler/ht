@@ -15,6 +15,7 @@ import (
 
 	"github.com/andybalholm/cascadia"
 	"github.com/nytlabs/gojsonexplode"
+	"github.com/robertkrimen/otto"
 	"github.com/vdobler/ht/internal/json5"
 	"golang.org/x/net/html"
 )
@@ -64,6 +65,7 @@ func init() {
 	RegisterExtractor(BodyExtractor{})
 	RegisterExtractor(JSONExtractor{})
 	RegisterExtractor(CookieExtractor{})
+	RegisterExtractor(JSExtractor{})
 }
 
 // ----------------------------------------------------------------------------
@@ -301,4 +303,95 @@ func (e CookieExtractor) Extract(t *Test) (string, error) {
 	}
 
 	return cookies[0].Value, nil
+}
+
+// ----------------------------------------------------------------------------
+// JSExtractor
+
+// JSExtractor extracts arbitary stuff via custom JavaScript code.
+//
+// The current Test is present in the JavaScript VM via binding the name
+// "Test" at top-level to the current Test beeing checked.
+//
+// The Script is evaluated and the final expression is the value
+// extracted with the following excpetions:
+//  - undefined or null is treated as an error
+//  - Objects and Arrays are treated as errors. The error message is reporteds
+//    in the field 'errmsg' of the object or the index 0 of the array.
+//  - Strings, Numbers and Bools are treated as properly extracted values
+//    which are returned.
+//  - Other types result in undefined behaviour.
+//
+// The JavaScript code is interpreted by otto. See the documentation at
+// https://godoc.org/github.com/robertkrimen/otto for details.
+type JSExtractor struct {
+	// Script is JavaScript code to be evaluated.
+	//
+	// The script may be read from disk with the following syntax:
+	//     @file:/path/to/script
+	Script string `json:",omitempty"`
+}
+
+// Extract implements Extractor's Extract method.
+func (e JSExtractor) Extract(t *Test) (string, error) {
+	// Reading the script with fileData is a hack as it accepts
+	// the @vfile syntax but cannot do the variable replacements
+	// as Prepare is called on the already 'replaced' checked.
+	repl, _ := newReplacer(nil)
+	source, basename, err := fileData(e.Script, repl)
+	if err != nil {
+		return "", err
+	}
+	if basename == "" {
+		basename = "<inline>"
+	}
+	vm := otto.New()
+	script, err := vm.Compile(basename, source)
+	if err != nil {
+		return "", err
+	}
+
+	// Set Test object and execute script.
+	currentTest, err := vm.ToValue(*t)
+	if err != nil {
+		return "", err
+	}
+	vm.Set("Test", currentTest)
+	val, err := vm.Run(script)
+	if err != nil {
+		return "", err
+	}
+
+	// If the value resulting from Run is an Object it is considered
+	// and error.
+	if val.IsObject() {
+		switch class := val.Class(); class {
+		case "Array":
+			first, err := val.Object().Get("0")
+			if err != nil {
+				return "", fmt.Errorf("extracted array without index 0")
+			}
+			return "", errors.New(first.String())
+		case "Object":
+			errmsg, err := val.Object().Get("errmsg")
+			if err != nil {
+				return "", fmt.Errorf("Ooops")
+			}
+			return "", errors.New(errmsg.String())
+		default:
+			return "", errors.New("extracted " + class)
+		}
+	}
+	// Undefined, null (and NaN but this seems buggy) are errors too.
+	if !val.IsDefined() || val.IsNull() {
+		s, _ := val.ToString() // TODO: handle error?
+		return "", fmt.Errorf("%s", s)
+	}
+
+	// Convert to string and return
+	str, err := val.ToString()
+	if err != nil {
+		return "", err
+	}
+	return str, nil
 }
