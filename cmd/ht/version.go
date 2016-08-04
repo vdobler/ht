@@ -20,7 +20,7 @@ Version prints version information about ht.
 }
 
 var (
-	version = "2.2.0"
+	version = "2.3.0"
 )
 
 func runVersion(cmd *Command, _ []string) {
