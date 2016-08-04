@@ -1324,9 +1324,9 @@ func TestNotification(t *testing.T) {
 	jar.setCookies(
 		mustParseURL("http://www.google.com/foo/bar/waz"),
 		[]*http.Cookie{
-			&http.Cookie{Name: "n1", Value: "v1"},
-			&http.Cookie{Name: "n2", Value: "v2", Path: "/"},
-			&http.Cookie{Name: "n3", Value: "v3", Path: "/foo", MaxAge: 9},
+			{Name: "n1", Value: "v1"},
+			{Name: "n2", Value: "v2", Path: "/"},
+			{Name: "n3", Value: "v3", Path: "/foo", MaxAge: 9},
 		},
 		now,
 	)
@@ -1336,8 +1336,8 @@ func TestNotification(t *testing.T) {
 	jar.setCookies(
 		mustParseURL("http://www.company.co.uk/"),
 		[]*http.Cookie{
-			&http.Cookie{Name: "n4", Value: "v4"},
-			&http.Cookie{Name: "n5", Value: "v5", Domain: "company.co.uk"},
+			{Name: "n4", Value: "v4"},
+			{Name: "n5", Value: "v5", Domain: "company.co.uk"},
 		},
 		now,
 	)
@@ -1354,7 +1354,7 @@ func TestNotification(t *testing.T) {
 	jar.setCookies(
 		mustParseURL("http://www.google.com/"),
 		[]*http.Cookie{
-			&http.Cookie{Name: "n2", Value: "v2", Path: "/", MaxAge: -1},
+			{Name: "n2", Value: "v2", Path: "/", MaxAge: -1},
 		},
 		now,
 	)
@@ -1364,7 +1364,7 @@ func TestNotification(t *testing.T) {
 	jar.setCookies(
 		mustParseURL("http://www.google.com/"),
 		[]*http.Cookie{
-			&http.Cookie{Name: "n3", Value: "v3new", Path: "/foo"},
+			{Name: "n3", Value: "v3new", Path: "/foo"},
 		},
 		now,
 	)
@@ -1385,7 +1385,7 @@ func TestNotification(t *testing.T) {
 	jar.setCookies(
 		mustParseURL("http://192.168.12.42"),
 		[]*http.Cookie{
-			&http.Cookie{Name: "n6", Value: "v6"},
+			{Name: "n6", Value: "v6"},
 		},
 		now,
 	)

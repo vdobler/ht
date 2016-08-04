@@ -197,7 +197,7 @@ func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 
 var passingScreenshotTests = []*Test{
 	// Plain screenshot of homepage.
-	&Test{
+	{
 		Name:    "Basic Screenshot of Home",
 		Request: Request{URL: "/home"},
 		Checks: []Check{
@@ -210,7 +210,7 @@ var passingScreenshotTests = []*Test{
 	},
 
 	// Anonymous user are greeted with white background.
-	&Test{
+	{
 		Name:    "Greet Anonymous (white bg)",
 		Request: Request{URL: "/greet"},
 		Checks: []Check{
@@ -223,8 +223,8 @@ var passingScreenshotTests = []*Test{
 	},
 
 	// Loged in users are greeted with their username as background.
-	&Test{Request: Request{URL: "/login?user=red"}},
-	&Test{
+	{Request: Request{URL: "/login?user=red"}},
+	{
 		Name:    "Greet Red user (red bg)",
 		Request: Request{URL: "/greet?name=Red"},
 		Checks: []Check{
@@ -237,10 +237,10 @@ var passingScreenshotTests = []*Test{
 	},
 
 	// Log out again, clear cookie.
-	&Test{Request: Request{URL: "/login?user"}},
+	{Request: Request{URL: "/login?user"}},
 
 	// Golden record has size 96x32: Compare to larger/smaller screenshot.
-	&Test{
+	{
 		Name:    "Greet Anonymous (different sizes)",
 		Request: Request{URL: "/greet"},
 		Checks: []Check{
@@ -250,7 +250,7 @@ var passingScreenshotTests = []*Test{
 	},
 
 	// White background (no cookie) but with name Bob. Ignoring the rectangle.
-	&Test{
+	{
 		Name:    "Greet Bob, ignoring name",
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
@@ -263,7 +263,7 @@ var passingScreenshotTests = []*Test{
 	},
 
 	// White background (no cookie) but with name Bob. Allowing some pixels to differ.
-	&Test{
+	{
 		Name:    "Greet Bob, tollerating difference",
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
@@ -309,7 +309,7 @@ func TestScreenshotPass(t *testing.T) {
 }
 
 var failingScreenshotTests = []*Test{
-	&Test{
+	{
 		Name:    "Screenshot of Home copared to Greeting",
 		Request: Request{URL: "/home"},
 		Checks: []Check{
@@ -320,7 +320,7 @@ var failingScreenshotTests = []*Test{
 		},
 	},
 
-	&Test{
+	{
 		Name:    "Greet Bob, Ignore region too small",
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
@@ -332,7 +332,7 @@ var failingScreenshotTests = []*Test{
 		},
 	},
 
-	&Test{
+	{
 		Name:    "Greet Bob, tolerating difference, but not enough",
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
@@ -381,7 +381,7 @@ func TestScreenshotFail(t *testing.T) {
 // RenderedHTML
 
 var passingRenderedHTMLTests = []*Test{
-	&Test{
+	{
 		Name:    "Welcome Anonymous, raw body",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{
@@ -391,7 +391,7 @@ var passingRenderedHTMLTests = []*Test{
 			&Body{Contains: "Changed", Count: -1},
 		},
 	},
-	&Test{
+	{
 		Name:    "Welcome Anonymous, rendered body",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{
@@ -407,8 +407,8 @@ var passingRenderedHTMLTests = []*Test{
 	},
 
 	// Loged in users are greeted with their username as background.
-	&Test{Request: Request{URL: "/login?user=Joe"}},
-	&Test{
+	{Request: Request{URL: "/login?user=Joe"}},
+	{
 		Name:    "Welcome Joe",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{
@@ -480,15 +480,15 @@ func TestRenderingTimeOffset(t *testing.T) {
 }
 
 var passingRenderingTimeTests = []*Test{
-	&Test{
+	{
 		Name:    "Welcome Anonymous, rendered body",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{
 			&RenderingTime{Max: Duration(80 * time.Millisecond)},
 		},
 	},
-	&Test{Request: Request{URL: "/login?user=Joe"}},
-	&Test{
+	{Request: Request{URL: "/login?user=Joe"}},
+	{
 		Name:    "Welcome Joe",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{

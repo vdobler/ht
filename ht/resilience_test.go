@@ -12,13 +12,13 @@ import (
 func TestModify(t *testing.T) {
 	r := Resilience{}
 	for _, tc := range [][]string{
-		[]string{"hello"},
-		[]string{"12"},
-		[]string{"98.95"},
-		[]string{"foo@test.org"},
-		[]string{"H"},
-		[]string{""},
-		[]string{"foo", "bar"},
+		{"hello"},
+		{"12"},
+		{"98.95"},
+		{"foo@test.org"},
+		{"H"},
+		{""},
+		{"foo", "bar"},
 	} {
 		// TODO: some proper automated test?
 		modvals := r.modify(tc, modAll)

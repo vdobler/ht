@@ -628,8 +628,8 @@ func extractHTMLChecks(e Event) ht.CheckList {
 		Concurrency: 4,
 		Timeout:     ht.Duration(20 * time.Second),
 		IgnoredLinks: []ht.Condition{
-			ht.Condition{Contains: "www.facebook.com/"},
-			ht.Condition{Contains: "www.twitter.com/"},
+			{Contains: "www.facebook.com/"},
+			{Contains: "www.twitter.com/"},
 		},
 	})
 
