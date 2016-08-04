@@ -121,7 +121,7 @@ var (
 	remoteHost string
 )
 
-// Rewriter from remote to local host
+// Rewriter from remote to local host.
 type Rewriter struct {
 	local  string
 	remote string
@@ -136,6 +136,7 @@ type Rewriter struct {
 }
 
 const (
+	// Different things to rewrite.
 	RewriteNothing        uint32 = 0
 	RewriteResponseHeader uint32 = 1 << (iota - 1)
 	RewriteResponseBody
@@ -143,6 +144,7 @@ const (
 	RewriteRequestBody
 )
 
+// NewRewriter for what between local and remote.
 func NewRewriter(local, remote string, what uint32) Rewriter {
 	r := Rewriter{
 		local:  local,
@@ -161,12 +163,14 @@ func NewRewriter(local, remote string, what uint32) Rewriter {
 	return r
 }
 
+// Response rewrites the header and body of a HTTP response.
 func (r Rewriter) Response(header http.Header, body []byte) (http.Header, []byte) {
 	rheader := r.header(header, r.remoteRe, r.remoteSub, r.what&RewriteResponseHeader != 0)
 	rbody := r.body(body, r.remoteRe, r.remoteSub, r.what&RewriteResponseBody != 0)
 	return rheader, rbody
 }
 
+// Request rewrites the header and body of a HTTP response.
 func (r Rewriter) Request(header http.Header, body []byte) (http.Header, []byte) {
 	rheader := r.header(header, r.localRe, r.localSub, r.what&RewriteRequestHeader != 0)
 	rbody := r.body(body, r.localRe, r.localSub, r.what&RewriteRequestBody != 0)
@@ -187,7 +191,7 @@ func (r Rewriter) header(header http.Header, re *regexp.Regexp, sub string, do b
 			for i, v := range vv {
 				w := r.remoteRe.ReplaceAllString(v, r.remoteSub)
 				if w != v {
-					fmt.Printf("Rewrite Reponse Header %q\n    from: %q\n    to:   %q\n",
+					fmt.Printf("Rewrite Response Header %q\n    from: %q\n    to:   %q\n",
 						h, v, w)
 				}
 				vv[i] = w
@@ -205,7 +209,7 @@ func (r Rewriter) body(body []byte, re *regexp.Regexp, sub string, do bool) []by
 	rbody := r.remoteRe.ReplaceAll(body, []byte(r.remoteSub))
 	if !bytes.Equal(body, rbody) {
 		n := len(r.remoteRe.FindAllIndex(body, -1))
-		fmt.Printf("Rewrite Reponse Body: %d occurences\n", n)
+		fmt.Printf("Rewrite Response Body: %d occurrences\n", n)
 	}
 	return rbody
 }
@@ -240,7 +244,7 @@ func newSingleHostReverseProxy(target *url.URL) *httputil.ReverseProxy {
 		// Additional to httputil.NewSingleHostReverseProxy:
 		// Fake host and disable caching.
 		req.Host = target.Host
-		// TODO: the next 3 are definitively usefull as response headers,
+		// TODO: the next 3 are definitively useful as response headers,
 		// but check if the can be used for requests too.
 		req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		req.Header.Set("Pragma", "no-cache")

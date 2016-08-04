@@ -34,7 +34,7 @@
 //     * FinalURL        checks final URL after a redirect chain
 //     * Header          checks presence and values of received HTTP header
 //     * HTMLContains    checks text content of CSS-selected elements
-//     * HTMLTag         checks occurence HTML elements choosen via CSS-selectors
+//     * HTMLTag         checks occurrence HTML elements chosen via CSS-selectors
 //     * Identity        checks the SHA1 hash of the HTTP body
 //     * Image           checks image format, size and content
 //     * JSON            checks structure and content of a JSON body
@@ -95,7 +95,7 @@
 // according to the Checks. Before a test can be run the variable substitution
 // in the Request and the Checks have to happen, a real HTTP request
 // has to be crafted and checks have to be set up. This is done by compiling
-// the test, a step wich may fail: a) if the Request is malformed (e.g. uses
+// the test, a step which may fail: a) if the Request is malformed (e.g. uses
 // a malformed URL) or b) if the checks are malformed (e.g. uses a malformed
 // regexp). Such Tests/Checks are labeled Bogus.
 //

@@ -178,7 +178,7 @@ func isNormalVarnameChar(b byte) bool {
 // findSpecialVariables returns all occurrences of special variables
 // as defined in addSpecialVariables. The enclosing {{ and }} are not
 // part of the variable name. The resulting list is sorted to have
-// a fixed order for a reproducable asignment to random variables.
+// a fixed order for a reproducible asignment to random variables.
 func (t *Test) findSpecialVariables() []string {
 	v := map[string]struct{}{}
 

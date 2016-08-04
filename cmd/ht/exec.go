@@ -31,7 +31,7 @@ executes them. The flags -skip and -only allow to fine control which
 tests in the suite(s) are executed. Variables set with the -D flag overwrite
 variables read from file with -Dfile.
 The exit code is 3 if bogus tests or checks are found, 2 if test errors
-are present, 1 if only check failures occured and 0 if everything passed,
+are present, 1 if only check failures occurred and 0 if everything passed,
 nothing was executed or everything was skipped. Note that the status of
 Teardown test are ignored while determining the exit code.
 	`,
@@ -87,7 +87,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		}
 
 		dirname := outputDir + "/" + sanitize.Filename(suites[s].Name)
-		fmt.Printf("Saveing result of suite %q to folder %q.\n", suites[s].Name, dirname)
+		fmt.Printf("Saving result of suite %q to folder %q.\n", suites[s].Name, dirname)
 		err := os.MkdirAll(dirname, 0766)
 		if err != nil {
 			log.Panic(err)

@@ -64,7 +64,7 @@ func TestRepeat(t *testing.T) {
 
 	nrep := lcmOf(variables)
 	if nrep != 6 {
-		t.Errorf("Got %d as lcmOf, wnat 6", nrep)
+		t.Errorf("Got %d as lcmOf, want 6", nrep)
 	}
 	r, err := Repeat(test, nrep, variables)
 	if err != nil {

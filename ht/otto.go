@@ -10,7 +10,7 @@ import (
 	"errors"
 
 	"github.com/robertkrimen/otto"
-	_ "github.com/robertkrimen/otto/underscore"
+	_ "github.com/robertkrimen/otto/underscore" // Load underscore library
 )
 
 func init() {
@@ -23,13 +23,13 @@ func init() {
 // CustomJS executes the provided JavaScript.
 //
 // The current Test is present in the JavaScript VM via binding the name
-// "Test" at top-level to the current Test beeing checked.
+// "Test" at top-level to the current Test being checked.
 //
 // The Script's last value indicates success or failure:
 //   - Success: true, 0, ""
 //   - Failure: false, any number != 0, any string != ""
 //
-// CustomJS can be usefull to log an excerpt of response (or the request)
+// CustomJS can be useful to log an excerpt of response (or the request)
 // via console.log.
 //
 // The JavaScript code is interpreted by otto. See the documentation at

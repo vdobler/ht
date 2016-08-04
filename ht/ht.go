@@ -485,7 +485,7 @@ func (t *Test) Run(variables map[string]string) error {
 	}
 
 	// specialVars is the cached version of special variables (NOW, RANDOM)
-	// wich can be cached from one try to the next, but this set may change
+	// which can be cached from one try to the next, but this set may change
 	// from one run to the other so clear it here.
 	t.specialVars = nil
 
@@ -512,7 +512,7 @@ func (t *Test) Run(variables map[string]string) error {
 	t.Duration = Duration(time.Since(start))
 	if t.Poll.Max > 1 {
 		if t.Status == Pass {
-			t.debugf("polling succeded after %d tries", try)
+			t.debugf("polling succeeded after %d tries", try)
 		} else {
 			t.debugf("polling failed all %d tries", maxTries)
 		}
@@ -811,7 +811,7 @@ func fileData(s string, repl replacer) (data string, basename string, err error)
 		return "", "", fmt.Errorf("missing filename in @[v]file: parameter")
 	}
 
-	// Handle the follwoing syntax:
+	// Handle the following syntax:
 	//     @file:@filename:direct-file-data
 	// which does not read from the filesystem.
 	if j := strings.Index(file, ":"); j != -1 && file[0] == '@' {

@@ -61,7 +61,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 		},
 	}
 
-	// TODO: properly limit gloabl rate at which we fire to W3C validator
+	// TODO: properly limit global rate at which we fire to W3C validator
 	time.Sleep(100 * time.Millisecond)
 
 	err := test.Run(nil)

@@ -55,7 +55,7 @@ type NoServerError struct{}
 // Execute implements Check's Execute method.
 func (NoServerError) Execute(t *Test) error {
 	if t.Response.Response == nil {
-		return fmt.Errorf("No response recieved")
+		return fmt.Errorf("No response received")
 	}
 	if t.Response.Response.StatusCode/100 == 5 {
 		return fmt.Errorf("Server Error %q", t.Response.Response.Status)

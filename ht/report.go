@@ -25,6 +25,7 @@ import (
 // Status describes the status of a Test or a Check.
 type Status int
 
+// Possible status of Checks, Tests and Suites.
 const (
 	NotRun  Status = iota // Not jet executed
 	Skipped               // Omitted deliberately
