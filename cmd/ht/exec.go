@@ -31,7 +31,9 @@ executes them. The flags -skip and -only allow to fine control which
 tests in the suite(s) are executed. Variables set with the -D flag overwrite
 variables read from file with -Dfile.
 The exit code is 3 if bogus tests or checks are found, 2 if test errors
-are present, 1 if only check failures occured and 0 if everything passed.
+are present, 1 if only check failures occured and 0 if everything passed,
+nothing was executed or everything was skipped. Note that the status of
+Teardown test are ignored while determining the exit code.
 	`,
 }
 
@@ -59,11 +61,15 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		suites[s].PrintReport(os.Stdout)
 	}
 
+	overallStatus := ht.NotRun
 	for s := range suites {
 		suites[s].PrintShortReport(os.Stdout)
 		fmt.Println()
 
 		// Statistics
+		if suites[s].Status > overallStatus {
+			overallStatus = suites[s].Status
+		}
 		for _, r := range suites[s].AllTests() {
 			switch r.Status {
 			case ht.Pass:
@@ -108,19 +114,27 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
 
-	if totalBogus > 0 {
-		fmt.Println("BOGUS")
-		os.Exit(3)
-	} else if totalError > 0 {
-		fmt.Println("ERROR")
-		os.Exit(2)
-	} else if totalFailed > 0 {
+	switch overallStatus {
+	case ht.NotRun:
+		fmt.Println("NOTRUN")
+		os.Exit(0)
+	case ht.Skipped:
+		fmt.Println("SKIPPED")
+		os.Exit(0)
+	case ht.Pass:
+		fmt.Println("PASS")
+		os.Exit(0)
+	case ht.Fail:
 		fmt.Println("FAIL")
 		os.Exit(1)
+	case ht.Error:
+		fmt.Println("ERROR")
+		os.Exit(2)
+	case ht.Bogus:
+		fmt.Println("BOGUS")
+		os.Exit(3)
 	}
-
-	fmt.Println("PASS")
-	os.Exit(0)
+	panic(fmt.Sprintf("Ooops: Unknown overall status %d", overallStatus))
 }
 
 func prepareExecution() {
