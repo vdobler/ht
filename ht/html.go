@@ -402,7 +402,7 @@ func textContentRec(n *html.Node, raw bool) string {
 //     Content-Security-Policy: upgrade-insecure-requests
 // in the HTTP header.
 type Links struct {
-	// Which links to test; a space seperated list of tag tag names:
+	// Which links to test; a space separated list of tag tag names:
 	//     'a',   'link',  'img',  'script', 'video', 'audio', 'source'
 	// E.g. use "a img" to check the href attribute of all a-tags and
 	// the src attribute of all img-tags.

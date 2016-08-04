@@ -170,7 +170,7 @@ func TestPercentils(t *testing.T) {
 	if u[0] < 295 || u[0] > 305 ||
 		u[1] < 495 || u[1] > 505 ||
 		u[2] < 695 || u[2] > 705 {
-		t.Errorf("Either math/rand is buggy or we had exeptional "+
+		t.Errorf("Either math/rand is buggy or we had exceptional "+
 			"bad luck or something is brocken:\nu = %v", u)
 	}
 

@@ -22,7 +22,7 @@ var cmdBench = &Command{
 	Description: "benchmark requests",
 	Flag:        flag.NewFlagSet("bench", flag.ContinueOnError),
 	Help: `
-Benchmark the tests by running count many requests seperated by pause
+Benchmark the tests by running count many requests separated by pause
 after doing warmup many requests which are not measured.
 `,
 }

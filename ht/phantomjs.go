@@ -428,7 +428,7 @@ type RenderedHTML struct {
 	Checks CheckList
 
 	// KeepAs is the file name to store the rendered HTML to.
-	// Usefull for debugging purpose.
+	// Useful for debugging purpose.
 	KeepAs string `json:",omitempty"`
 }
 
@@ -641,7 +641,7 @@ func (d RenderingTime) Execute(t *Test) error {
 		return fmt.Errorf("Problems with PhantomJS: %q", string(output))
 	}
 
-	// Substract overhead for invoking PhantomJS.
+	// Subtract overhead for invoking PhantomJS.
 	// The overhead was determined by running TestRenderingTimeOffset
 	// with debugRenderingTime==true on my local machine.
 	// As TestRenderingTimeOffset does compute the arithemtic mean
