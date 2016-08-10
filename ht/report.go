@@ -233,6 +233,7 @@ var htmlTestTmpl = `{{define "TEST"}}
       <div>
         {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
         {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
+        {{if .Request.Params}}{{template "FORMDATA" .Request.Params}}{{end}}
         <br/>
       </div>
       <div class="summary">
@@ -314,6 +315,25 @@ var htmlRequestTmpl = `{{define "REQUEST"}}
 {{end}}
 `
 
+var htmlFormdataTmpl = `{{define "FORMDATA"}}
+<div class="toggle2">
+  <div class="expanded2">
+    <h3 class="toggleButton2">Form Data ▾</h3>
+    <div class="formdataDetails">
+      {{range $k, $vs := .}}
+        {{range $v := $vs}}
+          <code><strong>{{printf "%25s: " $k}}</strong>{{printf "%q" $v}}</code></br>
+        {{end}}
+      {{end}}
+    </div>
+  </div>
+  <div class="collapsed2">
+    <h3 class="toggleButton2">Form Data ▹</h3>
+  </div>
+</div>
+{{end}}
+`
+
 var defaultSuiteTmpl = `{{Box (printf "%s: %s" (ToUpper .Status.String) .Name) ""}}{{if .Error}}
 Error: {{.Error}}{{end}}
 Started: {{.Started}}   Duration: {{.Duration}}
@@ -359,6 +379,7 @@ h3 {
 .checkDetails { margin-left: 2em; }
 .requestDetails { margin-left: 2em; }
 .responseDetails { margin-left: 2em; }
+.formdataDetails { margin-left: 2em; }
 
 .PASS { color: green; }
 .FAIL { color: red; }
@@ -490,6 +511,7 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlResponseTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlRequestTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlHeaderTmpl))
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlFormdataTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlJavascriptTmpl))
 }
