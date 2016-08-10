@@ -219,36 +219,45 @@ var htmlTestTmpl = `{{define "TEST"}}
       ({{.FullDuration}}) ▾
     </h2>
     <div class="testDetails">
-      <div id="summary">
+      <div class="reqresp"><code>
+        {{if .Request.Request}}
+          <strong>{{.Request.Request.Method}}</strong> {{.Request.Request.URL.String}}<br/>
+          {{range .Response.Redirections}}
+            <strong>GET</strong> {{.}}<br/>
+          {{end}}
+        {{end}}
+        {{if .Response.Response}}
+          {{.Response.Response.Proto}} <strong>{{.Response.Response.Status}}</strong>
+        {{end}}
+      </code></div>
+      <div>
+        {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
+        {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
+        <br/>
+      </div>
+      <div class="summary">
         <pre class="description">{{.Description}}</pre>
 	Started: {{.Started}}<br/>
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
         Request Duration: {{.Duration}} <br/>
-        {{if .Request.Request}}
-          {{.Request.Request.Method}} {{.Request.Request.URL.String}}<br/>
-          {{range .Response.Redirections}}
-            GET {{.}}<br/>
+        {{if .VarValues}}Variables:<br/>
+          {{range $k, $v := .VarValues}}
+            <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
           {{end}}
         {{end}}
-        {{if .Response.Response}}
-          {{.Response.Response.Proto}} {{.Response.Response.Status}}</br>
+        {{if .ExValues}}Extractions:<br/>
+          {{range $k, $v := .ExValues}}
+            <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
+          {{end}}
         {{end}}
-        {{if .VarValues}}Variables:
-          {{range $k, $v := .VarValues}}{{printf "%s=%q;  " $k $v}}{{end}}<br/>
-        {{end}}
-        {{if .ExValues}}Extractions:
-          {{range $k, $v := .ExValues}}{{printf "%s=%q;  " $k $v}}{{end}}<br/>
-        {{end}}
-        {{if .Error}}Error: {{.Error}}{{end}}<br/>
+        {{if .Error}}<br/><strong>Error:</strong> {{.Error}}{{end}}<br/>
       </div>
       {{if eq .Status 2 3 4 5}}{{if .CheckResults}}
         <div class="checks">
           {{range $i, $c := .CheckResults}}{{template "CHECK" .}}{{end}}
         </div>
       {{end}}{{end}}
-      {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
-      {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
     </div>
   </div>
 </div>
@@ -270,6 +279,7 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
     <h3 class="toggleButton2">HTTP Response ▾</h3>
     <div class="responseDetails">
       {{if .Response.Response}}
+        {{.Response.Response.Proto}} <strong>{{.Response.Response.Status}}</strong><br/>
         {{template "HEADER" .Response.Response.Header}}
       {{end}}
       {{if .Response.BodyErr}}Error reading body: {{.Response.BodyErr.Error}}
