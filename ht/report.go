@@ -284,7 +284,10 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
         {{template "HEADER" .Response.Response.Header}}
       {{end}}
       {{if .Response.BodyErr}}Error reading body: {{.Response.BodyErr.Error}}
-      {{else}} 
+      {{else}}
+<pre class="responseBodySummary">
+{{Summary .Response.BodyStr}}
+</pre>
         <a href="{{.SeqNo}}.ResponseBody" target="_blank">Response Body</a>
       {{end}}
     </div>
@@ -504,7 +507,10 @@ func init() {
 	ShortSuiteTmpl = template.Must(ShortSuiteTmpl.Parse(shortTestTmpl))
 
 	HtmlSuiteTmpl = htmltemplate.New("SUITE")
-	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{"ToUpper": strings.ToUpper})
+	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{
+		"ToUpper": strings.ToUpper,
+		"Summary": Summary,
+	})
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlSuiteTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlCheckTmpl))
