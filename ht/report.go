@@ -233,7 +233,7 @@ var htmlTestTmpl = `{{define "TEST"}}
       <div>
         {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
         {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
-        {{if .Request.Params}}{{template "FORMDATA" .Request.Params}}{{end}}
+        {{if .Request.SentParams}}{{template "FORMDATA" .Request.SentParams}}{{end}}
         <br/>
       </div>
       <div class="summary">

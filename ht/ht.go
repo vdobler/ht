@@ -182,8 +182,9 @@ type Request struct {
 	// Timeout of this request. If zero use DefaultClientTimeout.
 	Timeout Duration `json:",omitempty"`
 
-	Request  *http.Request `json:"-"` // the 'real' request
-	SentBody string        `json:"-"` // the 'real' body
+	Request    *http.Request `json:"-"` // the 'real' request
+	SentBody   string        `json:"-"` // the 'real' body
+	SentParams url.Values    `json:"-"` // the 'real' parameters
 }
 
 // Response captures information about a http response.
@@ -712,16 +713,22 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 
 	// Apply variable substitution.
 	rurl := repl.str.Replace(t.Request.URL)
+	prurl, err := url.Parse(rurl)
+	if err != nil {
+		return "", err
+	}
+	t.Request.SentParams = prurl.Query()
+
 	urlValues := make(URLValues)
 	for param, vals := range t.Request.Params {
 		rv := make([]string, len(vals))
 		for i, v := range vals {
 			rv[i] = repl.str.Replace(v)
+			t.Request.SentParams.Add(param, rv[i])
 		}
 		urlValues[param] = rv
 	}
 
-	var body io.ReadCloser
 	if len(t.Request.Params) > 0 {
 		if t.Request.ParamsAs == "body" || t.Request.ParamsAs == "multipart" {
 			if t.Request.Method == "GET" || t.Request.Method == "HEAD" {
@@ -744,7 +751,6 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 			contentType = "application/x-www-form-urlencoded"
 			encoded := url.Values(urlValues).Encode()
 			t.Request.SentBody = encoded
-			body = ioutil.NopCloser(strings.NewReader(encoded))
 		case "multipart":
 			b, boundary, err := multipartBody(t.Request.Params, repl)
 			if err != nil {
@@ -755,7 +761,6 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 				return "", err
 			}
 			t.Request.SentBody = string(bb)
-			body = ioutil.NopCloser(bytes.NewReader(bb))
 			contentType = "multipart/form-data; boundary=" + boundary
 		default:
 			err := fmt.Errorf("unknown parameter method %q", t.Request.ParamsAs)
@@ -770,18 +775,17 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 			return "", err
 		}
 		t.Request.SentBody = bodydata
-		body = ioutil.NopCloser(strings.NewReader(bodydata))
 	}
 
+	body := ioutil.NopCloser(strings.NewReader(t.Request.SentBody))
 	t.Request.Request, err = http.NewRequest(t.Request.Method, rurl, body)
+	if err != nil {
+		return "", err
+	}
 
 	// Content-Length
 	if cl := len(t.Request.SentBody); cl > 0 && !t.Request.Chunked {
 		t.Request.Request.ContentLength = int64(cl)
-	}
-
-	if err != nil {
-		return "", err
 	}
 
 	return contentType, nil
