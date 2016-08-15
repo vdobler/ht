@@ -39,7 +39,7 @@ Teardown test are ignored while determining the exit code.
 }
 
 func init() {
-	cmdExec.Flag.BoolVar(&serialFlag, "serial", false,
+	cmdExec.Flag.BoolVar(&serialFlag, "serial", true,
 		"run suites one after the other instead of concurrently")
 	addOnlyFlag(cmdExec.Flag)
 	addSkipFlag(cmdExec.Flag)

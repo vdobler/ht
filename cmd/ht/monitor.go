@@ -49,7 +49,7 @@ func init() {
 	cmdMonitor.Flag.StringVar(&httpFlag, "http", ":9090",
 		"http service address")
 	// cmdMonitor.Flag.StringVar(&templateFlag, "template", "", "use alternate template")
-	cmdMonitor.Flag.BoolVar(&serialFlag, "serial", false,
+	cmdMonitor.Flag.BoolVar(&serialFlag, "serial", true,
 		"run suites one after the other instead of concurrently")
 	cmdMonitor.Flag.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
