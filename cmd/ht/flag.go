@@ -85,6 +85,7 @@ var (
 	skipTLSVerify    bool              // flag -skiptlsverify
 	phantomjs        string            // flag -phantomjs
 	v, vv, vvv, vvvv bool              // flag -v, -vv, -vvv, -vvvv
+	dumpVars         string            // flag -dump
 )
 
 func addTestFlags(fs *flag.FlagSet) {
@@ -94,6 +95,7 @@ func addTestFlags(fs *flag.FlagSet) {
 	addSeedFlag(fs)
 	addSkiptlsverifyFlag(fs)
 	addPhantomJSFlag(fs)
+	addDumpFlag(fs)
 }
 
 func addDfileFlag(fs *flag.FlagSet) {
@@ -143,4 +145,9 @@ func addVerbosityFlag(fs *flag.FlagSet) {
 	fs.BoolVar(&vv, "vv", false, "increase verbosity by 2")
 	fs.BoolVar(&vvv, "vvv", false, "increase verbosity by 3")
 	fs.BoolVar(&vvvv, "vvvv", false, "increase verbosity by 4")
+}
+
+func addDumpFlag(fs *flag.FlagSet) {
+	fs.StringVar(&dumpVars, "dump", "",
+		"save variables to `vars.json` after completion")
 }

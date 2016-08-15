@@ -5,6 +5,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -62,6 +63,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 	}
 
 	overallStatus := ht.NotRun
+	overallVars := make(map[string]string)
 	for s := range suites {
 		suites[s].PrintShortReport(os.Stdout)
 		fmt.Println()
@@ -96,6 +98,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		if err != nil {
 			log.Panic(err)
 		}
+		saveVariables(suites[s].Variables, path.Join(dirname, "variables.json"))
 		cwd, err := os.Getwd()
 		if err == nil {
 			reportURL := "file://" + path.Join(cwd, dirname, "Report.html")
@@ -109,7 +112,20 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		if err != nil {
 			log.Panic(err)
 		}
+
+		// Consolidate all variables.
+		for name, value := range suites[s].Variables {
+			overallVars[name] = value
+		}
 	}
+
+	// Save consolidated variables if required
+	if dumpVars != "" {
+		if err := saveVariables(overallVars, dumpVars); err != nil {
+			log.Panic(err)
+		}
+	}
+
 	fmt.Println()
 	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
@@ -135,6 +151,14 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		os.Exit(3)
 	}
 	panic(fmt.Sprintf("Ooops: Unknown overall status %d", overallStatus))
+}
+
+func saveVariables(vars map[string]string, filename string) error {
+	b, err := json.MarshalIndent(vars, "    ", "")
+	if err != nil {
+		return nil
+	}
+	return ioutil.WriteFile(filename, b, 0666)
 }
 
 func prepareExecution() {
