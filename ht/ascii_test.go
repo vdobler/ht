@@ -15,12 +15,12 @@ var summaryTests = []struct{ in, want string }{
 		"foo",
 	},
 	{
-		"foo\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\nbar",
-		"foo\n2\n3\n4\n5\n6\n7\n8\n\u22EE\n14\n15\nbar",
+		strings.Repeat("A\n2\nB\n4\n", 50),
+		strings.Repeat("A\n2\nB\n4\n", 6) + "A\n2\nB\n\u22EE\n" + strings.Repeat("A\n2\nB\n4\n", 3),
 	},
 	{
 		strings.Repeat("x", 200),
-		strings.Repeat("x", 120) + "\u2026",
+		strings.Repeat("x", 150) + "\u2026",
 	},
 	{
 		`{"foo":[1,2,3],"bar":"waz"}`,
