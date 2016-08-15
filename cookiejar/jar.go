@@ -105,8 +105,8 @@ type Entry struct {
 	seqNum uint64
 }
 
-// Id returns the domain;path;name triple of e as an id.
-func (e *Entry) id() string {
+// ID returns the domain;path;name triple of e as an id.
+func (e *Entry) ID() string {
 	return fmt.Sprintf("%s;%s;%s", e.Domain, e.Path, e.Name)
 }
 
@@ -274,7 +274,7 @@ func (j *Jar) setCookies(u *url.URL, cookies []*http.Cookie, now time.Time) {
 		if err != nil {
 			continue
 		}
-		id := e.id()
+		id := e.ID()
 		if remove {
 			if submap != nil {
 				if _, ok := submap[id]; ok {
@@ -590,7 +590,7 @@ func (j *Jar) LoadEntries(entries []Entry) {
 		}
 		e.seqNum = j.nextSeqNum
 		j.nextSeqNum++
-		submap[e.id()] = e
+		submap[e.ID()] = e
 		j.entries[key] = submap
 	}
 }
