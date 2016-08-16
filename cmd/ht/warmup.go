@@ -36,7 +36,7 @@ func init() {
 }
 
 func runWarmup(cmd *Command, suites []*ht.Suite) {
-	prepareExecution()
+	prepareExecution(suites)
 
 	totalBogus := 0
 	for rep := 1; rep <= repsFlag; rep++ {

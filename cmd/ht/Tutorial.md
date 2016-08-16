@@ -614,6 +614,36 @@ suite with `-D "#200=900"`. But this hack has its use when unrolling tests (see
 table driven tests below).
 
 
+### Extracting values from the response
+
+Variables get their full power from being settable from received responses.
+This is done through different "Extractors" which populate variables from
+data extracted from the response. The following are available:
+
+    BodyExtractor, CookieExtractor, HTMLExtractor, JSONExtrator, JSExtrcator
+
+An example might be helpfull:
+
+    {
+        Name: "Unquote the received Body",
+        Request: {
+            URL:    "http://example.org/some/path",
+        },
+        Checks: [
+            {Check: "StatusCode", Expect: 200},
+            {Check: "Body", Prefix: "\"", Suffix: "\""},
+        ],
+        VarEx: {
+            TOKEN: {Extractor: "BodyExtractor", Regexp: "\"(.*)\"", Submatch: 1},
+        },
+    }
+
+The response to the GET request is checked. The second checks passes if the
+body consists of a double quoted string. If both checks pass variable
+extraction begins: A BodyExtractor is invoked which extracts what's inside
+the quotes; this value is assigned to the variable TOKEN.
+
+
 ### Preset variables
 
 Some variables are preset on a per Test basis if loaded from a .ht file:
@@ -657,9 +687,9 @@ various option, e.g. range, formating and language:
     {{RANDOM EMAIL web.de}}       -->  Meier.Anna@web.de                    
 
 Numbers are integers in the given range (or maximum) formated by the
-option format string (defaulting to "%d").
+optional format string (defaulting to "%d").
 
-Texts are number of words (range or maximum) and you can force a language
+Texts are a number of words (range or maximum) and you can force a language
 with "en", "de", "fr" or "tlh".
 
 Email addresses are random addresses, you can force a certain domain.
@@ -686,6 +716,29 @@ uploaded or sent as the body:
     Start-Time: {{NOW | 15:04}} 
     User:       {{RANDOM EMAIL mydomain.com}}
     Comment:    {{RANDOM TEXT fr 10-40}}
+
+
+
+Splitting Suites
+----------------
+
+A Suite wraps several request/check combinations into a single unit, typically
+to share cookies (`KeepCookie`) or to use variables extracted from previous
+responses. Such a suite can be split into parts and these parts can share
+cookies and variables. Like this you can check the first bunch of request,
+do something else (run some DB tools, etc.) and "continue" the suite.
+
+ * The final set of variables and/or cookies after executing a suite can be
+   written to disk with the `-vardump` and `-cookiedump` command line options.
+
+ * Using the dumped variables in a subseqeunt execution of a different suite
+   is possible with the `-Dfile` option (see above).
+
+ * Using dumped cookies is possible with the `-cookies` command line option.
+
+Note that running several suites in parallel works, but the values for cookies
+and variables saved might not be what yoi might expect naively.
+
 
 
 Details of a Test

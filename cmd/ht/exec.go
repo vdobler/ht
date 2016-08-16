@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/sanitize"
 )
@@ -53,7 +54,7 @@ var (
 )
 
 func runExecute(cmd *Command, suites []*ht.Suite) {
-	prepareExecution()
+	prepareExecution(suites)
 
 	executeSuites(suites)
 
@@ -64,6 +65,8 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 
 	overallStatus := ht.NotRun
 	overallVars := make(map[string]string)
+	overallCookies := make(map[string]cookiejar.Entry)
+
 	for s := range suites {
 		suites[s].PrintShortReport(os.Stdout)
 		fmt.Println()
@@ -98,7 +101,7 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		if err != nil {
 			log.Panic(err)
 		}
-		saveVariables(suites[s].Variables, path.Join(dirname, "variables.json"))
+
 		cwd, err := os.Getwd()
 		if err == nil {
 			reportURL := "file://" + path.Join(cwd, dirname, "Report.html")
@@ -114,14 +117,33 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		}
 
 		// Consolidate all variables.
+		saveVariables(suites[s].Variables, path.Join(dirname, "variables.json"))
 		for name, value := range suites[s].Variables {
 			overallVars[name] = value
 		}
+		// Consolidate cookies.
+		if jar := getJar(suites[s]); jar != nil {
+			cookies := make(map[string]cookiejar.Entry)
+			for _, tld := range jar.ETLDsPlus1(nil) {
+				for _, cookie := range jar.Entries(tld, nil) {
+					id := cookie.ID()
+					overallCookies[id] = cookie
+					cookies[id] = cookie
+				}
+			}
+			saveCookies(cookies, path.Join(dirname, "cookies.json"))
+		}
 	}
 
-	// Save consolidated variables if required
-	if dumpVars != "" {
-		if err := saveVariables(overallVars, dumpVars); err != nil {
+	// Save consolidated variables if required.
+	if vardump != "" {
+		if err := saveVariables(overallVars, vardump); err != nil {
+			log.Panic(err)
+		}
+	}
+	// Save consolidated cookies if required.
+	if cookiedump != "" {
+		if err := saveCookies(overallCookies, cookiedump); err != nil {
 			log.Panic(err)
 		}
 	}
@@ -161,17 +183,38 @@ func saveVariables(vars map[string]string, filename string) error {
 	return ioutil.WriteFile(filename, b, 0666)
 }
 
-func prepareExecution() {
+func getJar(suite *ht.Suite) *cookiejar.Jar {
+	if !suite.KeepCookies {
+		return nil
+	}
+	at := suite.AllTests()
+	if len(at) == 0 {
+		return nil
+	}
+	return at[0].Jar
+}
+
+func saveCookies(cookies map[string]cookiejar.Entry, filename string) error {
+	b, err := json.MarshalIndent(cookies, "    ", "")
+	if err != nil {
+		return nil
+	}
+	return ioutil.WriteFile(filename, b, 0666)
+}
+
+func prepareExecution(suites []*ht.Suite) {
 	if outputDir == "" {
 		outputDir = time.Now().Format("2006-01-02_15h04m05s")
 	}
 	os.MkdirAll(outputDir, 0766)
 
 	prepareHT()
+
+	loadCookies(suites)
 }
 
 func prepareHT() {
-	// Set parameters of package ht.
+	// Set several parameters of package ht.
 	if randomSeed == 0 {
 		randomSeed = time.Now().UnixNano()
 	}
@@ -194,6 +237,32 @@ func prepareHT() {
 		log.Printf("Variable %s = %q", v, variablesFlag[v])
 	}
 
+}
+
+func loadCookies(suites []*ht.Suite) {
+	if cookie == "" {
+		return
+	}
+	buf, err := ioutil.ReadFile(cookie)
+	if err != nil {
+		log.Panicf("Cannot read cookie file: %s", err)
+	}
+
+	cookies := make(map[string]cookiejar.Entry)
+	err = json.Unmarshal(buf, &cookies)
+	if err != nil {
+		log.Panicf("Cannot decode cookie file: %s", err)
+	}
+	cs := make([]cookiejar.Entry, 0, len(cookies))
+	for _, c := range cookies {
+		cs = append(cs, c)
+	}
+
+	for s := range suites {
+		if jar := getJar(suites[s]); jar != nil {
+			jar.LoadEntries(cs)
+		}
+	}
 }
 
 func executeSuites(suites []*ht.Suite) {

@@ -85,7 +85,9 @@ var (
 	skipTLSVerify    bool              // flag -skiptlsverify
 	phantomjs        string            // flag -phantomjs
 	v, vv, vvv, vvvv bool              // flag -v, -vv, -vvv, -vvvv
-	dumpVars         string            // flag -dump
+	vardump          string            // flag -vardump
+	cookiedump       string            // flag -cookiedump
+	cookie           string            // flag -cookie
 )
 
 func addTestFlags(fs *flag.FlagSet) {
@@ -96,6 +98,7 @@ func addTestFlags(fs *flag.FlagSet) {
 	addSkiptlsverifyFlag(fs)
 	addPhantomJSFlag(fs)
 	addDumpFlag(fs)
+	addCookieFlag(fs)
 }
 
 func addDfileFlag(fs *flag.FlagSet) {
@@ -148,6 +151,13 @@ func addVerbosityFlag(fs *flag.FlagSet) {
 }
 
 func addDumpFlag(fs *flag.FlagSet) {
-	fs.StringVar(&dumpVars, "dump", "",
+	fs.StringVar(&vardump, "vardump", "",
 		"save variables to `vars.json` after completion")
+}
+
+func addCookieFlag(fs *flag.FlagSet) {
+	fs.StringVar(&cookiedump, "cookiedump", "",
+		"save cookies of all suites to `cookies.json`")
+	fs.StringVar(&cookie, "cookies", "",
+		"read initial cookies for each suite from `cookies.json`")
 }
