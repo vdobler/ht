@@ -121,5 +121,8 @@ EOF
     (echo "FAIL: Second suite returned $?"; exit 1;)
 
 
+rm -rf suite1.suite suite2.suite req1.ht req2.ht req3.ht vars1.json vars2.json cookies.json
+
+
 echo "PASS"
 exit 0
