@@ -505,6 +505,7 @@ func (t *Test) Run(variables map[string]string) error {
 		}
 		// Clear status and error; is updated in executeChecks.
 		t.Status, t.Error = NotRun, nil
+		t.Response = Response{}
 		t.execute()
 		if t.Status == Pass {
 			break
@@ -554,7 +555,11 @@ func (t *Test) AsJSON5() ([]byte, error) {
 // execute does a single request and check the response.
 func (t *Test) execute() {
 	var err error
-	err = t.executeRequest()
+	if t.Request.Request.URL.Scheme == "file" {
+		err = t.executeFile()
+	} else {
+		err = t.executeRequest()
+	}
 	if err == nil {
 		if len(t.Checks) > 0 {
 			time.Sleep(time.Duration(t.InterSleep))
@@ -914,6 +919,66 @@ done:
 	t.debugf("request took %s, %s", t.Response.Duration, msg)
 
 	return err
+}
+
+func (t *Test) executeFile() error {
+	t.infof("%s %q", t.Request.Request.Method, t.Request.Request.URL.String())
+
+	start := time.Now()
+	defer func() {
+		t.Response.Duration = Duration(time.Since(start))
+	}()
+
+	u := t.Request.Request.URL
+	if u.Host != "" {
+		if u.Host != "localhost" && u.Host != "127.0.0.1" { // TODO IPv6
+			return fmt.Errorf("file:// on remote host not implemented")
+		}
+	}
+
+	switch t.Request.Method {
+	case "GET":
+		file, err := os.Open(u.Path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		body, err := ioutil.ReadAll(file)
+		t.Response.BodyStr = string(body)
+		t.Response.BodyErr = err
+	case "DELETE":
+		err := os.Remove(u.Path)
+		if err != nil {
+			return err
+		}
+		t.Response.BodyStr = fmt.Sprintf("Successfuly deleted %s", u)
+		t.Response.BodyErr = nil
+	case "PUT":
+		err := ioutil.WriteFile(u.Path, []byte(t.Request.Body), 0666)
+		if err != nil {
+			return err
+		}
+		t.Response.BodyStr = fmt.Sprintf("Successfuly wrote %s", u)
+		t.Response.BodyErr = nil
+
+	default:
+		return fmt.Errorf("method %s not supported on file:// URL", t.Request.Method)
+	}
+
+	// Fake a http.Response
+	t.Response.Response = &http.Response{
+		Status:     "200 OK",
+		StatusCode: 200,
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Body:       nil, // already close and consumed
+		Trailer:    make(http.Header),
+		Request:    t.Request.Request,
+	}
+
+	return nil
 }
 
 // executeChecks applies the checks in t to the HTTP response received during

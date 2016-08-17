@@ -13,6 +13,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -787,6 +788,127 @@ func TestReadBody(t *testing.T) {
 		if test.Response.BodyErr != nil {
 			t.Errorf("Path %q: Unexpected problem reading body: %#v",
 				path, test.Response.BodyErr)
+		}
+	}
+}
+
+// ----------------------------------------------------------------------------
+// file://
+
+func TestFileSchema(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Unexpected error: ", err)
+	}
+	u := "file://" + wd + "/testdata/fileprotocol"
+
+	tests := []*Test{
+		&Test{
+			Name: "PUT Pass",
+			Request: Request{
+				URL:  u,
+				Body: "Tadadadaaa!",
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Body{Prefix: "Successfuly wrote " + u},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+		&Test{
+			Name: "PUT Error",
+			Request: Request{
+				URL:  u + "/iouer/cxxs/dlkfj",
+				Body: "Tadadadaaa!",
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Body{Prefix: "Successfuly wrote " + u},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+		&Test{
+			Name: "GET Pass",
+			Request: Request{
+				URL: u,
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Body{Equals: "Tadadadaaa!"},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+		&Test{
+			Name: "GET Fail",
+			Request: Request{
+				URL: u,
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Body{Equals: "something else"},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+		&Test{
+			Name: "GET Error",
+			Request: Request{
+				URL: u + "/slkdj/cxmvn",
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+		&Test{
+			Name: "GET Error",
+			Request: Request{
+				URL: "file://remote.host/some/path",
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+		&Test{
+			Name: "DELETE Pass",
+			Request: Request{
+				URL: u,
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Body{Prefix: "Successfuly deleted " + u},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+		&Test{
+			Name: "DELETE Error",
+			Request: Request{
+				URL: u + "/sdjdfh/oieru",
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Body{Prefix: "Successfuly deleted " + u},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+	}
+
+	for i, test := range tests {
+		p := strings.Index(test.Name, " ")
+		if p == -1 {
+			t.Fatalf("Ooops: no space in %d. Name: %s", i, test.Name)
+		}
+		method, want := test.Name[:p], test.Name[p+1:]
+		test.Request.Method = method
+		err = test.Run(nil)
+		if err != nil {
+			t.Fatalf("%d. %s: Unexpected error: ", err)
+		}
+
+		got := test.Status.String()
+		if got != want {
+			t.Errorf("%d. %s: got %s, want %s. (Error=%v)",
+				i, test.Name, got, want, test.Error)
 		}
 	}
 }

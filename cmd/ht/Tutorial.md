@@ -96,6 +96,13 @@ Save this as unic-hp1.ht and execute the request:
 This should work, i.e. produce a request and print some output indicating
 success but it is almost pointless as no checks are done.
 
+Files on the local host may be accessed via the `file://` protocol schema:
+ - GET method reads the given file and returns its content as
+   the "response body".
+ - DELTE will try to delete the file.
+ - PUT writes the Request Body (see below) to the given file.
+Note that several checks are unsuitable for such pseudo requests.
+
 
 ### Checks
 
