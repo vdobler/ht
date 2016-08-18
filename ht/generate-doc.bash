@@ -2,7 +2,7 @@
 
 checks=$(guru -scope  . implements "check.go:#332" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]")
 
-extractors=$(guru -scope  . implements "extractor.go:#468" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]")
+extractors=$(guru -scope  . implements "extractor.go:#501" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]")
 
 godoc2html() {
     echo "<pre>"
