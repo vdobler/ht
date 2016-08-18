@@ -11,12 +11,15 @@ import (
 	htmltemplate "html/template"
 	"io"
 	"io/ioutil"
+	"mime"
 	"os"
 	"path"
 	"strings"
 	"text/template"
 	"time"
 	"unicode/utf8"
+
+	mimelist "github.com/vdobler/ht/mime"
 )
 
 // ----------------------------------------------------------------------------
@@ -206,17 +209,15 @@ var shortTestTmpl = `{{define "SHORTTEST"}}{{.Status.String}}: {{.Name}}{{if .Re
 var htmlTestTmpl = `{{define "TEST"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}">
   <div class="collapsed">
-    <h2 class="toggleButton">{{.SeqNo}}:
+    <h2 class="toggleButton">{{.Reporting.SeqNo}}:
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
-      "<code>{{.Name}}</code>"
-      ({{.FullDuration}}) ▹
+      "{{.Name}}" <small>(<code>{{.Reporting.Filename}}</code>, {{.FullDuration}})</small> ▹
     </h2>
   </div>
   <div class="expanded">
-    <h2 class="toggleButton">{{.SeqNo}}: 
+    <h2 class="toggleButton">{{.Reporting.SeqNo}}: 
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
-      "<code>{{.Name}}</code>"
-      ({{.FullDuration}}) ▾
+      "{{.Name}}" <small>(<code>{{.Reporting.Filename}}</code>, {{.FullDuration}})</small> ▾
     </h2>
     <div class="testDetails">
       <div class="reqresp"><code>
@@ -288,7 +289,7 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
 <pre class="responseBodySummary">
 {{Summary .Response.BodyStr}}
 </pre>
-        <a href="{{.SeqNo}}.ResponseBody" target="_blank">Response Body</a>
+        <a href="{{.Reporting.SeqNo}}.ResponseBody.{{.Reporting.Extension}}" target="_blank">Response Body</a>
       {{end}}
     </div>
   </div>
@@ -455,7 +456,7 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 <a href="../../">Up/Back/Home</a>
 
 
-<h1>Results of Suite <code>{{.Name}}</code></h1>
+<h1>Results of Suite "{{.Name}}"</h1>
 
 {{.Description}}
 
@@ -542,24 +543,74 @@ func (s Suite) PrintShortReport(w io.Writer) error {
 	return ShortSuiteTmpl.Execute(w, s)
 }
 
+// TODO: sniff if unavailable
+func guessResponseExtension(test *Test) string {
+	if test.Response.Response == nil || len(test.Response.BodyStr) == 0 {
+		return "nil"
+	}
+
+	ct := test.Response.Response.Header.Get("Content-Type")
+	if ct == "" {
+		return "txt"
+	}
+	mt, _, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return "txt"
+	}
+
+	if ext, ok := mimelist.MimeTypeExtension[mt]; ok {
+		return ext
+	}
+
+	return "txt"
+}
+
 // HTMLReport generates a report of the outcome ofs to directory dir.
 func (s Suite) HTMLReport(dir string) error {
-	report, err := os.Create(path.Join(dir, "Report.html"))
-	if err != nil {
-		return err
-	}
-	err = HtmlSuiteTmpl.Execute(report, s)
-	if err != nil {
-		return err
-	}
-	for _, tr := range s.AllTests() {
-		body := []byte(tr.Response.BodyStr)
-		err = ioutil.WriteFile(path.Join(dir, tr.SeqNo+".ResponseBody"), body, 0666)
+	errs := ErrorList{}
+
+	writeBody := func(test *Test, typ string, n int) {
+		test.Reporting.SeqNo = fmt.Sprintf("%s-%02d", typ, n)
+		if tn, ok := test.VarValues["TEST_NAME"]; ok {
+			test.Reporting.Filename = tn
+		} else {
+			test.Reporting.Filename = "??"
+		}
+		test.Reporting.Extension = guessResponseExtension(test)
+
+		body := []byte(test.Response.BodyStr)
+		name := path.Join(dir, test.Reporting.SeqNo+".ResponseBody."+test.Reporting.Extension)
+		err := ioutil.WriteFile(name, body, 0666)
 		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
-	return nil
+
+	for i, test := range s.Setup {
+		writeBody(test, "Setup", i+1)
+	}
+	for i, test := range s.Tests {
+		writeBody(test, "MainTest", i+1)
+	}
+	for i, test := range s.Teardown {
+		writeBody(test, "Teardown", i+1)
+	}
+
+	report, err := os.Create(path.Join(dir, "Report.html"))
+	if err != nil {
+		errs = append(errs, err)
+	} else {
+		err = HtmlSuiteTmpl.Execute(report, s)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errs
 }
 
 // JUnit style output.

@@ -128,8 +128,7 @@ func (s *Suite) execute(tests []*Test, which string) {
 	if len(tests) == 0 {
 		return
 	}
-	for i, test := range tests {
-		test.SeqNo = fmt.Sprintf("%s-%02d", which, i+1)
+	for _, test := range tests {
 		test.Run(s.Variables)
 		if test.Status > s.Status {
 			s.Status = test.Status

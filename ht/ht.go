@@ -270,9 +270,13 @@ type Test struct {
 	FullDuration Duration      `json:"-"`
 	Tries        int           `json:"-"`
 	CheckResults []CheckResult `json:"-"` // The individual checks.
-	SeqNo        string        `json:"-"`
-	VarValues    map[string]string
-	ExValues     map[string]Extraction
+	Reporting    struct {
+		SeqNo     string
+		Filename  string
+		Extension string
+	} `json:"-"`
+	VarValues map[string]string
+	ExValues  map[string]Extraction
 
 	client      *http.Client
 	specialVars []string
