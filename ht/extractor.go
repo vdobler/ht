@@ -242,6 +242,14 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 // JSONExtractor extracts a value from a JSON response body.
 // It uses github.com/nytlabs/gojsonexplode to flatten the JSON file
 // for easier access.
+// Only the lowest level of elements may be accessed: In the JSON {"c":[1,2,3]}
+// "c" is not available, but c.2 is and equals 3. JSON null values are
+// extracted as the empty string i.e. null and "" are indistinguashable.
+//
+// Note that JSONExtractor behaves differently than the JSON check:
+//  - JSONExctractor strips quotes from strings (which is okay)
+//  - JSONExtractor selects elements with the Path field (which is a design
+//    error)
 type JSONExtractor struct {
 	// Path in the flattened JSON map to extract.
 	Path string `json:",omitempty"`
@@ -276,6 +284,14 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 	val, ok := flat[e.Path]
 	if !ok {
 		return "", ErrNotFound
+	}
+
+	// The element might be present but null like in {"a": null} in wich
+	// case val==nil.
+	if val == nil {
+		// TODO: ist this the most sensible outcome?  Or would
+		// "", ErrNotFound be better?
+		return "", nil
 	}
 
 	// Strip quotes from strings.

@@ -104,6 +104,8 @@ var jsonExtractorTests = []struct {
 	{`{"a":"foo", "b":"bar", "c": [1,2,3]}`, "a", "foo", nil},
 	{`{"a":"foo", "b":"bar", "c": [1,2,3]}`, "b", "bar", nil},
 	{`{"a":"foo", "b":"bar", "c": [1,2,3]}`, "c.2", "3", nil},
+	{`{"a":null}`, "a", "", nil},
+	{`{"a":""}`, "a", "", nil},
 }
 
 func TestJSONExtractor(t *testing.T) {

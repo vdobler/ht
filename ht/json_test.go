@@ -48,6 +48,7 @@ var jsonConditionTests = []TC{
 	{jre, &JSON{Element: "bar.1", Condition: Condition{Equals: `"qux"`}}, nil},
 	{jre, &JSON{Element: "waz", Condition: Condition{Equals: `true`}}, nil},
 	{jre, &JSON{Element: "nil", Condition: Condition{Equals: `null`}}, nil},
+	{jre, &JSON{Element: "nil", Condition: Condition{Prefix: `"`}}, someError},
 	{jre, &JSON{Element: "uuid", Condition: Condition{
 		Regexp: `^"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"$`}}, nil},
 
