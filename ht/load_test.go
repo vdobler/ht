@@ -65,9 +65,7 @@ var sampleTestJSON = `{
 func TestFindRawTest(t *testing.T) {
 	sample := []byte(sampleTestJSON)
 
-	pool := make(map[string]*rawTest)
-
-	rt, basedir, err := findRawTest("/the/current/dir", "../qux/sample.ht", pool, sample)
+	rt, basedir, err := findRawTest("/the/current/dir", "../qux/sample.ht", sample)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
@@ -135,14 +133,14 @@ func TestFindRawTest(t *testing.T) {
 		t.Errorf("Got Test == %#v", *rt)
 	}
 
-	if len(rt.TestVars) != 3 {
-		t.Errorf("Got TestVars == %#v", rt.TestVars)
+	if len(rt.Variables) != 3 {
+		t.Errorf("Got Variables == %#v", rt.Variables)
 	} else {
-		if rt.TestVars["TEST_DIR"] != "/the/current/qux" ||
-			rt.TestVars["TEST_NAME"] != "sample.ht" ||
-			rt.TestVars["TEST_PATH"] != "/the/current/qux/sample.ht" {
+		if rt.Variables["TEST_DIR"] != "/the/current/qux" ||
+			rt.Variables["TEST_NAME"] != "sample.ht" ||
+			rt.Variables["TEST_PATH"] != "/the/current/qux/sample.ht" {
 
-			t.Errorf("Got TestVars == %#v", rt.TestVars)
+			t.Errorf("Got Variables == %#v", rt.Variables)
 		}
 	}
 }
@@ -180,22 +178,21 @@ var stdTestJSON = `{
 func TestRawTestToTest(t *testing.T) {
 	// Populate the raw test pool with the 'base' and 'std' tests which
 	// are referenced from the sample test.
-	pool := make(map[string]*rawTest)
-	_, _, err := findRawTest("/the/current/dir", "std.ht", pool, []byte(stdTestJSON))
+	_, _, err := findRawTest("/the/current/dir", "std.ht", []byte(stdTestJSON))
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	_, _, err = findRawTest("/the/current/foo", "base.ht", pool, []byte(baseTestJSON))
+	_, _, err = findRawTest("/the/current/foo", "base.ht", []byte(baseTestJSON))
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 	sample := []byte(sampleTestJSON)
-	rt, _, err := findRawTest("/the/current/dir", "../qux/sample.ht", pool, sample)
+	rt, _, err := findRawTest("/the/current/dir", "../qux/sample.ht", sample)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 
-	tests, err := rawTestToTests("/the/current/dir", rt, pool)
+	test, err := rawTestToTest("/the/current/dir", rt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
@@ -253,7 +250,7 @@ func TestRawTestToTest(t *testing.T) {
 		PostSleep:  33000000,
 	}
 
-	diff := differences(tests[0], want)
+	diff := differences(test, want)
 
 	if len(diff) != 0 {
 		t.Error("Differences:\n" + strings.Join(diff, "\n"))
@@ -424,4 +421,42 @@ func TestLoadSuiteComplicated(t *testing.T) {
 		t.Errorf("Got %d teardown tests, want 1", n)
 	}
 
+	// Variables
+	vars := func(test *Test, names string) string {
+		s := []string{}
+		for _, name := range strings.Split(names, " ") {
+			s = append(s, name+"="+test.Variables[name])
+		}
+		return strings.Join(s, " ")
+	}
+
+	// a.ht in Setup
+	want := "TEST_DIR=testdata TEST_NAME=a.ht VAR_A=vala2 VAR_B=valb VAR_C=valc"
+	if got := vars(suite.Setup[0], "TEST_DIR TEST_NAME VAR_A VAR_B VAR_C"); got != want {
+		t.Errorf("Bad Variables\ngot  %s\nwant %s", got, want)
+	}
+
+	// a.ht in Test
+	want = "VAR_A=vala VAR_B=valb VAR_C="
+	if got := vars(suite.Tests[0], "VAR_A VAR_B VAR_C"); got != want {
+		t.Errorf("Bad Variables\ngot  %s\nwant %s", got, want)
+	}
+
+	// b.ht in Test
+	want = "foo=bar"
+	if got := vars(suite.Tests[1], "foo"); got != want {
+		t.Errorf("Bad Variables\ngot  %s\nwant %s", got, want)
+	}
+
+	// b.ht in Teardown
+	want = "foo="
+	if got := vars(suite.Teardown[0], "foo"); got != want {
+		t.Errorf("Bad Variables\ngot  %s\nwant %s", got, want)
+	}
+
+	// c/d.ht in Setup
+	want = "TEST_DIR=testdata/c TEST_NAME=d.ht"
+	if got := vars(suite.Tests[2], "TEST_DIR TEST_NAME"); got != want {
+		t.Errorf("Bad Variables\ngot  %s\nwant %s", got, want)
+	}
 }

@@ -104,35 +104,6 @@
 //   2. The request itself fails. This is called an Error
 //   3. Any of the checks fail. This is called a Failure
 //
-// Unrolling a Test
-//
-// A common szenario is to do a test/check combination several times
-// with tiny changes, e.g. a search with different queries. To facilliate
-// writing these repeated tests it is possible to treat a Test as a
-// template which is instantiated with different parametrizations.
-// This process is called unrolling. The field UnrollWith of a test
-// controls this unrolling: It is a map of variabe names to variable
-// values. The simplest definition is
-//     UnrollWith: map[string][]string{"query": {"foo", "bar", "wuz"}}
-// with the test and probably the checks too containing references
-// to the query variabel like "{{query}}". Unrolling such a test produces
-// three different, new test, one with all occurrences of "{{query}}"
-// replaced by "foo", one with "bar" as the replacement and a third
-// with "wuz". The unrolled tests do no longer contain the "{{query}}"
-// variabel. If more than one variable is used during unrolling the
-// situation is simple if both value sets have the same size: Variable
-// substitution will use the first values first, then the second values
-// and so on. If the variable have different length value sets e.g.
-//     UnrollWith: map[string][]string{
-//         "a": {"1", "2", "3"},
-//         "b": {"x", "y"},
-//     }
-// one would get 6 = 3*2 = the least common multiple of all value set length
-// tests wit the first test having (a=1 b=x),the second one (a=2, b=y), the
-// third one (a=3 b=x), and so on until the last one which has (a=3 b=y).
-//
-// It is important to understand that Unrolling a Test produces several
-// distinct Tests.
 //
 // Suites of tests
 //

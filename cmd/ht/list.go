@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/vdobler/ht/ht"
-	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/suite"
 )
 
 var cmdList = &Command{
@@ -35,44 +35,38 @@ func init() {
 		"print complete tests")
 }
 
-func runList(cmd *Command, suites []*ht.Suite) {
+func runList(cmd *Command, suites []*suite.RawSuite) {
 	// TODO: provide templated output
-	for sNo, suite := range suites {
-		stitle := fmt.Sprintf("Suite %d: %s", sNo+1, suite.Name)
+	for sNo, s := range suites {
+		stitle := fmt.Sprintf("Suite %d: %s (%s)", sNo+1, s.Name, s.File.Name)
 		fmt.Printf("%s\n", ht.Underline(stitle, "-", ""))
-		for tNo, test := range suite.Setup {
-			id := fmt.Sprintf("%d.u%d", sNo+1, tNo+1)
-			displayTest(id, test)
-		}
-		for tNo, test := range suite.Tests {
+		for tNo, test := range s.Tests {
 			id := fmt.Sprintf("%d.%d", sNo+1, tNo+1)
-			displayTest(id, test)
-		}
-		for tNo, test := range suite.Teardown {
-			id := fmt.Sprintf("%d.d%d", sNo+1, tNo+1)
 			displayTest(id, test)
 		}
 	}
 }
 
-func displayTest(id string, test *ht.Test) {
-	fmt.Printf("%-6s %s\n", id, test.Name)
-	if fullFlag {
-		buf, err := json5.MarshalIndent(test, "         ", "    ")
-		if err != nil {
-			buf = []byte(err.Error())
-		}
-		fmt.Println("        ", string(buf))
-		fmt.Println()
-	} else if checkFlag {
-		for _, check := range test.Checks {
-			name := ht.NameOf(check)
-			buf, err := json5.Marshal(check)
+func displayTest(id string, test *suite.RawTest) {
+	fmt.Printf("%-6s %s\n", id, test.File.Name)
+	/*
+		if fullFlag {
+			buf, err := json5.MarshalIndent(test, "         ", "    ")
 			if err != nil {
 				buf = []byte(err.Error())
 			}
-			fmt.Printf("           %-14s %s\n", name, buf)
+			fmt.Println("        ", string(buf))
+			fmt.Println()
+		} else if checkFlag {
+			for _, check := range test.Checks {
+				name := ht.NameOf(check)
+				buf, err := json5.Marshal(check)
+				if err != nil {
+					buf = []byte(err.Error())
+				}
+				fmt.Printf("           %-14s %s\n", name, buf)
+			}
+			fmt.Println()
 		}
-		fmt.Println()
-	}
+	*/
 }

@@ -19,7 +19,7 @@
 
         // The nonsensical value 98765 is a replaced by the value
         // of the variable name "#98765" below.
-        {Check: "Body", Contains: "Please try again", Count: 98765},
+        {Check: "Body", Contains: "Please try again", Count: "{{COUNT}}"},
     ],
 
     // This is just one test-file, but it gets 'unrolled' 3 times with
@@ -27,10 +27,10 @@
     // and the 'numeric variable' 98765.
     // As all variables have the same number of values the values are
     // cycled in lockstep and unrolling produces 4 tests in total.
-    Unroll: {
-        TERM:     [ "gluon", "quark", "tachyon", "axion"     ],
-        RESULTS:  [ "12",    "8",     "no"     , "really no" ],
-        "#98765": [ "-1",    "-1",    "1"      , "1"         ],
+    Variables: {
+        TERM:     "gluon"
+        RESULTS:  "12"
+        COUNT:    "-1"
     },
 
 }

@@ -1,0 +1,12 @@
+{
+    Name: "Test D",
+    BasedOn: [ "../m.mix", "n.mix" ],
+    Request: {
+        Header: {
+            Multi: [ "D" ],
+        },
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 500},
+    ],
+}

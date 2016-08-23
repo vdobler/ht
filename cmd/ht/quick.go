@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"time"
 
@@ -118,33 +117,35 @@ func makeChecks(u string) ht.CheckList {
 }
 
 func runQuick(cmd *Command, urls []string) {
-	logger := log.New(os.Stdout, "", log.LstdFlags)
-	suite := &ht.Suite{
-		Name: "Quick Check",
-		Log:  logger,
-	}
-
-	for _, u := range urls {
-		test := &ht.Test{
-			Name:        u,
-			Description: "Quick test for " + u,
-			Request: ht.Request{
-				Method:          "GET",
-				URL:             u,
-				Header:          defaultHeader,
-				FollowRedirects: true,
-			},
-			Checks: makeChecks(u),
+	/*
+		logger := log.New(os.Stdout, "", log.LstdFlags)
+		suite := &ht.Suite{
+			Name: "Quick Check",
+			Log:  logger,
 		}
-		suite.Tests = append(suite.Tests, test)
-	}
 
-	err := suite.Prepare()
-	if err != nil {
-		log.Println(err.Error())
-		os.Exit(3)
-	}
-	setVerbosity(suite)
-	suite.Variables = variablesFlag
-	runExecute(cmd, []*ht.Suite{suite})
+		for _, u := range urls {
+			test := &ht.Test{
+				Name:        u,
+				Description: "Quick test for " + u,
+				Request: ht.Request{
+					Method:          "GET",
+					URL:             u,
+					Header:          defaultHeader,
+					FollowRedirects: true,
+				},
+				Checks: makeChecks(u),
+			}
+			suite.Tests = append(suite.Tests, test)
+		}
+
+		err := suite.Prepare()
+		if err != nil {
+			log.Println(err.Error())
+			os.Exit(3)
+		}
+		// setVerbosity(suite)
+		suite.Variables = variablesFlag
+		runExecute(cmd, []*ht.Suite{suite})
+	*/
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/nytlabs/gojsonexplode"
 	"github.com/robertkrimen/otto"
 	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/populate"
 	"golang.org/x/net/html"
 )
 
@@ -136,6 +137,57 @@ func (em *ExtractorMap) UnmarshalJSON(data []byte) error {
 		}
 		(*em)[name] = extractor.Interface().(Extractor)
 	}
+	return nil
+}
+
+func (em *ExtractorMap) Populate(src interface{}) error {
+	types := make(map[string]struct {
+		Extractor string
+	})
+
+	err := populate.Lax(&types, src)
+	if err != nil {
+		fmt.Println("!! Extractor type extraction failed", err)
+		return err
+	}
+
+	raw := make(map[string]interface{})
+	srcMap, ok := src.(map[string]interface{})
+	if !ok {
+		fmt.Printf("Fuck 1 %#v\n", srcMap)
+		return fmt.Errorf("Fuck1")
+	}
+
+	for name := range types {
+		r, ok := srcMap[name].(map[string]interface{})
+		if !ok {
+			fmt.Printf("Fuck 2 %#v\n", srcMap[name])
+			return fmt.Errorf("Fuck 2")
+		}
+		delete(r, "Extractor")
+		raw[name] = r
+	}
+
+	exes := make(map[string]Extractor)
+	for name, ex := range types {
+		exName := ex.Extractor
+		typ, ok := ExtractorRegistry[exName]
+		if !ok {
+			return fmt.Errorf("ht: no such extractor %s", exName)
+		}
+		if typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
+		}
+		extractor := reflect.New(typ)
+		err = populate.Strict(extractor.Interface(), raw[name])
+		if err != nil {
+			fmt.Println("Fuck 3", err)
+			return err
+		}
+		exes[name] = extractor.Interface().(Extractor)
+
+	}
+	*em = exes
 	return nil
 }
 

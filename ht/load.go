@@ -35,45 +35,43 @@ package ht
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path"
 	"path/filepath"
 	"strings"
 
+	hjson "github.com/hjson/hjson-go"
 	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/populate"
 )
 
 // rawTest is the raw representation of a test as read from disk.
 type rawTest struct {
 	Name        string
-	Description string   `json:",omitempty"`
-	BasedOn     []string `json:",omitempty"`
+	Description string
+	BasedOn     []string
 	Request     Request
-	Checks      CheckList         `json:",omitempty"`
-	TestVars    map[string]string `json:",omitempty"`
-	VarEx       ExtractorMap      `json:",omitempty"`
+	Checks      []map[string]interface{}
+	Variables   map[string]string
+	VarEx       map[string]map[string]interface{}
 
-	// Unroll contains values to be used during unrolling the Test
-	// generated from the deserialized data to several real Tests.
-	Unroll map[string][]string `json:",omitempty"`
+	Poll      Poll
+	Verbosity int
 
-	Poll      Poll `json:",omitempty"`
-	Verbosity int  `json:",omitempty"`
-
-	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
+	PreSleep, InterSleep, PostSleep Duration
 }
 
-// rawTestToTest creates a list of real Tests by unrolling a rawTest
-// after loading and merging al mixins.
-func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tests []*Test, err error) {
-	t := &Test{
+// rawTestToTest creates a real Tests after loading and merging
+// all mixins.
+func rawTestToTest(dir string, raw *rawTest) (*Test, error) {
+
+	test := &Test{
 		Name:        raw.Name,
 		Description: raw.Description,
 		Request:     raw.Request,
-		Checks:      raw.Checks,
-		Variables:   raw.TestVars,
-		VarEx:       raw.VarEx,
+		Variables:   raw.Variables,
 		Poll:        raw.Poll,
 		// Timeout:     raw.Timeout,
 		Verbosity:  raw.Verbosity,
@@ -81,44 +79,47 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 		InterSleep: raw.InterSleep,
 		PostSleep:  raw.PostSleep,
 	}
+
+	/*
+			checks, err := CheckList{}, nil // rawChecksToChecks(raw.Checks)
+			if err != nil {
+				return nil, err
+			}
+			test.Checks = checks
+			varex, err := nil, nil // rawVarexToVarex(raw.VarEx)
+			if err != nil {
+				return nil, err
+			}
+		test.VarEx = varex
+	*/
+
 	if len(raw.BasedOn) > 0 {
-		origname, origfollow := t.Name, t.Request.FollowRedirects
-		base := []*Test{t}
+		var err error
+		origname, origfollow := test.Name, test.Request.FollowRedirects
+		base := []*Test{test}
 		for _, name := range raw.BasedOn {
-			rb, basedir, err := findRawTest(dir, name, testPool, nil)
+			rb, basedir, err := findRawTest(dir, name, nil)
 			if err != nil {
 				return nil, err
 			}
-			rb.Unroll = nil // Mixins are not unroled.
-			b, err := rawTestToTests(basedir, rb, testPool)
+			b, err := rawTestToTest(basedir, rb)
 			if err != nil {
 				return nil, err
 			}
-			base = append(base, b...)
+			base = append(base, b)
 		}
-		t, err = Merge(base...)
+		test, err = Merge(base...)
 		if err != nil {
 			return nil, err
 		}
 		// Beautify name and description and force follow redirect
 		// policy: BasedOn is not a merge between equal partners.
-		t.Description = t.Name + "\n" + t.Description
-		t.Name = origname
-		t.Request.FollowRedirects = origfollow
+		test.Description = test.Name + "\n" + test.Description
+		test.Name = origname
+		test.Request.FollowRedirects = origfollow
 	}
 
-	if len(raw.Unroll) > 0 {
-		nreps := lcmOf(raw.Unroll)
-		unrolled, err := Repeat(t, nreps, raw.Unroll)
-		if err != nil {
-			return nil, err
-		}
-		tests = append(tests, unrolled...)
-	} else {
-		tests = append(tests, t)
-	}
-
-	return tests, nil
+	return test, nil
 }
 
 // findRawTest tries to find a test with the given name.
@@ -127,12 +128,12 @@ func rawTestToTests(dir string, raw *rawTest, testPool map[string]*rawTest) (tes
 // filesystem. The directory the file was found is returned as basedir.
 // If the data parameter is non nil it will be used instead of the
 // data read from the filesystem to allow testing.
-func findRawTest(curdir string, name string, testPool map[string]*rawTest, data []byte) (raw *rawTest, basedir string, err error) {
+func findRawTest(curdir string, name string, data []byte) (raw *rawTest, basedir string, err error) {
 	name = path.Join(curdir, name)
 	basedir = path.Dir(name)
-	if t, ok := testPool[name]; ok {
-		return t, basedir, nil
-	}
+	// if t, ok := testPool[name]; ok {
+	//	return t, basedir, nil
+	//}
 
 	if data == nil {
 		data, err = ioutil.ReadFile(name)
@@ -144,45 +145,53 @@ func findRawTest(curdir string, name string, testPool map[string]*rawTest, data 
 	if err != nil {
 		return nil, basedir, err
 	}
-	raw.TestVars = make(map[string]string)
-	raw.TestVars["TEST_NAME"] = path.Base(name)
-	raw.TestVars["TEST_DIR"] = path.Dir(name)
+
+	if raw.Variables == nil {
+		raw.Variables = make(map[string]string)
+	}
+	raw.Variables["TEST_NAME"] = path.Base(name)
+	raw.Variables["TEST_DIR"] = path.Dir(name)
 	if abspath, err := filepath.Abs(name); err == nil {
-		raw.TestVars["TEST_PATH"] = filepath.ToSlash(abspath)
+		raw.Variables["TEST_PATH"] = filepath.ToSlash(abspath)
 	} else {
-		raw.TestVars["TEST_PATH"] = path.Dir(name) // best effort
+		raw.Variables["TEST_PATH"] = path.Dir(name) // best effort
 	}
 
-	testPool[name] = raw
 	return raw, basedir, nil
 }
 
 // loadRawTest unmarshals all to a rawTest.
 func loadRawTest(all []byte, filename string) (*rawTest, error) {
-	t := &rawTest{}
-	err := json5.Unmarshal(all, t)
+	var soup interface{}
+	err := hjson.Unmarshal(all, &soup)
 	if err != nil {
-		err := fmt.Errorf("%s", beautifyJSONError(err, all, filename))
-		return nil, err
+		return nil, err // TOOD: error message
 	}
-	return t, nil
+
+	rt := &rawTest{}
+	err = populate.Strict(rt, soup)
+	if err != nil {
+		return nil, err // TOOD: error message
+	}
+
+	// pp("loadRawTest ", *rt)
+	return rt, nil
 }
 
 // LoadTest reads a test from filename. Tests and mixins are read relative
 // to the directory the test lives in. Unrolling is performed.
 //
-// The TestVars TEST_DIR, TEST_NAME and TEST_PATH are set to the relative
+// The Variables TEST_DIR, TEST_NAME and TEST_PATH are set to the relative
 // directory path, the basename and the absolute path of the file the test
 // was read.
-func LoadTest(filename string) ([]*Test, error) {
+func LoadTest(filename string) (*Test, error) {
 	dir := path.Dir(filename)
 	name := path.Base(filename)
-	testPool := make(map[string]*rawTest)
-	raw, basedir, err := findRawTest(dir, name, testPool, nil)
+	raw, basedir, err := findRawTest(dir, name, nil)
 	if err != nil {
 		return nil, err
 	}
-	return rawTestToTests(basedir, raw, testPool)
+	return rawTestToTest(basedir, raw)
 }
 
 // LoadSuite reads a suite from filename. Tests and mixins are read relative
@@ -202,33 +211,61 @@ func LoadSuite(filename string) (*Suite, error) {
 		Variables:   make(map[string]string),
 	}
 
-	testPool := make(map[string]*rawTest)
-
-	appendTests := func(testNames []string) ([]*Test, error) {
+	createTests := func(elems []rawElem) ([]*Test, error) {
 		tests := []*Test{}
-		for _, name := range testNames {
-			raw, base, err := findRawTest(curdir, name, testPool, nil)
-			if err != nil {
-				return nil, fmt.Errorf("test %q: %s", name, err)
+		for i, elem := range elems {
+			var raw *rawTest
+			var base string
+			var err error
+			if elem.File != "" {
+				raw, base, err = findRawTest(curdir, elem.File, nil)
+				if err != nil {
+					return nil, fmt.Errorf("test %q: %s", elem.File, err)
+				}
+			} else if elem.Test.Name != "" { // TODO: Bad check for non-empty Test
+				raw, base = &elem.Test, curdir
+			} else {
+				return nil, fmt.Errorf("both empty") // TODO
 			}
-			ts, err := rawTestToTests(base, raw, testPool)
-			if err != nil {
-				return nil, fmt.Errorf("test %q: %s", name, err)
+
+			fmt.Println()
+			fmt.Println(raw.Name)
+			fmt.Println("  raw.Variables:", len(raw.Variables))
+			for k, v := range raw.Variables {
+				fmt.Println("    ", k, "=", v)
 			}
-			tests = append(tests, ts...)
+			fmt.Println("  call.Variables:", len(elem.Variables))
+			for k, v := range elem.Variables {
+				fmt.Println("    ", k, "=", v)
+			}
+
+			for varname, varval := range elem.Variables {
+				raw.Variables[varname] = varval
+			}
+			fmt.Println("  --> raw.Variables:", len(raw.Variables))
+
+			t, err := rawTestToTest(base, raw)
+			if err != nil {
+				return nil, fmt.Errorf("test %d: %s", i, err) // TODO
+			}
+			tests = append(tests, t)
 		}
 		return tests, nil
 	}
 
-	suite.Setup, err = appendTests(raw.Setup)
+	fmt.Println("Setup")
+	suite.Setup, err = createTests(raw.Setup)
 	if err != nil {
 		return suite, err
 	}
-	suite.Tests, err = appendTests(raw.Tests)
+
+	fmt.Println("Main")
+	suite.Tests, err = createTests(raw.Tests)
 	if err != nil {
 		return suite, err
 	}
-	suite.Teardown, err = appendTests(raw.Teardown)
+	fmt.Println("Teardown")
+	suite.Teardown, err = createTests(raw.Teardown)
 	if err != nil {
 		return suite, err
 	}
@@ -239,37 +276,57 @@ func LoadSuite(filename string) (*Suite, error) {
 	suite.KeepCookies = raw.KeepCookies
 	suite.OmitChecks = raw.OmitChecks
 
+	pp("LoadSuite "+filename, *suite)
 	return suite, nil
+}
+
+type rawElem struct {
+	File      string
+	Test      rawTest
+	Variables map[string]string
 }
 
 // rawSuite is the struct used to deserialize a Suite.
 type rawSuite struct {
 	Name        string
-	Description string            `json:",omitempty"`
-	KeepCookies bool              `json:",omitempty"`
-	OmitChecks  bool              `json:",omitempty"`
-	Setup       []string          `json:",omitempty"`
-	Tests       []string          `json:",omitempty"`
-	Teardown    []string          `json:",omitempty"`
-	Verbosity   int               `json:",omitempty"`
-	Variables   map[string]string `json:",omitempty"`
+	Description string
+	KeepCookies bool
+	OmitChecks  bool
+	Setup       []rawElem
+	Tests       []rawElem
+	Teardown    []rawElem
+	Verbosity   int
+	Variables   map[string]string
 }
 
 // loadRawSuite loads the file with the given filename and decodes into
 // a rawSuite.
-func loadRawSuite(filename string) (s rawSuite, err error) {
-	var all []byte
-	all, err = ioutil.ReadFile(filename)
+func loadRawSuite(filename string) (rawSuite, error) {
+	all, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return s, err
+		return rawSuite{}, err
 	}
 
-	err = json5.Unmarshal(all, &s)
+	var soup interface{}
+	err = hjson.Unmarshal(all, &soup)
 	if err != nil {
-		err = fmt.Errorf(beautifyJSONError(err, all, filename))
-		return s, err
+		err = fmt.Errorf("reading suite %s: %s", filename, err)
+		return rawSuite{}, err
 	}
-	return s, nil
+	rs := rawSuite{}
+	err = populate.Strict(&rs, soup)
+	if err != nil {
+		err = fmt.Errorf("reading suite %s: %s", filename, err)
+		return rawSuite{}, err
+	}
+
+	// pp("loadRawSuite", rs)
+	return rs, nil
+}
+
+func pp(msg string, v interface{}) {
+	data, _ := json.MarshalIndent(v, "", "    ")
+	fmt.Println(msg, string(data))
 }
 
 // beautifyJSONError returns a descriptive error message if err is a

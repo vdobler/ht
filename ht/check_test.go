@@ -192,56 +192,6 @@ func TestChecklistMarshalJSON(t *testing.T) {
 	}
 }
 
-func TestChecklistUnmarshalJSON(t *testing.T) {
-	j := []byte(`[
-{Check: "ResponseTime", Lower: 1.23},
-{Check: "Body", Prefix: "BEGIN", Regexp: "foo", Count: 3},
-{Check: "None", Of: [
-   {Check: "StatusCode", Expect: 500},
-   {Check: "UTF8Encoded"},
-]},
-{Check: "AnyOne", Of: [
-   {Check: "StatusCode", Expect: 303},
-   {Check: "Body", Contains: "all good"},
-   {Check: "ValidHTML"},
-]},
-]`)
-
-	cl := CheckList{}
-	err := (&cl).UnmarshalJSON(j)
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-
-	want := CheckList{
-		ResponseTime{Lower: Duration(1230 * time.Millisecond)},
-		&Body{Prefix: "BEGIN", Regexp: "foo", Count: 3},
-		None{Of: CheckList{
-			StatusCode{Expect: 500},
-			UTF8Encoded{},
-		}},
-		AnyOne{Of: CheckList{
-			StatusCode{Expect: 303},
-			&Body{Contains: "all good"},
-			ValidHTML{},
-		}},
-	}
-
-	gots, err := json5.MarshalIndent(cl, "", "    ")
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-	wants, err := json5.MarshalIndent(want, "", "    ")
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-
-	if string(gots) != string(wants) {
-		t.Errorf("Got:\n%s\nWant:\n%s", gots, wants)
-	}
-
-}
-
 // ----------------------------------------------------------------------------
 // type TC and runTest: helpers for testing the different checks
 

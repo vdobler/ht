@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/populate"
 )
 
 // Check is a single check performed on a Response.
@@ -27,6 +28,9 @@ type Check interface {
 // NameOf returns the name of the type of inst.
 func NameOf(inst interface{}) string {
 	typ := reflect.TypeOf(inst)
+	if typ == nil {
+		return "<nil>"
+	}
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
@@ -227,6 +231,56 @@ func extractSingleFieldFromJSON5(fieldname string, data []byte) (fieldval string
 
 }
 
+func (cl *CheckList) Populate(src interface{}) error {
+	types := []struct {
+		Check string
+	}{}
+
+	err := populate.Lax(&types, src)
+	if err != nil {
+		fmt.Println("!! Check type extraction failed", err)
+		return err
+	}
+
+	raw := make([]map[string]interface{}, len(types))
+	srcList, ok := src.([]interface{})
+	if !ok {
+		fmt.Printf("Fuck 1 %#v\n", srcList)
+		return fmt.Errorf("Fuck1")
+	}
+
+	for i := range raw {
+		r, ok := srcList[i].(map[string]interface{})
+		if !ok {
+			fmt.Printf("Fuck 2 %#v\n", srcList[i])
+			return fmt.Errorf("Fuck 2")
+		}
+		delete(r, "Check")
+		raw[i] = r
+	}
+
+	list := make(CheckList, len(types))
+	for i, t := range types {
+		checkName := t.Check
+		typ, ok := CheckRegistry[checkName]
+		if !ok {
+			return fmt.Errorf("ht: no such check %s", checkName)
+		}
+		if typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
+		}
+		rcheck := reflect.New(typ)
+		err = populate.Strict(rcheck.Interface(), raw[i])
+		if err != nil {
+			fmt.Println("Fuck 3", err)
+			return err
+		}
+		list[i] = rcheck.Interface().(Check)
+	}
+	*cl = list
+	return nil
+}
+
 // UnmarshalJSON unmarshals data to a slice of Checks.
 func (cl *CheckList) UnmarshalJSON(data []byte) error {
 	raw := []json5.RawMessage{}
@@ -246,10 +300,18 @@ func (cl *CheckList) UnmarshalJSON(data []byte) error {
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
 		}
-		rcheck := reflect.New(typ)
-		err = json5.Unmarshal(checkDef, rcheck.Interface())
+
+		soup := make(map[string]interface{})
+		err = json5.Unmarshal(checkDef, &soup)
 		if err != nil {
 			return fmt.Errorf("%d. check: %s", i+1, err)
+		}
+		rcheck := reflect.New(typ)
+		err = populate.Strict(rcheck.Interface(), soup)
+
+		// err = json5.Unmarshal(checkDef, rcheck.Interface())
+		if err != nil {
+			return fmt.Errorf("BBBBBB %d. check: %s", i+1, err)
 		}
 
 		*cl = append(*cl, rcheck.Interface().(Check))

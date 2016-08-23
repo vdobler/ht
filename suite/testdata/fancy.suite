@@ -1,0 +1,12 @@
+{
+    Name: "Fancy Suite"
+    Main: [
+        { File: "fancy.ht" }
+        { File: "fancy.ht", Variables: { MIXIN: "basic.mix" } }
+        { File: "fancy.ht", Variables: { MIXIN: "advanced.mix", DOMAIN: "example.org" } }
+        { File: "fancy.ht", Variables: { MIXIN: "{{ENVIRONMENT}}.ht" } }
+    ],
+    Variables: {
+       ENVIRONMENT: "staging"
+    }
+}

@@ -1,0 +1,7 @@
+{
+    Name: "Advanced Mixin"
+    Request: { Header: { "X-Mode": "advanced" } }
+    Checks: [
+        {Check: "Body", Contains: "advanced"}
+    ] 
+}

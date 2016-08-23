@@ -1,0 +1,11 @@
+{
+    Name: "Mixin S",
+    Request: {
+        Header: {
+            Multi: [ "S" ],
+        },
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 430},
+    ],
+}

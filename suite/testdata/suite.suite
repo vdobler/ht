@@ -11,7 +11,7 @@
         }
     ],
     comment: "see Foo. B et al., Journal of examples and Comments 123, p456",
-    Tests: [
+    Main: [
         {File: "a.ht"}
         {File: "b.ht", Variables: {"foo": "bar"}}
 	{File: "c/d.ht"}
@@ -19,7 +19,6 @@
     Teardown: [
        {File: "b.ht"}
     ]
-    Verbosity: 2
     Variables: {
        VARNAME: "varvalue"
     }

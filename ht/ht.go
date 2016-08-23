@@ -172,12 +172,12 @@ type Request struct {
 	// password which will be sent in a Basic Authentication header.
 	// If following redirects the authentication header is also sent
 	// on subsequent requests to the same host.
-	BasicAuthUser string
-	BasicAuthPass string
+	BasicAuthUser string `json:",omitempty"`
+	BasicAuthPass string `json:",omitempty"`
 
 	// Chunked turns of setting of the Content-Length header resulting
 	// in chunked transfer encoding of POST bodies.
-	Chunked bool
+	Chunked bool `json:",omitempty"`
 
 	// Timeout of this request. If zero use DefaultClientTimeout.
 	Timeout Duration `json:",omitempty"`
@@ -194,14 +194,14 @@ type Response struct {
 	Response *http.Response `json:",omitempty"`
 
 	// Duration to receive response and read the whole body.
-	Duration Duration
+	Duration Duration `json:",omitempty"`
 
 	// The received body and the error got while reading it.
-	BodyStr string
-	BodyErr error
+	BodyStr string `json:",omitempty"`
+	BodyErr error  `json:",omitempty"`
 
 	// Redirections records the URLs of automatic GET requests due to redirects.
-	Redirections []string
+	Redirections []string `json:",omitempty"`
 }
 
 // Body returns a reader of the response body.
@@ -243,7 +243,7 @@ type Test struct {
 	Checks CheckList
 
 	// VarEx may be used to popultate variables from the response. TODO: Rename.
-	VarEx map[string]Extractor `json:",omitempty"`
+	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
 
 	Poll      Poll `json:",omitempty"`
 	Verbosity int  `json:",omitempty"` // Verbosity level in logging.
@@ -275,12 +275,21 @@ type Test struct {
 		Filename  string
 		Extension string
 	} `json:"-"`
-	VarValues map[string]string
-	ExValues  map[string]Extraction
+	VarValues map[string]string     `json:",omitempty"`
+	ExValues  map[string]Extraction `json:",omitempty"`
 
 	client      *http.Client
 	specialVars []string
 	checks      []Check // prepared checks.
+}
+
+// CheckResult captures the outcom of a single check inside a test.
+type CheckResult struct {
+	Name     string    // Name of the check as registered.
+	JSON     string    // JSON serialization of check.
+	Status   Status    // Outcome of check. All status but Error
+	Duration Duration  // How long the check took.
+	Error    ErrorList // For a Status of Bogus or Fail.
 }
 
 // Extraction captures the result of a variable extraction.
@@ -1045,11 +1054,13 @@ func (t *Test) prepared() bool {
 	return t.Request.Request != nil
 }
 
+var logger = log.New(os.Stdout, "", 0)
+
 func (t *Test) errorf(format string, v ...interface{}) {
 	if t.Verbosity >= 0 {
 		format = "ERROR " + format + " [%q]"
 		v = append(v, t.Name)
-		log.Printf(format, v...)
+		logger.Printf(format, v...)
 	}
 }
 
@@ -1057,7 +1068,7 @@ func (t *Test) infof(format string, v ...interface{}) {
 	if t.Verbosity >= 1 {
 		format = "INFO " + format + " [%q]"
 		v = append(v, t.Name)
-		log.Printf(format, v...)
+		logger.Printf(format, v...)
 	}
 }
 
@@ -1065,7 +1076,7 @@ func (t *Test) debugf(format string, v ...interface{}) {
 	if t.Verbosity >= 2 {
 		format = "DEBUG " + format + " [%q]"
 		v = append(v, t.Name)
-		log.Printf(format, v...)
+		logger.Printf(format, v...)
 	}
 }
 
@@ -1073,7 +1084,7 @@ func (t *Test) tracef(format string, v ...interface{}) {
 	if t.Verbosity >= 3 {
 		format = "TRACE " + format + " [%q]"
 		v = append(v, t.Name)
-		log.Printf(format, v...)
+		logger.Printf(format, v...)
 	}
 }
 

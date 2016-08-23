@@ -1,6 +1,6 @@
 {
     Name: "Test B",
-    BasedOn: [ "m.mix" ],
+    Mixin: [ "m.mix" ],
     Request: {
         URL: "http://bbb.bbb.bbb",
         Params: {

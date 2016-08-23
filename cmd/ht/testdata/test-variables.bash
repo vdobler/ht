@@ -8,15 +8,16 @@ set -euo pipefail
 cat > suite1.suite <<EOF
 {
     Name: "First Suite",
-    Tests: [
-        "req1.ht",
-        "req2.ht",
+    Main: [
+        {File: "req1.ht"}
+        {File: "req2.ht"}
     ],
     KeepCookies: true,
     Variables: {
         VAR_A: "suite-A",
         VAR_B: "suite-B",
         VAR_C: "suite-C",
+        VAR_X: "{{VAR_Y}}",
     }
 }
 EOF
@@ -93,8 +94,8 @@ cat > suite2.suite <<EOF
 {
     Name: "Second Suite",
     KeepCookies: true,
-    Tests: [
-        "req3.ht",
+    Main: [
+        {File: "req3.ht"}
     ]
 }
 EOF

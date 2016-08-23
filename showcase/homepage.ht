@@ -1,7 +1,7 @@
 {
     Name: "Homepage",
     Description: "Check an awful lot of stuff on the homepage.",
-    BasedOn: [
+    Mixin: [
         // BasedOn allows to 'merge' mixins (non-complete tests).
         // Useful for std headers or default checks.
         "german-chrome.mixin",

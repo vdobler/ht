@@ -1,8 +1,8 @@
-// Copyright 2014 Volker Dobler.  All rights reserved.
+// Copyright 2016 Volker Dobler.  All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package ht
+package suite
 
 import (
 	"bytes"
@@ -16,130 +16,11 @@ import (
 	"path"
 	"strings"
 	"text/template"
-	"time"
 	"unicode/utf8"
 
+	"github.com/vdobler/ht/ht"
 	mimelist "github.com/vdobler/ht/mime"
 )
-
-// ----------------------------------------------------------------------------
-// Status
-
-// Status describes the status of a Test or a Check.
-type Status int
-
-// Possible status of Checks, Tests and Suites.
-const (
-	NotRun  Status = iota // Not jet executed
-	Skipped               // Omitted deliberately
-	Pass                  // That's what we want
-	Fail                  // One ore more checks failed
-	Error                 // Request or body reading failed (not for checks).
-	Bogus                 // Bogus test or check (malformd URL, bad regexp, etc.)
-)
-
-func (s Status) String() string {
-	return []string{"NotRun", "Skipped", "Pass", "Fail", "Error", "Bogus"}[int(s)]
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s Status) MarshalText() ([]byte, error) {
-	if s < 0 || s > Bogus {
-		return []byte(""), fmt.Errorf("no such status %d", s)
-	}
-	return []byte(s.String()), nil
-}
-
-// Stats counts the test results of sr.
-func (s *Suite) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
-	for _, tr := range s.AllTests() {
-		switch tr.Status {
-		case NotRun:
-			notRun++
-		case Skipped:
-			skipped++
-		case Pass:
-			passed++
-		case Fail:
-			failed++
-		case Error:
-			errored++
-		case Bogus:
-			bogus++
-		default:
-			panic(fmt.Sprintf("No such Status %d in suite %q test %q",
-				tr.Status, s.Name, tr.Name))
-		}
-	}
-	return
-}
-
-// ----------------------------------------------------------------------------
-// SuiteResult
-
-// SuiteResult allows to accumulate statistics of executed suites
-type SuiteResult struct {
-	Started  time.Time // Start time of earliest suite.
-	Duration Duration  // Cummulated duration of all accounted suites.
-
-	// Count is the histogram of test results indexed by status.
-	Count []int
-
-	Suites []*Suite // Suites contains references to all accounted suites.
-}
-
-// NewSuiteResult returns an empty SuiteResult.
-func NewSuiteResult() *SuiteResult {
-	r := &SuiteResult{}
-	r.Count = make([]int, int(Bogus)+1)
-	return r
-}
-
-// Account updates the SuiteResult r with the results from s.
-// Setup and teardown control whether the setup and teardown tests of s are
-// included in the accounting.
-func (r *SuiteResult) Account(s *Suite, setup bool, teardown bool) {
-	if r.Started.IsZero() || s.Started.Before(r.Started) {
-		r.Started = s.Started
-	}
-	r.Duration += s.Duration
-	r.Suites = append(r.Suites, s)
-
-	account := func(tests []*Test) {
-		for _, test := range tests {
-			r.Count[test.Status]++
-		}
-	}
-
-	if setup {
-		account(s.Setup)
-	}
-	account(s.Tests)
-	if teardown {
-		account(s.Teardown)
-	}
-}
-
-// Merge result o into r.
-func (r *SuiteResult) Merge(o *SuiteResult) {
-	if r.Started.IsZero() || o.Started.Before(r.Started) {
-		r.Started = o.Started
-	}
-	r.Duration += o.Duration
-	r.Suites = append(r.Suites, o.Suites...)
-	for s := NotRun; s <= Bogus; s++ {
-		r.Count[s] += o.Count[s]
-	}
-}
-
-// Tests returns the total number of tests recorded.
-func (r *SuiteResult) Tests() int {
-	n := 0
-	for _, m := range r.Count {
-		n += m
-	}
-	return n
-}
 
 // ----------------------------------------------------------------------------
 // Templates to output
@@ -330,16 +211,12 @@ var defaultSuiteTmpl = `{{Box (printf "%s: %s" (ToUpper .Status.String) .Name) "
 Error: {{.Error}}{{end}}
 Started: {{.Started}}   Duration: {{.Duration}}
 
-{{range .Setup}}{{template "TEST" .}}
-{{end}}
 {{range .Tests}}{{template "TEST" .}}
-{{end}}
-{{range .Teardown}}{{template "TEST" .}}
 {{end}}
 `
 
 var shortSuiteTmpl = `======  Result of {{.Name}} =======
-{{range .Setup}}{{template "SHORTTEST" .}}{{end}}{{range .Tests}}{{template "SHORTTEST" .}}{{end}}{{range .Teardown}}{{template "SHORTTEST" .}}{{end}}{{printf "===> %s <=== %s" (ToUpper .Status.String) .Name}}
+{{range .Tests}}{{template "SHORTTEST" .}}{{end}}{{printf "===> %s <=== %s" (ToUpper .Status.String) .Name}}
 `
 
 var htmlStyleTmpl = `{{define "STYLE"}}
@@ -454,7 +331,7 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
   Full Duration: {{.Duration}}
 </div>
 
-{{range .AllTests}}{{template "TEST" .}}{{end}}
+{{range .Tests}}{{template "TEST" .}}{{end}}
 
 {{template "JAVASCRIPT"}}
 </body>
@@ -469,9 +346,19 @@ var (
 	HtmlSuiteTmpl  *htmltemplate.Template
 )
 
+// Box around title, indented by prefix.
+//    +------------+
+//    |    Title   |
+//    +------------+
+func Box(title string, prefix string) string {
+	n := len(title)
+	top := prefix + "+" + strings.Repeat("-", n+6) + "+"
+	return fmt.Sprintf("%s\n%s|   %s   |\n%s", top, prefix, title, top)
+}
+
 func init() {
 	fm := make(template.FuncMap)
-	fm["Underline"] = Underline
+	//fm["Underline"] = Underline
 	fm["Box"] = Box
 	fm["ToUpper"] = strings.ToUpper
 
@@ -498,7 +385,7 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.New("SUITE")
 	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{
 		"ToUpper": strings.ToUpper,
-		"Summary": Summary,
+		"Summary": ht.Summary,
 	})
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlSuiteTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
@@ -511,28 +398,16 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlJavascriptTmpl))
 }
 
-// PrintReport of t to w.
-func (t Test) PrintReport(w io.Writer) error {
+func PrintTestReport(w io.Writer, t ht.Test) error {
 	return TestTmpl.Execute(w, t)
 }
 
-// PrintShortReport of t to w.
-func (t Test) PrintShortReport(w io.Writer) error {
-	return ShortTestTmpl.Execute(w, t)
-}
-
-// PrintReport of s to w.
-func (s Suite) PrintReport(w io.Writer) error {
+func PrintSuiteReport(w io.Writer, s *Suite) error {
 	return SuiteTmpl.Execute(w, s)
 }
 
-// PrintShortReport of s to w.
-func (s Suite) PrintShortReport(w io.Writer) error {
-	return ShortSuiteTmpl.Execute(w, s)
-}
-
 // TODO: sniff if unavailable
-func guessResponseExtension(test *Test) string {
+func guessResponseExtension(test *ht.Test) string {
 	if test.Response.Response == nil || len(test.Response.BodyStr) == 0 {
 		return "nil"
 	}
@@ -553,12 +428,11 @@ func guessResponseExtension(test *Test) string {
 	return "txt"
 }
 
-// HTMLReport generates a report of the outcome ofs to directory dir.
-func (s Suite) HTMLReport(dir string) error {
-	errs := ErrorList{}
+// HTMLReport generates a report of the outcome of s to directory dir.
+func HTMLReport(dir string, s *Suite) error {
+	errs := ht.ErrorList{}
 
-	writeBody := func(test *Test, typ string, n int) {
-		test.Reporting.SeqNo = fmt.Sprintf("%s-%02d", typ, n)
+	for i, test := range s.Tests {
 		if tn, ok := test.VarValues["TEST_NAME"]; ok {
 			test.Reporting.Filename = tn
 		} else {
@@ -567,24 +441,15 @@ func (s Suite) HTMLReport(dir string) error {
 		test.Reporting.Extension = guessResponseExtension(test)
 
 		body := []byte(test.Response.BodyStr)
-		name := path.Join(dir, test.Reporting.SeqNo+".ResponseBody."+test.Reporting.Extension)
+		fn := fmt.Sprintf("ResponseBody_%02d.%s", i+1, test.Reporting.Extension)
+		name := path.Join(dir, fn)
 		err := ioutil.WriteFile(name, body, 0666)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 
-	for i, test := range s.Setup {
-		writeBody(test, "Setup", i+1)
-	}
-	for i, test := range s.Tests {
-		writeBody(test, "MainTest", i+1)
-	}
-	for i, test := range s.Teardown {
-		writeBody(test, "Teardown", i+1)
-	}
-
-	report, err := os.Create(path.Join(dir, "Report.html"))
+	report, err := os.Create(path.Join(dir, "_Report_.html"))
 	if err != nil {
 		errs = append(errs, err)
 	} else {
@@ -650,7 +515,7 @@ func (s *Suite) JUnit4XML() (string, error) {
 	skipped, passed, failed, errored := 0, 0, 0, 0
 	testcases := []Testcase{}
 	for _, test := range s.Tests {
-		if test.Status >= Error {
+		if test.Status >= ht.Error {
 			// report all checks as errored but with special message
 			for _, cr := range test.CheckResults {
 				tc := Testcase{
@@ -676,18 +541,18 @@ func (s *Suite) JUnit4XML() (string, error) {
 				}
 
 				switch cr.Status {
-				case NotRun, Skipped:
+				case ht.NotRun, ht.Skipped:
 					tc.Skipped = &struct{}{}
 					skipped++
-				case Pass:
+				case ht.Pass:
 					passed++
-				case Fail:
+				case ht.Fail:
 					tc.Failure = &ErrorMsg{
 						Message: cr.Error.Error(),
 						Typ:     fmt.Sprintf("%T", test.Error),
 					}
 					failed++
-				case Error, Bogus:
+				case ht.Error, ht.Bogus:
 					tc.Error = &ErrorMsg{
 						Message: test.Error.Error(),
 						Typ:     fmt.Sprintf("%T", test.Error),
@@ -706,7 +571,7 @@ func (s *Suite) JUnit4XML() (string, error) {
 	// the generated JUnit report.
 	buf := &bytes.Buffer{}
 	var sysout string
-	err := s.PrintReport(buf)
+	err := PrintSuiteReport(buf, s)
 	if err != nil {
 		sysout = err.Error()
 	} else {
