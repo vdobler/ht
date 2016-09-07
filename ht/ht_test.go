@@ -239,47 +239,6 @@ func TestSendBody(t *testing.T) {
 	}
 }
 
-func TestRTStats(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
-	defer ts.Close()
-
-	test := &Test{
-		Name: "Sleep {{SMIN}}-{{SMAX}}",
-		Request: Request{
-			Method: "GET",
-			URL:    ts.URL + "/",
-			Params: URLValues{
-				"smin": []string{"{{SMIN}}"},
-				"smax": []string{"{{SMAX}}"},
-				"fail": {"5"},
-			},
-			FollowRedirects: false,
-			Timeout:         Duration(150 * time.Millisecond),
-		},
-		Checks: []Check{
-			StatusCode{200},
-		},
-	}
-
-	rtimes := map[string][]string{
-		"SMIN": {"5", "30", "50"},
-		"SMAX": {"20", "70", "100"},
-	}
-	tests, _ := Repeat(test, 3, rtimes)
-
-	suite := &Suite{
-		Name:        "Response Time Statistics",
-		Tests:       tests,
-		KeepCookies: true,
-	}
-
-	err := suite.Prepare()
-	if err != nil || len(suite.Tests) != 3 {
-		t.Fatalf("Unexpected error: %v %d", err, len(suite.Tests))
-	}
-
-}
-
 // ----------------------------------------------------------------------------
 // Test Handlers
 

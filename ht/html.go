@@ -476,7 +476,7 @@ func (c *Links) Execute(t *Test) error {
 	if err != nil {
 		return err
 	}
-	suite := &Suite{}
+	suite := &Collection{}
 	method := "GET"
 	if c.Head {
 		method = "HEAD"
@@ -539,15 +539,11 @@ func (c *Links) Execute(t *Test) error {
 		suite.Tests = append(suite.Tests, test)
 	}
 
-	err = suite.Prepare()
-	if err != nil {
-		return CantCheck{fmt.Errorf("Constructed meta test are bad: %s", err)}
-	}
 	conc := 1
 	if c.Concurrency > 1 {
 		conc = c.Concurrency
 	}
-	suite.ExecuteConcurrent(conc)
+	suite.ExecuteConcurrent(conc, nil)
 	if suite.Status != Pass {
 		for _, test := range suite.Tests {
 			if test.Status == Error || test.Status == Bogus {

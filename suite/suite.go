@@ -122,3 +122,27 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 
 	return suite
 }
+
+// Stats counts the test results of sr.
+func (s *Suite) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
+	for _, tr := range s.Tests() {
+		switch tr.Status {
+		case NotRun:
+			notRun++
+		case Skipped:
+			skipped++
+		case Pass:
+			passed++
+		case Fail:
+			failed++
+		case Error:
+			errored++
+		case Bogus:
+			bogus++
+		default:
+			panic(fmt.Sprintf("No such Status %d in suite %q test %q",
+				tr.Status, s.Name, tr.Name))
+		}
+	}
+	return
+}
