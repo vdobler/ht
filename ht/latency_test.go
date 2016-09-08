@@ -129,10 +129,10 @@ func TestLatency(t *testing.T) {
 					// DumpTo:     "foo.xxx",
 				},
 			},
-			Verbosity: 0,
+			Execution: Execution{Verbosity: 0},
 		}
 		if *verboseTest {
-			test.Verbosity = 1
+			test.Execution.Verbosity = 1
 		}
 		test.Run()
 
@@ -179,11 +179,11 @@ func TestSessionLatency(t *testing.T) {
 						IndividualSessions: kind == "indiv",
 					},
 				},
-				Verbosity: 0,
+				Execution: Execution{Verbosity: 0},
 				Jar:       jar,
 			}
 			if *verboseTest {
-				test.Verbosity = 1
+				test.Execution.Verbosity = 1
 			}
 
 			test.Run()

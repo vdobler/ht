@@ -113,7 +113,7 @@ func (L *Latency) Execute(t *Test) error {
 			checks = append(checks, c)
 		}
 		cpy.Checks = checks
-		cpy.Verbosity = 0
+		cpy.Execution.Verbosity = 0
 
 		if t.Jar != nil {
 			if L.IndividualSessions {

@@ -433,7 +433,7 @@ func HTMLReport(dir string, s *Suite) error {
 	errs := ht.ErrorList{}
 
 	for i, test := range s.Tests {
-		if tn, ok := test.VarValues["TEST_NAME"]; ok {
+		if tn, ok := test.Variables["TEST_NAME"]; ok {
 			test.Reporting.Filename = tn
 		} else {
 			test.Reporting.Filename = "??"

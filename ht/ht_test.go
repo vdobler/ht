@@ -433,8 +433,8 @@ func TestPolling(t *testing.T) {
 			Checks: []Check{
 				StatusCode{200},
 			},
-			Poll: Poll{
-				Max:   tc.max,
+			Execution: Execution{
+				Tries: tc.max,
 				Sleep: Duration(200),
 			},
 		}
@@ -558,9 +558,11 @@ func TestMerge(t *testing.T) {
 			FollowRedirects: true,
 			Chunked:         false,
 		},
-		PreSleep:   Duration(100),
-		InterSleep: Duration(120),
-		PostSleep:  Duration(140),
+		Execution: Execution{
+			PreSleep:   Duration(100),
+			InterSleep: Duration(120),
+			PostSleep:  Duration(140),
+		},
 	}
 
 	b = &Test{
@@ -585,7 +587,9 @@ func TestMerge(t *testing.T) {
 			BasicAuthUser:   "foo.bar",
 			BasicAuthPass:   "secret",
 		},
-		InterSleep: Duration(300),
+		Execution: Execution{
+			InterSleep: Duration(300),
+		},
 	}
 
 	c, err := Merge(a, b)
@@ -630,9 +634,9 @@ func TestMerge(t *testing.T) {
 			c.Request.FollowRedirects, c.Request.Chunked)
 	}
 
-	if c.PreSleep != 100 || c.InterSleep != 420 || c.PostSleep != 140 {
+	if c.Execution.PreSleep != 100 || c.Execution.InterSleep != 420 || c.Execution.PostSleep != 140 {
 		t.Errorf("Bad sleep times. Got pre=%s, inter=%s, post=%s",
-			c.PreSleep, c.InterSleep, c.PostSleep)
+			c.Execution.PreSleep, c.Execution.InterSleep, c.Execution.PostSleep)
 	}
 
 }

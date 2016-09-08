@@ -528,7 +528,9 @@ func (c *Links) Execute(t *Test) error {
 			Checks: CheckList{
 				StatusCode{Expect: 200},
 			},
-			Verbosity: t.Verbosity - 1,
+			Execution: Execution{
+				Verbosity: t.Execution.Verbosity - 1,
+			},
 		}
 		test.PopulateCookies(t.Jar, t.Request.Request.URL)
 		if ru, err := url.Parse(r); err == nil &&

@@ -293,7 +293,7 @@ func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 		}
 	}
 
-	test, err := substituted.toTest()
+	test, err := substituted.toTest(varset)
 	if err != nil {
 		return bogus, fmt.Errorf("cannot produce Test from %s: %s", rt, err)
 	}
@@ -330,10 +330,10 @@ func (m *Mixin) toTest() (*ht.Test, error) {
 			Name: m.Name,
 		},
 	}
-	return rt.toTest()
+	return rt.toTest(nil)
 }
 
-func (r *RawTest) toTest() (*ht.Test, error) {
+func (r *RawTest) toTest(variables map[string]string) (*ht.Test, error) {
 	m, err := r.File.decode()
 	if err != nil {
 		return nil, err
@@ -346,6 +346,11 @@ func (r *RawTest) toTest() (*ht.Test, error) {
 	err = populate.Strict(test, m)
 	if err != nil {
 		return nil, err // better error message here
+	}
+
+	test.Variables = make(map[string]string, len(variables))
+	for n, v := range variables {
+		test.Variables[n] = v
 	}
 
 	return test, nil

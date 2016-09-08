@@ -215,16 +215,24 @@ type Cookie struct {
 	Value string `json:",omitempty"`
 }
 
-// Poll determines if and how to redo a test after a failure or if the
-// test should be skipped altogether. The zero value of Poll means "Just do
-// the test once."
-type Poll struct {
-	// Maximum number of redos. Both 0 and 1 mean: "Just one try. No redo."
-	// Negative values indicate that the test should be skipped.
-	Max int `json:",omitempty"`
+// Execution contains parameters controlling the test execution.
+type Execution struct {
+	// Tries is the maximum number of tries made for this test.
+	// Both 0 and 1 mean: "Just one try. No redo."
+	// Negative values indicate that the test should be skipped
+	// altogether.
+	Tries int `json:",omitempty"`
 
-	// Duration to sleep between redos.
+	// Duration to sleep between retries.
 	Sleep Duration `json:",omitempty"`
+
+	// Pre-, Inter- and PostSleep are the sleep durations made
+	// before the request, between request and the checks and
+	// after the checks.
+	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
+
+	// Verbosity level in logging.
+	Verbosity int `json:",omitempty"`
 }
 
 // ----------------------------------------------------------------------------
@@ -242,13 +250,7 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
-	Poll      Poll `json:",omitempty"`
-	Verbosity int  `json:",omitempty"` // Verbosity level in logging.
-
-	// Pre-, Inter- and PostSleep are the sleep durations made
-	// before the request, between request and the checks and
-	// after the checks.
-	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
+	Execution Execution `json:",omitempty"`
 
 	// Jar is the cookie jar to use
 	Jar *cookiejar.Jar `json:"-"`
@@ -419,21 +421,21 @@ func Merge(tests ...*Test) (*Test, error) {
 			return &m, err
 		}
 		m.Checks = append(m.Checks, t.Checks...)
-		if t.Poll.Max > m.Poll.Max {
-			m.Poll.Max = t.Poll.Max
+		if t.Execution.Tries > m.Execution.Tries {
+			m.Execution.Tries = t.Execution.Tries
 		}
-		if t.Poll.Sleep > m.Poll.Sleep {
-			m.Poll.Sleep = t.Poll.Sleep
+		if t.Execution.Sleep > m.Execution.Sleep {
+			m.Execution.Sleep = t.Execution.Sleep
 		}
 		if t.Request.Timeout > m.Request.Timeout {
 			m.Request.Timeout = t.Request.Timeout
 		}
-		if t.Verbosity > m.Verbosity {
-			m.Verbosity = t.Verbosity
+		if t.Execution.Verbosity > m.Execution.Verbosity {
+			m.Execution.Verbosity = t.Execution.Verbosity
 		}
-		m.PreSleep += t.PreSleep
-		m.InterSleep += t.InterSleep
-		m.PostSleep += t.PostSleep
+		m.Execution.PreSleep += t.Execution.PreSleep
+		m.Execution.InterSleep += t.Execution.InterSleep
+		m.Execution.PostSleep += t.Execution.PostSleep
 		for name, value := range t.VarEx {
 			if old, ok := m.VarEx[name]; ok && old != value {
 				return &m, fmt.Errorf("wont overwrite extractor for %s", name)
@@ -460,7 +462,7 @@ func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 
 // Run runs the test t. The actual HTTP request is crafted and executed and
 // the checks are performed on the received response. This whole process
-// is repeated on failure or skipped entirely according to t.Poll.
+// is repeated on failure or skipped entirely according to t.Execution.
 //
 // The given variables are subsituted into the relevant parts of the request
 // and the checks.
@@ -475,7 +477,7 @@ func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 func (t *Test) Run() error {
 	t.Started = time.Now()
 
-	maxTries := t.Poll.Max
+	maxTries := t.Execution.Tries
 	if maxTries == 0 {
 		maxTries = 1
 	}
@@ -485,7 +487,7 @@ func (t *Test) Run() error {
 		return nil
 	}
 
-	time.Sleep(time.Duration(t.PreSleep))
+	time.Sleep(time.Duration(t.Execution.PreSleep))
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
@@ -503,7 +505,7 @@ func (t *Test) Run() error {
 	for ; try <= maxTries; try++ {
 		t.Tries = try
 		if try > 1 {
-			time.Sleep(time.Duration(t.Poll.Sleep))
+			time.Sleep(time.Duration(t.Execution.Sleep))
 		}
 		err := t.prepare(t.Variables)
 		if err != nil {
@@ -519,7 +521,7 @@ func (t *Test) Run() error {
 		}
 	}
 	t.Duration = Duration(time.Since(start))
-	if t.Poll.Max > 1 {
+	if t.Execution.Tries > 1 {
 		if t.Status == Pass {
 			t.debugf("polling succeeded after %d tries", try)
 		} else {
@@ -529,7 +531,7 @@ func (t *Test) Run() error {
 
 	t.infof("test %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
 
-	time.Sleep(time.Duration(t.PostSleep))
+	time.Sleep(time.Duration(t.Execution.PostSleep))
 
 	t.FullDuration = Duration(time.Since(t.Started))
 	return nil
@@ -569,7 +571,7 @@ func (t *Test) execute() {
 	}
 	if err == nil {
 		if len(t.Checks) > 0 {
-			time.Sleep(time.Duration(t.InterSleep))
+			time.Sleep(time.Duration(t.Execution.InterSleep))
 			t.executeChecks(t.CheckResults)
 		} else {
 			t.Status = Pass
@@ -824,7 +826,7 @@ func (t *Test) executeRequest() error {
 
 	start := time.Now()
 
-	if t.Verbosity >= 4 {
+	if t.Execution.Verbosity >= 4 {
 		t.tracef("Full Request follows")
 		t.Request.Request.Write(os.Stderr)
 		// "Rewind body"
@@ -863,7 +865,7 @@ func (t *Test) executeRequest() error {
 		t.Response.BodyStr = string(bb)
 		t.Response.BodyErr = be
 		reader.Close()
-		if t.Verbosity >= 4 {
+		if t.Execution.Verbosity >= 4 {
 			t.tracef("Full Response follows")
 			fmt.Fprintf(os.Stderr, "%s %s\n",
 				t.Response.Response.Proto,
@@ -1012,7 +1014,7 @@ func (t *Test) prepared() bool {
 var logger = log.New(os.Stdout, "", 0)
 
 func (t *Test) errorf(format string, v ...interface{}) {
-	if t.Verbosity >= 0 {
+	if t.Execution.Verbosity >= 0 {
 		format = "ERROR " + format + " [%q]"
 		v = append(v, t.Name)
 		logger.Printf(format, v...)
@@ -1020,7 +1022,7 @@ func (t *Test) errorf(format string, v ...interface{}) {
 }
 
 func (t *Test) infof(format string, v ...interface{}) {
-	if t.Verbosity >= 1 {
+	if t.Execution.Verbosity >= 1 {
 		format = "INFO " + format + " [%q]"
 		v = append(v, t.Name)
 		logger.Printf(format, v...)
@@ -1028,7 +1030,7 @@ func (t *Test) infof(format string, v ...interface{}) {
 }
 
 func (t *Test) debugf(format string, v ...interface{}) {
-	if t.Verbosity >= 2 {
+	if t.Execution.Verbosity >= 2 {
 		format = "DEBUG " + format + " [%q]"
 		v = append(v, t.Name)
 		logger.Printf(format, v...)
@@ -1036,7 +1038,7 @@ func (t *Test) debugf(format string, v ...interface{}) {
 }
 
 func (t *Test) tracef(format string, v ...interface{}) {
-	if t.Verbosity >= 3 {
+	if t.Execution.Verbosity >= 3 {
 		format = "TRACE " + format + " [%q]"
 		v = append(v, t.Name)
 		logger.Printf(format, v...)
@@ -1138,8 +1140,8 @@ func addFilePart(mpwriter *multipart.Writer, n, vv string, variables map[string]
 //  Methods of Poll and ClientPool
 
 // Skip return whether the test should be skipped.
-func (p Poll) Skip() bool {
-	return p.Max < 0
+func (p Execution) Skip() bool {
+	return p.Tries < 0
 }
 
 func dontFollowRedirects(*http.Request, []*http.Request) error {

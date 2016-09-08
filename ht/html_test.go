@@ -336,7 +336,7 @@ func testHTMLLinks(t *testing.T, urls []string) (called []string, err error) {
 	test := &Test{
 		Request:   Request{Request: &http.Request{URL: baseURL}},
 		Response:  Response{BodyStr: body},
-		Verbosity: 1,
+		Execution: Execution{Verbosity: 1},
 	}
 
 	check := Links{Which: "a img link script", Concurrency: 2}

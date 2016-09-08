@@ -495,8 +495,10 @@ func (r Resilience) resilienceTest(orig *Test, method string, paramsAs string) *
 			BasicAuthUser:   orig.Request.BasicAuthUser,
 			BasicAuthPass:   orig.Request.BasicAuthPass,
 		},
-		Verbosity: orig.Verbosity - 1,
-		PreSleep:  Duration(10 * time.Millisecond),
+		Execution: Execution{
+			Verbosity: orig.Execution.Verbosity - 1,
+			PreSleep:  Duration(10 * time.Millisecond),
+		},
 	}
 
 	cpy.Request.Header = make(http.Header)
