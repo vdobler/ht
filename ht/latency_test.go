@@ -134,7 +134,7 @@ func TestLatency(t *testing.T) {
 		if *verboseTest {
 			test.Verbosity = 1
 		}
-		test.Run(nil)
+		test.Run()
 
 		if *verboseTest {
 			test.PrintReport(os.Stdout)
@@ -186,7 +186,7 @@ func TestSessionLatency(t *testing.T) {
 				test.Verbosity = 1
 			}
 
-			test.Run(nil)
+			test.Run()
 
 			// shared tests pass, indiv fail
 			if kind == "shared" && test.Status != Pass {

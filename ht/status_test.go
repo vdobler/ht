@@ -32,7 +32,7 @@ func TestStatusCode(t *testing.T) {
 			},
 		}
 
-		test.Run(nil)
+		test.Run()
 		if test.Status != Pass {
 			t.Errorf("Unexpected error for %d: %s", code, test.Error)
 		}
@@ -59,7 +59,7 @@ func TestNoServerError(t *testing.T) {
 			Checks: []Check{NoServerError{}},
 		}
 
-		test.Run(nil)
+		test.Run()
 
 		if code >= 500 {
 			if test.Status != Fail {

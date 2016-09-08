@@ -242,9 +242,6 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
-	// VarEx may be used to popultate variables from the response. TODO: Rename.
-	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
-
 	Poll      Poll `json:",omitempty"`
 	Verbosity int  `json:",omitempty"` // Verbosity level in logging.
 
@@ -256,8 +253,8 @@ type Test struct {
 	// Jar is the cookie jar to use
 	Jar *cookiejar.Jar `json:"-"`
 
-	// Variables contains variables attached to the Test itself. Variables
-	// provided during Run will overwrite variables in TestVars.
+	// Variables contains name/value-pairs used for variable substitution
+	// in files read in.
 	Variables map[string]string `json:",omitempty"`
 
 	// The following results are filled during Run.
@@ -275,8 +272,12 @@ type Test struct {
 		Filename  string
 		Extension string
 	} `json:"-"`
-	VarValues map[string]string     `json:",omitempty"`
-	ExValues  map[string]Extraction `json:",omitempty"`
+
+	// VarEx may be used to popultate variables from the response. TODO: Rename.
+	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
+
+	// ExValues contains the result of the extractions.
+	ExValues map[string]Extraction `json:",omitempty"`
 
 	client *http.Client
 }
@@ -471,7 +472,7 @@ func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 // Run returns a non-nil error only if the test is bogus; a failing http
 // request, problems reading the body or any failing checks do not trigger a
 // non-nil return value.
-func (t *Test) Run(variables map[string]string) error {
+func (t *Test) Run() error {
 	t.Started = time.Now()
 
 	maxTries := t.Poll.Max
@@ -504,7 +505,7 @@ func (t *Test) Run(variables map[string]string) error {
 		if try > 1 {
 			time.Sleep(time.Duration(t.Poll.Sleep))
 		}
-		err := t.prepare(variables)
+		err := t.prepare(t.Variables)
 		if err != nil {
 			t.Status, t.Error = Bogus, err
 			return err
@@ -512,7 +513,7 @@ func (t *Test) Run(variables map[string]string) error {
 		// Clear status and error; is updated in executeChecks.
 		t.Status, t.Error = NotRun, nil
 		t.Response = Response{}
-		t.execute(variables)
+		t.execute()
 		if t.Status == Pass {
 			break
 		}
@@ -559,7 +560,7 @@ func (t *Test) AsJSON5() ([]byte, error) {
 }
 
 // execute does a single request and check the response.
-func (t *Test) execute(variables map[string]string) {
+func (t *Test) execute() {
 	var err error
 	if t.Request.Request.URL.Scheme == "file" {
 		err = t.executeFile()
@@ -1145,7 +1146,7 @@ func dontFollowRedirects(*http.Request, []*http.Request) error {
 	return redirectNofollow
 }
 
-// newReplacer produces a replacer to perform substitution of the
+// newReplacer produces a strings.Replacer which
 // given variables with their values. A key of the form "#123" (i.e. hash
 // followed by literal decimal integer) is treated as an integer substitution.
 // Other keys are treated as string variables which subsitutes "{{k}}" with

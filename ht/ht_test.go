@@ -67,7 +67,7 @@ func TestSkippingChecks(t *testing.T) {
 			test.Checks[0] = &sc0
 			test.Checks[1] = &sc1
 		}
-		test.Run(nil)
+		test.Run()
 		if test.CheckResults[0].Status != tc.fstatus ||
 			test.CheckResults[1].Status != tc.sstatus {
 			t.Errorf("%d,%t: %d against %d/%d, got %s/%s want %s/%s", i, tc.pointer, tc.code,
@@ -438,7 +438,7 @@ func TestPolling(t *testing.T) {
 				Sleep: Duration(200),
 			},
 		}
-		test.Run(nil)
+		test.Run()
 		if got := test.Status; got != tc.want {
 			t.Errorf("%d: got %s, want %s", i, got, tc.want)
 		}
@@ -468,7 +468,7 @@ func TestClientTimeout(t *testing.T) {
 		},
 	}
 	start := time.Now()
-	test.Run(nil)
+	test.Run()
 	if d := time.Since(start); d > 99*time.Millisecond {
 		t.Errorf("Took too long: %s", d)
 	}
@@ -741,7 +741,7 @@ func TestReadBody(t *testing.T) {
 			},
 			Checks: []Check{NoServerError{}},
 		}
-		test.Run(nil)
+		test.Run()
 
 		if test.Response.BodyErr != nil {
 			t.Errorf("Path %q: Unexpected problem reading body: %#v",
@@ -858,7 +858,7 @@ func TestFileSchema(t *testing.T) {
 		}
 		method, want := test.Name[:p], test.Name[p+1:]
 		test.Request.Method = method
-		err = test.Run(nil)
+		err = test.Run()
 		if err != nil {
 			t.Fatalf("%d. %s: Unexpected error: ", err)
 		}

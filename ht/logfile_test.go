@@ -57,7 +57,7 @@ func TestLogfile(t *testing.T) {
 			&Logfile{Path: "testdata/logfile", Disallow: []string{"Hubba bubba"}},            // pass
 		},
 	}
-	err := test.Run(nil)
+	err := test.Run()
 	if err != nil {
 		t.Fatalf("Unexpected error: %+v", err)
 	}
@@ -88,7 +88,7 @@ func testLogfileRemote(t *testing.T, ts *httptest.Server, wd string, m string, l
 		},
 	}
 
-	err := test.Run(nil)
+	err := test.Run()
 	if err != nil {
 		t.Fatalf("%s file: Unexpected error: %+v", m, err)
 	}

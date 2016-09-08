@@ -38,7 +38,7 @@ func (s *Collection) ExecuteConcurrent(maxConcurrent int, jar *cookiejar.Jar) er
 		go func() {
 			defer wg.Done()
 			for test := range c {
-				test.Run(nil)
+				test.Run()
 			}
 		}()
 	}

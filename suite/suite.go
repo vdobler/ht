@@ -92,7 +92,7 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 			if execute {
 				test.Jar = jar
 				test.Verbosity++
-				test.Run(nil)
+				test.Run(varset)
 				// TODO: copy variables for reference
 				if i < setup+main {
 					updateSuite(test, suite)
