@@ -225,11 +225,10 @@ func TestSendBody(t *testing.T) {
 	test := Test{Request: Request{
 		Method: "POST",
 		URL:    "http://www.test.org",
-		Body:   "@vfile:testdata/{{FILENAME}}",
+		Body:   "@vfile:testdata/somefile.txt",
 	}}
 	err := test.prepare(map[string]string{
-		"FILENAME": "somefile.txt",
-		"XYZ":      "+++",
+		"XYZ": "+++",
 	})
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())

@@ -405,8 +405,8 @@ func (e JSExtractor) Extract(t *Test) (string, error) {
 	// Reading the script with fileData is a hack as it accepts
 	// the @vfile syntax but cannot do the variable replacements
 	// as Prepare is called on the already 'replaced' checked.
-	repl, _ := newReplacer(nil)
-	source, basename, err := fileData(e.Script, repl)
+
+	source, basename, err := fileData(e.Script, nil) // TODO: can use t.Variables here!
 	if err != nil {
 		return "", err
 	}

@@ -278,9 +278,7 @@ type Test struct {
 	VarValues map[string]string     `json:",omitempty"`
 	ExValues  map[string]Extraction `json:",omitempty"`
 
-	client      *http.Client
-	specialVars []string
-	checks      []Check // prepared checks.
+	client *http.Client
 }
 
 // CheckResult captures the outcom of a single check inside a test.
@@ -498,11 +496,6 @@ func (t *Test) Run(variables map[string]string) error {
 		t.CheckResults[i].JSON = string(buf)
 	}
 
-	// specialVars is the cached version of special variables (NOW, RANDOM)
-	// which can be cached from one try to the next, but this set may change
-	// from one run to the other so clear it here.
-	t.specialVars = nil
-
 	// Try until first success.
 	start := time.Now()
 	try := 1
@@ -519,7 +512,7 @@ func (t *Test) Run(variables map[string]string) error {
 		// Clear status and error; is updated in executeChecks.
 		t.Status, t.Error = NotRun, nil
 		t.Response = Response{}
-		t.execute()
+		t.execute(variables)
 		if t.Status == Pass {
 			break
 		}
@@ -566,7 +559,7 @@ func (t *Test) AsJSON5() ([]byte, error) {
 }
 
 // execute does a single request and check the response.
-func (t *Test) execute() {
+func (t *Test) execute(variables map[string]string) {
 	var err error
 	if t.Request.Request.URL.Scheme == "file" {
 		err = t.executeFile()
@@ -589,52 +582,20 @@ func (t *Test) execute() {
 // prepare the test for execution by substituting the given variables and
 // crafting the underlying http request the checks.
 func (t *Test) prepare(variables map[string]string) error {
-	// Create appropriate replacer.
-	if t.specialVars == nil {
-		t.specialVars = t.findSpecialVariables()
-	}
-
-	// Make a deep copy of variables.
-	allVars := make(map[string]string)
-	for n, v := range t.Variables {
-		allVars[n] = v
-	}
-	for n, v := range variables {
-		allVars[n] = v
-	}
-
-	if len(t.specialVars) > 0 {
-		sv, err := specialVariables(time.Now(), t.specialVars)
-		if err != nil {
-			return err
-		}
-		// TODO: with mergeVariables(allVars, sv) the values in
-		// sv overwrite the ones in allVars. Using it the other
-		// way around like (sv, allVars) would allow the user to
-		// "overwrite" special variables, e.g. she could fix
-		// "{{NOW + 3m}}" to "Mon, 03 Oct 2016 18:00:07 MST"
-		// which might come handy.
-		allVars = mergeVariables(allVars, sv)
-	}
-	t.VarValues = allVars
-	repl, err := newReplacer(allVars)
-	if err != nil {
-		return err
-	}
 
 	// Create the request.
-	contentType, err := t.newRequest(repl)
+	contentType, err := t.newRequest(variables)
 	if err != nil {
 		err := fmt.Errorf("failed preparing request: %s", err.Error())
 		t.errorf("%s", err.Error())
 		return err
 	}
 
-	// Prepare the HTTP header.
+	// Prepare the HTTP header. TODO: Deep Coppy??
 	for h, v := range t.Request.Header {
 		rv := make([]string, len(v))
 		for i := range v {
-			rv[i] = repl.str.Replace(v[i])
+			rv[i] = v[i]
 		}
 		t.Request.Request.Header[h] = rv
 
@@ -649,32 +610,25 @@ func (t *Test) prepare(variables map[string]string) error {
 		t.Request.Request.Header.Set("User-Agent", DefaultUserAgent)
 	}
 	for _, cookie := range t.Request.Cookies {
-		cv := repl.str.Replace(cookie.Value)
-		t.Request.Request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
+		t.Request.Request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cookie.Value})
 	}
 	// Basic Auth
 	if t.Request.BasicAuthUser != "" {
-		t.Request.Request.SetBasicAuth(
-			repl.str.Replace(t.Request.BasicAuthUser),
-			repl.str.Replace(t.Request.BasicAuthPass))
+		t.Request.Request.SetBasicAuth(t.Request.BasicAuthUser, t.Request.BasicAuthPass)
 	}
 
 	// Compile the checks.
-	t.checks = make([]Check, len(t.Checks))
-	cfc, cfce := []int{}, []string{}
+	cel := ErrorList{}
 	for i := range t.Checks {
-		t.checks[i] = SubstituteVariables(t.Checks[i], repl.str, repl.fn)
-		e := t.checks[i].Prepare()
+		e := t.Checks[i].Prepare()
 		if e != nil {
-			cfc = append(cfc, i)
-			cfce = append(cfce, e.Error())
+			cel = append(cel, e)
 			t.errorf("preparing check %d %q: %s",
 				i, NameOf(t.Checks[i]), e.Error())
 		}
 	}
-	if len(cfc) != 0 {
-		err := fmt.Errorf("bogus checks %v: %s", cfc, strings.Join(cfce, "; "))
-		return err
+	if len(cel) != 0 {
+		return cel
 	}
 
 	to := DefaultClientTimeout
@@ -720,7 +674,7 @@ func (t *Test) prepare(variables map[string]string) error {
 // newRequest sets up the request field of t.
 // If a sepcial Content-Type header is needed (e.g. because of a multipart
 // body) it is returned.
-func (t *Test) newRequest(repl replacer) (contentType string, err error) {
+func (t *Test) newRequest(variables map[string]string) (contentType string, err error) {
 	// Set efaults for the request method and the parameter transmission type.
 	if t.Request.Method == "" {
 		t.Request.Method = "GET"
@@ -729,20 +683,20 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 		t.Request.ParamsAs = "URL"
 	}
 
-	// Apply variable substitution.
-	rurl := repl.str.Replace(t.Request.URL)
+	rurl := t.Request.URL
 	prurl, err := url.Parse(rurl)
 	if err != nil {
 		return "", err
 	}
 	t.Request.SentParams = prurl.Query()
 
+	// Deep copy. TODO might be unnecessary.
 	urlValues := make(URLValues)
 	for param, vals := range t.Request.Params {
 		rv := make([]string, len(vals))
 		for i, v := range vals {
-			rv[i] = repl.str.Replace(v)
-			t.Request.SentParams.Add(param, rv[i])
+			rv[i] = v
+			t.Request.SentParams.Add(param, v)
 		}
 		urlValues[param] = rv
 	}
@@ -770,7 +724,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 			encoded := url.Values(urlValues).Encode()
 			t.Request.SentBody = encoded
 		case "multipart":
-			b, boundary, err := multipartBody(t.Request.Params, repl)
+			b, boundary, err := multipartBody(t.Request.Params, variables)
 			if err != nil {
 				return "", err
 			}
@@ -788,7 +742,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 
 	// The body.
 	if t.Request.Body != "" {
-		bodydata, _, err := fileData(repl.str.Replace(t.Request.Body), repl)
+		bodydata, _, err := fileData(t.Request.Body, variables)
 		if err != nil {
 			return "", err
 		}
@@ -822,7 +776,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 //               basename is name-of-file
 //    anything-else
 //               s is anything-else and basename is ""
-func fileData(s string, repl replacer) (data string, basename string, err error) {
+func fileData(s string, variables map[string]string) (data string, basename string, err error) {
 	if !strings.HasPrefix(s, "@file:") && !strings.HasPrefix(s, "@vfile:") {
 		return s, "", nil
 	}
@@ -849,7 +803,7 @@ func fileData(s string, repl replacer) (data string, basename string, err error)
 	}
 	data = string(raw)
 	if typ == "@vfile" {
-		data = repl.str.Replace(data)
+		data = newReplacer(variables).Replace(data)
 	}
 	return data, basename, nil
 }
@@ -1003,7 +957,7 @@ func (t *Test) executeFile() error {
 // the tests are skipped.
 func (t *Test) executeChecks(result []CheckResult) {
 	done := false
-	for i, ck := range t.checks {
+	for i, ck := range t.Checks {
 		start := time.Now()
 		err := ck.Execute(t)
 		result[i].Duration = Duration(time.Since(start))
@@ -1100,7 +1054,7 @@ func escapeQuotes(s string) string {
 // multipartBody formats the given param as a proper multipart/form-data
 // body and returns a reader ready to use as the body as well as the
 // multipart boundary to be include in the content type.
-func multipartBody(param map[string][]string, repl replacer) (io.ReadCloser, string, error) {
+func multipartBody(param map[string][]string, variables map[string]string) (io.ReadCloser, string, error) {
 	var body = &bytes.Buffer{}
 
 	isFile := func(v string) bool {
@@ -1133,7 +1087,7 @@ func multipartBody(param map[string][]string, repl replacer) (io.ReadCloser, str
 			if !isFile(vv) {
 				continue // already written
 			}
-			err := addFilePart(mpwriter, n, vv, repl)
+			err := addFilePart(mpwriter, n, vv, variables)
 			if err != nil {
 				return nil, "", err
 			}
@@ -1145,8 +1099,8 @@ func multipartBody(param map[string][]string, repl replacer) (io.ReadCloser, str
 }
 
 // addFilePart to mpwriter where the parameter n has a @file:-value vv.
-func addFilePart(mpwriter *multipart.Writer, n, vv string, repl replacer) error {
-	data, basename, err := fileData(vv, repl)
+func addFilePart(mpwriter *multipart.Writer, n, vv string, variables map[string]string) error {
+	data, basename, err := fileData(vv, variables)
 	if err != nil {
 		return err
 	}
@@ -1189,4 +1143,19 @@ func (p Poll) Skip() bool {
 
 func dontFollowRedirects(*http.Request, []*http.Request) error {
 	return redirectNofollow
+}
+
+// newReplacer produces a replacer to perform substitution of the
+// given variables with their values. A key of the form "#123" (i.e. hash
+// followed by literal decimal integer) is treated as an integer substitution.
+// Other keys are treated as string variables which subsitutes "{{k}}" with
+// vars[k] for a key k. Maybe just have a look at the code.
+func newReplacer(vars map[string]string) *strings.Replacer {
+	oldnew := []string{}
+	for k, v := range vars {
+		// A string substitution.
+		oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
+		oldnew = append(oldnew, v)
+	}
+	return strings.NewReplacer(oldnew...)
 }
