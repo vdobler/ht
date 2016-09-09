@@ -219,20 +219,6 @@ func setMap(dst, src reflect.Value, elem string, strict bool) error {
 			dst.SetMapIndex(key, dstValue)
 		}
 		return nil
-	case reflect.Slice:
-		dst.Set(reflect.MakeMap(dst.Type()))
-		n := src.Len()
-		for i := 0; i < n; i++ {
-			dstValue := reflect.New(dst.Type().Elem()).Elem()
-			err := recFillWith(dstValue, src.Index(i),
-				fmt.Sprintf("%s[%d]", elem, i), strict)
-			if err != nil {
-				return err
-			}
-			keystr := fmt.Sprintf("%d", i)
-			dst.SetMapIndex(reflect.ValueOf(keystr), dstValue)
-		}
-		return nil
 	}
 
 	mt := dst.Type()
