@@ -61,8 +61,8 @@ var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{i
   Error: {{.Error}}{{end}}
 {{if eq .Status 2 3 4 5}}  {{if .CheckResults}}Checks:
 {{range $i, $c := .CheckResults}}{{printf "    %2d. " $i}}{{template "CHECK" .}}
-{{end}}{{end}}{{end}}{{if .VarValues}}  Variables:
-{{range $k, $v := .VarValues}}{{printf "    %s == %q\n" $k $v}}{{end}}{{end}}{{if .ExValues}}  Extracted:
+{{end}}{{end}}{{end}}{{if .Variables}}  Variables:
+{{range $k, $v := .Variables}}{{printf "    %s == %q\n" $k $v}}{{end}}{{end}}{{if .ExValues}}  Extracted:
 {{range $k, $v := .ExValues}}{{if $v.Error}}{{printf "    %s : %s\n" $k $v.Error}}{{else}}{{printf "    %s == %q\n" $k $v.Value}}{{end}}{{end}}{{end}}{{end}}`
 
 var shortTestTmpl = `{{define "SHORTTEST"}}{{.Status.String}}: {{.Name}}{{if .Request.Request}}
@@ -112,8 +112,8 @@ var htmlTestTmpl = `{{define "TEST"}}
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
         Request Duration: {{.Duration}} <br/>
-        {{if .VarValues}}Variables:<br/>
-          {{range $k, $v := .VarValues}}
+        {{if .Variables}}Variables:<br/>
+          {{range $k, $v := .Variables}}
             <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
           {{end}}
         {{end}}
