@@ -432,7 +432,7 @@ func guessResponseExtension(test *ht.Test) string {
 func HTMLReport(dir string, s *Suite) error {
 	errs := ht.ErrorList{}
 
-	for i, test := range s.Tests {
+	for _, test := range s.Tests {
 		if tn, ok := test.Variables["TEST_NAME"]; ok {
 			test.Reporting.Filename = tn
 		} else {
@@ -441,7 +441,8 @@ func HTMLReport(dir string, s *Suite) error {
 		test.Reporting.Extension = guessResponseExtension(test)
 
 		body := []byte(test.Response.BodyStr)
-		fn := fmt.Sprintf("ResponseBody_%02d.%s", i+1, test.Reporting.Extension)
+		fn := fmt.Sprintf("%s.ResponseBody.%s", test.Reporting.SeqNo,
+			test.Reporting.Extension)
 		name := path.Join(dir, fn)
 		err := ioutil.WriteFile(name, body, 0666)
 		if err != nil {
