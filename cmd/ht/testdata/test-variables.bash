@@ -9,7 +9,7 @@ cat > suite1.suite <<EOF
 {
     Name: "First Suite",
     Main: [
-        {File: "req1.ht"}
+        {File: "req1.ht", Variables: {VAR_Y: "{{VAR_Z}}"} }
         {File: "req2.ht"}
     ],
     KeepCookies: true,
@@ -17,7 +17,7 @@ cat > suite1.suite <<EOF
         VAR_A: "suite-A",
         VAR_B: "suite-B",
         VAR_C: "suite-C",
-        VAR_X: "{{VAR_Y}}",
+        VAR_Z: "suite-Z",
     }
 }
 EOF
@@ -25,16 +25,20 @@ EOF
 cat > req1.ht <<EOF
 {
     Name: "First Request",
-    Request: { URL: "http://httpbin.org/get?a={{VAR_A}}&b={{VAR_B}}&c={{VAR_C}}&d=remote-D" },
+    Request: { URL: "http://httpbin.org/get?a={{VAR_A}}&b={{VAR_B}}&c={{VAR_C}}&d=remote-D&x={{VAR_X}}" },
     Checks: [
         {Check: "StatusCode", Expect: 200},
         {Check: "JSON", Element: "args.a", Equals: "\"suite-A\""},
         {Check: "JSON", Element: "args.b", Equals: "\"file-B\""},
         {Check: "JSON", Element: "args.c", Equals: "\"cmdline-C\""},
         {Check: "JSON", Element: "args.d", Equals: "\"remote-D\""},
+        {Check: "JSON", Element: "args.x", Equals: "\"cmdline-Z\""},
     ],
     VarEx: {
         VAR_D: {Extractor: "BodyExtractor", Regexp: "remote-."},
+    }
+    Variables: {
+        VAR_X: "{{VAR_Y}}"
     }
 }
 EOF
@@ -71,14 +75,16 @@ EOF
 #   - All variables get dumped
 #   - Cookies get dumped
 #
-../ht exec -Dfile vars1.json -D VAR_C=cmdline-C -vardump vars2.json -cookiedump cookies.json suite1.suite || \
+../ht exec -Dfile vars1.json -D VAR_C=cmdline-C -D VAR_Z=cmdline-Z \
+    -vardump vars2.json -cookiedump cookies.json suite1.suite || \
     (echo "FAIL: First suite returned $?"; exit 1;)
 
 # check dumped vars2.json file for proper content
 grep -q '"VAR_A": "suite-A"' vars2.json && \
     grep -q '"VAR_B": "file-B"' vars2.json  && \
     grep -q '"VAR_C": "cmdline-C"' vars2.json  && \
-    grep -q '"VAR_D": "remote-D"' vars2.json || \
+    grep -q '"VAR_D": "remote-D"' vars2.json && \
+    grep -q '"VAR_X": "cmdline-Z"' vars2.json || \
     (echo "FAIL: Bad vars2.json"; exit 1;)
 
 # check dumped cookies.json file for proper content
@@ -88,7 +94,7 @@ grep -q '"Name": "foo"' cookies.json && \
     grep -q '"Path": "/"' cookies.json || \
     (echo "FAIL: Bad cookies.json"; exit 1;)
 
-
+# ----------------------------------------------------------------------------
 
 cat > suite2.suite <<EOF
 {
@@ -120,6 +126,40 @@ EOF
 #   - Cookies can be loaded at startup via -cookies
 ../ht exec -Dfile vars2.json -cookies cookies.json suite2.suite || \
     (echo "FAIL: Second suite returned $?"; exit 1;)
+
+
+# ----------------------------------------------------------------------------
+
+cat > suite3.suite <<EOF
+{
+    Name: "First Suite",
+    Main: [
+        {File: "req4.ht", Variables: [ C: "{{COUNTER}}", R: "{{RANDOM}}" ] }
+    ],
+}
+EOF
+
+cat > req4.ht <<EOF
+{
+    Name: "",
+    Request: { URL: "http://httpbin.org/get?c={{C}}&r={{R}}" },
+    Checks: [
+        {Check: "StatusCode", Expect: 200},
+        {Check: "JSON", Element: "args.a", Equals: "\"suite-A\""},
+        {Check: "JSON", Element: "args.b", Equals: "\"file-B\""},
+        {Check: "JSON", Element: "args.c", Equals: "\"cmdline-C\""},
+        {Check: "JSON", Element: "args.d", Equals: "\"remote-D\""},
+        {Check: "JSON", Element: "args.x", Equals: "\"cmdline-Z\""},
+    ],
+    VarEx: {
+        VAR_D: {Extractor: "BodyExtractor", Regexp: "remote-."},
+    }
+    Variables: [
+        VAR_X: {{VAR_Y}}
+    ]
+}
+EOF
+
 
 
 rm -rf suite1.suite suite2.suite req1.ht req2.ht req3.ht vars1.json vars2.json cookies.json
