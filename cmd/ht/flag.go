@@ -25,18 +25,6 @@ func (v *cmdlVar) Set(s string) error {
 	return nil
 }
 
-// cmdlIncl captures a list of include paths settable on the command line
-// via the -I flag. For this cmdlIncl satisfies the flag.Value interface.
-// Currently unused.
-type cmdlIncl []string
-
-func (i *cmdlIncl) String() string { return "" }
-func (i *cmdlIncl) Set(s string) error {
-	s = strings.TrimRight(s, "/")
-	*i = append(*i, s)
-	return nil
-}
-
 // cmdlLimit captures quantile=timelimit pairs settable on the command line
 // via the -L flag during benchmarking
 type cmdlLimit map[float64]int

@@ -32,6 +32,10 @@ type Suite struct {
 }
 
 func shouldRun(t int, rs *RawSuite, s *Suite) bool {
+	if !rs.tests[t].IsEnabled() {
+		return false
+	}
+
 	// Stop execution on errors during setup
 	for i := 0; i < len(rs.Setup) && i < len(s.Tests); i++ {
 		if s.Tests[i].Status > ht.Pass {

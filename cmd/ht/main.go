@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/vdobler/ht/internal/json5"
@@ -88,10 +89,9 @@ The commands are:
 %s
 Run  ht help <command> to display the usage of <command>.
 
-Tests IDs have the following format <suite>.<type><test> with <suite> and
+Tests IDs have the following format <suite>.<test> with <suite> and
 <test> the sequential numbers of the suite and the test inside the suite.
-Type is either empty, "u" for setUp test or "d" for tearDown tests. <test>
-maybe a single number like "3" or a range like "3-7".
+<test> maybe a single number like "3" or a range like "3-7".
 `, formatedCmdList)
 }
 
@@ -139,7 +139,7 @@ func loadSuites(args []string) []*suite.RawSuite {
 	var suites []*suite.RawSuite
 
 	// Handle -only and -skip flags.
-	// only, skip := splitTestIDs(onlyFlag), splitTestIDs(skipFlag)
+	only, skip := splitTestIDs(onlyFlag), splitTestIDs(skipFlag)
 
 	// Input and setup suites from command line arguments.
 	for _, arg := range args {
@@ -161,15 +161,71 @@ func loadSuites(args []string) []*suite.RawSuite {
 		suites = append(suites, s)
 	}
 
-	/*
-		// Disable tests based on the -only and -skip flags.
-		for sNo, s := range suites {
-			for tNo, test := range s.Tests {
-				shouldRun(test, fmt.Sprintf("%d.%d", sNo+1, tNo+1), only, skip)
+	// Merge only into skip.
+	if len(only) > 0 {
+		for sNo := range suites {
+			for tNo := range suites[sNo].RawTests() {
+				id := fmt.Sprintf("%d.%d", sNo+1, tNo+1)
+				if !only[id] {
+					skip[id] = true
+				}
 			}
 		}
-	*/
+	}
+
+	// Disable tests based on the -only and -skip flags.
+	for sNo := range suites {
+		for tNo, rt := range suites[sNo].RawTests() {
+			id := fmt.Sprintf("%d.%d", sNo+1, tNo+1)
+			if skip[id] {
+				rt.Disable()
+				fmt.Printf("Skipping test %s %q\n", id, rt.Name)
+			}
+		}
+	}
 	return suites
+}
+
+func splitTestIDs(f string) map[string]bool {
+	ids := make(map[string]bool)
+	if len(f) == 0 {
+		return ids
+	}
+	fp := strings.Split(f, ",")
+	for _, x := range fp {
+		xp := strings.SplitN(x, ".", 2)
+		s, t := "1", xp[0]
+		if len(xp) == 2 {
+			s, t = xp[0], xp[1]
+		}
+		sNo := mustAtoi(s)
+		beg, end := 1, 99
+		if i := strings.Index(t, "-"); i > -1 {
+			if i > 0 {
+				beg = mustAtoi(t[:i])
+			}
+			if i < len(t)-1 {
+				end = mustAtoi(t[i+1:])
+			}
+		} else {
+			beg = mustAtoi(t)
+			end = beg
+		}
+		for tNo := beg; tNo <= end; tNo++ {
+			id := fmt.Sprintf("%d.%d", sNo, tNo)
+			ids[id] = true
+		}
+	}
+	return ids
+}
+
+func mustAtoi(s string) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err.Error())
+		os.Exit(9)
+	}
+	return n
 }
 
 /*
@@ -206,17 +262,6 @@ func loadTests(args []string) []*suite.RawTest {
 	}
 
 	return tt
-}
-
-// add current working direcory to end of include path slice if not already
-// there.
-func addCWD(i *cmdlIncl) {
-	for _, p := range *i {
-		if p == "." {
-			return
-		}
-	}
-	*i = append(*i, ".")
 }
 
 // fillVariablesFlagFrom reads in the file variablesFile and sets the

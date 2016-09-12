@@ -195,10 +195,21 @@ type RawTest struct {
 	Mixins      []*Mixin
 	Variables   map[string]string
 	contextVars map[string]string
+	disabled    bool
 }
 
 func (r *RawTest) String() string {
 	return r.File.Name
+}
+
+func (r *RawTest) Disable() {
+	r.disabled = true
+}
+func (r *RawTest) Enable() {
+	r.disabled = false
+}
+func (r *RawTest) IsEnabled() bool {
+	return !r.disabled
 }
 
 // NewRawTest reads workingdir/filename and produces a new RawTest.
