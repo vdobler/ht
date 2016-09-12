@@ -50,15 +50,19 @@ func init() {
 }
 
 func runExecute(cmd *Command, suites []*suite.RawSuite) {
-	if outputDir == "" {
-		outputDir = time.Now().Format("2006-01-02_15h04m05s")
-	}
-	os.MkdirAll(outputDir, 0766)
 	prepareHT()
 	jar := loadCookies()
 
 	outcome := executeSuites(suites, variablesFlag, jar)
 
+	saveOutcome(outcome)
+}
+
+func saveOutcome(outcome []*suite.Suite) {
+	if outputDir == "" {
+		outputDir = time.Now().Format("2006-01-02_15h04m05s")
+	}
+	os.MkdirAll(outputDir, 0766)
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
 	for _, s := range outcome {
 		suite.PrintSuiteReport(os.Stdout, s)
