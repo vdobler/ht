@@ -47,6 +47,9 @@ func shouldRun(t int, rs *RawSuite, s *Suite) bool {
 
 // Execute the raw suite rs and capture the outcome in a Suite.
 func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Suite {
+	now := time.Now()
+	now = now.Add(-time.Duration(now.Nanosecond()))
+
 	// Create cookie jar if needed.
 	if rs.KeepCookies {
 		if jar == nil {
@@ -67,7 +70,7 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 
 		Status:   ht.NotRun,
 		Error:    nil,
-		Started:  time.Now(),
+		Started:  now,
 		Duration: 0,
 
 		Tests: make([]*ht.Test, 0, len(rs.tests)),
@@ -119,6 +122,8 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 		suite.Tests = append(suite.Tests, test)
 	}
 	suite.Duration = time.Since(suite.Started)
+	clip := suite.Duration.Nanoseconds() % 1000000
+	suite.Duration -= time.Duration(clip)
 	for n, v := range varset {
 		suite.FinalVariables[n] = v
 	}
