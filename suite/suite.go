@@ -31,11 +31,18 @@ type Suite struct {
 	Jar            *cookiejar.Jar
 }
 
+func shouldRun(t int, rs *RawSuite, s *Suite) bool {
+	// Stop execution on errors during setup
+	for i := 0; i < len(rs.Setup) && i < len(s.Tests); i++ {
+		if s.Tests[i].Status > ht.Pass {
+			return false
+		}
+	}
+	return true
+}
+
 // Execute the raw suite rs and capture the outcome in a Suite.
 func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Suite {
-	fmt.Println("Execute suite", rs.Name)
-	ppvars("Variables to Execute", variables)
-
 	// Create cookie jar if needed.
 	if rs.KeepCookies {
 		if jar == nil {
@@ -59,7 +66,7 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 		Started:  time.Now(),
 		Duration: 0,
 
-		Tests: make([]*ht.Test, len(rs.Tests)),
+		Tests: make([]*ht.Test, 0, len(rs.tests)),
 
 		Variables:      make(map[string]string),
 		FinalVariables: make(map[string]string),
@@ -70,37 +77,34 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 	}
 
 	setup, main := len(rs.Setup), len(rs.Main)
-	execute := true
 
-	for i, rt := range rs.Tests {
+	for i, rt := range rs.tests {
 		fmt.Printf("Executing Test %q (%s)\n", rt.Name, rt.File.Name)
-		test, err := rt.ToTest(varset)
+		testvarset := mergeVariables(varset, rt.contextVars)
+		test, err := rt.ToTest(testvarset)
 
-		// Sorry...
 		if i < setup {
-			test.Reporting.SeqNo = fmt.Sprintf("Setup %d", i+1)
+			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i+1)
 		} else if i < setup+main {
-			test.Reporting.SeqNo = fmt.Sprintf("Main %d", i-setup+1)
+			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup+1)
 		} else {
-			test.Reporting.SeqNo = fmt.Sprintf("Teardown %d", i-setup-main+1)
+			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main+1)
 		}
 
 		if err != nil {
 			test.Status = ht.Bogus
 			test.Error = err
-		} else {
-			if execute {
-				test.Jar = jar
-				test.Run()
-				// TODO: copy variables for reference
-				if i < setup+main {
-					updateSuite(test, suite)
-				}
-				updateVariables(test, varset)
-			} else {
-				test.Status = ht.Skipped
+		} else if shouldRun(i, rs, suite) {
+			test.Jar = jar
+			test.Run()
+			if i < setup+main {
+				updateSuite(test, suite)
 			}
+			updateVariables(test, varset)
+		} else {
+			test.Status = ht.Skipped
 		}
+
 		fmt.Printf("%s test %q (%s)",
 			strings.ToUpper(test.Status.String()), test.Name, rt.File.Name)
 		if test.Status > ht.Pass {
@@ -108,11 +112,7 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 		} else {
 			fmt.Println()
 		}
-		suite.Tests[i] = test
-
-		if i < setup && test.Status > ht.Pass {
-			execute = false
-		}
+		suite.Tests = append(suite.Tests, test)
 	}
 	suite.Duration = time.Since(suite.Started)
 	for n, v := range varset {

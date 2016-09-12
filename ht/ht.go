@@ -250,6 +250,7 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
+	// Execution controls the test execution
 	Execution Execution `json:",omitempty"`
 
 	// Jar is the cookie jar to use
@@ -282,6 +283,10 @@ type Test struct {
 	ExValues map[string]Extraction `json:",omitempty"`
 
 	client *http.Client
+}
+
+func (t *Test) Disable() {
+	t.Execution.Tries = -1
 }
 
 // CheckResult captures the outcom of a single check inside a test.

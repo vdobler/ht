@@ -192,8 +192,9 @@ func LoadMixin(filename string) (*Mixin, error) {
 // RawTest is a raw test its mixins and its variables.
 type RawTest struct {
 	*File
-	Mixins    []*Mixin
-	Variables map[string]string
+	Mixins      []*Mixin
+	Variables   map[string]string
+	contextVars map[string]string
 }
 
 func (r *RawTest) String() string {
@@ -243,10 +244,6 @@ func LoadRawTest(filename string) (*RawTest, error) {
 func mergeVariables(global, local map[string]string) map[string]string {
 	varset := make(map[string]string)
 
-	// fmt.Println()
-	// ppvars("Mergin Global...", global)
-	// ppvars("... Into Local", local)
-
 	// Globals can be used in local values.
 	replacer := VarReplacer(global)
 	for k, v := range local {
@@ -256,8 +253,6 @@ func mergeVariables(global, local map[string]string) map[string]string {
 	for k, v := range global {
 		varset[k] = v
 	}
-	// ppvars("Result of merge", varset)
-	// fmt.Println()
 
 	return varset
 }
@@ -373,7 +368,15 @@ type RawSuite struct {
 	OmitChecks            bool
 	Variables             map[string]string
 
-	Tests []*RawTest
+	tests []*RawTest
+}
+
+func (rs *RawSuite) RawTests() []*RawTest {
+	return rs.tests
+}
+
+func (rs *RawSuite) AddRawTests(ts ...*RawTest) {
+	rs.tests = append(rs.tests, ts...)
 }
 
 func LoadRawSuite(filename string) (*RawSuite, error) {
@@ -398,22 +401,23 @@ func LoadRawSuite(filename string) (*RawSuite, error) {
 					return fmt.Errorf("unable to load %s (%d. %s): %s",
 						filename, i+1, which, err)
 				}
-				rs.Tests = append(rs.Tests, rt)
+				rt.contextVars = elem.Variables
+				rs.tests = append(rs.tests, rt)
 			} else {
 				panic("File must not be empty")
 			}
 		}
 		return nil
 	}
-	err = load(rs.Setup, "setup")
+	err = load(rs.Setup, "Setup")
 	if err != nil {
 		return nil, err
 	}
-	err = load(rs.Main, "main")
+	err = load(rs.Main, "Main")
 	if err != nil {
 		return nil, err
 	}
-	err = load(rs.Teardown, "teardown")
+	err = load(rs.Teardown, "Teardown")
 	if err != nil {
 		return nil, err
 	}
@@ -452,7 +456,7 @@ func updateSuite(test *ht.Test, suite *Suite) {
 func (rs *RawSuite) Validate(variables map[string]string) error {
 	fmt.Println("Validation Suite", rs.Name)
 	el := ht.ErrorList{}
-	for i, rt := range rs.Tests {
+	for i, rt := range rs.tests {
 		fmt.Printf("Validating Test %d %q\n", i, rt)
 		_, err := rt.ToTest(variables)
 		if err != nil {

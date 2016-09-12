@@ -40,7 +40,7 @@ func runList(cmd *Command, suites []*suite.RawSuite) {
 	for sNo, s := range suites {
 		stitle := fmt.Sprintf("Suite %d: %s (%s)", sNo+1, s.Name, s.File.Name)
 		fmt.Printf("%s\n", ht.Underline(stitle, "-", ""))
-		for tNo, test := range s.Tests {
+		for tNo, test := range s.RawTests() {
 			id := fmt.Sprintf("%d.%d", sNo+1, tNo+1)
 			displayTest(id, test)
 		}
