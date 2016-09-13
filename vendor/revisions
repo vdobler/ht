@@ -3,4 +3,4 @@ github.com/nytlabs/gojee 5a79a1542dc01b7bae102027f6a8d159ea28a57f
 github.com/nytlabs/gojsonexplode 8b76b95ceb6cb96cd4797a42a0201dbd618de9c2
 github.com/pinterest/bender 60cd3d964df2231d014192208986d82b9bd03e83
 github.com/robertkrimen/otto 7d9cbc2befca39869eb0e5bcb0f44c0692c2f8ff
-launchpad.net/xmlpath 4
+gopkg.in/xmlpath.v2 860cbeca3ebcc600db0b213c0e83ad6ce91f5739

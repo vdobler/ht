@@ -6,7 +6,7 @@
 
 package ht
 
-import "launchpad.net/xmlpath"
+import "gopkg.in/xmlpath.v2"
 
 func init() {
 	RegisterCheck(&XML{})
@@ -17,7 +17,7 @@ func init() {
 
 // XML allows to check XML request bodies.
 type XML struct {
-	// Path is a XPath expression understood by launchpad.net/xmlpath.
+	// Path is a XPath expression understood by gopkg.in/xmlpath.v2.
 	Path string
 
 	// Condition the first element addressed by Path must fulfill.

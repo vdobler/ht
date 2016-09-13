@@ -1,8 +1,10 @@
 package xmlpath
 
 import (
+	"golang.org/x/net/html"
 	"encoding/xml"
 	"io"
+	"strings"
 )
 
 // Node is an item in an xml tree that was compiled to
@@ -66,7 +68,13 @@ func (node *Node) Bytes() []byte {
 	if node.kind != startNode {
 		return node.text
 	}
-	var text []byte
+	size := 0
+	for i := node.pos; i < node.end; i++ {
+		if node.nodes[i].kind == textNode {
+			size += len(node.nodes[i].text)
+		}
+	}
+	text := make([]byte, 0, size)
 	for i := node.pos; i < node.end; i++ {
 		if node.nodes[i].kind == textNode {
 			text = append(text, node.nodes[i].text...)
@@ -109,19 +117,56 @@ func (node *Node) equals(s string) bool {
 	return si == len(s)
 }
 
+// contains returns whether the string value of node contains s,
+// without allocating memory.
+func (node *Node) contains(s string) (ok bool) {
+	if len(s) == 0 {
+		return true
+	}
+	if node.kind == attrNode {
+		return strings.Contains(node.attr, s)
+	}
+	s0 := s[0]
+	for i := node.pos; i < node.end; i++ {
+		if node.nodes[i].kind == textNode {
+			text := node.nodes[i].text
+		NextTry:
+			for ci, c := range text {
+				if c != s0 {
+					continue
+				}
+				si := 1
+				for ci++; ci < len(text) && si < len(s); ci++ {
+					if s[si] != text[ci] {
+						continue NextTry
+					}
+					si++
+				}
+				if si == len(s) {
+					return true
+				}
+				for j := i + 1; j < node.end; j++ {
+					if node.nodes[j].kind == textNode {
+						for _, c := range node.nodes[j].text {
+							if s[si] != c {
+								continue NextTry
+							}
+							si++
+							if si == len(s) {
+								return true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
 // Parse reads an xml document from r, parses it, and returns its root node.
 func Parse(r io.Reader) (*Node, error) {
 	return ParseDecoder(xml.NewDecoder(r))
-}
-
-// ParseHTML reads an HTML-like document from r, parses it, and returns
-// its root node.
-func ParseHTML(r io.Reader) (*Node, error) {
-	d := xml.NewDecoder(r)
-	d.Strict = false
-	d.AutoClose = xml.HTMLAutoClose
-	d.Entity = xml.HTMLEntity
-	return ParseDecoder(d)
 }
 
 // ParseDecoder parses the xml document being decoded by d and returns
@@ -180,6 +225,124 @@ func ParseDecoder(d *xml.Decoder) (*Node, error) {
 				name: xml.Name{Local: t.Target},
 				text: text[texti : texti+len(t.Inst)],
 			})
+		}
+	}
+
+	// Close the root node.
+	nodes = append(nodes, Node{kind: endNode})
+
+	stack := make([]*Node, 0, len(nodes))
+	downs := make([]*Node, len(nodes))
+	downCount := 0
+
+	for pos := range nodes {
+
+		switch nodes[pos].kind {
+
+		case startNode, attrNode, textNode, commentNode, procInstNode:
+			node := &nodes[pos]
+			node.nodes = nodes
+			node.pos = pos
+			if len(stack) > 0 {
+				node.up = stack[len(stack)-1]
+			}
+			if node.kind == startNode {
+				stack = append(stack, node)
+			} else {
+				node.end = pos + 1
+			}
+
+		case endNode:
+			node := stack[len(stack)-1]
+			node.end = pos
+			stack = stack[:len(stack)-1]
+
+			// Compute downs. Doing that here is what enables the
+			// use of a slice of a contiguous pre-allocated block.
+			node.down = downs[downCount:downCount]
+			for i := node.pos + 1; i < node.end; i++ {
+				if nodes[i].up == node {
+					switch nodes[i].kind {
+					case startNode, textNode, commentNode, procInstNode:
+						node.down = append(node.down, &nodes[i])
+						downCount++
+					}
+				}
+			}
+			if len(stack) == 0 {
+				return node, nil
+			}
+		}
+	}
+	return nil, io.EOF
+}
+
+// ParseHTML reads an HTML document from r, parses it using a proper HTML
+// parser, and returns its root node.
+//
+// The document will be processed as a properly structured HTML document,
+// emulating the behavior of a browser when processing it. This includes
+// putting the content inside proper <html> and <body> tags, if the
+// provided text misses them.
+func ParseHTML(r io.Reader) (*Node, error) {
+	ns, err := html.ParseFragment(r, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes []Node
+	var text []byte
+
+	n := ns[0]
+
+	// The root node.
+	nodes = append(nodes, Node{kind: startNode})
+
+	for n != nil {
+		switch n.Type {
+		case html.DocumentNode:
+		case html.ElementNode:
+			nodes = append(nodes, Node{
+				kind: startNode,
+				name: xml.Name{Local: n.Data, Space: n.Namespace},
+			})
+			for _, attr := range n.Attr {
+				nodes = append(nodes, Node{
+					kind: attrNode,
+					name: xml.Name{Local: attr.Key, Space: attr.Namespace},
+					attr: attr.Val,
+				})
+			}
+		case html.TextNode:
+			texti := len(text)
+			text = append(text, n.Data...)
+			nodes = append(nodes, Node{
+				kind: textNode,
+				text: text[texti : texti+len(n.Data)],
+			})
+		case html.CommentNode:
+			texti := len(text)
+			text = append(text, n.Data...)
+			nodes = append(nodes, Node{
+				kind: commentNode,
+				text: text[texti : texti+len(n.Data)],
+			})
+		}
+
+		if n.FirstChild != nil {
+			n = n.FirstChild
+			continue
+		}
+
+		for n != nil {
+			if n.Type == html.ElementNode {
+				nodes = append(nodes, Node{kind: endNode})
+			}
+			if n.NextSibling != nil {
+				n = n.NextSibling
+				break
+			}
+			n = n.Parent
 		}
 	}
 
