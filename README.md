@@ -73,3 +73,26 @@ For details see the the godoc for reference:
   Run `ht help` for details
 * An example test suite can be found in
   https://github.com/vdobler/ht/blob/master/testdata/sample.suite
+
+
+Copyright
+---------
+
+Copyright 2016 Volker Dobler
+
+All rights reserved. Use of this source code is governed by
+a BSD-style license that can be found in the LICENSE file.
+
+
+Attribution
+-----------
+
+Ht includes open source from the following sources:
+
+* Go Libraries. Copyright 2012 The Go Authors. Licensed under the BSD license (http://golang.org/LICENSE).
+* Bender. Copyright 2014 Pinterest.com. Licensed under the Apache License, Version 2.0
+* Cascadia. Copyright (c) 2011 Andy Balholm. Licensed under the BSD 2-clasue license.
+* Gojee. Copyright (c) 2013 The New York Times Company. Licensed under the Apache License, Version 2.0
+* Gojsonexplode. Copyright (c) 2013 The New York Times Company. Licensed under the Apache License, Version 2.0
+* Otto. Copyright (c) 2012 Robert Krimen. Licensed under the MIT License.
+* Xmlpath. Copyright (c) 2013-2014 Canonical Inc. Licensed under the LGPLv3. See https://gopkg.in/xmlpath.v2
