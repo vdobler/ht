@@ -7,11 +7,9 @@ package suite
 import (
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"path"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	hjson "github.com/hjson/hjson-go"
@@ -186,6 +184,15 @@ func LoadMixin(filename string) (*Mixin, error) {
 	return &Mixin{File: file}, nil
 }
 
+func MakeMixin(filename string, fs map[string]*File) (*Mixin, error) {
+	file, ok := fs[filename]
+	if !ok {
+		return nil, fmt.Errorf("cannot find mixin %s", filename)
+	}
+
+	return &Mixin{File: file}, nil
+}
+
 // ----------------------------------------------------------------------------
 //   RawTest
 
@@ -252,6 +259,42 @@ func LoadRawTest(filename string) (*RawTest, error) {
 	}, nil
 }
 
+func MakeRawTest(filename string, fs map[string]*File) (*RawTest, error) {
+	raw, ok := fs[filename]
+	if !ok {
+		return nil, fmt.Errorf("cannot find %s", filename)
+	}
+
+	// Unmarshal to find the Mixins and Variables
+	x := &struct {
+		Mixin     []string
+		Variables map[string]string
+	}{}
+	err := raw.decodeLaxTo(x)
+	if err != nil {
+		return nil, err // better error message here
+	}
+
+	// Load all mixins from disk.
+	testdir := raw.Dirname()
+	mixins := make([]*Mixin, len(x.Mixin))
+	for i, file := range x.Mixin {
+		mixpath := path.Join(testdir, file)
+		mixin, err := MakeMixin(mixpath, fs)
+		if err != nil {
+			return nil, fmt.Errorf("cannot read mixin %s in test %s: %s",
+				file, filename, err)
+		}
+		mixins[i] = mixin
+	}
+
+	return &RawTest{
+		File:      raw,
+		Mixins:    mixins,
+		Variables: x.Variables,
+	}, nil
+}
+
 func mergeVariables(global, local map[string]string) map[string]string {
 	varset := make(map[string]string)
 
@@ -271,16 +314,7 @@ func mergeVariables(global, local map[string]string) map[string]string {
 // ToTest produces a ht.Test from rt.
 func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 	bogus := &ht.Test{Status: ht.Bogus}
-
-	// Construct a suitable Replacer to be applied to rt and its mixins.
-	varset := mergeVariables(variables, rt.Variables)
-	// Automatic variables
-	varset["COUNTER"] = strconv.Itoa(<-GetCounter)
-	varset["RANDOM"] = strconv.Itoa(100000 + rand.Intn(900000))
-	varset["TEST_DIR"] = rt.File.Dirname()
-	varset["TEST_NAME"] = rt.File.Basename()
-	// varset["TEST_PATH"] = rt.File.Name
-	replacer := VarReplacer(varset) // <-- this one is it.
+	replacer := VarReplacer(variables)
 
 	// Make substituted a copy of rt with variables substituted.
 	// Dropping the Variabels field as this is no longer useful.
@@ -299,7 +333,7 @@ func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 		}
 	}
 
-	test, err := substituted.toTest(varset)
+	test, err := substituted.toTest(variables)
 	if err != nil {
 		return bogus, fmt.Errorf("cannot produce Test from %s: %s", rt, err)
 	}
@@ -436,6 +470,49 @@ func LoadRawSuite(filename string) (*RawSuite, error) {
 	return rs, nil
 }
 
+func MakeRawSuite(suite *File, fs map[string]*File) (*RawSuite, error) {
+	raw := suite
+	rs := &RawSuite{}
+	err := raw.decodeStrictTo(rs, nil)
+	if err != nil {
+		return nil, err // better error message here
+	}
+	rs.File = raw // re-set as decodeStritTo clears rs
+
+	dir := rs.File.Dirname()
+	load := func(elems []SuiteElement, which string) error {
+		for i, elem := range elems {
+			if elem.File != "" {
+				filename := path.Join(dir, elem.File)
+				rt, err := MakeRawTest(filename, fs)
+				if err != nil {
+					return fmt.Errorf("unable to load %s (%d. %s): %s",
+						filename, i+1, which, err)
+				}
+				rt.contextVars = elem.Variables
+				rs.tests = append(rs.tests, rt)
+			} else {
+				panic("File must not be empty")
+			}
+		}
+		return nil
+	}
+	err = load(rs.Setup, "Setup")
+	if err != nil {
+		return nil, err
+	}
+	err = load(rs.Main, "Main")
+	if err != nil {
+		return nil, err
+	}
+	err = load(rs.Teardown, "Teardown")
+	if err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}
+
 func updateVariables(test *ht.Test, variables map[string]string) {
 	if test.Status != ht.Pass {
 		return
@@ -481,4 +558,44 @@ func (rs *RawSuite) Validate(variables map[string]string) error {
 	}
 
 	return nil
+}
+
+// ----------------------------------------------------------------------------
+//
+
+/*
+
+{
+  <theSuite>
+}
+
+# <testormixiname>
+{
+  <test1>
+}
+
+*/
+
+func ParseRawSuite(txt string) (*RawSuite, error) {
+	parts := strings.Split(txt, "\n#")
+
+	suite := &File{
+		Name: "suite",
+		Data: parts[0],
+	}
+
+	filesystem := make(map[string]*File, len(parts))
+	for _, part := range parts[1:] {
+		sp := strings.SplitN(part, "\n", 2)
+		if len(sp) != 2 {
+			panic(part)
+		}
+		name := strings.TrimSpace(sp[0])
+		filesystem[name] = &File{
+			Name: name,
+			Data: sp[1],
+		}
+	}
+
+	return MakeRawSuite(suite, filesystem)
 }

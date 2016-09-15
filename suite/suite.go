@@ -6,6 +6,8 @@ package suite
 
 import (
 	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,8 +47,33 @@ func shouldRun(t int, rs *RawSuite, s *Suite) bool {
 	return true
 }
 
+func newScope(outer, inner map[string]string, auto bool) map[string]string {
+	// 1. Copy of outer scope
+	scope := make(map[string]string, len(outer)+10)
+	for gn, gv := range outer {
+		scope[gn] = gv
+	}
+	if auto {
+		scope["COUNTER"] = strconv.Itoa(<-GetCounter)
+		scope["RANDOM"] = strconv.Itoa(100000 + rand.Intn(900000))
+	}
+	replacer := VarReplacer(scope)
+
+	// Merging inner defaults, allow substitutions from outer scope
+	for name, val := range inner {
+		if _, ok := scope[name]; ok {
+			// Variable name exists in outer scope, do not
+			// overwrite with suite defaults.
+			continue
+		}
+		scope[name] = replacer.Replace(val)
+	}
+
+	return scope
+}
+
 // Execute the raw suite rs and capture the outcome in a Suite.
-func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Suite {
+func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar) *Suite {
 	now := time.Now()
 	now = now.Add(-time.Duration(now.Nanosecond()))
 
@@ -60,8 +87,10 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 		jar = nil
 	}
 
-	varset := mergeVariables(variables, rs.Variables)
-	replacer := VarReplacer(varset)
+	suiteScope := newScope(global, rs.Variables, true)
+	suiteScope["SUITE_DIR"] = rs.File.Dirname()
+	suiteScope["SUITE_NAME"] = rs.File.Basename()
+	replacer := VarReplacer(suiteScope)
 
 	suite := &Suite{
 		Name:        replacer.Replace(rs.Name),
@@ -79,7 +108,7 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 		FinalVariables: make(map[string]string),
 		Jar:            jar,
 	}
-	for n, v := range varset {
+	for n, v := range suiteScope {
 		suite.Variables[n] = v
 	}
 
@@ -87,8 +116,11 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 
 	for i, rt := range rs.tests {
 		fmt.Printf("Executing Test %q (%s)\n", rt.Name, rt.File.Name)
-		testvarset := mergeVariables(varset, rt.contextVars)
-		test, err := rt.ToTest(testvarset)
+		callScope := newScope(suiteScope, rt.contextVars, true)
+		testScope := newScope(callScope, rt.Variables, false)
+		testScope["TEST_DIR"] = rt.File.Dirname()
+		testScope["TEST_NAME"] = rt.File.Basename()
+		test, err := rt.ToTest(testScope)
 
 		if i < setup {
 			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i+1)
@@ -107,7 +139,7 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 			if i < setup+main {
 				updateSuite(test, suite)
 			}
-			updateVariables(test, varset)
+			updateVariables(test, suiteScope)
 		} else {
 			test.Status = ht.Skipped
 		}
@@ -124,7 +156,7 @@ func (rs *RawSuite) Execute(variables map[string]string, jar *cookiejar.Jar) *Su
 	suite.Duration = time.Since(suite.Started)
 	clip := suite.Duration.Nanoseconds() % 1000000
 	suite.Duration -= time.Duration(clip)
-	for n, v := range varset {
+	for n, v := range suiteScope {
 		suite.FinalVariables[n] = v
 	}
 

@@ -1,16 +1,22 @@
 {
-    Name: "Poll server until started",
-    Description: "Try until server reports readiness",
+    Name: Poll server until started
+    Description: Try until server reports readiness
     Request: {
-        URL: "http://{{HOST}}/server/ready",
-        Timeout: "1s",
+        URL:     http://{{HOST}}/server/ready
+        Timeout: 1s
     },
     Checks: [
         {Check: "StatusCode", Expect: 200},
     ],
-    // Poll for a maximum of 20 times for success, sleeping 300ms after each
-    // failure (which might take up to 1.3s due to the 1s timeout above).
-    // Usefull if it is okay that a test fails as long at is does not
-    // fail constantly.
-    Poll: {Max: 20, Sleep: "300ms"},
+
+    Execution: {
+        // Poll for a maximum of 20 times for success, sleeping 300ms after each
+        // failure.
+        Tries: 20
+        Sleep: 300ms
+
+	// Do wait 100ms between starting or retrying the test and making 
+	// the actual request.
+        PreSleep: 100ms
+    }
 }

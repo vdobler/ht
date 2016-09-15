@@ -67,6 +67,7 @@ func init() {
 	RegisterExtractor(JSONExtractor{})
 	RegisterExtractor(CookieExtractor{})
 	RegisterExtractor(JSExtractor{})
+	RegisterExtractor(SetVariable{})
 }
 
 // ----------------------------------------------------------------------------
@@ -462,4 +463,18 @@ func (e JSExtractor) Extract(t *Test) (string, error) {
 		return "", err
 	}
 	return str, nil
+}
+
+// ----------------------------------------------------------------------------
+// SetVariable
+
+// SetVariable allows to prgmatically extract a fixed value.
+type SetVariable struct {
+	// To is the value to extract.
+	To string
+}
+
+// Extract implements Extractor's Extract method.
+func (e SetVariable) Extract(t *Test) (string, error) {
+	return e.To, nil
 }

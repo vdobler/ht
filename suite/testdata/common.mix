@@ -1,0 +1,4 @@
+{
+    Name: "Common Mixin"
+    Request: { Timeout: "45s" }
+}

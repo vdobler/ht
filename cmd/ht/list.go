@@ -65,4 +65,5 @@ func displayTest(id string, test *suite.RawTest) {
 		}
 		fmt.Printf("  %q  %s %s\n", ht.Name, method, ht.Request.URL)
 	}
+	fmt.Println()
 }

@@ -76,7 +76,8 @@ func TestRawTestToTest(t *testing.T) {
 	variables := map[string]string{
 		"VAR_B": "zulu",
 	}
-	test, err := raw.ToTest(variables)
+	testScope := newScope(variables, raw.Variables, false)
+	test, err := raw.ToTest(testScope)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
@@ -124,15 +125,19 @@ func TestNewRawSuite(t *testing.T) {
 		t.Fatalf("Unexpected error %s", err)
 	}
 	// pp("RawSuite", raw)
-	if len(raw.Tests) != 5 {
-		panic(len(raw.Tests))
+	if len(raw.RawTests()) != 5 {
+		panic(len(raw.RawTests()))
 	}
 }
 
 func TestFancySuite(t *testing.T) {
 	raw, err := LoadRawSuite("./testdata/fancy.suite")
-	fmt.Printf("%#v\n", err)
-	pp("FancSuite", raw)
+	if err != nil {
+		t.Fatalf("Unexpected error %s", err)
+	}
+	if testing.Verbose() {
+		pp("FancSuite", raw)
+	}
 }
 
 func TestRawSuiteExecute(t *testing.T) {
@@ -144,7 +149,7 @@ func TestRawSuiteExecute(t *testing.T) {
 		t.Fatalf("Unexpected error %s", err)
 	}
 	// pp("Raw", raw)
-	for i, test := range raw.Tests {
+	for i, test := range raw.RawTests() {
 		fmt.Printf("%d. %q\n", i, test.Name)
 	}
 
@@ -163,7 +168,7 @@ func TestRawSuiteExecute(t *testing.T) {
 	}
 
 	for i, test := range s.Tests {
-		fmt.Printf("%d. %q ==> %s (%s)\n", i, test.Name, test.Status, test.Error)
+		fmt.Printf("%d. %q ==> %s (%v)\n", i, test.Name, test.Status, test.Error)
 	}
 
 	err = HTMLReport(".", s)

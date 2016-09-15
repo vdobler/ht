@@ -64,7 +64,7 @@ func init() {
 		// cmdMonitor,
 		cmdFingerprint,
 		cmdReconstruct,
-		// cmdPerf,
+		cmdLoad,
 	}
 }
 
