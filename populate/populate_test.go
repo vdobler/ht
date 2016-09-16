@@ -7,6 +7,8 @@ package populate
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -35,33 +37,9 @@ type T struct {
 	Duration time.Duration
 }
 
-var obj = make(map[string]interface{})
-
-func init() {
-	obj["String"] = "foo"
-	obj["Int"] = 123
-	obj["Slice"] = []string{"Hello", "World"}
-	obj["Map"] = map[string]string{
-		"up":   "top",
-		"down": "bottom",
-	}
-	obj["Int32s"] = []interface{}{567, int8(100), "2345"}
-	obj["Float64s"] = []interface{}{88.77, float32(0.01), "-23.456"}
-	obj["Dict"] = map[string]interface{}{
-		"pi":   3.141,
-		"e":    "2.67",
-		"prim": 57,
-	}
-	obj["S"] = map[string]interface{}{
-		"A": 99,
-		"B": 88.88,
-		"C": "ccc",
-	}
-	obj["PS"] = map[string]interface{}{
-		"A": -777,
-		"B": -66.66,
-		"C": "xXxXx",
-	}
+type U struct {
+	Params url.Values
+	Header http.Header
 }
 
 func TestStrict(t *testing.T) {
@@ -166,6 +144,42 @@ func TestLax(t *testing.T) {
 	err = Lax(&v, raw)
 	if err != nil {
 		t.Errorf("Error: %s", err)
+	}
+}
+
+func TestPromotion(t *testing.T) {
+	data := `{
+    Params: {
+        p1: 12
+        p2: "foo"
+        p3: [ 34, "bar" ]
+    }
+    Header: {
+        h1: 56
+        h2: "bar"
+        h3: [ 78, "wuz" ]
+    }
+}`
+	var raw interface{}
+	err := hjson.Unmarshal([]byte(data), &raw)
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
+
+	v := U{}
+
+	err = Strict(&v, raw)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+
+	result, err := json.Marshal(v)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	want := `{"Params":{"p1":["12"],"p2":["foo"],"p3":["34","bar"]},"Header":{"h1":["56"],"h2":["bar"],"h3":["78","wuz"]}}`
+	if string(result) != want {
+		t.Errorf("Got : %s\nWant: %s", result, want)
 	}
 }
 
