@@ -57,56 +57,6 @@ var Transport = &http.Transport{
 	TLSHandshakeTimeout: 10 * time.Second,
 }
 
-// URLValues is a url.Values with a fancier JSON unmarshalling.
-type URLValues url.Values
-
-// UnmarshalJSON produces a url.Values (i.e. a map[string][]string) from
-// various JSON5 representations. E.g.
-//    {
-//      a: 12,
-//      b: "foo",
-//      c: [ 23, "bar"]
-//    }
-// can be unmarshaled with the expected result.
-func (v *URLValues) UnmarshalJSON(data []byte) error {
-	vals := make(url.Values)
-	raw := map[string]json5.RawMessage{}
-	err := json5.Unmarshal(data, &raw)
-	if err != nil {
-		return err
-	}
-	for name, r := range raw {
-		var generic interface{}
-		err := json5.Unmarshal(r, &generic)
-		if err != nil {
-			return err
-		}
-		switch g := generic.(type) {
-		case float64:
-			vals[name] = []string{float64ToString(g)}
-		case string:
-			vals[name] = []string{g}
-		case []interface{}:
-			vals[name] = []string{}
-			for _, sub := range g {
-				switch gg := sub.(type) {
-				case float64:
-					vals[name] = append(vals[name], float64ToString(gg))
-				case string:
-					vals[name] = append(vals[name], gg)
-				default:
-					return fmt.Errorf("ht: illegal url query value %v of type %T for query parameter %s", sub, gg, name)
-				}
-			}
-		default:
-			return fmt.Errorf("ht: illegal url query value %v of type %T for query parameter %s", generic, g, name)
-		}
-	}
-
-	*v = URLValues(vals)
-	return nil
-}
-
 func float64ToString(f float64) string {
 	t := math.Trunc(f)
 	if math.Abs(t-f) < 1e-6 {
@@ -142,7 +92,7 @@ type Request struct {
 	//         as the filename. (There is no difference between the
 	//         @file and @vfile variants; variable substitution has
 	//         been performed already and is not done twice on direct-data.
-	Params URLValues `json:",omitempty"`
+	Params url.Values
 
 	// ParamsAs determines how the parameters in the Param field are sent:
 	//   "URL" or "": append properly encoded to URL
@@ -417,7 +367,7 @@ func Merge(tests ...*Test) (*Test, error) {
 		m.Variables[n] = v
 	}
 
-	m.Request.Params = make(URLValues)
+	m.Request.Params = make(url.Values)
 	m.Request.Header = make(http.Header)
 	m.VarEx = make(map[string]Extractor)
 	for _, t := range tests {
@@ -699,7 +649,7 @@ func (t *Test) newRequest(variables map[string]string) (contentType string, err 
 	t.Request.SentParams = prurl.Query()
 
 	// Deep copy. TODO might be unnecessary.
-	urlValues := make(URLValues)
+	urlValues := make(url.Values)
 	for param, vals := range t.Request.Params {
 		rv := make([]string, len(vals))
 		for i, v := range vals {

@@ -46,7 +46,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 		Request: Request{
 			Method: "POST",
 			URL:    "http://validator.w3.org/nu/",
-			Params: URLValues{
+			Params: url.Values{
 				"file": {file},
 			},
 			ParamsAs: "multipart",

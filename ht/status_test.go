@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 )
@@ -23,7 +24,7 @@ func TestStatusCode(t *testing.T) {
 			Request: Request{
 				Method:          "GET",
 				URL:             ts.URL + "/",
-				Params:          URLValues{"status": []string{s}},
+				Params:          url.Values{"status": []string{s}},
 				FollowRedirects: false,
 			},
 			Checks: []Check{
@@ -53,7 +54,7 @@ func TestNoServerError(t *testing.T) {
 			Request: Request{
 				Method:          "GET",
 				URL:             ts.URL + "/",
-				Params:          URLValues{"status": []string{s}},
+				Params:          url.Values{"status": []string{s}},
 				FollowRedirects: false,
 			},
 			Checks: []Check{NoServerError{}},

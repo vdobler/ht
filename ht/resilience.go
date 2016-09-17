@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -508,7 +509,7 @@ func (r Resilience) resilienceTest(orig *Test, method string, paramsAs string) *
 		cpy.Request.Header[h] = vc
 	}
 
-	cpy.Request.Params = make(URLValues)
+	cpy.Request.Params = make(url.Values)
 	for p, v := range orig.Request.Params {
 		vc := make([]string, len(v))
 		copy(vc, v)

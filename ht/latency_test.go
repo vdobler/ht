@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"sync"
 	"testing"
@@ -115,7 +116,7 @@ func TestLatency(t *testing.T) {
 			Request: Request{
 				Method: "GET",
 				URL:    ts.URL + "/",
-				Params: URLValues{
+				Params: url.Values{
 					"n": []string{"100000"},
 				},
 				Timeout: Duration(100 * time.Millisecond),

@@ -457,7 +457,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 				URL:      urlString,
 				Cookies:  cookies,
 				Header:   e.Request.Header,
-				Params:   ht.URLValues(params),
+				Params:   params,
 				ParamsAs: paramsAs,
 				Body:     body,
 			},
