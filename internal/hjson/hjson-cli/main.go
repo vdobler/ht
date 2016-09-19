@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/hjson/hjson-go"
 	"io/ioutil"
 	"os"
+
+	"github.com/vdobler/ht/internal/hjson"
 )
 
 func fixJSON(data []byte) []byte {
@@ -35,8 +36,8 @@ func main() {
 	var showJSON = flag.Bool("j", false, "Output as formatted JSON.")
 	var showCompact = flag.Bool("c", false, "Output as JSON.")
 
-	var indentBy = flag.String("indentBy", "  ", "The indent string.")
-	var bracesSameLine = flag.Bool("bracesSameLine", false, "Print braces on the same line.")
+	var indentBy = flag.String("indentBy", "    ", "The indent string.")
+	var bracesSameLine = flag.Bool("bracesSameLine", true, "Print braces on the same line.")
 	var omitRootBraces = flag.Bool("omitRootBraces", false, "Omit braces at the root.")
 	var quoteAlways = flag.Bool("quoteAlways", false, "Always quote string values.")
 	var allowMinusZero = flag.Bool("allowMinusZero", false, "Allow -0.")

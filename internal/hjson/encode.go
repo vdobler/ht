@@ -34,10 +34,10 @@ type EncoderOptions struct {
 func DefaultOptions() EncoderOptions {
 	opt := EncoderOptions{}
 	opt.Eol = "\n"
-	opt.BracesSameLine = false
+	opt.BracesSameLine = true
 	opt.EmitRootBraces = true
 	opt.QuoteAlways = false
-	opt.IndentBy = "  "
+	opt.IndentBy = "    "
 	opt.AllowMinusZero = false
 	opt.UnknownAsNull = false
 	return opt
@@ -299,6 +299,49 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			if err := e.str(value.MapIndex(keys[i]), false, " ", false); err != nil {
 				return err
 			}
+		}
+
+		if showBraces {
+			e.writeIndent(indent1)
+			e.WriteString("}")
+		}
+
+		e.indent = indent1
+
+	case reflect.Struct:
+		numFields := value.NumField()
+		if numFields == 0 {
+			e.WriteString(separator)
+			e.WriteString("{}")
+			break
+		}
+
+		showBraces := !isRootObject || e.EmitRootBraces
+		indent1 := e.indent
+		if showBraces {
+			e.indent++
+		}
+
+		if showBraces {
+			if !noIndent && !e.BracesSameLine {
+				e.writeIndent(indent1)
+			} else {
+				e.WriteString(separator)
+			}
+			e.WriteString("{")
+		}
+
+		for f := 0; f < numFields; f++ {
+			if f > 0 || showBraces {
+				e.writeIndent(e.indent)
+			}
+			name := value.Type().Field(f).Name
+			e.WriteString(e.quoteName(name))
+			e.WriteString(":")
+			if err := e.str(value.Field(f), false, " ", false); err != nil {
+				return err
+			}
+
 		}
 
 		if showBraces {

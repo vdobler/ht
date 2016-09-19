@@ -62,7 +62,16 @@ func run(t *testing.T, file string) {
 
 	rjson, rhjson := getResultContent(name)
 
-	actualHjson, _ := Marshal(data)
+	opt := EncoderOptions{}
+	opt.Eol = "\n"
+	opt.BracesSameLine = false
+	opt.EmitRootBraces = true
+	opt.QuoteAlways = false
+	opt.IndentBy = "  "
+	opt.AllowMinusZero = false
+	opt.UnknownAsNull = false
+
+	actualHjson, _ := MarshalWithOptions(data, opt)
 	actualJSON, _ := json.MarshalIndent(data, "", "  ")
 	actualJSON = fixJSON(actualJSON)
 
@@ -131,4 +140,29 @@ func TestIntegers(t *testing.T) {
 	} else if n != 9223372036854775808 {
 		t.Errorf("Got %d", n)
 	}
+}
+
+func TestStructEncoding(t *testing.T) {
+	type T struct {
+		B int
+		A string
+		C []float64
+	}
+
+	v := T{B: 123, A: "foo\nbar\n  wuz  ", C: []float64{3.141, 2.718}}
+
+	opt := EncoderOptions{}
+	opt.Eol = "\n"
+	opt.BracesSameLine = true
+	opt.EmitRootBraces = true
+	opt.QuoteAlways = false
+	opt.IndentBy = "    "
+	opt.AllowMinusZero = false
+	opt.UnknownAsNull = false
+
+	data, err := MarshalWithOptions(v, opt)
+	if err != nil {
+		t.Fatalf("Unexpected error %s", err)
+	}
+	fmt.Println(string(data))
 }
