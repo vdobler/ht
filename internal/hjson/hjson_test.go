@@ -95,3 +95,40 @@ func TestHjson(t *testing.T) {
 		run(t, file)
 	}
 }
+
+func TestIntegers(t *testing.T) {
+	for i, tc := range []struct {
+		in   string
+		want int64
+	}{
+		{"-1", -1},
+		{"-0", 0},
+		{"0", 0},
+		{"1", 1},
+		{"123", 123},
+		{"-234", -234},
+		{"9223372036854775807", 9223372036854775807},
+		{"-9223372036854775806", -9223372036854775806},
+	} {
+		var data interface{}
+		if err := Unmarshal([]byte(tc.in), &data); err != nil {
+			t.Errorf("Unexpected error %s", err)
+		}
+		if n, ok := data.(int64); !ok {
+			t.Errorf("Bad type %T", data)
+		} else if n != tc.want {
+			t.Errorf("%d. %q: Got %d, want %d", i, tc.in, n, tc.want)
+		}
+	}
+
+	// Too large for int --> uint !
+	var data interface{}
+	if err := Unmarshal([]byte("9223372036854775808"), &data); err != nil {
+		t.Errorf("Unexpected error %s", err)
+	}
+	if n, ok := data.(uint64); !ok {
+		t.Errorf("Bad type %T", data)
+	} else if n != 9223372036854775808 {
+		t.Errorf("Got %d", n)
+	}
+}

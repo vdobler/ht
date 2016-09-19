@@ -34,14 +34,17 @@ func startsWithNumber(text []byte) bool {
 	return false
 }
 
-func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
+func tryParseNumber(text []byte, stopAtNext bool) (interface{}, error) {
 	// Parse a number value.
+
+	isInt, isNeg := true, false
 
 	p := parseNumber{text, 0, ' '}
 	leadingZeros := 0
 	testLeading := true
 	p.next()
 	if p.ch == '-' {
+		isNeg = true
 		p.next()
 	}
 	for p.ch >= '0' && p.ch <= '9' {
@@ -58,10 +61,12 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 		leadingZeros--
 	} // single 0 is allowed
 	if p.ch == '.' {
+		isInt = false
 		for p.next() && p.ch >= '0' && p.ch <= '9' {
 		}
 	}
 	if p.ch == 'e' || p.ch == 'E' {
+		isInt = false
 		p.next()
 		if p.ch == '-' || p.ch == '+' {
 			p.next()
@@ -89,7 +94,32 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 	if p.ch > 0 || leadingZeros != 0 {
 		return 0, errors.New("Invalid number")
 	}
-	number, err := strconv.ParseFloat(string(p.data[0:end-1]), 64)
+
+	s := string(p.data[0 : end-1])
+	if isInt {
+		// Well, JSON knows about floats only, but this is a mistake
+		// made because of JavaScript.  No need to duplicate this
+		// mistake here:  Return int64 where possible, switching to
+		// uint64 if needed.
+		if isNeg {
+			i64, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return int64(0), err
+			}
+			return i64, nil
+		} else {
+			ui64, err := strconv.ParseUint(s, 10, 64)
+			if err != nil {
+				return int64(0), err
+			}
+			if ui64 <= math.MaxInt64 {
+				return int64(ui64), nil
+			}
+			return ui64, nil
+		}
+	}
+
+	number, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return 0, err
 	}
