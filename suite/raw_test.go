@@ -124,7 +124,8 @@ func TestNewRawSuite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
-	// pp("RawSuite", raw)
+	fmt.Printf("%#v\n", raw)
+	pp("RawSuite", raw)
 	if len(raw.RawTests()) != 5 {
 		panic(len(raw.RawTests()))
 	}
@@ -274,7 +275,7 @@ func TestChecklist(t *testing.T) {
 		}
 	}
 
-	enc, err := test.Checks.MarshalJSON5()
+	enc, err := test.Checks.MarshalJSON()
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

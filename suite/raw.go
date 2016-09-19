@@ -12,15 +12,14 @@ import (
 	"sort"
 	"strings"
 
-	hjson "github.com/hjson/hjson-go"
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/populate"
-	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
 
 func pp(msg string, v interface{}) {
-	data, _ := json5.MarshalIndent(v, "", "    ")
-	fmt.Println(msg, string(data))
+	data, err := hjson.Marshal(v)
+	fmt.Println(msg, string(data), err)
 }
 
 func ppvars(msg string, vars map[string]string) {

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	hjson "github.com/hjson/hjson-go"
+	"github.com/vdobler/ht/internal/hjson"
 )
 
 type S struct {

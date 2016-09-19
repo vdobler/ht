@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	hjson "github.com/hjson/hjson-go"
+	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/populate"
 )
 
