@@ -5,11 +5,10 @@
 package ht
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/vdobler/ht/internal/json5"
 )
 
 type sampleCheck struct {
@@ -56,43 +55,43 @@ func TestChecklistMarshalJSON(t *testing.T) {
 		},
 	}
 
-	j, err := json5.MarshalIndent(cl, "", "    ")
+	j, err := json.MarshalIndent(cl, "", "    ")
 	if err != nil {
 		t.Fatalf("Unexpected error %v\n%s", err, j)
 	}
 
 	want := `[
     {
-        Check: "StatusCode",
-        Expect: 404
+        "Check": "StatusCode",
+        "Expect": 404
     },
     {
-        Check: "None",
-        Of: [
+        "Check": "None",
+        "Of": [
             {
-                Check: "ResponseTime",
-                Lower: "1.23µs"
+                "Check": "ResponseTime",
+                "Lower": "1.23µs"
             }
         ]
     },
     {
-        Check: "None",
-        Of: [
+        "Check": "None",
+        "Of": [
             {
-                Check: "UTF8Encoded"
+                "Check": "UTF8Encoded"
             }
         ]
     },
     {
-        Check: "AnyOne",
-        Of: [
+        "Check": "AnyOne",
+        "Of": [
             {
-                Check: "StatusCode",
-                Expect: 303
+                "Check": "StatusCode",
+                "Expect": 303
             },
             {
-                Check: "StatusCode",
-                Expect: 404
+                "Check": "StatusCode",
+                "Expect": 404
             }
         ]
     }

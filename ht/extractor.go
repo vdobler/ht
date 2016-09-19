@@ -16,7 +16,6 @@ import (
 	"github.com/andybalholm/cascadia"
 	"github.com/nytlabs/gojsonexplode"
 	"github.com/robertkrimen/otto"
-	"github.com/vdobler/ht/internal/json5"
 	"github.com/vdobler/ht/populate"
 	"golang.org/x/net/html"
 )
@@ -85,13 +84,15 @@ func (em ExtractorMap) MarshalJSON() ([]byte, error) {
 	buf.WriteRune('{')
 	i := 0
 	for name, ex := range em {
-		raw, err := json5.Marshal(ex)
+		raw, err := json.Marshal(ex)
 		if err != nil {
 			return nil, err
 		}
+		buf.WriteRune('"')
 		buf.WriteString(name)
+		buf.WriteRune('"')
 		buf.WriteRune(':')
-		buf.WriteString(`{Extractor: "`)
+		buf.WriteString(`{"Extractor": "`)
 		buf.WriteString(NameOf(ex))
 		buf.WriteRune('"')
 		if string(raw) != "{}" {
@@ -107,38 +108,6 @@ func (em ExtractorMap) MarshalJSON() ([]byte, error) {
 	buf.WriteRune('}')
 
 	return buf.Bytes(), nil
-}
-
-// UnmarshalJSON unmarshals data to a map of Extractors.
-func (em *ExtractorMap) UnmarshalJSON(data []byte) error {
-	if *em == nil {
-		*em = make(ExtractorMap)
-	}
-	raw := map[string]json5.RawMessage{}
-	err := json5.Unmarshal(data, &raw)
-	if err != nil {
-		return err
-	}
-	for name, ex := range raw {
-		exName, exDef, err := extractSingleFieldFromJSON5("Extractor", ex)
-		if err != nil {
-			return err
-		}
-		typ, ok := ExtractorRegistry[exName]
-		if !ok {
-			return fmt.Errorf("ht: no such extractor %s", exName)
-		}
-		if typ.Kind() == reflect.Ptr {
-			typ = typ.Elem()
-		}
-		extractor := reflect.New(typ)
-		err = json5.Unmarshal(exDef, extractor.Interface())
-		if err != nil {
-			return err
-		}
-		(*em)[name] = extractor.Interface().(Extractor)
-	}
-	return nil
 }
 
 func (em *ExtractorMap) Populate(src interface{}) error {

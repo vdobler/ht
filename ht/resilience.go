@@ -234,7 +234,7 @@ func (r Resilience) collectErrors(t *Test, suite *Collection) error {
 			}
 
 			// Log to file name SaveFailuresTo.
-			data, err := t.AsJSON5()
+			data, err := t.AsJSON()
 			if err != nil {
 				fmt.Fprintf(file, "# %q: Cannot serialize: %q\n", t.Name, err.Error())
 			} else {

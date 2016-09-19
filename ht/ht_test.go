@@ -5,6 +5,7 @@
 package ht
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -20,8 +21,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/vdobler/ht/internal/json5"
 )
 
 var verboseTest = flag.Bool("ht.verbose", false, "be verbose during testing")
@@ -479,57 +478,6 @@ func TestClientTimeout(t *testing.T) {
 	}
 }
 
-func TestMarshalTest(t *testing.T) {
-	test := &Test{
-		Name:        "Search",
-		Description: "Some searches",
-		Request: Request{
-			URL: "https://{{HOST}}/de/tools/suche.html",
-			Params: url.Values{
-				"q": []string{"{{QUERY}}"},
-				"w": []string{"AB", "XZ"},
-			},
-			FollowRedirects: true,
-			ParamsAs:        "URL",
-			Body:            "Some data to send.",
-			Header: http.Header{
-				"User-Agent": {"Our-Test-Agent"},
-			},
-			Cookies: []Cookie{
-				{Name: "first", Value: "false"},
-				{Name: "trusted", Value: "true"},
-			},
-		},
-		Checks: []Check{
-			StatusCode{200},
-			&Body{Contains: "© 2014", Count: 1},
-		},
-	}
-
-	data, err := json5.MarshalIndent(test, "", "    ")
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-	if *verboseTest {
-		fmt.Println(string(data))
-	}
-	recreated := Test{}
-	err = json5.Unmarshal(data, &recreated)
-	if err != nil {
-		w := err.(*json5.UnmarshalTypeError)
-		t.Fatalf("Unexpected error: %#v\n%s\n%#v", err, w, recreated)
-	}
-
-	data2, err := json5.MarshalIndent(recreated, "", "    ")
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-
-	if string(data) != string(data2) {
-		t.Fatalf("Missmatch. Got\n%s\nWant\n%s\n", data2, data)
-	}
-}
-
 func TestMerge(t *testing.T) {
 	a := &Test{}
 	b := &Test{}
@@ -598,7 +546,7 @@ func TestMerge(t *testing.T) {
 		t.Fatalf("Unexpected error %#v", err)
 	}
 	if *verboseTest {
-		jr, err := json5.Marshal(c)
+		jr, err := json.Marshal(c)
 		if err != nil {
 			t.Fatal(err.Error())
 		}

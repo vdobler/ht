@@ -7,6 +7,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -14,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vdobler/ht/internal/json5"
 	"github.com/vdobler/ht/suite"
 )
 
@@ -276,7 +276,7 @@ func fillVariablesFlagFrom(variablesFile string) {
 		os.Exit(8)
 	}
 	v := map[string]string{}
-	err = json5.Unmarshal(data, &v)
+	err = json.Unmarshal(data, &v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot unmarshal variable file %q: %s\n", variablesFile, err)
 		os.Exit(8)

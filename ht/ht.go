@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -27,7 +28,6 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
-	"github.com/vdobler/ht/internal/json5"
 )
 
 var (
@@ -447,7 +447,7 @@ func (t *Test) Run() error {
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
 		t.CheckResults[i].Name = NameOf(c)
-		buf, err := json5.Marshal(c)
+		buf, err := json.Marshal(c)
 		if err != nil {
 			buf = []byte(err.Error())
 		}
@@ -492,12 +492,12 @@ func (t *Test) Run() error {
 	return nil
 }
 
-// AsJSON5 returns a JSON5 representation of the test. Executed tests can
+// AsJSON returns a JSON representation of the test. Executed tests can
 // be serialised and will contain basically all information required to
 // debug or re-run the test but note that several fields in the actual
 // *http.Request and *http.Response structs are cleared during this
 // serialisation.
-func (t *Test) AsJSON5() ([]byte, error) {
+func (t *Test) AsJSON() ([]byte, error) {
 	// Nil some un-serilisable stuff.
 	t.Jar = nil
 	t.client = nil
@@ -513,7 +513,7 @@ func (t *Test) AsJSON5() ([]byte, error) {
 		t.Response.Response.Body = nil
 	}
 
-	return json5.MarshalIndent(t, "", "    ")
+	return json.MarshalIndent(t, "", "    ")
 }
 
 // execute does a single request and check the response.

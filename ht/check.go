@@ -6,12 +6,11 @@ package ht
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 
-	"github.com/vdobler/ht/internal/json5"
 	"github.com/vdobler/ht/populate"
 )
 
@@ -111,18 +110,19 @@ func (m MalformedCheck) Error() string {
 // attaching JSON (un)marshaling methods.
 type CheckList []Check
 
-// MarshalJSON5 produces a JSON5 arry of the checks in cl.
+// MarshalJSON produces a JSON arry of the checks in cl.
 // Each check is serialized in the form
-//     { Check: "NameOfCheckAsRegistered", Field1OfCheck: Value1, Field2: Value2, ... }
-func (cl CheckList) MarshalJSON5() ([]byte, error) {
+//     { "Check": "NameOfCheckAsRegistered",
+//         "Field1OfCheck": "Value1", "Field2": "Value2", ... }
+func (cl CheckList) MarshalJSON() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	buf.WriteRune('[')
 	for i, check := range cl {
-		raw, err := json5.Marshal(check)
+		raw, err := json.Marshal(check)
 		if err != nil {
 			return nil, err
 		}
-		buf.WriteString(`{Check:"`)
+		buf.WriteString(`{"Check":"`)
 		buf.WriteString(NameOf(check))
 		buf.WriteByte('"')
 		if string(raw) != "{}" {
@@ -138,36 +138,6 @@ func (cl CheckList) MarshalJSON5() ([]byte, error) {
 	result := string(buf.Bytes())
 
 	return []byte(result), nil
-}
-
-// extractSingleFieldFromJSON5 called with fieldname="Check" and data of
-// "{Check: "StatusCode", Expect: 200}"  will return fieldval="StatusCode"
-// and recoded="{Expect: 200}".
-func extractSingleFieldFromJSON5(fieldname string, data []byte) (fieldval string, reencoded []byte, err error) {
-	rawMap := map[string]*json5.RawMessage{}
-	err = json5.Unmarshal(data, &rawMap)
-	if err != nil {
-		return "", nil, err
-	}
-
-	v, ok := rawMap[fieldname]
-	if !ok {
-		return "", nil, fmt.Errorf("ht: missing %s field in %q", fieldname, data)
-	}
-
-	fieldval = string(*v)
-	if strings.HasPrefix(fieldval, `"`) {
-		fieldval = fieldval[1 : len(fieldval)-1]
-	}
-
-	delete(rawMap, fieldname)
-	reencoded, err = json5.Marshal(rawMap)
-	if err != nil {
-		return "", nil, fmt.Errorf("ht: re-marshaling error %q should not happen on %#v", err.Error(), rawMap)
-	}
-
-	return fieldval, reencoded, nil
-
 }
 
 func (cl *CheckList) Populate(src interface{}) error {
@@ -217,43 +187,5 @@ func (cl *CheckList) Populate(src interface{}) error {
 		list[i] = rcheck.Interface().(Check)
 	}
 	*cl = list
-	return nil
-}
-
-// UnmarshalJSON unmarshals data to a slice of Checks.
-func (cl *CheckList) UnmarshalJSON(data []byte) error {
-	raw := []json5.RawMessage{}
-	err := json5.Unmarshal(data, &raw)
-	if err != nil {
-		return err
-	}
-	for i, c := range raw {
-		checkName, checkDef, err := extractSingleFieldFromJSON5("Check", c)
-		if err != nil {
-			return err
-		}
-		typ, ok := CheckRegistry[checkName]
-		if !ok {
-			return fmt.Errorf("ht: no such check %s", checkName)
-		}
-		if typ.Kind() == reflect.Ptr {
-			typ = typ.Elem()
-		}
-
-		soup := make(map[string]interface{})
-		err = json5.Unmarshal(checkDef, &soup)
-		if err != nil {
-			return fmt.Errorf("%d. check: %s", i+1, err)
-		}
-		rcheck := reflect.New(typ)
-		err = populate.Strict(rcheck.Interface(), soup)
-
-		// err = json5.Unmarshal(checkDef, rcheck.Interface())
-		if err != nil {
-			return fmt.Errorf("BBBBBB %d. check: %s", i+1, err)
-		}
-
-		*cl = append(*cl, rcheck.Interface().(Check))
-	}
 	return nil
 }
