@@ -207,7 +207,7 @@ type Test struct {
 	Jar *cookiejar.Jar `json:"-"`
 
 	// Variables contains name/value-pairs used for variable substitution
-	// in files read in.
+	// in files read in, e.g. for Request.Body = "@vfile:/path/to/file".
 	Variables map[string]string `json:",omitempty"`
 
 	// The following results are filled during Run.
@@ -231,6 +231,9 @@ type Test struct {
 
 	// ExValues contains the result of the extractions.
 	ExValues map[string]Extraction `json:",omitempty"`
+
+	// Log is the logger to use
+	Log *log.Logger
 
 	client *http.Client
 }
@@ -442,6 +445,7 @@ func (t *Test) Run() error {
 		return nil
 	}
 
+	t.debugf("PreSleep %s", t.Execution.PreSleep)
 	time.Sleep(time.Duration(t.Execution.PreSleep))
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
@@ -486,6 +490,7 @@ func (t *Test) Run() error {
 
 	t.infof("test %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
 
+	t.debugf("PostSleep %s", t.Execution.PostSleep)
 	time.Sleep(time.Duration(t.Execution.PostSleep))
 
 	t.FullDuration = Duration(time.Since(t.Started))
@@ -782,11 +787,11 @@ func (t *Test) executeRequest() error {
 	start := time.Now()
 
 	if t.Execution.Verbosity >= 4 {
-		t.tracef("Full Request follows")
-		t.Request.Request.Write(os.Stderr)
+		buf := &bytes.Buffer{}
+		t.Request.Request.Write(buf)
+		t.tracef(" Full Request\n%s\n", buf.String())
 		// "Rewind body"
 		t.Request.Request.Body = ioutil.NopCloser(strings.NewReader(t.Request.SentBody))
-		t.tracef("Full Request end")
 	}
 
 	resp, err := t.client.Do(t.Request.Request)
@@ -795,7 +800,7 @@ func (t *Test) executeRequest() error {
 		// Clear err if it is just our redirect non-following policy.
 		err = nil
 		abortedRedirection = true
-		t.tracef("Aborted redirect chain")
+		t.debugf("Aborted redirect chain")
 	}
 
 	t.Response.Response = resp
@@ -812,7 +817,7 @@ func (t *Test) executeRequest() error {
 				t.Response.BodyErr = err
 				goto done
 			}
-			t.tracef("Unzipping gzip body")
+			t.debugf("Unzipping gzip body")
 		default:
 			reader = resp.Body
 		}
@@ -821,14 +826,13 @@ func (t *Test) executeRequest() error {
 		t.Response.BodyErr = be
 		reader.Close()
 		if t.Execution.Verbosity >= 4 {
-			t.tracef("Full Response follows")
-			fmt.Fprintf(os.Stderr, "%s %s\n",
+			buf := &bytes.Buffer{}
+			t.Response.Response.Header.Write(buf)
+
+			t.tracef(" Full Response\n%s %s\n\n%s",
 				t.Response.Response.Proto,
-				t.Response.Response.Status)
-			t.Response.Response.Header.Write(os.Stderr)
-			fmt.Fprintln(os.Stderr)
-			fmt.Fprintln(os.Stderr, t.Response.BodyStr)
-			t.tracef("Full Response end")
+				t.Response.Response.Status,
+				t.Response.BodyStr)
 		}
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())
@@ -925,7 +929,7 @@ func (t *Test) executeChecks(result []CheckResult) {
 			result[i].Error = ErrorList{err}
 		}
 		if err != nil {
-			t.debugf("check %d %s failed: %s", i, NameOf(ck), err)
+			t.debugf("Check %d %s Fail: %s", i+1, NameOf(ck), err)
 			if _, ok := err.(MalformedCheck); ok {
 				result[i].Status = Bogus
 			} else {
@@ -937,9 +941,14 @@ func (t *Test) executeChecks(result []CheckResult) {
 			// Abort needles checking if all went wrong.
 			if i == 0 { // only first check is checked against StatusCode/200.
 				sc, ok := ck.(StatusCode)
-				psc, pok := ck.(*StatusCode)
-				if (ok && sc.Expect == 200) || (pok && psc.Expect == 200) {
-					t.tracef("skipping remaining tests")
+				if !ok {
+					if psc, pok := ck.(*StatusCode); pok {
+						ok = true
+						sc = *psc
+					}
+				}
+				if ok && sc.Expect == 200 {
+					t.debugf("skipping remaining tests as bad StatusCode %s", t.Response.Response.Status)
 					// Clear Status and Error field as these might be
 					// populated from a prior try run of the test.
 					for j := 1; j < len(result); j++ {
@@ -951,7 +960,7 @@ func (t *Test) executeChecks(result []CheckResult) {
 			}
 		} else {
 			result[i].Status = Pass
-			t.tracef("check %d %s: Pass", i, NameOf(ck))
+			t.debugf("Check %d %s: Pass", i+1, NameOf(ck))
 		}
 		if result[i].Status > t.Status {
 			t.Status = result[i].Status
@@ -966,37 +975,35 @@ func (t *Test) prepared() bool {
 	return t.Request.Request != nil
 }
 
-var logger = log.New(os.Stdout, "", 0)
-
 func (t *Test) errorf(format string, v ...interface{}) {
-	if t.Execution.Verbosity >= 0 {
+	if t.Execution.Verbosity >= 0 && t.Log != nil {
 		format = "ERROR " + format + " [%q]"
 		v = append(v, t.Name)
-		logger.Printf(format, v...)
+		t.Log.Printf(format, v...)
 	}
 }
 
 func (t *Test) infof(format string, v ...interface{}) {
-	if t.Execution.Verbosity >= 1 {
-		format = "INFO " + format + " [%q]"
+	if t.Execution.Verbosity >= 1 && t.Log != nil {
+		format = "INFO  " + format + " [%q]"
 		v = append(v, t.Name)
-		logger.Printf(format, v...)
+		t.Log.Printf(format, v...)
 	}
 }
 
 func (t *Test) debugf(format string, v ...interface{}) {
-	if t.Execution.Verbosity >= 2 {
+	if t.Execution.Verbosity >= 2 && t.Log != nil {
 		format = "DEBUG " + format + " [%q]"
 		v = append(v, t.Name)
-		logger.Printf(format, v...)
+		t.Log.Printf(format, v...)
 	}
 }
 
 func (t *Test) tracef(format string, v ...interface{}) {
-	if t.Execution.Verbosity >= 3 {
-		format = "TRACE " + format + " [%q]"
-		v = append(v, t.Name)
-		logger.Printf(format, v...)
+	if t.Execution.Verbosity >= 3 && t.Log != nil {
+		format = "TRACE Begin [%q]" + format + "TRACE End"
+		v = append([]interface{}{t.Name}, v...)
+		t.Log.Printf(format, v...)
 	}
 }
 
