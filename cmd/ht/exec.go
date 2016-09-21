@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -41,12 +42,18 @@ Teardown test are ignored while determining the exit code.
 	`,
 }
 
+var carryVars bool
+
 func init() {
 	addOnlyFlag(cmdExec.Flag)
 	addSkipFlag(cmdExec.Flag)
 
 	addTestFlags(cmdExec.Flag)
 	addOutputFlag(cmdExec.Flag)
+
+	cmdExec.Flag.BoolVar(&carryVars, "carry", false,
+		"carry variables from finished suite to next suite")
+
 }
 
 func runExecute(cmd *Command, suites []*suite.RawSuite) {
@@ -244,11 +251,18 @@ func loadCookies() *cookiejar.Jar {
 }
 
 func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *cookiejar.Jar) []*suite.Suite {
+	bufferedStdout := bufio.NewWriterSize(os.Stdout, 256)
+	defer bufferedStdout.Flush()
+	logger := log.New(bufferedStdout, "", 0)
+
 	outcome := make([]*suite.Suite, len(suites))
 	for i, s := range suites {
-		fmt.Println("Starting Suite", s.Name, s.File.Name)
-		outcome[i] = s.Execute(variables, jar)
-		variables = outcome[i].FinalVariables // carry over variables
+		logger.Println("Starting Suite", s.Name, s.File.Name)
+		outcome[i] = s.Execute(variables, jar, logger)
+		if carryVars {
+			variables = outcome[i].FinalVariables // carry over variables ???
+		}
+		bufferedStdout.Flush()
 	}
 	return outcome
 }

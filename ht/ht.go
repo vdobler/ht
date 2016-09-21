@@ -173,8 +173,8 @@ type Execution struct {
 	// altogether.
 	Tries int `json:",omitempty"`
 
-	// Duration to sleep between retries.
-	Sleep Duration `json:",omitempty"`
+	// Wait time between retries.
+	Wait Duration `json:",omitempty"`
 
 	// Pre-, Inter- and PostSleep are the sleep durations made
 	// before the request, between request and the checks and
@@ -382,8 +382,8 @@ func Merge(tests ...*Test) (*Test, error) {
 		if t.Execution.Tries > m.Execution.Tries {
 			m.Execution.Tries = t.Execution.Tries
 		}
-		if t.Execution.Sleep > m.Execution.Sleep {
-			m.Execution.Sleep = t.Execution.Sleep
+		if t.Execution.Wait > m.Execution.Wait {
+			m.Execution.Wait = t.Execution.Wait
 		}
 		if t.Request.Timeout > m.Request.Timeout {
 			m.Request.Timeout = t.Request.Timeout
@@ -464,7 +464,7 @@ func (t *Test) Run() error {
 	for ; try <= maxTries; try++ {
 		t.Tries = try
 		if try > 1 {
-			time.Sleep(time.Duration(t.Execution.Sleep))
+			time.Sleep(time.Duration(t.Execution.Wait))
 		}
 		err := t.prepare(t.Variables)
 		if err != nil {

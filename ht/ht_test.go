@@ -435,7 +435,7 @@ func TestPolling(t *testing.T) {
 			},
 			Execution: Execution{
 				Tries: tc.max,
-				Sleep: Duration(200),
+				Wait:  Duration(200),
 			},
 		}
 		test.Run()

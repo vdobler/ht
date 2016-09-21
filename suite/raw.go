@@ -386,7 +386,6 @@ func (r *RawTest) toTest(variables map[string]string) (*ht.Test, error) {
 	if err != nil {
 		return nil, err // better error message here
 	}
-
 	test.Variables = make(map[string]string, len(variables))
 	for n, v := range variables {
 		test.Variables[n] = v
@@ -411,6 +410,7 @@ type RawSuite struct {
 	KeepCookies           bool
 	OmitChecks            bool
 	Variables             map[string]string
+	Verbosity             int
 
 	tests []*RawTest
 }
@@ -510,34 +510,6 @@ func MakeRawSuite(suite *File, fs map[string]*File) (*RawSuite, error) {
 	}
 
 	return rs, nil
-}
-
-func updateVariables(test *ht.Test, variables map[string]string) {
-	if test.Status != ht.Pass {
-		return
-	}
-
-	for varname, value := range test.Extract() {
-		if old, ok := variables[varname]; ok {
-			fmt.Printf("Updating variable %q from %q to %q\n",
-				varname, old, value)
-		} else {
-			fmt.Printf("Setting new variable %q to %q\n",
-				varname, value)
-		}
-		variables[varname] = value
-	}
-}
-
-func updateSuite(test *ht.Test, suite *Suite) {
-	if test.Status <= suite.Status {
-		return
-	}
-
-	suite.Status = test.Status
-	if test.Error != nil {
-		suite.Error = test.Error
-	}
 }
 
 func (rs *RawSuite) Validate(variables map[string]string) error {

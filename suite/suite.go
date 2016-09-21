@@ -5,7 +5,10 @@
 package suite
 
 import (
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -15,7 +18,7 @@ import (
 	"github.com/vdobler/ht/ht"
 )
 
-// A Suite is a collection of Tests after execution.
+// A Suite is a collection of Tests after their (attempted) execution.
 type Suite struct {
 	Name        string
 	Description string
@@ -31,6 +34,9 @@ type Suite struct {
 	Variables      map[string]string
 	FinalVariables map[string]string
 	Jar            *cookiejar.Jar
+	Log            *log.Logger
+
+	scope map[string]string
 }
 
 func shouldRun(t int, rs *RawSuite, s *Suite) bool {
@@ -59,7 +65,7 @@ func newScope(outer, inner map[string]string, auto bool) map[string]string {
 	}
 	replacer := VarReplacer(scope)
 
-	// Merging inner defaults, allow substitutions from outer scope
+	// 2. Merging inner defaults, allow substitutions from outer scope
 	for name, val := range inner {
 		if _, ok := scope[name]; ok {
 			// Variable name exists in outer scope, do not
@@ -72,11 +78,7 @@ func newScope(outer, inner map[string]string, auto bool) map[string]string {
 	return scope
 }
 
-// Execute the raw suite rs and capture the outcome in a Suite.
-func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar) *Suite {
-	now := time.Now()
-	now = now.Add(-time.Duration(now.Nanosecond()))
-
+func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
 	// Create cookie jar if needed.
 	if rs.KeepCookies {
 		if jar == nil {
@@ -87,80 +89,186 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar) *Suite
 		jar = nil
 	}
 
-	suiteScope := newScope(global, rs.Variables, true)
-	suiteScope["SUITE_DIR"] = rs.File.Dirname()
-	suiteScope["SUITE_NAME"] = rs.File.Basename()
-	replacer := VarReplacer(suiteScope)
+	if logger == nil {
+		logger = log.New(ioutil.Discard, "", 0)
+	}
 
 	suite := &Suite{
-		Name:        replacer.Replace(rs.Name),
-		Description: replacer.Replace(rs.Description),
 		KeepCookies: rs.KeepCookies,
 
-		Status:   ht.NotRun,
-		Error:    nil,
-		Started:  now,
-		Duration: 0,
+		Status: ht.NotRun,
+		Error:  nil,
 
 		Tests: make([]*ht.Test, 0, len(rs.tests)),
 
 		Variables:      make(map[string]string),
 		FinalVariables: make(map[string]string),
 		Jar:            jar,
+		Log:            logger,
 	}
-	for n, v := range suiteScope {
+
+	suite.scope = newScope(global, rs.Variables, true)
+	suite.scope["SUITE_DIR"] = rs.File.Dirname()
+	suite.scope["SUITE_NAME"] = rs.File.Basename()
+	replacer := VarReplacer(suite.scope)
+
+	suite.Name = replacer.Replace(rs.Name)
+	suite.Description = replacer.Replace(rs.Description)
+
+	for n, v := range suite.scope {
 		suite.Variables[n] = v
 	}
 
-	setup, main := len(rs.Setup), len(rs.Main)
+	return suite
+}
 
-	for i, rt := range rs.tests {
-		fmt.Printf("Executing Test %q (%s)\n", rt.Name, rt.File.Name)
-		callScope := newScope(suiteScope, rt.contextVars, true)
+// Execute the raw suite rs and capture the outcome in a Suite.
+func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
+	setup, main := len(rs.Setup), len(rs.Main)
+	i := 0
+	executor := func(test *ht.Test) error {
+		i++
+		if i <= setup {
+			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i)
+		} else if i <= setup+main {
+			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup)
+		} else {
+			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main)
+		}
+
+		if test.Status == ht.Bogus || test.Status == ht.Skipped {
+			return nil
+		}
+
+		if !rs.tests[i-1].IsEnabled() {
+			test.Status = ht.Skipped
+			return nil
+		}
+
+		test.Run()
+		if test.Status > ht.Pass && i <= setup {
+			return ErrSkipExecution
+		}
+		return nil
+	}
+
+	// Overall Suite status is computetd from Setup and Main tests only.
+	suite := rs.Iterate(global, jar, logger, executor)
+	status := ht.NotRun
+	errors := ht.ErrorList{}
+	for i := 0; i < setup+main && i < len(suite.Tests); i++ {
+		if ts := suite.Tests[i].Status; ts > status {
+			status = ts
+		}
+		if err := suite.Tests[i].Error; err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	suite.Status = status
+	if len(errors) == 0 {
+		suite.Error = nil
+	} else {
+		suite.Error = errors
+	}
+
+	return suite
+}
+
+var (
+	ErrAbortExecution = errors.New("Abort Execution")
+	ErrSkipExecution  = errors.New("Skip further Tests")
+)
+
+type Executor func(test *ht.Test) error
+
+func (rs *RawSuite) Iterate(global map[string]string, jar *cookiejar.Jar, logger *log.Logger, executor Executor) *Suite {
+	suite := NewFromRaw(rs, global, jar, logger)
+	now := time.Now()
+	now = now.Add(-time.Duration(now.Nanosecond()))
+	suite.Started = now
+
+	if logger == nil {
+		logger = log.New(ioutil.Discard, "", 0)
+	}
+
+	var exstat error
+
+	for _, rt := range rs.tests {
+		logger.Printf("Executing Test %q\n", rt.File.Name)
+		callScope := newScope(suite.scope, rt.contextVars, true)
 		testScope := newScope(callScope, rt.Variables, false)
 		testScope["TEST_DIR"] = rt.File.Dirname()
 		testScope["TEST_NAME"] = rt.File.Basename()
 		test, err := rt.ToTest(testScope)
-
-		if i < setup {
-			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i+1)
-		} else if i < setup+main {
-			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup+1)
-		} else {
-			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main+1)
-		}
-
 		if err != nil {
 			test.Status = ht.Bogus
 			test.Error = err
-		} else if shouldRun(i, rs, suite) {
-			test.Jar = jar
-			test.Run()
-			if i < setup+main {
-				updateSuite(test, suite)
-			}
-			updateVariables(test, suiteScope)
-		} else {
+		}
+		if exstat == ErrSkipExecution {
 			test.Status = ht.Skipped
 		}
 
-		fmt.Printf("%s test %q (%s)",
-			strings.ToUpper(test.Status.String()), test.Name, rt.File.Name)
-		if test.Status > ht.Pass {
-			fmt.Println(" ==> ", test.Error)
-		} else {
-			fmt.Println()
+		test.Jar = suite.Jar
+		test.Execution.Verbosity = rs.Verbosity
+		test.Log = logger
+
+		exstat = executor(test)
+		if test.Status == ht.Pass {
+			suite.updateVariables(test)
 		}
+
+		if test.Status > ht.Pass {
+			logger.Printf("%s test %q (%s) ==> %s",
+				strings.ToUpper(test.Status.String()), test.Name,
+				rt.File.Name, test.Error)
+		} else {
+			logger.Printf("%s test %q (%s)",
+				strings.ToUpper(test.Status.String()), test.Name, rt.File.Name)
+		}
+
 		suite.Tests = append(suite.Tests, test)
+
+		if exstat == ErrAbortExecution {
+			break
+		}
 	}
 	suite.Duration = time.Since(suite.Started)
 	clip := suite.Duration.Nanoseconds() % 1000000
 	suite.Duration -= time.Duration(clip)
-	for n, v := range suiteScope {
+	for n, v := range suite.scope {
 		suite.FinalVariables[n] = v
 	}
 
 	return suite
+}
+
+func (s *Suite) updateVariables(test *ht.Test) {
+	if test.Status != ht.Pass {
+		return
+	}
+
+	for varname, value := range test.Extract() {
+		if old, ok := s.scope[varname]; ok {
+			s.Log.Printf("Updating variable %q from %q to %q\n",
+				varname, old, value)
+		} else {
+			s.Log.Printf("Setting new variable %q to %q\n",
+				varname, value)
+		}
+		s.scope[varname] = value
+	}
+}
+
+func (suite *Suite) updateStatus(test *ht.Test) {
+	if test.Status <= suite.Status {
+		return
+	}
+
+	suite.Status = test.Status
+	if test.Error != nil {
+		suite.Error = test.Error
+	}
 }
 
 // Stats counts the test results of s.

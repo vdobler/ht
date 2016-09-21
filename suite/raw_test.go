@@ -44,9 +44,9 @@ func TestRawErrorReporting(t *testing.T) {
 	if err == nil {
 		t.Fatalf("no error")
 	}
-	want := "file testdata/wrong.ht not valid hjson: Found a punctuator character '}' when excpecting a quoteless string (check your syntax) at line 9,15 >>>     Checks: [ } }\n"
+	want := "file testdata/wrong.ht not valid hjson: Found a punctuator character '}' when expecting a quoteless string (check your syntax) at line 9,15 >>>     Checks: [ } }\n"
 	if got := err.Error(); got != want {
-		t.Errorf("Got:  %q\n,Want: %q", got, want)
+		t.Errorf("\nGot:  %q\nWant: %q", got, want)
 	}
 }
 
@@ -159,7 +159,7 @@ func TestRawSuiteExecute(t *testing.T) {
 		"DOMAIN": "localhost:9090",
 	}
 
-	s := raw.Execute(vars, nil)
+	s := raw.Execute(vars, nil, logger())
 	fmt.Println("STATUS ==", s.Status, s.Error)
 	// pp("Suite", s)
 
@@ -279,7 +279,7 @@ func TestChecklist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	want := `[{Check:"StatusCode",Expect:404}, {Check:"Body",Contains:"foobar"}, {Check:"UTF8Encoded"}, {Check:"None",Of:[{Check:"StatusCode",Expect:303},{Check:"Body",Contains:"helloworld"},{Check:"UTF8Encoded"}]}]`
+	want := `[{"Check":"StatusCode","Expect":404}, {"Check":"Body","Contains":"foobar"}, {"Check":"UTF8Encoded"}, {"Check":"None","Of":[{"Check":"StatusCode","Expect":303},{"Check":"Body","Contains":"helloworld"},{"Check":"UTF8Encoded"}]}]`
 	if string(enc) != want {
 		t.Errorf("got  %s\nwat %s", enc, want)
 	}

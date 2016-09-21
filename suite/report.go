@@ -100,29 +100,20 @@ var htmlTestTmpl = `{{define "TEST"}}
           {{.Response.Response.Proto}} <strong>{{.Response.Response.Status}}</strong>
         {{end}}
       </code></div>
-      <div>
-        {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
-        {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
-        {{if .Request.SentParams}}{{template "FORMDATA" .Request.SentParams}}{{end}}
-        <br/>
-      </div>
       <div class="summary">
         <pre class="description">{{.Description}}</pre>
 	Started: {{.Started}}<br/>
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
         Request Duration: {{.Duration}} <br/>
-        {{if .Variables}}Variables:<br/>
-          {{range $k, $v := .Variables}}
-            <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
-          {{end}}
-        {{end}}
-        {{if .ExValues}}Extractions:<br/>
-          {{range $k, $v := .ExValues}}
-            <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
-          {{end}}
-        {{end}}
         {{if .Error}}<br/><strong>Error:</strong> {{.Error}}{{end}}<br/>
+      </div>
+      <div>
+        {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
+        {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
+        {{if .Request.SentParams}}{{template "FORMDATA" .Request.SentParams}}{{end}}
+        {{if or .Variables .ExValues}}{{template "VARIABLES" .}}{{end}}
+        <br/>
       </div>
       {{if eq .Status 2 3 4 5}}{{if .CheckResults}}
         <div class="checks">
@@ -207,6 +198,30 @@ var htmlFormdataTmpl = `{{define "FORMDATA"}}
 {{end}}
 `
 
+var htmlVariablesTmpl = `{{define "VARIABLES"}}
+<div class="toggle2">
+  <div class="expanded2">
+    <h3 class="toggleButton2">Variables ▾</h3>
+    <div class="variableDetail">
+        {{if .Variables}}Variables:<br/>
+          {{range $k, $v := .Variables}}
+            <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
+          {{end}}
+        {{end}}
+        {{if .ExValues}}Extractions:<br/>
+          {{range $k, $v := .ExValues}}
+            <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
+          {{end}}
+        {{end}}
+    </div>
+  </div>
+  <div class="collapsed2">
+    <h3 class="toggleButton2">Variables ▹</h3>
+  </div>
+</div>
+{{end}}
+`
+
 var defaultSuiteTmpl = `{{Box (printf "%s: %s" (ToUpper .Status.String) .Name) ""}}{{if .Error}}
 Error: {{.Error}}{{end}}
 Started: {{.Started}}   Duration: {{.Duration}}
@@ -233,6 +248,8 @@ var htmlStyleTmpl = `{{define "STYLE"}}
 .toggle2 .expanded2 { display: none; }
 .toggleVisible2 .collapsed2 { display: none; }
 .toggleVisible2 .expanded2 { display: block; }
+
+.summary { padding-top: 1ex; }
 
 h2 { 
   margin-top: 0.5em;
@@ -394,6 +411,7 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlRequestTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlHeaderTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlFormdataTmpl))
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlVariablesTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlJavascriptTmpl))
 }

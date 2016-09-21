@@ -151,7 +151,6 @@ func loadSuites(args []string) []*suite.RawSuite {
 		// }
 		err = s.Validate(variablesFlag)
 		if err != nil {
-			fmt.Printf("%#v\n", err)
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(8)
 		}
@@ -226,24 +225,21 @@ func mustAtoi(s string) int {
 	return n
 }
 
-/*
 // set (-verbosity) or increase (-v ... -vvvv) test verbosities of s.
-func setVerbosity(s *suite.RawSuite) {
-	for i := range s.Tests {
-		if verbosity != -99 {
-			s.Tests[i].Verbosity = verbosity
-		} else if vvvv {
-			s.Tests[i].Verbosity += 4
-		} else if vvv {
-			s.Tests[i].Verbosity += 3
-		} else if vv {
-			s.Tests[i].Verbosity += 2
-		} else if v {
-			s - Tests[i].Verbosity += 1
-		}
+func setVerbosity(rs *suite.RawSuite) {
+	if verbosity != -99 {
+		rs.Verbosity = verbosity
+	} else if vvvv {
+		rs.Verbosity += 4
+	} else if vvv {
+		rs.Verbosity += 3
+	} else if vv {
+		rs.Verbosity += 2
+	} else if v {
+		rs.Verbosity += 1
 	}
 }
-*/
+
 // loadTests loads single Tests and combines them into an artificial
 // Suite, ready for execution. Unrolling happens, but only the first
 // unrolled test gets included into the suite.

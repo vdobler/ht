@@ -6,11 +6,21 @@ package suite
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"testing"
 )
+
+func logger() *log.Logger {
+	if testing.Verbose() {
+		return log.New(os.Stdout, "", 0)
+	}
+
+	return log.New(ioutil.Discard, "", 0)
+}
 
 // Variables in outer scopes dominate those in inner scopes.
 func TestVariableDominance(t *testing.T) {
@@ -52,7 +62,7 @@ func TestVariableDominance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	s := rs.Execute(globals, nil)
+	s := rs.Execute(globals, nil, logger())
 
 	if s.Tests[0].Variables["A"] != "local" ||
 		s.Tests[0].Variables["B"] != "call" ||
@@ -100,7 +110,7 @@ func TestVariableHanddown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	s := rs.Execute(globals, nil)
+	s := rs.Execute(globals, nil, logger())
 
 	if s.Tests[0].Variables["A"] != "call-a" ||
 		s.Tests[0].Variables["B"] != "test-c" ||
@@ -160,7 +170,7 @@ func TestAutomaticVariables(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	s := rs.Execute(globals, nil)
+	s := rs.Execute(globals, nil, logger())
 
 	want1 := "SuiteCount=1 SuiteRand=131682 "
 	want1 += "CallCount=2 CallRand=858315 "
@@ -224,7 +234,7 @@ func TestVariableExtraction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	s := rs.Execute(nil, nil)
+	s := rs.Execute(nil, nil, logger())
 
 	if s.FinalVariables["A"] != "fixed-A" ||
 		s.FinalVariables["B"] != "B B B B" ||
