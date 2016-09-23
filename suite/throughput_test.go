@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -114,6 +115,37 @@ var tpSuiteFast = `
     Checks: [ {Check: "StatusCode", Expect: 200} ]
 }
 `
+var tpSuiteSlooow = `
+{
+    Name: Slooow Suite
+    Main: [
+        { File: "testG.ht" }
+        { File: "testH.ht" }
+        { File: "testI.ht" }
+    ]
+}
+
+# testG.ht
+{
+    Name: Test G
+    Request: { URL: "{{URL}}?mean=120&stdd=2" }
+    Checks: [ {Check: "StatusCode", Expect: 200} ]
+}
+
+# testH.ht
+{
+    Name: Test H
+    Request: { URL: "{{URL}}?mean=110&stdd=3" }
+    Checks: [ {Check: "StatusCode", Expect: 200} ]
+}
+
+# testI.ht
+{
+    Name: Test I
+    Request: { URL: "{{URL}}?mean=100&stdd=4" }
+    Checks: [ {Check: "StatusCode", Expect: 200} ]
+}
+`
 
 func TestThroughput(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(waitHandler))
@@ -129,12 +161,44 @@ func TestThroughput(t *testing.T) {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	suites := []*RawSuite{slow, fast}
+	slooow, err := ParseRawSuite(tpSuiteSlooow)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	scenarios := []Scenario{
+		Scenario{RawSuite: fast, Percentage: 40},
+		Scenario{RawSuite: slow, Percentage: 40},
+		Scenario{RawSuite: slooow, Percentage: 20},
+	}
+
 	globals := map[string]string{
 		"URL": ts.URL,
 	}
 
-	data := Throughput(suites, 200, 10*time.Second, globals)
+	data, err := Throughput(scenarios, 75, 3*time.Second, globals)
+	if err != nil {
+		fmt.Println("==> ", err.Error())
+	}
+
+	cnt := make(map[string]int)
+	for _, d := range data {
+		part := strings.SplitN(d.ID, " ", 2)
+		Q := strings.SplitN(part[1], "\u2237", 2)
+		cnt[Q[0]] = cnt[Q[0]] + 1
+	}
+
+	N := float64(len(data))
+	fastP := float64(cnt["Fast Suite"]) / N
+	slowP := float64(cnt["Slow Suite"]) / N
+	slooowP := float64(cnt["Slooow Suite"]) / N
+	if fastP < 0.35 || fastP > 0.45 ||
+		slowP < 0.35 || slowP > 0.45 ||
+		slooowP < 0.15 || slooowP > 0.25 {
+		t.Errorf("Bad distribution of scenarios: fast=%f slow=%f slooow=%f",
+			fastP, slowP, slooowP)
+	}
+	fmt.Println("Recorded ", len(data), "points")
 
 	file, err := os.Create("testdata/throughput.csv")
 	if err != nil {
@@ -155,11 +219,11 @@ colScale <- scale_colour_manual(name = "status",values = myColors)
 fillScale <- scale_fill_manual(name = "status",values = myColors)
 
 p <- ggplot(d, aes(x=Elapsed, y=ReqDuration, colour=Test))
-p <- p + geom_point()
+p <- p + geom_point(size=3)
 ggsave("scatter.png", plot=p, width=10, height=8, dpi=100)
 
 p <- ggplot(d, aes(x=Elapsed, y=ReqDuration, colour=Status))
-p <- p + geom_point()
+p <- p + geom_point(size=3)
 p <- p + colScale
 ggsave("status.png", plot=p, width=10, height=8, dpi=100)
 
