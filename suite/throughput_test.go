@@ -7,6 +7,7 @@ package suite
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -27,8 +28,13 @@ func waitHandler(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(s)
 
 	status := http.StatusOK
-	if rand.Intn(100) < 10 {
+	if rand.Intn(200) < 6 {
 		status = http.StatusBadRequest
+	}
+
+	dv, exp := r.FormValue("dyn"), r.FormValue("exp")
+	if dv != exp {
+		http.Error(w, "Bad dyn value", http.StatusForbidden)
 	}
 
 	http.Error(w, fmt.Sprintf("Slept for %s", s), status)
@@ -95,10 +101,22 @@ var tpSuiteSlow = `
 var tpSuiteFast = `
 {
     Name: Fast Suite
+    Setup: [
+        { File: "testX.ht" }
+        { File: "setup.ht" }
+        { File: "testY.ht", Variables: { "dyn": "{{DYNAMICVAL}}" } }
+    ]
     Main: [
+        { File: "testX.ht" }
+        { File: "testY.ht", Variables: { "dyn": "{{DYNAMICVAL}}" }  }
+    ]
+    Teardown: [
         { File: "testX.ht" }
         { File: "testY.ht" }
     ]
+    Variables: {
+        DYNAMICVAL: "bar999"
+    }
 }
 
 # testX.ht
@@ -111,8 +129,18 @@ var tpSuiteFast = `
 # testY.ht
 {
     Name: Test Y
-    Request: { URL: "{{URL}}?mean=25&stdd=5" }
+    Request: { URL: "{{URL}}?mean=25&stdd=5&dyn={{dyn}}&exp=foo123" }
     Checks: [ {Check: "StatusCode", Expect: 200} ]
+}
+
+# setup.ht
+{
+    Name: Setup for fast
+    Request: { URL: "{{URL}}" }
+    Checks: [ {Check: "StatusCode", Expect: 200} ]
+    VarEx: {
+        DYNAMICVAL: {Extractor: "SetVariable", To: "foo123"}
+    }
 }
 `
 var tpSuiteSlooow = `
@@ -128,21 +156,24 @@ var tpSuiteSlooow = `
 # testG.ht
 {
     Name: Test G
-    Request: { URL: "{{URL}}?mean=120&stdd=2" }
-    Checks: [ {Check: "StatusCode", Expect: 200} ]
+    Request: { URL: "{{URL}}?mean=120&stdd=5" }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ResponseTime", Lower: "126ms"}
+    ]
 }
 
 # testH.ht
 {
     Name: Test H
-    Request: { URL: "{{URL}}?mean=110&stdd=3" }
+    Request: { URL: "{{URL}}?mean=110&stdd=8" }
     Checks: [ {Check: "StatusCode", Expect: 200} ]
 }
 
 # testI.ht
 {
     Name: Test I
-    Request: { URL: "{{URL}}?mean=100&stdd=4" }
+    Request: { URL: "{{URL}}?mean=100&stdd=12" }
     Checks: [ {Check: "StatusCode", Expect: 200} ]
 }
 `
@@ -166,8 +197,10 @@ func TestThroughput(t *testing.T) {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
+	logger := log.New(os.Stdout, "", 0)
+
 	scenarios := []Scenario{
-		Scenario{RawSuite: fast, Percentage: 40},
+		Scenario{RawSuite: fast, Percentage: 40, Log: logger},
 		Scenario{RawSuite: slow, Percentage: 40},
 		Scenario{RawSuite: slooow, Percentage: 20},
 	}
@@ -176,16 +209,23 @@ func TestThroughput(t *testing.T) {
 		"URL": ts.URL,
 	}
 
-	data, err := Throughput(scenarios, 75, 3*time.Second, globals)
+	data, failures, err := Throughput(scenarios, 100, 4*time.Second, globals)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
 
+	fmt.Println("\n   FAILURES\n=================\n")
+	PrintSuiteReport(os.Stdout, failures)
+	err = HTMLReport("./testdata", failures)
+	if err != nil {
+		log.Panic(err)
+	}
+
 	cnt := make(map[string]int)
 	for _, d := range data {
-		part := strings.SplitN(d.ID, " ", 2)
-		Q := strings.SplitN(part[1], "\u2237", 2)
-		cnt[Q[0]] = cnt[Q[0]] + 1
+		parts := strings.SplitN(d.ID, IDSep, 3)
+		sn := parts[1]
+		cnt[sn] = cnt[sn] + 1
 	}
 
 	N := float64(len(data))

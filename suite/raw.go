@@ -7,11 +7,13 @@ package suite
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/populate"
@@ -529,6 +531,60 @@ func (rs *RawSuite) Validate(variables map[string]string) error {
 	}
 
 	return nil
+}
+
+// Execute the raw suite rs and capture the outcome in a Suite.
+func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
+	suite := NewFromRaw(rs, global, jar, logger)
+	setup, main := len(rs.Setup), len(rs.Main)
+	i := 0
+	executor := func(test *ht.Test) error {
+		i++
+		if i <= setup {
+			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i)
+		} else if i <= setup+main {
+			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup)
+		} else {
+			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main)
+		}
+
+		if test.Status == ht.Bogus || test.Status == ht.Skipped {
+			return nil
+		}
+
+		if !rs.tests[i-1].IsEnabled() {
+			test.Status = ht.Skipped
+			return nil
+		}
+		// test.Execution.Verbosity = 2
+		test.Run()
+		if test.Status > ht.Pass && i <= setup {
+			return ErrSkipExecution
+		}
+		return nil
+	}
+
+	// Overall Suite status is computetd from Setup and Main tests only.
+	suite.Iterate(executor)
+	status := ht.NotRun
+	errors := ht.ErrorList{}
+	for i := 0; i < setup+main && i < len(suite.Tests); i++ {
+		if ts := suite.Tests[i].Status; ts > status {
+			status = ts
+		}
+		if err := suite.Tests[i].Error; err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	suite.Status = status
+	if len(errors) == 0 {
+		suite.Error = nil
+	} else {
+		suite.Error = errors
+	}
+
+	return suite
 }
 
 // ----------------------------------------------------------------------------

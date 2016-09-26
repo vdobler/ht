@@ -8,51 +8,127 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/bender"
 )
 
+// Scenario to run in a throughput test.
 type Scenario struct {
-	RawSuite   *RawSuite
+	// RawSuite is the suite to execute repeatedly to generate lod.
+	*RawSuite
+
+	// Percentage of requests in the load test taken from this Scenario.
 	Percentage int
+
+	Log *log.Logger
+
+	globals map[string]string
+	jar     *cookiejar.Jar
+}
+
+func (sc *Scenario) Setup(globals map[string]string) *Suite {
+	suite := NewFromRaw(sc.RawSuite, globals, sc.jar, sc.Log)
+	// Cap tests to setup-tests.
+	suite.tests = suite.tests[:len(sc.RawSuite.Setup)]
+	i := 0
+	executor := func(test *ht.Test) error {
+		i++
+		test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i)
+		if test.Status == ht.Bogus || test.Status == ht.Skipped {
+			return nil
+		}
+		if !sc.RawSuite.tests[i-1].IsEnabled() {
+			test.Status = ht.Skipped
+			return nil
+		}
+		test.Run()
+		if test.Status > ht.Pass {
+			return ErrAbortExecution
+		}
+		return nil
+	}
+	suite.Iterate(executor)
+	sc.jar = suite.Jar
+	sc.globals = suite.FinalVariables
+
+	return suite
+}
+
+func (sc *Scenario) Teardown() *Suite {
+	suite := NewFromRaw(sc.RawSuite, sc.globals, sc.jar, sc.Log)
+	// Cap tests to setup-tests.
+	suite.tests = suite.tests[len(suite.tests)-len(sc.RawSuite.Teardown):]
+	i := 0
+	executor := func(test *ht.Test) error {
+		i++
+		test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i)
+		if test.Status == ht.Bogus || test.Status == ht.Skipped {
+			return nil
+		}
+		if !sc.RawSuite.tests[i-1].IsEnabled() {
+			test.Status = ht.Skipped
+			return nil
+		}
+		test.Run()
+		return nil
+	}
+	suite.Iterate(executor)
+	sc.jar = suite.Jar
+	sc.globals = suite.FinalVariables
+
+	return suite
 }
 
 type pool struct {
-	No       int
-	Chan     chan bender.Test
-	RawSuite *RawSuite
-	Threads  int
-	wg       *sync.WaitGroup
-	mu       *sync.Mutex
+	Scenario
+	No      int
+	Chan    chan bender.Test
+	Threads int
+	wg      *sync.WaitGroup
+	mu      *sync.Mutex
 }
 
-func (p *pool) newThread(stop chan bool, globals map[string]string) {
+var IDSep = "\u2237"
+
+func (p *pool) newThread(stop chan bool) {
 	p.mu.Lock()
 	p.Threads++
 	fmt.Printf("%s, Thread %d: Start\n",
-		p.RawSuite.Name, p.Threads)
+		p.Scenario.RawSuite.Name, p.Threads)
 	p.wg.Add(1)
 
 	go func(thread int) {
+		// Thread-local copy of globals; shared over all repetitions.
+		thglobals := make(map[string]string, len(p.globals)+2)
+		for n, v := range p.globals {
+			thglobals[n] = v
+		}
+		thglobals["THREAD"] = strconv.Itoa(thread)
+
 		n := 1
 		done := false
 		for !done {
+			thglobals["REPETITION"] = strconv.Itoa(n)
 			executed := make(chan bool)
 
 			t := 0
 			executor := func(test *ht.Test) error {
 				t++
-				test.Name = fmt.Sprintf("%d/%d/%d/%d %s\u2237%s",
-					p.No, thread, n, t, p.RawSuite.Name, test.Name)
+				test.Name = fmt.Sprintf("%d/%d/%d/%d%s%s%s%s",
+					p.No, thread, n, t, IDSep,
+					p.Scenario.RawSuite.Name, IDSep, test.Name)
 
 				test.Reporting.SeqNo = test.Name
 
-				if !p.RawSuite.tests[t-1].IsEnabled() {
+				if !p.Scenario.RawSuite.tests[t-1].IsEnabled() {
 					test.Status = ht.Skipped
 					return nil
 				}
@@ -66,7 +142,11 @@ func (p *pool) newThread(stop chan bool, globals map[string]string) {
 
 				return nil
 			}
-			p.RawSuite.Iterate(globals, nil, nil, executor)
+			// BUG/TDOD: make a copy of p.jar per thread.
+			suite := NewFromRaw(p.Scenario.RawSuite, thglobals, p.jar, p.Log)
+			nSetup, nMain := len(p.Scenario.RawSuite.Setup), len(p.Scenario.RawSuite.Main)
+			suite.tests = suite.tests[nSetup : nSetup+nMain]
+			suite.Iterate(executor)
 			n += 1
 		}
 		p.wg.Done()
@@ -81,14 +161,14 @@ func makeRequest(scenarios []Scenario, rate float64, globals map[string]string, 
 	j := 0
 	for i, s := range scenarios {
 		pool := pool{
+			Scenario: s,
 			No:       i + 1,
 			Chan:     make(chan bender.Test),
-			RawSuite: s.RawSuite,
 			wg:       &sync.WaitGroup{},
 			mu:       &sync.Mutex{},
 		}
 		pools[i] = &pool
-		pools[i].newThread(stop, globals)
+		pools[i].newThread(stop)
 		for k := 0; k < s.Percentage; k++ {
 			if j+k > 99 {
 				return nil, fmt.Errorf("suite: sum of Percentage greater than 100%%")
@@ -102,7 +182,6 @@ func makeRequest(scenarios []Scenario, rate float64, globals map[string]string, 
 	}
 
 	gracetime := time.Second / time.Duration(5*rate)
-	fmt.Println(gracetime)
 	go func() {
 		for {
 			rn := rand.Intn(100)
@@ -113,7 +192,7 @@ func makeRequest(scenarios []Scenario, rate float64, globals map[string]string, 
 				return
 			case test = <-pool.Chan:
 			default:
-				pool.newThread(stop, globals)
+				pool.newThread(stop)
 				time.Sleep(gracetime)
 				continue
 			}
@@ -125,18 +204,30 @@ func makeRequest(scenarios []Scenario, rate float64, globals map[string]string, 
 
 	// Pre-start second thread, just to be ready
 	for i := range scenarios {
-		pools[i].newThread(stop, globals)
+		pools[i].newThread(stop)
 	}
 
 	return pools, nil
 }
 
-func Throughput(scenarios []Scenario, rate float64, duration time.Duration, globals map[string]string) ([]bender.TestData, error) {
+func Throughput(scenarios []Scenario, rate float64, duration time.Duration, globals map[string]string) ([]bender.TestData, *Suite, error) {
+	for i := range scenarios {
+		// Setup must be called for all scenarios!
+		fmt.Printf("Running Setup of scenario %d %s\n", i+1, scenarios[i].RawSuite.Name)
+		ss := (&scenarios[i]).Setup(globals)
+		if ss.Error != nil {
+			return nil, ss, fmt.Errorf("Setup of scenario %d %q failed: %s",
+				i+1, scenarios[i].RawSuite.Name, ss.Error)
+		}
+	}
+
 	fmt.Printf("Starting Throughput test for %s at average of %.1f requests/second\n", duration, rate)
 	recorder := make(chan bender.Event)
 	data := make([]bender.TestData, 0, 1000)
 	dataRecorder := bender.NewDataRecorder(&data)
-	go bender.Record(recorder, dataRecorder)
+	failures := make([]*ht.Test, 0, 1000)
+	failureRecorder := bender.NewFailureRecorder(&failures)
+	go bender.Record(recorder, dataRecorder, failureRecorder)
 
 	request := make(chan bender.Test, len(scenarios))
 	stop := make(chan bool)
@@ -144,7 +235,7 @@ func Throughput(scenarios []Scenario, rate float64, duration time.Duration, glob
 
 	pools, err := makeRequest(scenarios, rate, globals, request, stop)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	bender.LoadTestThroughput(intervals, request, recorder)
@@ -153,14 +244,35 @@ func Throughput(scenarios []Scenario, rate float64, duration time.Duration, glob
 	fmt.Println("Finished Throughput test.")
 	for _, p := range pools {
 		fmt.Printf("Waiting for pool %d (%d threads) %s\n",
-			p.No, p.Threads, p.RawSuite.Name)
+			p.No, p.Threads, p.Scenario.RawSuite.Name)
 		p.wg.Wait()
 	}
 	close(request)
 	time.Sleep(50 * time.Millisecond)
 
 	err = analyseOverage(data)
-	return data, err
+	for i := range scenarios {
+		if len(scenarios[i].RawSuite.Teardown) == 0 {
+			continue
+		}
+		fmt.Printf("Running Teardwon of scenario %d %s\n", i+1, scenarios[i].RawSuite.Name)
+		(&scenarios[i]).Teardown()
+	}
+
+	return data, makeFailureSuite(failures), err
+}
+
+func makeFailureSuite(failures []*ht.Test) *Suite {
+	suite := Suite{
+		Name:  "Throughput Failures",
+		Tests: failures,
+	}
+	for i := range suite.Tests {
+		suite.Tests[i].Name = suite.Tests[i].Reporting.SeqNo
+		suite.Tests[i].Reporting.SeqNo = fmt.Sprintf("Failure-%03d", i)
+	}
+
+	return &suite
 }
 
 func analyseOverage(data []bender.TestData) error {
@@ -213,12 +325,12 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 		"Wait",
 		"Overage",
 		"ID",
+		"Suite",
+		"Test",
 		"SuiteNo",
 		"ThreadNo",
 		"Repetition",
 		"TestNo",
-		"Suite",
-		"Test",
 		"Error",
 	}
 	err := writer.Write(header)
@@ -247,12 +359,10 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 		r = append(r, fmt.Sprintf("%.1f", dToMs(d.Wait)))
 		r = append(r, fmt.Sprintf("%.1f", dToMs(d.Overage)))
 
-		part := strings.SplitN(d.ID, " ", 2)
-		r = append(r, part[0])
-		P := strings.SplitN(part[0], "/", 4)
-		r = append(r, P...)
-		Q := strings.SplitN(part[1], "\u2237", 2)
-		r = append(r, Q...)
+		part := strings.SplitN(d.ID, IDSep, 3)
+		r = append(r, part...)
+		nums := strings.SplitN(part[0], "/", 4)
+		r = append(r, nums...)
 		if d.Error != nil {
 			r = append(r, d.Error.Error())
 		} else {

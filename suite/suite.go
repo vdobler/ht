@@ -37,6 +37,7 @@ type Suite struct {
 	Log            *log.Logger
 
 	scope map[string]string
+	tests []*RawTest
 }
 
 func shouldRun(t int, rs *RawSuite, s *Suite) bool {
@@ -55,7 +56,7 @@ func shouldRun(t int, rs *RawSuite, s *Suite) bool {
 
 func newScope(outer, inner map[string]string, auto bool) map[string]string {
 	// 1. Copy of outer scope
-	scope := make(map[string]string, len(outer)+10)
+	scope := make(map[string]string, len(outer)+len(inner)+2)
 	for gn, gv := range outer {
 		scope[gn] = gv
 	}
@@ -78,6 +79,7 @@ func newScope(outer, inner map[string]string, auto bool) map[string]string {
 	return scope
 }
 
+// NewFromRaw sets up a new Suite from rs, read to be Iterated.
 func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
 	// Create cookie jar if needed.
 	if rs.KeepCookies {
@@ -105,6 +107,7 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 		FinalVariables: make(map[string]string),
 		Jar:            jar,
 		Log:            logger,
+		tests:          rs.tests,
 	}
 
 	suite.scope = newScope(global, rs.Variables, true)
@@ -122,80 +125,28 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 	return suite
 }
 
-// Execute the raw suite rs and capture the outcome in a Suite.
-func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
-	setup, main := len(rs.Setup), len(rs.Main)
-	i := 0
-	executor := func(test *ht.Test) error {
-		i++
-		if i <= setup {
-			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i)
-		} else if i <= setup+main {
-			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup)
-		} else {
-			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main)
-		}
-
-		if test.Status == ht.Bogus || test.Status == ht.Skipped {
-			return nil
-		}
-
-		if !rs.tests[i-1].IsEnabled() {
-			test.Status = ht.Skipped
-			return nil
-		}
-
-		test.Run()
-		if test.Status > ht.Pass && i <= setup {
-			return ErrSkipExecution
-		}
-		return nil
-	}
-
-	// Overall Suite status is computetd from Setup and Main tests only.
-	suite := rs.Iterate(global, jar, logger, executor)
-	status := ht.NotRun
-	errors := ht.ErrorList{}
-	for i := 0; i < setup+main && i < len(suite.Tests); i++ {
-		if ts := suite.Tests[i].Status; ts > status {
-			status = ts
-		}
-		if err := suite.Tests[i].Error; err != nil {
-			errors = append(errors, err)
-		}
-	}
-
-	suite.Status = status
-	if len(errors) == 0 {
-		suite.Error = nil
-	} else {
-		suite.Error = errors
-	}
-
-	return suite
-}
+// An executor is responsible for executing the given test during the
+// Iterate'ion of a Suite. It should return nil if execution should continue
+// and Err{Abort,Skip}Execution to stop further iteration.
+type Executor func(test *ht.Test) error
 
 var (
 	ErrAbortExecution = errors.New("Abort Execution")
 	ErrSkipExecution  = errors.New("Skip further Tests")
 )
 
-type Executor func(test *ht.Test) error
-
-func (rs *RawSuite) Iterate(global map[string]string, jar *cookiejar.Jar, logger *log.Logger, executor Executor) *Suite {
-	suite := NewFromRaw(rs, global, jar, logger)
+// Iterate the suite through the given executor.
+func (suite *Suite) Iterate(executor Executor) {
 	now := time.Now()
 	now = now.Add(-time.Duration(now.Nanosecond()))
 	suite.Started = now
 
-	if logger == nil {
-		logger = log.New(ioutil.Discard, "", 0)
-	}
-
 	var exstat error
+	overall := ht.NotRun
+	errors := ht.ErrorList{}
 
-	for _, rt := range rs.tests {
-		logger.Printf("Executing Test %q\n", rt.File.Name)
+	for _, rt := range suite.tests {
+		suite.Log.Printf("Executing Test %q\n", rt.File.Name)
 		callScope := newScope(suite.scope, rt.contextVars, true)
 		testScope := newScope(callScope, rt.Variables, false)
 		testScope["TEST_DIR"] = rt.File.Dirname()
@@ -210,8 +161,8 @@ func (rs *RawSuite) Iterate(global map[string]string, jar *cookiejar.Jar, logger
 		}
 
 		test.Jar = suite.Jar
-		test.Execution.Verbosity = rs.Verbosity
-		test.Log = logger
+		// test.Execution.Verbosity = rs.Verbosity
+		test.Log = suite.Log
 
 		exstat = executor(test)
 		if test.Status == ht.Pass {
@@ -219,15 +170,21 @@ func (rs *RawSuite) Iterate(global map[string]string, jar *cookiejar.Jar, logger
 		}
 
 		if test.Status > ht.Pass {
-			logger.Printf("%s test %q (%s) ==> %s",
+			suite.Log.Printf("%s test %q (%s) ==> %s",
 				strings.ToUpper(test.Status.String()), test.Name,
 				rt.File.Name, test.Error)
 		} else {
-			logger.Printf("%s test %q (%s)",
+			suite.Log.Printf("%s test %q (%s)",
 				strings.ToUpper(test.Status.String()), test.Name, rt.File.Name)
 		}
 
 		suite.Tests = append(suite.Tests, test)
+		if test.Status > overall {
+			overall = test.Status
+		}
+		if err := test.Error; err != nil {
+			errors = append(errors, err)
+		}
 
 		if exstat == ErrAbortExecution {
 			break
@@ -236,27 +193,32 @@ func (rs *RawSuite) Iterate(global map[string]string, jar *cookiejar.Jar, logger
 	suite.Duration = time.Since(suite.Started)
 	clip := suite.Duration.Nanoseconds() % 1000000
 	suite.Duration -= time.Duration(clip)
+	suite.Status = overall
+	if len(errors) == 0 {
+		suite.Error = nil
+	} else {
+		suite.Error = errors
+	}
+
 	for n, v := range suite.scope {
 		suite.FinalVariables[n] = v
 	}
-
-	return suite
 }
 
-func (s *Suite) updateVariables(test *ht.Test) {
+func (suite *Suite) updateVariables(test *ht.Test) {
 	if test.Status != ht.Pass {
 		return
 	}
 
 	for varname, value := range test.Extract() {
-		if old, ok := s.scope[varname]; ok {
-			s.Log.Printf("Updating variable %q from %q to %q\n",
+		if old, ok := suite.scope[varname]; ok {
+			suite.Log.Printf("Updating variable %q from %q to %q\n",
 				varname, old, value)
 		} else {
-			s.Log.Printf("Setting new variable %q to %q\n",
+			suite.Log.Printf("Setting new variable %q to %q\n",
 				varname, value)
 		}
-		s.scope[varname] = value
+		suite.scope[varname] = value
 	}
 }
 
@@ -272,8 +234,8 @@ func (suite *Suite) updateStatus(test *ht.Test) {
 }
 
 // Stats counts the test results of s.
-func (s *Suite) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
-	for _, tr := range s.Tests {
+func (suite *Suite) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
+	for _, tr := range suite.Tests {
 		switch tr.Status {
 		case ht.NotRun:
 			notRun++
@@ -289,7 +251,7 @@ func (s *Suite) Stats() (notRun int, skipped int, passed int, failed int, errore
 			bogus++
 		default:
 			panic(fmt.Sprintf("No such Status %d in suite %q test %q",
-				tr.Status, s.Name, tr.Name))
+				tr.Status, suite.Name, tr.Name))
 		}
 	}
 	return
