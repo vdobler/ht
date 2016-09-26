@@ -11,7 +11,6 @@ import (
 	"log"
 	"math/rand"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
@@ -146,7 +145,7 @@ func (suite *Suite) Iterate(executor Executor) {
 	errors := ht.ErrorList{}
 
 	for _, rt := range suite.tests {
-		suite.Log.Printf("Executing Test %q\n", rt.File.Name)
+		// suite.Log.Printf("Executing Test %q\n", rt.File.Name)
 		callScope := newScope(suite.scope, rt.contextVars, true)
 		testScope := newScope(callScope, rt.Variables, false)
 		testScope["TEST_DIR"] = rt.File.Dirname()
@@ -169,14 +168,16 @@ func (suite *Suite) Iterate(executor Executor) {
 			suite.updateVariables(test)
 		}
 
-		if test.Status > ht.Pass {
-			suite.Log.Printf("%s test %q (%s) ==> %s",
-				strings.ToUpper(test.Status.String()), test.Name,
-				rt.File.Name, test.Error)
-		} else {
-			suite.Log.Printf("%s test %q (%s)",
-				strings.ToUpper(test.Status.String()), test.Name, rt.File.Name)
-		}
+		/*
+			if test.Status > ht.Pass {
+				suite.Log.Printf("%s test %q (%s) ==> %s",
+					strings.ToUpper(test.Status.String()), test.Name,
+					rt.File.Name, test.Error)
+			} else {
+				suite.Log.Printf("%s test %q (%s)",
+					strings.ToUpper(test.Status.String()), test.Name, rt.File.Name)
+			}
+		*/
 
 		suite.Tests = append(suite.Tests, test)
 		if test.Status > overall {

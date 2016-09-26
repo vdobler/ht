@@ -28,14 +28,15 @@ type Scenario struct {
 	// Percentage of requests in the load test taken from this Scenario.
 	Percentage int
 
-	Log *log.Logger
+	MaxThreads int
+	Log        *log.Logger
 
 	globals map[string]string
 	jar     *cookiejar.Jar
 }
 
-func (sc *Scenario) Setup(globals map[string]string) *Suite {
-	suite := NewFromRaw(sc.RawSuite, globals, sc.jar, sc.Log)
+func (sc *Scenario) Setup() *Suite {
+	suite := NewFromRaw(sc.RawSuite, sc.globals, sc.jar, sc.Log)
 	// Cap tests to setup-tests.
 	suite.tests = suite.tests[:len(sc.RawSuite.Setup)]
 	i := 0
@@ -91,18 +92,30 @@ type pool struct {
 	Scenario
 	No      int
 	Chan    chan bender.Test
-	Threads int
 	wg      *sync.WaitGroup
 	mu      *sync.Mutex
+	Threads int
+	Misses  int
 }
 
 var IDSep = "\u2237"
 
 func (p *pool) newThread(stop chan bool) {
 	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.Threads >= p.MaxThreads {
+		if p.Scenario.Log != nil {
+			p.Scenario.Log.Printf("%s, No extra thread started (%d already running)\n",
+				p.Scenario.RawSuite.Name, p.Threads)
+		}
+		p.Misses++
+		return
+	}
 	p.Threads++
-	fmt.Printf("%s, Thread %d: Start\n",
-		p.Scenario.RawSuite.Name, p.Threads)
+	if p.Scenario.Log != nil {
+		fmt.Printf("%s, Thread %d: Start\n",
+			p.Scenario.RawSuite.Name, p.Threads)
+	}
 	p.wg.Add(1)
 
 	go func(thread int) {
@@ -151,11 +164,9 @@ func (p *pool) newThread(stop chan bool) {
 		}
 		p.wg.Done()
 	}(p.Threads)
-	p.mu.Unlock()
-
 }
 
-func makeRequest(scenarios []Scenario, rate float64, globals map[string]string, requests chan bender.Test, stop chan bool) ([]*pool, error) {
+func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, stop chan bool) ([]*pool, error) {
 	pools := make([]*pool, len(scenarios))
 	selector := make([]int, 100)
 	j := 0
@@ -210,11 +221,12 @@ func makeRequest(scenarios []Scenario, rate float64, globals map[string]string, 
 	return pools, nil
 }
 
-func Throughput(scenarios []Scenario, rate float64, duration time.Duration, globals map[string]string) ([]bender.TestData, *Suite, error) {
+func Throughput(scenarios []Scenario, rate float64, duration time.Duration) ([]bender.TestData, *Suite, error) {
 	for i := range scenarios {
 		// Setup must be called for all scenarios!
-		fmt.Printf("Running Setup of scenario %d %s\n", i+1, scenarios[i].RawSuite.Name)
-		ss := (&scenarios[i]).Setup(globals)
+		fmt.Printf("Running Setup of scenario %d %q\n",
+			i+1, scenarios[i].Name)
+		ss := (&scenarios[i]).Setup()
 		if ss.Error != nil {
 			return nil, ss, fmt.Errorf("Setup of scenario %d %q failed: %s",
 				i+1, scenarios[i].RawSuite.Name, ss.Error)
@@ -233,7 +245,7 @@ func Throughput(scenarios []Scenario, rate float64, duration time.Duration, glob
 	stop := make(chan bool)
 	intervals := bender.ExponentialIntervalGenerator(rate)
 
-	pools, err := makeRequest(scenarios, rate, globals, request, stop)
+	pools, err := makeRequest(scenarios, rate, request, stop)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -250,12 +262,14 @@ func Throughput(scenarios []Scenario, rate float64, duration time.Duration, glob
 	close(request)
 	time.Sleep(50 * time.Millisecond)
 
-	err = analyseOverage(data)
+	err = analyseOutcome(data, pools)
+
 	for i := range scenarios {
 		if len(scenarios[i].RawSuite.Teardown) == 0 {
 			continue
 		}
-		fmt.Printf("Running Teardwon of scenario %d %s\n", i+1, scenarios[i].RawSuite.Name)
+		fmt.Printf("Running Teardown of scenario %d %q\n",
+			i+1, scenarios[i].Name)
 		(&scenarios[i]).Teardown()
 	}
 
@@ -273,6 +287,90 @@ func makeFailureSuite(failures []*ht.Test) *Suite {
 	}
 
 	return &suite
+}
+
+func analyseOutcome(data []bender.TestData, pools []*pool) error {
+	errors := ht.ErrorList{}
+
+	N := len(data)
+	if N == 0 {
+		errors = append(errors, fmt.Errorf("no data recorded"))
+		return errors
+	}
+
+	err := analyseOverage(data)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
+	err = analyseMisses(data, pools)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
+	derr := analyseDistribution(data, pools)
+	if derr != nil {
+		errors = append(errors, derr...)
+	}
+
+	if len(errors) > 0 {
+		return errors
+	}
+	return nil
+}
+
+func analyseMisses(data []bender.TestData, pools []*pool) ht.ErrorList {
+	errors := ht.ErrorList{}
+	N := len(data)
+	for i, p := range pools {
+		expected := N * p.Scenario.Percentage / 100
+		if p.Misses <= expected/50 {
+			continue
+		}
+		errors = append(errors,
+			fmt.Errorf("scenarion %d %q got %d thread misses",
+				i+1, p.Scenario.Name, p.Misses))
+	}
+	if len(errors) > 0 {
+		return errors
+	}
+	return nil
+}
+
+func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
+	errors := ht.ErrorList{}
+	N := len(data)
+
+	cnt := make(map[int]int)
+	for _, d := range data {
+		parts := strings.SplitN(d.ID, IDSep, 3)
+		sn := strings.SplitN(parts[0], "/", 2)
+		n, _ := strconv.Atoi(sn[0])
+		n--
+		cnt[n] = cnt[n] + 1
+	}
+
+	for i, p := range pools {
+		actual := cnt[i]
+		fmt.Printf("Scenario %d %q: %d request = %.1f%% (target %d%%), %d threads created, %d thread misses\n",
+			i+1, p.Scenario.Name,
+			actual, float64(100*actual)/float64(N),
+			p.Scenario.Percentage,
+			p.Threads, p.Misses)
+		low := N * (p.Scenario.Percentage - 5) / 100
+		high := N * (p.Scenario.Percentage + 5) / 100
+		if low <= actual && actual <= high {
+			continue
+		}
+		errors = append(errors,
+			fmt.Errorf("scenarion %d %q contributed %.1f%% (want %d%%)",
+				i+1, p.Scenario.Name, float64(100*actual)/float64(N),
+				p.Scenario.Percentage))
+	}
+	if len(errors) > 0 {
+		return errors
+	}
+	return nil
 }
 
 func analyseOverage(data []bender.TestData) error {

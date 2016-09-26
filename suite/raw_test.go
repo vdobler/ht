@@ -13,7 +13,7 @@ import (
 	"github.com/vdobler/ht/ht"
 )
 
-func TestNewFile(t *testing.T) {
+func TestLoadFile(t *testing.T) {
 	raw, err := LoadFile("./testdata/../testdata/a.ht")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
@@ -27,8 +27,8 @@ func TestNewFile(t *testing.T) {
 	}
 }
 
-func TestNewRawTest(t *testing.T) {
-	raw, err := LoadRawTest("./testdata/b.ht")
+func TestLoadRawTest(t *testing.T) {
+	raw, err := LoadRawTest("./testdata/b.ht", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -40,7 +40,7 @@ func TestNewRawTest(t *testing.T) {
 }
 
 func TestRawErrorReporting(t *testing.T) {
-	_, err := LoadRawTest("./testdata/wrong.ht")
+	_, err := LoadRawTest("./testdata/wrong.ht", nil)
 	if err == nil {
 		t.Fatalf("no error")
 	}
@@ -51,7 +51,7 @@ func TestRawErrorReporting(t *testing.T) {
 }
 
 func TestErrorReporting(t *testing.T) {
-	raw, err := LoadRawTest("./testdata/wrong2.ht")
+	raw, err := LoadRawTest("./testdata/wrong2.ht", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -68,7 +68,7 @@ func TestErrorReporting(t *testing.T) {
 }
 
 func TestRawTestToTest(t *testing.T) {
-	raw, err := LoadRawTest("./testdata/a.ht")
+	raw, err := LoadRawTest("./testdata/a.ht", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
@@ -119,8 +119,8 @@ func TestRawTestToTest(t *testing.T) {
 	}
 }
 
-func TestNewRawSuite(t *testing.T) {
-	raw, err := LoadRawSuite("./testdata/suite.suite")
+func TestLoadRawSuite(t *testing.T) {
+	raw, err := LoadRawSuite("./testdata/suite.suite", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
@@ -132,7 +132,7 @@ func TestNewRawSuite(t *testing.T) {
 }
 
 func TestFancySuite(t *testing.T) {
-	raw, err := LoadRawSuite("./testdata/fancy.suite")
+	raw, err := LoadRawSuite("./testdata/fancy.suite", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
@@ -145,7 +145,7 @@ func TestRawSuiteExecute(t *testing.T) {
 	which := "./testdata/suite.suite"
 	which = "../showcase/showcase.suite"
 	// which = "./testdata/fancy.suite"
-	raw, err := LoadRawSuite(which)
+	raw, err := LoadRawSuite(which, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
@@ -306,5 +306,155 @@ func TestChecklist(t *testing.T) {
 		t.Errorf("Wrong type, got %T", test.VarEx["SESSION"])
 	} else if cookie.Name != "JSESSIONID" {
 		t.Errorf("Got %s, want JSESSIONID", cookie.Name)
+	}
+}
+
+var sampleLoadtest = `
+# dummy.load
+{
+    Name: Dummy Throughput Test
+    Description: For test only
+    Scenarios: [
+        {
+            File:       "bot.suite"
+            Percentage: 15
+            MaxThreads: 10
+	    OmitChecks: true
+            Variables: {
+                SCENVAR1: "scenvar1",
+                SCENVAR2: "scenvar1+{{LTVAR2}}",
+            }
+        },
+        {
+            File:       "surfer.suite"
+            Percentage: 60
+            MaxThreads: 15
+	    OmitChecks: false
+        },
+        {
+            File:       "geek.suite"
+            Percentage: 25
+            MaxThreads: 5
+	    OmitChecks: false
+        },
+
+
+    ]
+
+    Variables: {
+        LTVAR1: "ltvar1"
+        LTVAR2: "ltvar2+{{GLOBALVAR}}"
+    }
+}
+
+
+# bot.suite
+{
+    Name: "A SE Bot"
+    Main: [
+        {File: "robots.ht"}
+        {File: "homepage.ht"}
+        {File: "sitemap.ht"}
+    ]
+}
+
+# surfer.suite
+{
+    Name: Random Surfer
+    Main: [
+        {File: "robots.ht"}
+        {File: "homepage.ht"}
+        {File: "sitemap.ht"}
+        {File: "category.ht"}
+        {File: "search.ht"}
+        {File: "homepage.ht"}
+        {File: "category.ht"}
+    ]
+}
+
+# geek.suite
+{
+    Name: "Geek searches"
+    Main: [
+        {File: "homepage.ht"}
+        {File: "search.ht", Variables: {
+           query: "TOS", expected: "Found 1 match"
+        }}
+        {File: "search.ht", Variables: {
+           query: "brotzeit", expected: "Found 34 matches"
+        }}
+        {File: "search.ht", Variables: {
+           query: "forcing", expected: "Found 𝜔 matches", forbidden: "Try a different word"
+        }}
+        {File: "search.ht", Variables: {
+           query: "dfjhdfj", expected: "Nothing found", forbidden: "Found "
+        }}
+        {File: "homepage.ht"}
+    ]
+}
+
+# robots.ht
+{
+    Name: Robots
+    Request: { URL: "{{HOST}}/robots.txt" }
+    Checks: [ {Check: "Body", Contains: "allow" } ]
+}
+
+# homepage.ht
+{
+    Name: Homepage
+    Request: { URL: "{{HOST}}/index.html" }
+    Checks: [ {Check: "Body", Contains: "Welcome!" } ]
+}
+
+# sitemap.ht
+{
+    Name: Sitemap
+    Request: { URL: "{{HOST}}/sitemap.xml" }
+    Checks: [ {Check: "Body", Contains: "Sitemap" } ]
+}
+
+# category.ht
+{
+    Name: Category
+    Request: { URL: "{{HOST}}/category/abc" }
+    Checks: [ {Check: "Body", Contains: "letters" } ]
+}
+
+# search.ht
+{
+    // Parameters:
+    //    query      to search for
+    //    expected   expected text
+    //    forbidden  forbidden text
+    Name: Search
+    Request: { URL: "{{HOST}}/search?q={{query}}" }
+    Checks: [
+        {Check: "Body", Contains: "{{expected}}" }
+        {Check: "Body", Contains: "{{forbidden}}", Count: -1}
+    ]
+    Variables: {
+        expected: "Search"
+        forbidden: "XX quantum copier YY"
+    }
+}
+
+
+`
+
+func TestLoadRawLoadtest(t *testing.T) {
+	raw, err := ParseRawLoadtest("dummy.load", sampleLoadtest)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	global := map[string]string{
+		"GLOBALVAR": "globalvar",
+	}
+
+	scenarios := raw.ToScenario(global)
+	for i, scen := range scenarios {
+		fmt.Printf("%d. %d%% %q (max %d threads)\n",
+			i, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads)
 	}
 }

@@ -176,8 +176,8 @@ type Mixin struct {
 	*File
 }
 
-func LoadMixin(filename string) (*Mixin, error) {
-	file, err := LoadFile(filename)
+func LoadMixin(filename string, fs FileSystem) (*Mixin, error) {
+	file, err := fs.Load(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -221,11 +221,8 @@ func (r *RawTest) IsEnabled() bool {
 }
 
 // NewRawTest reads workingdir/filename and produces a new RawTest.
-func LoadRawTest(filename string) (*RawTest, error) {
-	// workingdir = filepath.ToSlash(workingdir)
-	// filename = filepath.Join(workingdir, filename)
-
-	raw, err := LoadFile(filename)
+func LoadRawTest(filename string, fs FileSystem) (*RawTest, error) {
+	raw, err := fs.Load(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +242,7 @@ func LoadRawTest(filename string) (*RawTest, error) {
 	mixins := make([]*Mixin, len(x.Mixin))
 	for i, file := range x.Mixin {
 		mixpath := path.Join(testdir, file)
-		mixin, err := LoadMixin(mixpath)
+		mixin, err := LoadMixin(mixpath, fs)
 		if err != nil {
 			return nil, fmt.Errorf("cannot read mixin %s in test %s: %s",
 				file, filename, err)
@@ -425,8 +422,17 @@ func (rs *RawSuite) AddRawTests(ts ...*RawTest) {
 	rs.tests = append(rs.tests, ts...)
 }
 
-func LoadRawSuite(filename string) (*RawSuite, error) {
-	raw, err := LoadFile(filename)
+func ParseRawSuite(name string, txt string) (*RawSuite, error) {
+	fs, err := NewFileSystem(txt)
+	if err != nil {
+		return nil, err
+	}
+
+	return LoadRawSuite(name, fs)
+}
+
+func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
+	raw, err := fs.Load(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +448,7 @@ func LoadRawSuite(filename string) (*RawSuite, error) {
 		for i, elem := range elems {
 			if elem.File != "" {
 				filename := path.Join(dir, elem.File)
-				rt, err := LoadRawTest(filename)
+				rt, err := LoadRawTest(filename, fs)
 				if err != nil {
 					return fmt.Errorf("unable to load %s (%d. %s): %s",
 						filename, i+1, which, err)
@@ -588,41 +594,135 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 }
 
 // ----------------------------------------------------------------------------
-//
+// FileSystem
 
-/*
+// FileSystem acts like an in-memory filesystem.
+// A nil FileSystem accesses the real OS file system.
+type FileSystem map[string]*File
 
-{
-  <theSuite>
-}
-
-# <testormixiname>
-{
-  <test1>
-}
-
-*/
-
-func ParseRawSuite(txt string) (*RawSuite, error) {
-	parts := strings.Split(txt, "\n#")
-
-	suite := &File{
-		Name: "suite",
-		Data: parts[0],
+func (fs FileSystem) Load(name string) (*File, error) {
+	if len(fs) == 0 {
+		return LoadFile(name)
 	}
+	if f, ok := fs[name]; ok {
+		return f, nil
+	}
+	return nil, fmt.Errorf("file %s not found", name)
+}
 
-	filesystem := make(map[string]*File, len(parts))
-	for _, part := range parts[1:] {
-		sp := strings.SplitN(part, "\n", 2)
-		if len(sp) != 2 {
-			panic(part)
+// NewFileSystem parses txt which must be of the form
+//
+//     # <filename1>
+//     <filecontent1>
+//
+//     # <filename2>
+//     <filecontent2>
+//
+//     ...
+//
+// into a new FileSystem.
+func NewFileSystem(txt string) (FileSystem, error) {
+	parts := strings.Split(txt, "\n#")
+	filesystem := make(FileSystem, len(parts))
+
+	for i, part := range parts {
+		part = strings.TrimSpace(part)
+		if len(part) == 0 {
+			continue
 		}
+		sp := strings.SplitN(part, "\n", 2)
 		name := strings.TrimSpace(sp[0])
+
+		if len(sp) != 2 || len(name) == 0 {
+			return nil, fmt.Errorf("malformed part %d", i+1)
+		}
+		if _, ok := filesystem[name]; ok {
+			return nil, fmt.Errorf("duplicate name %q", name)
+		}
 		filesystem[name] = &File{
 			Name: name,
 			Data: sp[1],
 		}
 	}
 
-	return MakeRawSuite(suite, filesystem)
+	return filesystem, nil
+}
+
+// ----------------------------------------------------------------------------
+// RawScenrio & RawLoadtest
+
+type RawScenario struct {
+	File       string
+	Percentage int
+	MaxThreads int
+	Variables  map[string]string
+	OmitChecks bool
+
+	rawSuite *RawSuite
+}
+
+type RawLoadTest struct {
+	*File
+	Name        string
+	Description string
+	Scenarios   []RawScenario
+	Variables   map[string]string
+}
+
+func ParseRawLoadtest(name string, txt string) (*RawLoadTest, error) {
+	fs, err := NewFileSystem(txt)
+	if err != nil {
+		return nil, err
+	}
+
+	return LoadRawLoadtest(name, fs)
+}
+
+func LoadRawLoadtest(filename string, fs FileSystem) (*RawLoadTest, error) {
+	raw, err := fs.Load(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	rlt := &RawLoadTest{}
+	err = raw.decodeStrictTo(rlt, nil)
+	if err != nil {
+		return nil, err // better error message here
+	}
+	rlt.File = raw // re-set as decodeStritTo clears rs
+	dir := rlt.File.Dirname()
+
+	for i, s := range rlt.Scenarios {
+		if s.File != "" {
+			filename := path.Join(dir, s.File)
+			rs, err := LoadRawSuite(filename, fs)
+			if err != nil {
+				return nil, fmt.Errorf("unable to load suite %s (%d. scenraio): %s",
+					filename, i+1, err)
+			}
+			rlt.Scenarios[i].rawSuite = rs
+		} else {
+			panic("File must not be empty")
+		}
+	}
+
+	return rlt, nil
+}
+
+func (raw *RawLoadTest) ToScenario(globals map[string]string) []Scenario {
+	scenarios := []Scenario{}
+	ltscope := newScope(globals, raw.Variables, true)
+	for _, rs := range raw.Scenarios {
+		callscope := newScope(ltscope, rs.Variables, true)
+		scen := Scenario{
+			RawSuite:   rs.rawSuite,
+			Percentage: rs.Percentage,
+			MaxThreads: rs.MaxThreads,
+			globals:    callscope,
+		}
+
+		scenarios = append(scenarios, scen)
+	}
+
+	return scenarios
 }
