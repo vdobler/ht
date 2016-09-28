@@ -141,7 +141,7 @@ func loadSuites(args []string) []*suite.RawSuite {
 
 	// Input and setup suites from command line arguments.
 	for _, arg := range args {
-		s, err := suite.LoadRawSuite(arg)
+		s, err := suite.LoadRawSuite(arg, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot read suite %q: %s\n", arg, err)
 			os.Exit(8)
@@ -247,7 +247,7 @@ func loadTests(args []string) []*suite.RawTest {
 	tt := []*suite.RawTest{}
 	// Input and setup tests from command line arguments.
 	for _, arg := range args {
-		test, err := suite.LoadRawTest(arg)
+		test, err := suite.LoadRawTest(arg, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot read test %q: %s\n", arg, err)
 			os.Exit(8)

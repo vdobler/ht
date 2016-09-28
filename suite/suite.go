@@ -168,17 +168,6 @@ func (suite *Suite) Iterate(executor Executor) {
 			suite.updateVariables(test)
 		}
 
-		/*
-			if test.Status > ht.Pass {
-				suite.Log.Printf("%s test %q (%s) ==> %s",
-					strings.ToUpper(test.Status.String()), test.Name,
-					rt.File.Name, test.Error)
-			} else {
-				suite.Log.Printf("%s test %q (%s)",
-					strings.ToUpper(test.Status.String()), test.Name, rt.File.Name)
-			}
-		*/
-
 		suite.Tests = append(suite.Tests, test)
 		if test.Status > overall {
 			overall = test.Status

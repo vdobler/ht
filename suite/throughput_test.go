@@ -335,42 +335,19 @@ func TestThroughput2(t *testing.T) {
 	scenarios := raw.ToScenario(global)
 	for i, scen := range scenarios {
 		fmt.Printf("%d. %d%% %q (max %d threads)\n",
-			i+1, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads)
-		if i > 1 {
-			logger := log.New(os.Stdout, fmt.Sprintf("Scenario %d: ", i+1), 0)
+			i+1, scen.Percentage, scen.Name, scen.MaxThreads)
+		if i > -10 {
+			logger := log.New(os.Stdout,
+				fmt.Sprintf("Scenario %d %q ", i+1, scen.Name), 0)
 			scenarios[i].Log = logger
 		}
 	}
 
-	data, failures, err := Throughput(scenarios, 100, 4*time.Second)
+	data, _, err := Throughput(scenarios, 100, 4*time.Second)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
 
-	fmt.Println("\n   FAILURES\n=================\n")
-	PrintSuiteReport(os.Stdout, failures)
-	err = HTMLReport("./testdata", failures)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	cnt := make(map[string]int)
-	for _, d := range data {
-		parts := strings.SplitN(d.ID, IDSep, 3)
-		sn := parts[1]
-		cnt[sn] = cnt[sn] + 1
-	}
-
-	N := float64(len(data))
-	fastP := float64(cnt["Fast Suite"]) / N
-	slowP := float64(cnt["Slow Suite"]) / N
-	slooowP := float64(cnt["Slooow Suite"]) / N
-	if fastP < 0.35 || fastP > 0.45 ||
-		slowP < 0.35 || slowP > 0.45 ||
-		slooowP < 0.15 || slooowP > 0.25 {
-		t.Errorf("Bad distribution of scenarios: fast=%f slow=%f slooow=%f",
-			fastP, slowP, slooowP)
-	}
 	fmt.Println("Recorded ", len(data), "points")
 
 	file, err := os.Create("testdata/throughput.csv")

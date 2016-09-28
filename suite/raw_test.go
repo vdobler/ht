@@ -316,6 +316,7 @@ var sampleLoadtest = `
     Description: For test only
     Scenarios: [
         {
+            Name:       "Robot"
             File:       "bot.suite"
             Percentage: 15
             MaxThreads: 10
@@ -326,12 +327,14 @@ var sampleLoadtest = `
             }
         },
         {
+            Name:       "Surfer"
             File:       "surfer.suite"
             Percentage: 60
             MaxThreads: 15
 	    OmitChecks: false
         },
         {
+            Name:       "Geek"
             File:       "geek.suite"
             Percentage: 25
             MaxThreads: 5

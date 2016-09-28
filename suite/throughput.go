@@ -22,6 +22,9 @@ import (
 
 // Scenario to run in a throughput test.
 type Scenario struct {
+	// Name of this scenario. May differ from the suite
+	Name string
+
 	// RawSuite is the suite to execute repeatedly to generate lod.
 	*RawSuite
 
@@ -105,16 +108,15 @@ func (p *pool) newThread(stop chan bool) {
 	defer p.mu.Unlock()
 	if p.Threads >= p.MaxThreads {
 		if p.Scenario.Log != nil {
-			p.Scenario.Log.Printf("%s, No extra thread started (%d already running)\n",
-				p.Scenario.RawSuite.Name, p.Threads)
+			p.Scenario.Log.Printf("No extra thread started (%d already running)\n", p.Threads)
 		}
 		p.Misses++
 		return
 	}
 	p.Threads++
 	if p.Scenario.Log != nil {
-		fmt.Printf("%s, Thread %d: Start\n",
-			p.Scenario.RawSuite.Name, p.Threads)
+		fmt.Printf("Scenario %d %q: Starting new thread %d\n",
+			p.No+1, p.Scenario.Name, p.Threads)
 	}
 	p.wg.Add(1)
 
@@ -126,18 +128,18 @@ func (p *pool) newThread(stop chan bool) {
 		}
 		thglobals["THREAD"] = strconv.Itoa(thread)
 
-		n := 1
+		repetition := 1
 		done := false
 		for !done {
-			thglobals["REPETITION"] = strconv.Itoa(n)
+			thglobals["REPETITION"] = strconv.Itoa(repetition)
 			executed := make(chan bool)
 
 			t := 0
 			executor := func(test *ht.Test) error {
 				t++
 				test.Name = fmt.Sprintf("%d/%d/%d/%d%s%s%s%s",
-					p.No, thread, n, t, IDSep,
-					p.Scenario.RawSuite.Name, IDSep, test.Name)
+					p.No, thread, repetition, t, IDSep,
+					p.Scenario.Name, IDSep, test.Name)
 
 				test.Reporting.SeqNo = test.Name
 
@@ -160,7 +162,7 @@ func (p *pool) newThread(stop chan bool) {
 			nSetup, nMain := len(p.Scenario.RawSuite.Setup), len(p.Scenario.RawSuite.Main)
 			suite.tests = suite.tests[nSetup : nSetup+nMain]
 			suite.Iterate(executor)
-			n += 1
+			repetition += 1
 		}
 		p.wg.Done()
 	}(p.Threads)
@@ -224,12 +226,12 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 func Throughput(scenarios []Scenario, rate float64, duration time.Duration) ([]bender.TestData, *Suite, error) {
 	for i := range scenarios {
 		// Setup must be called for all scenarios!
-		fmt.Printf("Running Setup of scenario %d %q\n",
+		fmt.Printf("Scenario %d %q: Running setup\n",
 			i+1, scenarios[i].Name)
 		ss := (&scenarios[i]).Setup()
 		if ss.Error != nil {
 			return nil, ss, fmt.Errorf("Setup of scenario %d %q failed: %s",
-				i+1, scenarios[i].RawSuite.Name, ss.Error)
+				i+1, scenarios[i].Name, ss.Error)
 		}
 	}
 
@@ -255,8 +257,8 @@ func Throughput(scenarios []Scenario, rate float64, duration time.Duration) ([]b
 	close(stop)
 	fmt.Println("Finished Throughput test.")
 	for _, p := range pools {
-		fmt.Printf("Waiting for pool %d (%d threads) %s\n",
-			p.No, p.Threads, p.Scenario.RawSuite.Name)
+		fmt.Printf("Scenario %d %q: Draining pool with %d threads\n",
+			p.No, p.Scenario.Name, p.Threads)
 		p.wg.Wait()
 	}
 	close(request)
@@ -319,7 +321,7 @@ func analyseOutcome(data []bender.TestData, pools []*pool) error {
 	return nil
 }
 
-func analyseMisses(data []bender.TestData, pools []*pool) ht.ErrorList {
+func analyseMisses(data []bender.TestData, pools []*pool) error {
 	errors := ht.ErrorList{}
 	N := len(data)
 	for i, p := range pools {
@@ -328,7 +330,7 @@ func analyseMisses(data []bender.TestData, pools []*pool) ht.ErrorList {
 			continue
 		}
 		errors = append(errors,
-			fmt.Errorf("scenarion %d %q got %d thread misses",
+			fmt.Errorf("scenario %d %q got %d thread misses",
 				i+1, p.Scenario.Name, p.Misses))
 	}
 	if len(errors) > 0 {
@@ -342,34 +344,66 @@ func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
 	N := len(data)
 
 	cnt := make(map[int]int)
+	repPerThread := make(map[int]map[int]int)
+	repMax := make(map[int]int)
 	for _, d := range data {
 		parts := strings.SplitN(d.ID, IDSep, 3)
-		sn := strings.SplitN(parts[0], "/", 2)
-		n, _ := strconv.Atoi(sn[0])
-		n--
-		cnt[n] = cnt[n] + 1
+		nums := strings.Split(parts[0], "/")
+		// Count suite.
+		sn, _ := strconv.Atoi(nums[0])
+		sn--
+		cnt[sn] = cnt[sn] + 1
+		// Record repetitions
+		t, _ := strconv.Atoi(nums[1])
+		r, _ := strconv.Atoi(nums[2])
+		reps := repPerThread[sn]
+		if len(reps) == 0 {
+			reps = make(map[int]int)
+		}
+		reps[t] = r
+		repPerThread[sn] = reps
+		if max := repMax[sn]; r > max {
+			repMax[sn] = r
+		}
 	}
 
+	// Check scenario percentages
 	for i, p := range pools {
 		actual := cnt[i]
-		fmt.Printf("Scenario %d %q: %d request = %.1f%% (target %d%%), %d threads created, %d thread misses\n",
+		fmt.Printf("Scenario %d %q: %d request = %.1f%% (target %d%%), %d threads created, %d thread misses, repetitions",
 			i+1, p.Scenario.Name,
 			actual, float64(100*actual)/float64(N),
 			p.Scenario.Percentage,
 			p.Threads, p.Misses)
+		for t := 1; t <= p.Threads; t++ {
+			fmt.Printf(" %d", repPerThread[i][t])
+		}
+		fmt.Println()
 		low := N * (p.Scenario.Percentage - 5) / 100
 		high := N * (p.Scenario.Percentage + 5) / 100
 		if low <= actual && actual <= high {
 			continue
 		}
 		errors = append(errors,
-			fmt.Errorf("scenarion %d %q contributed %.1f%% (want %d%%)",
+			fmt.Errorf("scenario %d %q contributed %.1f%% (want %d%%)",
 				i+1, p.Scenario.Name, float64(100*actual)/float64(N),
 				p.Scenario.Percentage))
 	}
+
+	// Check each scenario is repeated at least three times which mean it was
+	// executed fully at least twice.
+	for i, p := range pools {
+		if repMax[i] < 3 {
+			errors = append(errors,
+				fmt.Errorf("scenario %d %q fully executed only %d times",
+					i+1, p.Scenario.Name, repMax[i]-1))
+		}
+	}
+
 	if len(errors) > 0 {
 		return errors
 	}
+
 	return nil
 }
 
@@ -384,6 +418,7 @@ func analyseOverage(data []bender.TestData) error {
 	if mean > 1*time.Millisecond {
 		return fmt.Errorf("mean overage of last half = %s is too big", mean)
 	}
+
 	return nil
 }
 

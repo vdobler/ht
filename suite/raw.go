@@ -653,6 +653,7 @@ func NewFileSystem(txt string) (FileSystem, error) {
 
 type RawScenario struct {
 	File       string
+	Name       string
 	Percentage int
 	MaxThreads int
 	Variables  map[string]string
@@ -715,6 +716,7 @@ func (raw *RawLoadTest) ToScenario(globals map[string]string) []Scenario {
 	for _, rs := range raw.Scenarios {
 		callscope := newScope(ltscope, rs.Variables, true)
 		scen := Scenario{
+			Name:       rs.Name,
 			RawSuite:   rs.rawSuite,
 			Percentage: rs.Percentage,
 			MaxThreads: rs.MaxThreads,
