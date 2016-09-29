@@ -269,12 +269,10 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 // extracted as the empty string i.e. null and "" are indistinguashable.
 //
 // Note that JSONExtractor behaves differently than the JSON check:
-//  - JSONExctractor strips quotes from strings (which is okay)
-//  - JSONExtractor selects elements with the Path field (which is a design
-//    error)
+// JSONExctractor strips quotes from strings if the string is not empty.
 type JSONExtractor struct {
-	// Path in the flattened JSON map to extract.
-	Path string `json:",omitempty"`
+	// Element in the flattened JSON map to extract.
+	Element string `json:",omitempty"`
 
 	// Sep is the separator in Path.
 	// A zero value is equivalent to "."
@@ -303,7 +301,7 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 		return "", fmt.Errorf("unable to parse exploded JSON: %s", err.Error())
 	}
 
-	val, ok := flat[e.Path]
+	val, ok := flat[e.Element]
 	if !ok {
 		return "", ErrNotFound
 	}
@@ -311,7 +309,7 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 	// The element might be present but null like in {"a": null} in wich
 	// case val==nil.
 	if val == nil {
-		// TODO: ist this the most sensible outcome?  Or would
+		// TODO: is this the most sensible outcome?  Or would
 		// "", ErrNotFound be better?
 		return "", nil
 	}
@@ -437,7 +435,7 @@ func (e JSExtractor) Extract(t *Test) (string, error) {
 // ----------------------------------------------------------------------------
 // SetVariable
 
-// SetVariable allows to prgmatically extract a fixed value.
+// SetVariable allows to pragmatically "extract" a fixed value.
 type SetVariable struct {
 	// To is the value to extract.
 	To string

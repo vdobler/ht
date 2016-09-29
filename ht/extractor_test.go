@@ -117,7 +117,7 @@ func TestJSONExtractor(t *testing.T) {
 				BodyStr: tc.body,
 			},
 		}
-		ex := JSONExtractor{Path: tc.path}
+		ex := JSONExtractor{Element: tc.path}
 		got, err := ex.Extract(test)
 		if err != nil {
 			if tc.err == nil {
