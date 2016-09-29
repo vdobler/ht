@@ -49,7 +49,11 @@ func (el ErrorList) Error() string {
 func (el ErrorList) AsStrings() []string {
 	s := []string{}
 	for _, e := range el {
-		s = append(s, e.Error())
+		if nel, ok := e.(ErrorList); ok {
+			s = append(s, nel.AsStrings()...)
+		} else {
+			s = append(s, e.Error())
+		}
 	}
 	return s
 }
