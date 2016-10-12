@@ -24,7 +24,11 @@ func explodeList(l []interface{}, parent string, delimiter string) (map[string]i
 		case int:
 			j[key] = v
 		case float64:
-			j[key] = v
+			if float64(int64(v)) == v {
+				j[key] = int64(v)
+			} else {
+				j[key] = v
+			}
 		case string:
 			j[key] = v
 		case bool:
@@ -67,7 +71,11 @@ func explodeMap(m map[string]interface{}, parent string, delimiter string) (map[
 		case int:
 			j[k] = v
 		case float64:
-			j[k] = v
+			if float64(int64(v)) == v {
+				j[k] = int64(v)
+			} else {
+				j[k] = v
+			}
 		case string:
 			j[k] = v
 		case bool:
