@@ -422,9 +422,13 @@ type Links struct {
 	// all links.
 	OnlyLinks, IgnoredLinks []Condition `json:",omitempty"`
 
-	// FailMixedContent will report a failure for any mixed content
-	// if
+	// FailMixedContent will report a failure for any mixed content, i.e.
+	// resources retrieved via http for a https HTML page.
 	FailMixedContent bool
+
+	// MaxTime is the maximum duration allowed to retrieve all the linked
+	// resources. A zero value means unlimited time allowed.
+	MaxTime time.Duration
 
 	tags []string
 }
@@ -545,6 +549,7 @@ func (c *Links) Execute(t *Test) error {
 	if c.Concurrency > 1 {
 		conc = c.Concurrency
 	}
+	started := time.Now()
 	suite.ExecuteConcurrent(conc, nil)
 	if suite.Status != Pass {
 		for _, test := range suite.Tests {
@@ -556,6 +561,13 @@ func (c *Links) Execute(t *Test) error {
 					test.Request.URL,
 					test.Response.Response.StatusCode))
 			}
+		}
+	}
+	if c.MaxTime > 0 {
+		if took := time.Since(started); took > c.MaxTime {
+			broken = append(broken,
+				fmt.Errorf("retrieval of %d links took %s (allowed %s)",
+					len(urefs), took, c.MaxTime))
 		}
 	}
 
