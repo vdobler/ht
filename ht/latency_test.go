@@ -119,7 +119,7 @@ func TestLatency(t *testing.T) {
 				Params: url.Values{
 					"n": []string{"100000"},
 				},
-				Timeout: Duration(100 * time.Millisecond),
+				Timeout: 100 * time.Millisecond,
 			},
 			Checks: []Check{
 				StatusCode{200},
@@ -168,7 +168,7 @@ func TestSessionLatency(t *testing.T) {
 				Name: kind,
 				Request: Request{
 					URL:     ts.URL + "/",
-					Timeout: Duration(500 * time.Millisecond),
+					Timeout: 500 * time.Millisecond,
 				},
 				Checks: []Check{
 					StatusCode{200},

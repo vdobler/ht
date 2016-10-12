@@ -45,7 +45,7 @@ type nested struct {
 func TestChecklistMarshalJSON(t *testing.T) {
 	cl := CheckList{
 		&StatusCode{Expect: 404},
-		None{Of: CheckList{ResponseTime{Lower: Duration(1234)}}},
+		None{Of: CheckList{ResponseTime{Lower: 1234}}},
 		None{Of: CheckList{UTF8Encoded{}}},
 		AnyOne{
 			Of: CheckList{
@@ -70,7 +70,7 @@ func TestChecklistMarshalJSON(t *testing.T) {
         "Of": [
             {
                 "Check": "ResponseTime",
-                "Lower": "1.23µs"
+                "Lower": 1234
             }
         ]
     },

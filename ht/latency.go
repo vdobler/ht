@@ -216,7 +216,7 @@ func (L *Latency) Execute(t *Test) error {
 			strconv.Itoa(L.Concurrent),
 			r.started.Format(time.RFC3339Nano),
 			r.status.String(),
-			(r.duration / Duration(time.Millisecond)).String(),
+			(r.duration / time.Millisecond).String(),
 			fmt.Sprintf("%t", completed),
 		})
 	}
@@ -255,7 +255,7 @@ func (L *Latency) Execute(t *Test) error {
 type latencyResult struct {
 	status   Status
 	started  time.Time
-	duration Duration
+	duration time.Duration
 	execBy   int
 }
 

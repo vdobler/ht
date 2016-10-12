@@ -630,7 +630,7 @@ func extractHTMLChecks(e Event) ht.CheckList {
 		Head:        true,
 		Which:       "a img link script",
 		Concurrency: 4,
-		Timeout:     ht.Duration(20 * time.Second),
+		Timeout:     20 * time.Second,
 		IgnoredLinks: []ht.Condition{
 			{Contains: "www.facebook.com/"},
 			{Contains: "www.twitter.com/"},
@@ -753,7 +753,7 @@ func createSetCookieCheck(c *http.Cookie, now time.Time) *ht.SetCookie {
 		if lt > 10*time.Second {
 			lt -= 10 * time.Second
 		}
-		sc.MinLifetime = ht.Duration(lt)
+		sc.MinLifetime = lt
 	} else {
 		flags = append(flags, "session")
 	}

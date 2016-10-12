@@ -107,7 +107,7 @@ func TestRawTestToTest(t *testing.T) {
 		if ex, ok := test.VarEx["WAZ"].(*ht.JSONExtractor); !ok {
 			t.Errorf("Bad type %T", test.VarEx["WAZ"])
 		} else {
-			if got := ex.Path; got != "foo.bar.zip" {
+			if got := ex.Element; got != "foo.bar.zip" {
 				t.Errorf("Got (VarEx[WAZ].(JSONExtractor)).Path = %q", got)
 			}
 		}
@@ -201,7 +201,7 @@ func TestChecklist(t *testing.T) {
         }
     ]
     VarEx: {
-        NAME: {Extractor: "JSONExtractor", Path: "foo.1"}
+        NAME: {Extractor: "JSONExtractor", Element: "foo.1"}
         SESSION: {Extractor: "CookieExtractor", Name: "JSESSIONID"} 
     }
 }`,
@@ -296,8 +296,8 @@ func TestChecklist(t *testing.T) {
 	json, ok := test.VarEx["NAME"].(*ht.JSONExtractor)
 	if !ok {
 		t.Errorf("Wrong type, got %T", test.VarEx["NAME"])
-	} else if json.Path != "foo.1" {
-		t.Errorf("Got %s, want foo.1", json.Path)
+	} else if json.Element != "foo.1" {
+		t.Errorf("Got %s, want foo.1", json.Element)
 	}
 
 	// SESSION

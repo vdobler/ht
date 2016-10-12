@@ -428,19 +428,19 @@ func TestPolling(t *testing.T) {
 					"n": {"3"},
 					"t": {tc.typ},
 				},
-				Timeout: Duration(60 * time.Millisecond),
+				Timeout: 60 * time.Millisecond,
 			},
 			Checks: []Check{
 				StatusCode{200},
 			},
 			Execution: Execution{
 				Tries: tc.max,
-				Wait:  Duration(200),
+				Wait:  5 * time.Millisecond,
 			},
 		}
 		test.Run()
 		if got := test.Status; got != tc.want {
-			t.Errorf("%d: got %s, want %s", i, got, tc.want)
+			t.Errorf("%d: got %s, want %s (error=%s)", i, got, tc.want, test.Error)
 		}
 		if tc.want == Pass && test.Error != nil {
 			t.Errorf("%d: got non-nil eror: %+v", i, test.Error)
@@ -461,7 +461,7 @@ func TestClientTimeout(t *testing.T) {
 				"smin": {"100"}, "smax": {"110"},
 			},
 			FollowRedirects: false,
-			Timeout:         Duration(40 * time.Millisecond),
+			Timeout:         40 * time.Millisecond,
 		},
 		Checks: []Check{
 			StatusCode{200},
@@ -508,9 +508,9 @@ func TestMerge(t *testing.T) {
 			Chunked:         false,
 		},
 		Execution: Execution{
-			PreSleep:   Duration(100),
-			InterSleep: Duration(120),
-			PostSleep:  Duration(140),
+			PreSleep:   100,
+			InterSleep: 120,
+			PostSleep:  140,
 		},
 	}
 
@@ -537,7 +537,7 @@ func TestMerge(t *testing.T) {
 			BasicAuthPass:   "secret",
 		},
 		Execution: Execution{
-			InterSleep: Duration(300),
+			InterSleep: 300,
 		},
 	}
 

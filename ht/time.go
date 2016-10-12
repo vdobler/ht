@@ -8,6 +8,7 @@ package ht
 
 import (
 	"fmt"
+	"time"
 )
 
 func init() {
@@ -19,8 +20,8 @@ func init() {
 
 // ResponseTime checks the response time.
 type ResponseTime struct {
-	Lower  Duration `json:",omitempty"`
-	Higher Duration `json:",omitempty"`
+	Lower  time.Duration `json:",omitempty"`
+	Higher time.Duration `json:",omitempty"`
 }
 
 // Execute implements Check's Execute method.

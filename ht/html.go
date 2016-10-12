@@ -54,7 +54,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 				"Accept":     {"text/html,application/xhtml+xml"},
 				"User-Agent": {"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36"},
 			},
-			Timeout: Duration(20 * time.Second),
+			Timeout: 20 * time.Second,
 		},
 		Checks: CheckList{
 			StatusCode{Expect: 200},
@@ -416,7 +416,7 @@ type Links struct {
 	Concurrency int `json:",omitempty"`
 
 	// Timeout is the client timeout if different from main test.
-	Timeout Duration `json:",omitempty"`
+	Timeout time.Duration `json:",omitempty"`
 
 	// OnlyLinks and IgnoredLinks can be used to select only a subset of
 	// all links.

@@ -498,7 +498,7 @@ func (r Resilience) resilienceTest(orig *Test, method string, paramsAs string) *
 		},
 		Execution: Execution{
 			Verbosity: orig.Execution.Verbosity - 1,
-			PreSleep:  Duration(10 * time.Millisecond),
+			PreSleep:  10 * time.Millisecond,
 		},
 	}
 

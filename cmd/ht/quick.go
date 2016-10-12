@@ -69,7 +69,7 @@ func makeChecks(u string) ht.CheckList {
 		ht.ContentType{Is: "html"},
 		ht.UTF8Encoded{},
 		ht.ValidHTML{},
-		ht.ResponseTime{Lower: ht.Duration(1500 * time.Millisecond)},
+		ht.ResponseTime{Lower: 1500 * time.Millisecond},
 	}
 
 	if fullChecksFlag {

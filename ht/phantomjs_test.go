@@ -473,7 +473,7 @@ var passingRenderingTimeTests = []*Test{
 		Name:    "Welcome Anonymous, rendered body",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{
-			&RenderingTime{Max: Duration(80 * time.Millisecond)},
+			&RenderingTime{Max: 80 * time.Millisecond},
 		},
 	},
 	{Request: Request{URL: "/login?user=Joe"}},
@@ -481,7 +481,7 @@ var passingRenderingTimeTests = []*Test{
 		Name:    "Welcome Joe",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{
-			&RenderingTime{Max: Duration(120 * time.Millisecond)},
+			&RenderingTime{Max: 120 * time.Millisecond},
 		},
 	},
 }

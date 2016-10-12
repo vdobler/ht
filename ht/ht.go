@@ -40,7 +40,7 @@ var (
 	DefaultAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 
 	// DefaultClientTimeout is the timeout used by the http clients.
-	DefaultClientTimeout = Duration(10 * time.Second)
+	DefaultClientTimeout = 10 * time.Second
 )
 
 // Transport is the http Transport used while making requests.
@@ -130,7 +130,7 @@ type Request struct {
 	Chunked bool `json:",omitempty"`
 
 	// Timeout of this request. If zero use DefaultClientTimeout.
-	Timeout Duration `json:",omitempty"`
+	Timeout time.Duration `json:",omitempty"`
 
 	Request    *http.Request `json:"-"` // the 'real' request
 	SentBody   string        `json:"-"` // the 'real' body
@@ -144,7 +144,7 @@ type Response struct {
 	Response *http.Response `json:",omitempty"`
 
 	// Duration to receive response and read the whole body.
-	Duration Duration `json:",omitempty"`
+	Duration time.Duration `json:",omitempty"`
 
 	// The received body and the error got while reading it.
 	BodyStr string `json:",omitempty"`
@@ -174,12 +174,12 @@ type Execution struct {
 	Tries int `json:",omitempty"`
 
 	// Wait time between retries.
-	Wait Duration `json:",omitempty"`
+	Wait time.Duration `json:",omitempty"`
 
 	// Pre-, Inter- and PostSleep are the sleep durations made
 	// before the request, between request and the checks and
 	// after the checks.
-	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
+	PreSleep, InterSleep, PostSleep time.Duration `json:",omitempty"`
 
 	// Verbosity level in logging.
 	Verbosity int `json:",omitempty"`
@@ -216,8 +216,8 @@ type Test struct {
 	Status       Status        `json:"-"`
 	Started      time.Time     `json:"-"`
 	Error        error         `json:"-"`
-	Duration     Duration      `json:"-"`
-	FullDuration Duration      `json:"-"`
+	Duration     time.Duration `json:"-"`
+	FullDuration time.Duration `json:"-"`
 	Tries        int           `json:"-"`
 	CheckResults []CheckResult `json:"-"` // The individual checks.
 	Reporting    struct {
@@ -244,11 +244,11 @@ func (t *Test) Disable() {
 
 // CheckResult captures the outcom of a single check inside a test.
 type CheckResult struct {
-	Name     string    // Name of the check as registered.
-	JSON     string    // JSON serialization of check.
-	Status   Status    // Outcome of check. All status but Error
-	Duration Duration  // How long the check took.
-	Error    ErrorList // For a Status of Bogus or Fail.
+	Name     string        // Name of the check as registered.
+	JSON     string        // JSON serialization of check.
+	Status   Status        // Outcome of check. All status but Error
+	Duration time.Duration // How long the check took.
+	Error    ErrorList     // For a Status of Bogus or Fail.
 }
 
 // Extraction captures the result of a variable extraction.
@@ -446,7 +446,7 @@ func (t *Test) Run() error {
 	}
 
 	t.debugf("PreSleep %s", t.Execution.PreSleep)
-	time.Sleep(time.Duration(t.Execution.PreSleep))
+	time.Sleep(t.Execution.PreSleep)
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
@@ -464,7 +464,7 @@ func (t *Test) Run() error {
 	for ; try <= maxTries; try++ {
 		t.Tries = try
 		if try > 1 {
-			time.Sleep(time.Duration(t.Execution.Wait))
+			time.Sleep(t.Execution.Wait)
 		}
 		err := t.prepare(t.Variables)
 		if err != nil {
@@ -479,7 +479,7 @@ func (t *Test) Run() error {
 			break
 		}
 	}
-	t.Duration = Duration(time.Since(start))
+	t.Duration = time.Since(start)
 	if t.Execution.Tries > 1 {
 		if t.Status == Pass {
 			t.debugf("polling succeeded after %d tries", try)
@@ -491,9 +491,9 @@ func (t *Test) Run() error {
 	t.infof("test %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
 
 	t.debugf("PostSleep %s", t.Execution.PostSleep)
-	time.Sleep(time.Duration(t.Execution.PostSleep))
+	time.Sleep(t.Execution.PostSleep)
 
-	t.FullDuration = Duration(time.Since(t.Started))
+	t.FullDuration = time.Since(t.Started)
 	return nil
 }
 
@@ -531,7 +531,7 @@ func (t *Test) execute() {
 	}
 	if err == nil {
 		if len(t.Checks) > 0 {
-			time.Sleep(time.Duration(t.Execution.InterSleep))
+			time.Sleep(t.Execution.InterSleep)
 			t.executeChecks(t.CheckResults)
 		} else {
 			t.Status = Pass
@@ -617,14 +617,14 @@ func (t *Test) prepare(variables map[string]string) error {
 			Transport:     Transport,
 			CheckRedirect: cr,
 			Jar:           nil,
-			Timeout:       time.Duration(to),
+			Timeout:       to,
 		}
 	} else {
 		t.client = &http.Client{
 			Transport:     Transport,
 			CheckRedirect: dontFollowRedirects,
 			Jar:           nil,
-			Timeout:       time.Duration(to),
+			Timeout:       to,
 		}
 	}
 	if t.Jar != nil {
@@ -839,7 +839,7 @@ func (t *Test) executeRequest() error {
 	}
 
 done:
-	t.Response.Duration = Duration(time.Since(start))
+	t.Response.Duration = time.Since(start)
 
 	for i, via := range t.Response.Redirections {
 		t.infof("Redirection %d: %s", i+1, via)
@@ -855,7 +855,7 @@ func (t *Test) executeFile() error {
 
 	start := time.Now()
 	defer func() {
-		t.Response.Duration = Duration(time.Since(start))
+		t.Response.Duration = time.Since(start)
 	}()
 
 	u := t.Request.Request.URL
@@ -922,7 +922,7 @@ func (t *Test) executeChecks(result []CheckResult) {
 	for i, ck := range t.Checks {
 		start := time.Now()
 		err := ck.Execute(t)
-		result[i].Duration = Duration(time.Since(start))
+		result[i].Duration = time.Since(start)
 		if el, ok := err.(ErrorList); ok {
 			result[i].Error = el
 		} else {
