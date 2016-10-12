@@ -5,7 +5,6 @@
 package ht
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/vdobler/ht/cookiejar"
@@ -29,7 +28,6 @@ func (s *Collection) ExecuteConcurrent(maxConcurrent int, jar *cookiejar.Jar) er
 	if maxConcurrent > len(s.Tests) {
 		maxConcurrent = len(s.Tests)
 	}
-	fmt.Printf("Running %d test concurrently\n", maxConcurrent)
 
 	c := make(chan *Test, maxConcurrent)
 	wg := sync.WaitGroup{}
