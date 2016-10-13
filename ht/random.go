@@ -10,13 +10,24 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Random is the source for all randmoness used in ht.
 var Random *rand.Rand
+var randMux sync.Mutex
 
 func init() {
 	Random = rand.New(rand.NewSource(34)) // Seed chosen truly random by Sabine.
+}
+
+// RandomIntn returns a random int in the rnage [0,n) read from Random.
+// It is safe for concurrent use.
+func RandomIntn(n int) int {
+	randMux.Lock()
+	r := Random.Intn(n)
+	randMux.Unlock()
+	return r
 }
 
 // randomFunc is one of the random functions.

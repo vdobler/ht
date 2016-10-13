@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -61,7 +60,7 @@ func newScope(outer, inner map[string]string, auto bool) map[string]string {
 	}
 	if auto {
 		scope["COUNTER"] = strconv.Itoa(<-GetCounter)
-		scope["RANDOM"] = strconv.Itoa(100000 + rand.Intn(900000))
+		scope["RANDOM"] = strconv.Itoa(100000 + ht.RandomIntn(900000))
 	}
 	replacer := VarReplacer(scope)
 
