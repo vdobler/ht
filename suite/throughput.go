@@ -225,6 +225,9 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 
 func Throughput(scenarios []Scenario, rate float64, duration time.Duration) ([]bender.TestData, *Suite, error) {
 	for i := range scenarios {
+		if scenarios[i].MaxThreads == 0 {
+			scenarios[i].MaxThreads = 1
+		}
 		// Setup must be called for all scenarios!
 		fmt.Printf("Scenario %d %q: Running setup\n",
 			i+1, scenarios[i].Name)

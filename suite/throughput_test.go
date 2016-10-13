@@ -207,33 +207,41 @@ func TestThroughput(t *testing.T) {
 	}
 	scenarios := []Scenario{
 		Scenario{
+			Name:       "Fast",
 			RawSuite:   fast,
 			Percentage: 40,
 			Log:        logger,
+			MaxThreads: 10,
 			globals:    globals,
 		},
 		Scenario{
+			Name:       "Slow",
 			RawSuite:   slow,
 			Percentage: 40,
+			MaxThreads: 12,
 			globals:    globals,
 		},
 		Scenario{
+			Name:       "Slooow",
 			RawSuite:   slooow,
 			Percentage: 20,
+			MaxThreads: 8,
 			globals:    globals,
 		},
 	}
 
-	data, failures, err := Throughput(scenarios, 100, 4*time.Second)
+	data, failures, err := Throughput(scenarios, 50, 5*time.Second)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
 
-	fmt.Println("\n   FAILURES\n=================\n")
-	PrintSuiteReport(os.Stdout, failures)
-	err = HTMLReport("./testdata", failures)
-	if err != nil {
-		log.Panic(err)
+	if testing.Verbose() {
+		fmt.Println("\n   FAILURES\n=================\n")
+		PrintSuiteReport(os.Stdout, failures)
+		err = HTMLReport("./testdata", failures)
+		if err != nil {
+			log.Panic(err)
+		}
 	}
 
 	cnt := make(map[string]int)
@@ -244,12 +252,12 @@ func TestThroughput(t *testing.T) {
 	}
 
 	N := float64(len(data))
-	fastP := float64(cnt["Fast Suite"]) / N
-	slowP := float64(cnt["Slow Suite"]) / N
-	slooowP := float64(cnt["Slooow Suite"]) / N
-	if fastP < 0.35 || fastP > 0.45 ||
-		slowP < 0.35 || slowP > 0.45 ||
-		slooowP < 0.15 || slooowP > 0.25 {
+	fastP := float64(cnt["Fast"]) / N
+	slowP := float64(cnt["Slow"]) / N
+	slooowP := float64(cnt["Slooow"]) / N
+	if fastP < 0.30 || fastP > 0.50 ||
+		slowP < 0.30 || slowP > 0.50 ||
+		slooowP < 0.10 || slooowP > 0.30 {
 		t.Errorf("Bad distribution of scenarios: fast=%f slow=%f slooow=%f",
 			fastP, slowP, slooowP)
 	}
