@@ -578,6 +578,7 @@ func (fs FileSystem) Load(name string) (*File, error) {
 //
 // into a new FileSystem.
 func NewFileSystem(txt string) (FileSystem, error) {
+	txt = "\n" + txt
 	parts := strings.Split(txt, "\n#")
 	filesystem := make(FileSystem, len(parts))
 

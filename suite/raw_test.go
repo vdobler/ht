@@ -13,6 +13,21 @@ import (
 	"github.com/vdobler/ht/ht"
 )
 
+func TestNewFilesystem(t *testing.T) {
+	txt := `# single.file
+some data 1
+other data 2
+`
+
+	fs, err := NewFileSystem(txt)
+	if err != nil {
+		t.Fatalf("Unexpected error %#v", err)
+	}
+	if len(fs) != 1 || fs["single.file"] == nil {
+		t.Fatalf("Got filesystem %#v", fs)
+	}
+}
+
 func TestLoadFile(t *testing.T) {
 	raw, err := LoadFile("./testdata/../testdata/a.ht")
 	if err != nil {
