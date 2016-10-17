@@ -476,3 +476,43 @@ func TestLoadRawLoadtest(t *testing.T) {
 			i, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads)
 	}
 }
+
+func TestInlineTests(t *testing.T) {
+	txt := `
+# inline.suite
+{
+    Name: "Inline Suite"
+    Description: "Test fully inlined tests"
+    Main: [
+        {Test: {
+            Name: "Google Homepage"
+            Mixins: [ "stdheaders.mix" ]
+            Request: {
+                URL: "http://www.google.com/"
+                FollowRedirects: true
+            }
+            Checks: [
+                {Check: "StatusCode", Expect: 200}
+            ]
+        }}
+    ]
+}
+
+# stdheaders.mix
+{
+    Request: {
+        Header: {
+            "X-Foo": "bar-xyz-123"
+        }
+    }
+}
+`
+	rs, err := parseRawSuite("inline.suite", txt)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	s := rs.Execute(nil, nil, logger())
+	fmt.Println(s.Status)
+	fmt.Println(s.Tests[0].PrintReport(os.Stdout))
+}

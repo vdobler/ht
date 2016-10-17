@@ -235,15 +235,10 @@ func LoadRawTest(filename string, fs FileSystem) (*RawTest, error) {
 
 	// Load all mixins from disk.
 	testdir := raw.Dirname()
-	mixins := make([]*Mixin, len(x.Mixin))
-	for i, file := range x.Mixin {
-		mixpath := path.Join(testdir, file)
-		mixin, err := loadMixin(mixpath, fs)
-		if err != nil {
-			return nil, fmt.Errorf("cannot read mixin %s in test %s: %s",
-				file, filename, err)
-		}
-		mixins[i] = mixin
+	mixins, err := loadMixins(x.Mixin, testdir, fs)
+	if err != nil {
+		return nil, fmt.Errorf("cannot load test %s: %s",
+			filename, err)
 	}
 
 	return &RawTest{
@@ -251,6 +246,20 @@ func LoadRawTest(filename string, fs FileSystem) (*RawTest, error) {
 		Mixins:    mixins,
 		Variables: x.Variables,
 	}, nil
+}
+
+func loadMixins(mixs []string, dir string, fs FileSystem) ([]*Mixin, error) {
+	mixins := []*Mixin{}
+	for _, file := range mixs {
+		mixpath := path.Join(dir, file)
+		mixin, err := loadMixin(mixpath, fs)
+		if err != nil {
+			return nil, fmt.Errorf("cannot read mixin %s: %s",
+				file, err)
+		}
+		mixins = append(mixins, mixin)
+	}
+	return mixins, nil
 }
 
 func makeRawTest(filename string, fs map[string]*File) (*RawTest, error) {
@@ -323,6 +332,7 @@ func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 		substituted.Mixins[i] = &Mixin{
 			File: &File{
 				Data: replacer.Replace(rt.Mixins[i].File.Data),
+				Name: rt.Mixins[i].File.Name,
 			},
 		}
 	}
@@ -337,7 +347,7 @@ func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 		mix, err := rawmix.toTest()
 		if err != nil {
 			return bogus, fmt.Errorf("cannot produce mixin from %s: %s",
-				rawmix, err)
+				rawmix.File.Name, err)
 		}
 		mixins[i] = mix
 	}
@@ -396,6 +406,8 @@ func (r *RawTest) toTest(variables map[string]string) (*ht.Test, error) {
 type SuiteElement struct {
 	File      string
 	Variables map[string]string
+
+	Test map[string]interface{}
 }
 
 // RawSuite
@@ -444,18 +456,30 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 	dir := rs.File.Dirname()
 	load := func(elems []SuiteElement, which string) error {
 		for i, elem := range elems {
+			var err error
+			var rt *RawTest
+			var filename string
 			if elem.File != "" {
-				filename := path.Join(dir, elem.File)
-				rt, err := LoadRawTest(filename, fs)
+				filename = path.Join(dir, elem.File)
+				rt, err = LoadRawTest(filename, fs)
 				if err != nil {
 					return fmt.Errorf("unable to load %s (%d. %s): %s",
 						filename, i+1, which, err)
 				}
-				rt.contextVars = elem.Variables
-				rs.tests = append(rs.tests, rt)
+			} else if len(elem.Test) != 0 {
+				name := fmt.Sprintf("%s_inline-%d.%s",
+					rs.File.Name, i+1, which)
+				rt, err = rawTestFromInline(name, dir, fs, elem.Test)
+				if err != nil {
+					return fmt.Errorf("unable to parse inline test (%d. %s): %s",
+						i+1, which, err)
+
+				}
 			} else {
-				panic("File must not be empty")
+				return fmt.Errorf("File and Test must not both be empty in %d. %s", i+1, which)
 			}
+			rt.contextVars = elem.Variables
+			rs.tests = append(rs.tests, rt)
 		}
 		return nil
 	}
@@ -473,6 +497,38 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 	}
 
 	return rs, nil
+}
+
+func rawTestFromInline(name, dir string, fs FileSystem, inline map[string]interface{}) (*RawTest, error) {
+	mixins := []*Mixin{}
+	if m, ok := inline["Mixins"]; ok {
+		mixs := []string{}
+		err := populate.Strict(&mixs, m)
+		if err != nil {
+			fmt.Println("Mixins issue", err)
+			return nil, err
+		}
+		delete(inline, "Mixins")
+		mixins, err = loadMixins(mixs, dir, fs)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	b, err := hjson.Marshal(inline)
+	if err != nil {
+		return nil, err
+	}
+
+	raw := &File{
+		Data: string(b),
+		Name: name,
+	}
+
+	return &RawTest{
+		File:   raw,
+		Mixins: mixins,
+	}, nil
 }
 
 // Validate rs to make sure it can be decoded into welformed ht.Tests.
