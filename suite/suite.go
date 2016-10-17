@@ -16,23 +16,24 @@ import (
 	"github.com/vdobler/ht/ht"
 )
 
-// A Suite is a collection of Tests after their (attempted) execution.
+// A Suite is a collection of Tests which can be executed sequentily with the
+// result captured.
 type Suite struct {
-	Name        string
-	Description string
-	KeepCookies bool
+	Name        string // Name of the Suite.
+	Description string // Description of what's going on here.
+	KeepCookies bool   // KeepCookies in a cookie jar common to all Tests.
 
-	Status   ht.Status
-	Error    error
-	Started  time.Time
-	Duration time.Duration
+	Status   ht.Status     // Status is the overall status of the whole suite.
+	Error    error         // Error encountered during execution of the suite.
+	Started  time.Time     // Start of the execution.
+	Duration time.Duration // Duration of the execution.
 
-	Tests []*ht.Test
+	Tests []*ht.Test // The Tests to execute
 
-	Variables      map[string]string
-	FinalVariables map[string]string
-	Jar            *cookiejar.Jar
-	Log            *log.Logger
+	Variables      map[string]string // The inital variable assignemnt
+	FinalVariables map[string]string // The final set of variables.
+	Jar            *cookiejar.Jar    // The cookie jar used
+	Log            *log.Logger       // The logger used.
 
 	scope map[string]string
 	tests []*RawTest
@@ -62,7 +63,7 @@ func newScope(outer, inner map[string]string, auto bool) map[string]string {
 		scope["COUNTER"] = strconv.Itoa(<-GetCounter)
 		scope["RANDOM"] = strconv.Itoa(100000 + ht.RandomIntn(900000))
 	}
-	replacer := VarReplacer(scope)
+	replacer := varReplacer(scope)
 
 	// 2. Merging inner defaults, allow substitutions from outer scope
 	for name, val := range inner {
@@ -111,7 +112,7 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 	suite.scope = newScope(global, rs.Variables, true)
 	suite.scope["SUITE_DIR"] = rs.File.Dirname()
 	suite.scope["SUITE_NAME"] = rs.File.Basename()
-	replacer := VarReplacer(suite.scope)
+	replacer := varReplacer(suite.scope)
 
 	suite.Name = replacer.Replace(rs.Name)
 	suite.Description = replacer.Replace(rs.Description)

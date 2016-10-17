@@ -12,6 +12,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/vdobler/ht/ht"
 )
 
 func logger() *log.Logger {
@@ -59,7 +61,7 @@ func TestVariableDominance(t *testing.T) {
 
 	globals := map[string]string{"D": "global"}
 
-	rs, err := ParseRawSuite("dominace.suite", txt)
+	rs, err := parseRawSuite("dominace.suite", txt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -108,7 +110,7 @@ func TestVariableHanddown(t *testing.T) {
 
 	globals := map[string]string{"E": "global-e"}
 
-	rs, err := ParseRawSuite("handdown.suite", txt)
+	rs, err := parseRawSuite("handdown.suite", txt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -130,7 +132,7 @@ func TestVariableHanddown(t *testing.T) {
 // and call scope so that call- and test-scope have just one value of COUNTER
 // and RANDOM.
 func TestAutomaticVariables(t *testing.T) {
-	rand.Seed(1234)
+	ht.Random.Seed(1234)
 	counter = 1
 
 	txt := `
@@ -169,7 +171,7 @@ func TestAutomaticVariables(t *testing.T) {
 
 	globals := map[string]string{"E": "global-e"}
 
-	rs, err := ParseRawSuite("automatic.suite", txt)
+	rs, err := parseRawSuite("automatic.suite", txt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -234,7 +236,7 @@ func TestVariableExtraction(t *testing.T) {
     }
 }`
 
-	rs, err := ParseRawSuite("extraction.suite", txt)
+	rs, err := parseRawSuite("extraction.suite", txt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

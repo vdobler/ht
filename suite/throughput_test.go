@@ -185,17 +185,17 @@ func TestThroughput(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(waitHandler))
 	defer ts.Close()
 
-	slow, err := ParseRawSuite("slow.suite", tpSuiteSlow)
+	slow, err := parseRawSuite("slow.suite", tpSuiteSlow)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	fast, err := ParseRawSuite("fast.suite", tpSuiteFast)
+	fast, err := parseRawSuite("fast.suite", tpSuiteFast)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	slooow, err := ParseRawSuite("slooow.suite", tpSuiteSlooow)
+	slooow, err := parseRawSuite("slooow.suite", tpSuiteSlooow)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -332,7 +332,7 @@ func TestThroughput2(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(waitHandler2))
 	defer ts.Close()
 
-	raw, err := ParseRawLoadtest("dummy.load", sampleLoadtest)
+	raw, err := parseRawLoadtest("dummy.load", sampleLoadtest)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

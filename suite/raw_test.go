@@ -446,7 +446,7 @@ var sampleLoadtest = `
 `
 
 func TestLoadRawLoadtest(t *testing.T) {
-	raw, err := ParseRawLoadtest("dummy.load", sampleLoadtest)
+	raw, err := parseRawLoadtest("dummy.load", sampleLoadtest)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

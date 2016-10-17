@@ -2,6 +2,33 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Throughput Load-Testing
+//
+// Load tests in the form of a throuhghput-test can be made through the
+// Throughput function. This function will try to create a certain
+// throughput load, i.e. a certain average number of request per second.
+// The intervalls between request follow an exponential distribution
+// which mimics the load generated from real-world, uncorrelated users.
+//
+// The requests are generated from different Scenarios which contribute
+// a certain percentage of requests to the set of all requests. The
+// scenarios are basically just suites of tests: One suite might simulate
+// the bahaviour of a bot while an other scenario can simulate the
+// behaviour of a "normal" user and a third scenario performs actions
+// a user with special interests.
+//
+// The Tests of each suite/scenario are executed, including the checks.
+// Note that some checks can produce additional requests which are
+// not accounted in the throughput rate of the load test (but do hit the
+// target server).
+// Checks can be turned off on per scenario basis.
+//
+// If all tests (and thus request) in a suite/scenario have been
+// executed, the suite is repeated. To reach the desired request througput
+// rate each scenario is run in multiple parallel threads. New threads are
+// started as needed. The number of threads may be limited on a per
+// scenario basis.
+//
 package suite
 
 import (
@@ -20,25 +47,34 @@ import (
 	"github.com/vdobler/ht/internal/bender"
 )
 
-// Scenario to run in a throughput test.
+// Scenario describes a single scenario to be run as part of a throughput test.
 type Scenario struct {
-	// Name of this scenario. May differ from the suite
+	// Name of this scenario. May differ from the suite.
 	Name string
 
-	// RawSuite is the suite to execute repeatedly to generate lod.
+	// RawSuite is the suite to execute repeatedly to generate load.
 	*RawSuite
 
-	// Percentage of requests in the load test taken from this Scenario.
+	// Percentage of requests in the throughput test taken from this
+	// scenario.
 	Percentage int
 
+	// MaxThreads limits the number of threads used to generate load from
+	// this scenario. The value 0 indicates unlimited number of threads.
 	MaxThreads int
-	Log        *log.Logger
+
+	// OmitChecks turns off checks in this scenario, i.e. only the request
+	// is made but no checks are performed on the response.
+	OmitChecks bool
+
+	// The logger to use for tests of this scenario.
+	Log *log.Logger
 
 	globals map[string]string
 	jar     *cookiejar.Jar
 }
 
-func (sc *Scenario) Setup() *Suite {
+func (sc *Scenario) setup() *Suite {
 	suite := NewFromRaw(sc.RawSuite, sc.globals, sc.jar, sc.Log)
 	// Cap tests to setup-tests.
 	suite.tests = suite.tests[:len(sc.RawSuite.Setup)]
@@ -66,7 +102,7 @@ func (sc *Scenario) Setup() *Suite {
 	return suite
 }
 
-func (sc *Scenario) Teardown() *Suite {
+func (sc *Scenario) teardown() *Suite {
 	suite := NewFromRaw(sc.RawSuite, sc.globals, sc.jar, sc.Log)
 	// Cap tests to setup-tests.
 	suite.tests = suite.tests[len(suite.tests)-len(sc.RawSuite.Teardown):]
@@ -101,12 +137,17 @@ type pool struct {
 	Misses  int
 }
 
+// IDSep is the seperator string used in constructing IDs for the individual
+// test executed. The test Name are (miss)used to report details:
+//
+//     <ScenarioNo>/<ThreadNo>/<Repetition>/<TestNo> IDSep <ScenarioName> IDSep <TestName>
+//
 var IDSep = "\u2237"
 
 func (p *pool) newThread(stop chan bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.Threads >= p.MaxThreads {
+	if p.MaxThreads > 0 && p.Threads >= p.MaxThreads {
 		if p.Scenario.Log != nil {
 			p.Scenario.Log.Printf("No extra thread started (%d already running)\n", p.Threads)
 		}
@@ -223,15 +264,17 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 	return pools, nil
 }
 
+// Throughput runs a throughput load test with an average rate of request/seconds
+// for the given duration. The request are generated from the given scenarios.
+// It returns a summary of all request, all failed tests collected into a Suite
+// and an error indicating if the throughput test reached the targeted rate and
+// distribution.
 func Throughput(scenarios []Scenario, rate float64, duration time.Duration) ([]bender.TestData, *Suite, error) {
 	for i := range scenarios {
-		if scenarios[i].MaxThreads == 0 {
-			scenarios[i].MaxThreads = 1
-		}
 		// Setup must be called for all scenarios!
 		fmt.Printf("Scenario %d %q: Running setup\n",
 			i+1, scenarios[i].Name)
-		ss := (&scenarios[i]).Setup()
+		ss := (&scenarios[i]).setup()
 		if ss.Error != nil {
 			return nil, ss, fmt.Errorf("Setup of scenario %d %q failed: %s",
 				i+1, scenarios[i].Name, ss.Error)
@@ -275,7 +318,7 @@ func Throughput(scenarios []Scenario, rate float64, duration time.Duration) ([]b
 		}
 		fmt.Printf("Running Teardown of scenario %d %q\n",
 			i+1, scenarios[i].Name)
-		(&scenarios[i]).Teardown()
+		(&scenarios[i]).teardown()
 	}
 
 	return data, makeFailureSuite(failures), err
@@ -427,6 +470,7 @@ func analyseOverage(data []bender.TestData) error {
 
 func dToMs(d time.Duration) float64 { return float64(d/1000) / 1000 }
 
+// DataPrint prints data to out in human readable tabular format.
 func DataPrint(data []bender.TestData, out io.Writer) {
 	timeLayout := "2006-01-02T15:04:05.999"
 
@@ -447,6 +491,7 @@ func DataPrint(data []bender.TestData, out io.Writer) {
 
 }
 
+// DataToCSV prints data as a CVS table to out.
 func DataToCSV(data []bender.TestData, out io.Writer) error {
 	writer := csv.NewWriter(out)
 	defer writer.Flush()

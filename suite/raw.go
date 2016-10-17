@@ -36,6 +36,16 @@ func ppvars(msg string, vars map[string]string) {
 	}
 }
 
+func varReplacer(vars map[string]string) *strings.Replacer {
+	oldnew := []string{}
+	for k, v := range vars {
+		oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
+		oldnew = append(oldnew, v)
+	}
+
+	return strings.NewReplacer(oldnew...)
+}
+
 // ----------------------------------------------------------------------------
 // Counter
 
@@ -64,7 +74,7 @@ type File struct {
 	Name string
 }
 
-// NewFile read the given file and returns it as a File.
+// NewFile reads the given file and returns it as a File.
 func LoadFile(filename string) (*File, error) {
 	filename = filepath.ToSlash(filename)
 	filename = path.Clean(filename)
@@ -88,56 +98,41 @@ func LoadFile(filename string) (*File, error) {
 
 }
 
-func VarReplacer(vars map[string]string) *strings.Replacer {
-	oldnew := []string{}
-	for k, v := range vars {
-		oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
-		oldnew = append(oldnew, v)
-	}
-
-	return strings.NewReplacer(oldnew...)
+// Dirname of f.
+func (f *File) Dirname() string {
+	return path.Dir(f.Name)
 }
 
-// Substitute vars in r.
-func (f *File) Substitute(vars map[string]string) *File {
-	replacer := VarReplacer(vars)
-	return &File{
-		Data: replacer.Replace(f.Data),
-		Name: f.Name,
-	}
+// Basename of f.
+func (f *File) Basename() string {
+	return path.Base(f.Name)
 }
 
-func (r *File) Dirname() string {
-	return path.Dir(r.Name)
-}
-
-func (r *File) Basename() string {
-	return path.Base(r.Name)
-}
-
-func (r *File) decode() (map[string]interface{}, error) {
+// decode f which must be a hjson file to a map[string]interface{} soup.
+func (f *File) decode() (map[string]interface{}, error) {
 	var soup interface{}
-	err := hjson.Unmarshal([]byte(r.Data), &soup)
+	err := hjson.Unmarshal([]byte(f.Data), &soup)
 	if err != nil {
-		return nil, fmt.Errorf("file %s is not valid hjson: %s", r.Name, err)
+		return nil, fmt.Errorf("file %s is not valid hjson: %s", f.Name, err)
 	}
 	m, ok := soup.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("file %s is not an object (got %T)", r.Name, soup)
+		return nil, fmt.Errorf("file %s is not an object (got %T)", f.Name, soup)
 	}
 	return m, nil
 }
 
-func (r *File) decodeLaxTo(x interface{}) error {
+// populate x with the decoded f, ignoring excess properties.
+func (f *File) decodeLaxTo(x interface{}) error {
 	var soup interface{}
-	err := hjson.Unmarshal([]byte(r.Data), &soup)
+	err := hjson.Unmarshal([]byte(f.Data), &soup)
 	if err != nil {
 		// TODO: linenr.
-		return fmt.Errorf("file %s is not valid hjson: %s", r.Name, err)
+		return fmt.Errorf("file %s is not valid hjson: %s", f.Name, err)
 	}
 	m, ok := soup.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("file %s is not an object (got %T)", r.Name, soup)
+		return fmt.Errorf("file %s is not an object (got %T)", f.Name, soup)
 	}
 	err = populate.Lax(x, m)
 	if err != nil {
@@ -147,16 +142,18 @@ func (r *File) decodeLaxTo(x interface{}) error {
 	return nil
 }
 
-func (r *File) decodeStrictTo(x interface{}, drop []string) error {
+// populate x with the decoded f. Top level properties in in drop are
+// dropped before atempting a strict population
+func (f *File) decodeStrictTo(x interface{}, drop []string) error {
 	var soup interface{}
-	err := hjson.Unmarshal([]byte(r.Data), &soup)
+	err := hjson.Unmarshal([]byte(f.Data), &soup)
 	if err != nil {
 		// TODO: linenr.
-		return fmt.Errorf("file %s is not valid hjson: %s", r.Name, err)
+		return fmt.Errorf("file %s is not valid hjson: %s", f.Name, err)
 	}
 	m, ok := soup.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("file %s is not an object (got %T)", r.Name, soup)
+		return fmt.Errorf("file %s is not an object (got %T)", f.Name, soup)
 	}
 	for _, d := range drop {
 		delete(m, d)
@@ -172,11 +169,13 @@ func (r *File) decodeStrictTo(x interface{}, drop []string) error {
 // ----------------------------------------------------------------------------
 //   Mixin
 
+// Mixin of a test.
 type Mixin struct {
 	*File
 }
 
-func LoadMixin(filename string, fs FileSystem) (*Mixin, error) {
+// LoadMixin with the given filename.
+func loadMixin(filename string, fs FileSystem) (*Mixin, error) {
 	file, err := fs.Load(filename)
 	if err != nil {
 		return nil, err
@@ -185,7 +184,7 @@ func LoadMixin(filename string, fs FileSystem) (*Mixin, error) {
 	return &Mixin{File: file}, nil
 }
 
-func MakeMixin(filename string, fs map[string]*File) (*Mixin, error) {
+func makeMixin(filename string, fs map[string]*File) (*Mixin, error) {
 	file, ok := fs[filename]
 	if !ok {
 		return nil, fmt.Errorf("cannot find mixin %s", filename)
@@ -197,11 +196,13 @@ func MakeMixin(filename string, fs map[string]*File) (*Mixin, error) {
 // ----------------------------------------------------------------------------
 //   RawTest
 
-// RawTest is a raw test its mixins and its variables.
+// RawTest is a raw for of a test as read from disk with its mixins
+// and its variables.
 type RawTest struct {
 	*File
-	Mixins      []*Mixin
-	Variables   map[string]string
+	Mixins    []*Mixin          // Mixins of this test.
+	Variables map[string]string // Variables are the defaults of the variables.
+
 	contextVars map[string]string
 	disabled    bool
 }
@@ -210,17 +211,12 @@ func (r *RawTest) String() string {
 	return r.File.Name
 }
 
-func (r *RawTest) Disable() {
-	r.disabled = true
-}
-func (r *RawTest) Enable() {
-	r.disabled = false
-}
-func (r *RawTest) IsEnabled() bool {
-	return !r.disabled
-}
+// Disable and Enable  r.
+func (r *RawTest) Disable()        { r.disabled = true }
+func (r *RawTest) Enable()         { r.disabled = false }
+func (r *RawTest) IsEnabled() bool { return !r.disabled }
 
-// NewRawTest reads workingdir/filename and produces a new RawTest.
+// LoadRawTest reads filename and produces a new RawTest.
 func LoadRawTest(filename string, fs FileSystem) (*RawTest, error) {
 	raw, err := fs.Load(filename)
 	if err != nil {
@@ -242,7 +238,7 @@ func LoadRawTest(filename string, fs FileSystem) (*RawTest, error) {
 	mixins := make([]*Mixin, len(x.Mixin))
 	for i, file := range x.Mixin {
 		mixpath := path.Join(testdir, file)
-		mixin, err := LoadMixin(mixpath, fs)
+		mixin, err := loadMixin(mixpath, fs)
 		if err != nil {
 			return nil, fmt.Errorf("cannot read mixin %s in test %s: %s",
 				file, filename, err)
@@ -257,7 +253,7 @@ func LoadRawTest(filename string, fs FileSystem) (*RawTest, error) {
 	}, nil
 }
 
-func MakeRawTest(filename string, fs map[string]*File) (*RawTest, error) {
+func makeRawTest(filename string, fs map[string]*File) (*RawTest, error) {
 	raw, ok := fs[filename]
 	if !ok {
 		return nil, fmt.Errorf("cannot find %s", filename)
@@ -278,7 +274,7 @@ func MakeRawTest(filename string, fs map[string]*File) (*RawTest, error) {
 	mixins := make([]*Mixin, len(x.Mixin))
 	for i, file := range x.Mixin {
 		mixpath := path.Join(testdir, file)
-		mixin, err := MakeMixin(mixpath, fs)
+		mixin, err := makeMixin(mixpath, fs)
 		if err != nil {
 			return nil, fmt.Errorf("cannot read mixin %s in test %s: %s",
 				file, filename, err)
@@ -297,7 +293,7 @@ func mergeVariables(global, local map[string]string) map[string]string {
 	varset := make(map[string]string)
 
 	// Globals can be used in local values.
-	replacer := VarReplacer(global)
+	replacer := varReplacer(global)
 	for k, v := range local {
 		varset[k] = replacer.Replace(v)
 	}
@@ -309,10 +305,10 @@ func mergeVariables(global, local map[string]string) map[string]string {
 	return varset
 }
 
-// ToTest produces a ht.Test from rt.
+// ToTest produces a ht.Test from a raw test rt.
 func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 	bogus := &ht.Test{Status: ht.Bogus}
-	replacer := VarReplacer(variables)
+	replacer := varReplacer(variables)
 
 	// Make substituted a copy of rt with variables substituted.
 	// Dropping the Variabels field as this is no longer useful.
@@ -396,6 +392,7 @@ func (r *RawTest) toTest(variables map[string]string) (*ht.Test, error) {
 // ----------------------------------------------------------------------------
 //   RawSuite
 
+// SuiteElement represents one test in a RawSuite.
 type SuiteElement struct {
 	File      string
 	Variables map[string]string
@@ -422,7 +419,7 @@ func (rs *RawSuite) AddRawTests(ts ...*RawTest) {
 	rs.tests = append(rs.tests, ts...)
 }
 
-func ParseRawSuite(name string, txt string) (*RawSuite, error) {
+func parseRawSuite(name string, txt string) (*RawSuite, error) {
 	fs, err := NewFileSystem(txt)
 	if err != nil {
 		return nil, err
@@ -431,6 +428,7 @@ func ParseRawSuite(name string, txt string) (*RawSuite, error) {
 	return LoadRawSuite(name, fs)
 }
 
+// LoadRawSuite with the given filename from fs.
 func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 	raw, err := fs.Load(filename)
 	if err != nil {
@@ -477,49 +475,7 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 	return rs, nil
 }
 
-func MakeRawSuite(suite *File, fs map[string]*File) (*RawSuite, error) {
-	raw := suite
-	rs := &RawSuite{}
-	err := raw.decodeStrictTo(rs, nil)
-	if err != nil {
-		return nil, err // better error message here
-	}
-	rs.File = raw // re-set as decodeStritTo clears rs
-
-	dir := rs.File.Dirname()
-	load := func(elems []SuiteElement, which string) error {
-		for i, elem := range elems {
-			if elem.File != "" {
-				filename := path.Join(dir, elem.File)
-				rt, err := MakeRawTest(filename, fs)
-				if err != nil {
-					return fmt.Errorf("unable to load %s (%d. %s): %s",
-						filename, i+1, which, err)
-				}
-				rt.contextVars = elem.Variables
-				rs.tests = append(rs.tests, rt)
-			} else {
-				panic("File must not be empty")
-			}
-		}
-		return nil
-	}
-	err = load(rs.Setup, "Setup")
-	if err != nil {
-		return nil, err
-	}
-	err = load(rs.Main, "Main")
-	if err != nil {
-		return nil, err
-	}
-	err = load(rs.Teardown, "Teardown")
-	if err != nil {
-		return nil, err
-	}
-
-	return rs, nil
-}
-
+// Validate rs to make sure it can be decoded into welformed ht.Tests.
 func (rs *RawSuite) Validate(variables map[string]string) error {
 	fmt.Println("Validation Suite", rs.Name)
 	el := ht.ErrorList{}
@@ -597,7 +553,7 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 // FileSystem
 
 // FileSystem acts like an in-memory filesystem.
-// A nil FileSystem accesses the real OS file system.
+// A empty FileSystem accesses the real OS file system.
 type FileSystem map[string]*File
 
 func (fs FileSystem) Load(name string) (*File, error) {
@@ -651,17 +607,19 @@ func NewFileSystem(txt string) (FileSystem, error) {
 // ----------------------------------------------------------------------------
 // RawScenrio & RawLoadtest
 
+// RawScenario represents a scenario in a load test.
 type RawScenario struct {
-	File       string
-	Name       string
-	Percentage int
-	MaxThreads int
-	Variables  map[string]string
-	OmitChecks bool
+	Name       string            // Name of this Scenario
+	File       string            // File is the RawSuite to use as scenario
+	Percentage int               // Percantage this scenario contributes to the load test.
+	MaxThreads int               // MaxThreads to use for this scenario. 0 means unlimited.
+	Variables  map[string]string // Variables used.
+	OmitChecks bool              // OmitChecks in the tests.
 
 	rawSuite *RawSuite
 }
 
+// RawLoadTest as read from disk.
 type RawLoadTest struct {
 	*File
 	Name        string
@@ -670,7 +628,7 @@ type RawLoadTest struct {
 	Variables   map[string]string
 }
 
-func ParseRawLoadtest(name string, txt string) (*RawLoadTest, error) {
+func parseRawLoadtest(name string, txt string) (*RawLoadTest, error) {
 	fs, err := NewFileSystem(txt)
 	if err != nil {
 		return nil, err
@@ -679,6 +637,7 @@ func ParseRawLoadtest(name string, txt string) (*RawLoadTest, error) {
 	return LoadRawLoadtest(name, fs)
 }
 
+// LoadRawLoadtest from the given filename.
 func LoadRawLoadtest(filename string, fs FileSystem) (*RawLoadTest, error) {
 	raw, err := fs.Load(filename)
 	if err != nil {
@@ -710,6 +669,7 @@ func LoadRawLoadtest(filename string, fs FileSystem) (*RawLoadTest, error) {
 	return rlt, nil
 }
 
+// ToScenario produces a list of scenarios from raw.
 func (raw *RawLoadTest) ToScenario(globals map[string]string) []Scenario {
 	scenarios := []Scenario{}
 	ltscope := newScope(globals, raw.Variables, true)
