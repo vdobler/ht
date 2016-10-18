@@ -71,7 +71,7 @@ func TestVariableDominance(t *testing.T) {
 		s.Tests[0].Variables["B"] != "call" ||
 		s.Tests[0].Variables["C"] != "suite" ||
 		s.Tests[0].Variables["D"] != "global" {
-		PrintSuiteReport(os.Stdout, s)
+		s.PrintReport(os.Stdout)
 		t.Errorf("Bad variable dominance. Got %v", s.Tests[0].Variables)
 	}
 }
@@ -123,7 +123,7 @@ func TestVariableHanddown(t *testing.T) {
 		s.Tests[0].Variables["E"] != "global-e" ||
 		s.Tests[0].Variables["Va"] != "call-a" ||
 		s.Tests[0].Variables["Vb"] != "test-c" {
-		PrintSuiteReport(os.Stdout, s)
+		s.PrintReport(os.Stdout)
 		t.Errorf("Bad variable handdown. Got %v", s.Tests[0].Variables)
 	}
 }
@@ -182,7 +182,7 @@ func TestAutomaticVariables(t *testing.T) {
 	want1 += "TestCount=2 TestRand=858315 " // Same as Call{Count,Rand}
 	want1 += "COUNTER=2 RANDOM=858315"      // Same as Call{Count,Rand}
 	if wrong := matchVars(s.Tests[0].Variables, want1); wrong != "" {
-		PrintSuiteReport(os.Stdout, s)
+		s.PrintReport(os.Stdout)
 		t.Errorf("First invocation. Got %s", wrong)
 	}
 
@@ -191,7 +191,7 @@ func TestAutomaticVariables(t *testing.T) {
 	want2 += "TestCount=3 TestRand=817389 " // Same as Call{Count,Rand}
 	want2 += "COUNTER=3 RANDOM=817389"      // Same as Call{Count,Rand}
 	if wrong := matchVars(s.Tests[1].Variables, want2); wrong != "" {
-		PrintSuiteReport(os.Stdout, s)
+		s.PrintReport(os.Stdout)
 		t.Errorf("Second invocation. Got %s", wrong)
 	}
 }
@@ -246,7 +246,7 @@ func TestVariableExtraction(t *testing.T) {
 		s.FinalVariables["B"] != "B B B B" ||
 		s.FinalVariables["D"] != "D=B B" ||
 		s.FinalVariables["RANDOM"] != "abcdef" {
-		PrintSuiteReport(os.Stdout, s)
+		s.PrintReport(os.Stdout)
 		t.Errorf("Bad variable extraction. Got %v", s.FinalVariables)
 	}
 }

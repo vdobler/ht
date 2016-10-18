@@ -72,7 +72,7 @@ func saveOutcome(outcome []*suite.Suite) {
 	os.MkdirAll(outputDir, 0766)
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
 	for _, s := range outcome {
-		suite.PrintSuiteReport(os.Stdout, s)
+		s.PrintReport(os.Stdout)
 	}
 
 	overallStatus := ht.NotRun

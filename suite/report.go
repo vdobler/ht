@@ -25,10 +25,6 @@ import (
 // ----------------------------------------------------------------------------
 // Templates to output
 
-var defaultCheckTmpl = `{{define "CHECK"}}{{printf "%-7s %-15s %s" .Status .Name .JSON}}` +
-	`{{if eq .Status 3 5}}{{range .Error}}
-                {{.Error}}{{end}}{{end}}{{end}}`
-
 var htmlCheckTmpl = `{{define "CHECK"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}2">
   <div class="collapsed2">
@@ -51,29 +47,6 @@ var htmlCheckTmpl = `{{define "CHECK"}}
 </div>
 {{end}}
 `
-
-var defaultTestTmpl = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}}{{if gt .Tries 1}}
-  {{printf "(after %d tries)" .Tries}}{{end}}
-  Started: {{.Started}}   Duration: {{.FullDuration}}   Request: {{.Duration}}{{if .Request.Request}}
-  {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{range .Response.Redirections}}
-  GET {{.}}{{end}}{{end}}{{if .Response.Response}}
-  {{.Response.Response.Proto}} {{.Response.Response.Status}}{{end}}{{if .Error}}
-  Error: {{.Error}}{{end}}
-{{if eq .Status 2 3 4 5}}  {{if .CheckResults}}Checks:
-{{range $i, $c := .CheckResults}}{{printf "    %2d. " $i}}{{template "CHECK" .}}
-{{end}}{{end}}{{end}}{{if .Variables}}  Variables:
-{{range $k, $v := .Variables}}{{printf "    %s == %q\n" $k $v}}{{end}}{{end}}{{if .ExValues}}  Extracted:
-{{range $k, $v := .ExValues}}{{if $v.Error}}{{printf "    %s : %s\n" $k $v.Error}}{{else}}{{printf "    %s == %q\n" $k $v.Value}}{{end}}{{end}}{{end}}{{end}}`
-
-var shortTestTmpl = `{{define "SHORTTEST"}}{{.Status.String}}: {{.Name}}{{if .Request.Request}}
-  {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{range .Response.Redirections}}
-  GET {{.}}{{end}}{{end}}{{if .Response.Response}}
-  {{.Response.Response.Proto}} {{.Response.Response.Status}}{{end}}{{if .Error}}
-  {{.Error}}{{end}}{{if gt .Status 2}}{{if .CheckResults}}{{range .CheckResults}}{{if eq .Status 3 5}}
-    {{printf "%-7s %-15s %s" .Status .Name .JSON}}{{range .Error}}
-      {{.Error}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .ExValues}}{{range $k, $v := .ExValues}}{{if $v.Error}}
-  {{printf "Extraction of %s : %s\n" $k $v.Error}}{{end}}{{end}}{{end}}
-{{end}}`
 
 var htmlTestTmpl = `{{define "TEST"}}
 <div class="toggle{{if gt .Status 2}}Visible{{end}}">
@@ -356,48 +329,27 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 `
 
 var (
-	ShortTestTmpl  *template.Template
-	TestTmpl       *template.Template
 	SuiteTmpl      *template.Template
 	ShortSuiteTmpl *template.Template
 	HtmlSuiteTmpl  *htmltemplate.Template
 )
 
-// Box around title, indented by prefix.
-//    +------------+
-//    |    Title   |
-//    +------------+
-func Box(title string, prefix string) string {
-	n := len(title)
-	top := prefix + "+" + strings.Repeat("-", n+6) + "+"
-	return fmt.Sprintf("%s\n%s|   %s   |\n%s", top, prefix, title, top)
-}
-
 func init() {
 	fm := make(template.FuncMap)
 	//fm["Underline"] = Underline
-	fm["Box"] = Box
+	fm["Box"] = ht.Box
 	fm["ToUpper"] = strings.ToUpper
-
-	ShortTestTmpl = template.New("SHORTTEST")
-	ShortTestTmpl.Funcs(fm)
-	ShortTestTmpl = template.Must(ShortTestTmpl.Parse(shortTestTmpl))
-
-	TestTmpl = template.New("TEST")
-	TestTmpl.Funcs(fm)
-	TestTmpl = template.Must(TestTmpl.Parse(defaultTestTmpl))
-	TestTmpl = template.Must(TestTmpl.Parse(defaultCheckTmpl))
 
 	SuiteTmpl = template.New("SUITE")
 	SuiteTmpl.Funcs(fm)
 	SuiteTmpl = template.Must(SuiteTmpl.Parse(defaultSuiteTmpl))
-	SuiteTmpl = template.Must(SuiteTmpl.Parse(defaultTestTmpl))
-	SuiteTmpl = template.Must(SuiteTmpl.Parse(defaultCheckTmpl))
+	SuiteTmpl = template.Must(SuiteTmpl.Parse(ht.DefaultTestTemplate))
+	SuiteTmpl = template.Must(SuiteTmpl.Parse(ht.DefaultCheckTemplate))
 
 	ShortSuiteTmpl = template.New("SHORTSUITE")
 	ShortSuiteTmpl.Funcs(fm)
 	ShortSuiteTmpl = template.Must(ShortSuiteTmpl.Parse(shortSuiteTmpl))
-	ShortSuiteTmpl = template.Must(ShortSuiteTmpl.Parse(shortTestTmpl))
+	ShortSuiteTmpl = template.Must(ShortSuiteTmpl.Parse(ht.ShortTestTemplate))
 
 	HtmlSuiteTmpl = htmltemplate.New("SUITE")
 	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{
@@ -416,12 +368,12 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlJavascriptTmpl))
 }
 
-func PrintTestReport(w io.Writer, t ht.Test) error {
-	return TestTmpl.Execute(w, t)
+func (s *Suite) PrintReport(w io.Writer) error {
+	return SuiteTmpl.Execute(w, s)
 }
 
-func PrintSuiteReport(w io.Writer, s *Suite) error {
-	return SuiteTmpl.Execute(w, s)
+func (s *Suite) PrintShortReport(w io.Writer) error {
+	return ShortSuiteTmpl.Execute(w, s)
 }
 
 // TODO: sniff if unavailable
@@ -590,7 +542,7 @@ func (s *Suite) JUnit4XML() (string, error) {
 	// the generated JUnit report.
 	buf := &bytes.Buffer{}
 	var sysout string
-	err := PrintSuiteReport(buf, s)
+	err := s.PrintReport(buf)
 	if err != nil {
 		sysout = err.Error()
 	} else {

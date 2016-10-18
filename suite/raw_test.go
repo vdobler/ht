@@ -178,7 +178,7 @@ func TestRawSuiteExecute(t *testing.T) {
 	fmt.Println("STATUS ==", s.Status, s.Error)
 	// pp("Suite", s)
 
-	err = PrintSuiteReport(os.Stdout, s)
+	err = s.PrintReport(os.Stdout)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}

@@ -237,7 +237,7 @@ func TestThroughput(t *testing.T) {
 
 	if testing.Verbose() {
 		fmt.Println("\n   FAILURES\n=================\n")
-		PrintSuiteReport(os.Stdout, failures)
+		failures.PrintReport(os.Stdout)
 		err = HTMLReport("./testdata", failures)
 		if err != nil {
 			log.Panic(err)
