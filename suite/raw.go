@@ -539,8 +539,8 @@ func (rs *RawSuite) Validate(variables map[string]string) error {
 		fmt.Printf("Validating Test %d %q\n", i, rt)
 		_, err := rt.ToTest(variables)
 		if err != nil {
-			fmt.Printf("Test %q (%s): %s\n",
-				rt.Name, rt.File.Name, err)
+			fmt.Printf("invalid test %s (%s included by %s): %s\n",
+				rt.Name, rt.File.Name, rs.File.Name, err)
 			el = append(el, err)
 		}
 	}

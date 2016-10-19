@@ -117,22 +117,19 @@ func (em *ExtractorMap) Populate(src interface{}) error {
 
 	err := populate.Lax(&types, src)
 	if err != nil {
-		fmt.Println("!! Extractor type extraction failed", err)
 		return err
 	}
 
 	raw := make(map[string]interface{})
 	srcMap, ok := src.(map[string]interface{})
 	if !ok {
-		fmt.Printf("Fuck 1 %#v\n", srcMap)
-		return fmt.Errorf("Fuck1")
+		return fmt.Errorf("ht: cannot populate %T to variable extractor object")
 	}
 
 	for name := range types {
 		r, ok := srcMap[name].(map[string]interface{})
 		if !ok {
-			fmt.Printf("Fuck 2 %#v\n", srcMap[name])
-			return fmt.Errorf("Fuck 2")
+			return fmt.Errorf("ht: cannot populate extractor for %q from %T", name, srcMap[name])
 		}
 		delete(r, "Extractor")
 		raw[name] = r
@@ -151,8 +148,7 @@ func (em *ExtractorMap) Populate(src interface{}) error {
 		extractor := reflect.New(typ)
 		err = populate.Strict(extractor.Interface(), raw[name])
 		if err != nil {
-			fmt.Println("Fuck 3", err)
-			return err
+			return fmt.Errorf("ht: cannot build extractor for %q: %s", name, err)
 		}
 		exes[name] = extractor.Interface().(Extractor)
 
