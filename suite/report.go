@@ -7,6 +7,7 @@ package suite
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	htmltemplate "html/template"
 	"io"
@@ -26,22 +27,18 @@ import (
 // Templates to output
 
 var htmlCheckTmpl = `{{define "CHECK"}}
-<div class="toggle{{if gt .Status 2}}Visible{{end}}2">
-  <div class="collapsed2">
-    <h3 class="toggleButton2">Check:
-      <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span>
-      <code>{{.Name}}</code> ▹
-    </h3>
-  </div>
-  <div class="expanded2">
-    <h3 class="toggleButton2">Check: 
-      <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span>
-      <code>{{.Name}}</code> ▾
-    </h3>
+<div class="toggle2{{if gt .Check.Status 2}}Visible{{end}}2">
+  <input type="checkbox" value="selected" {{if gt .Check.Status 2}}checked{{end}}
+         id="check-{{.SeqNo}}-{{.N}}" class="toggle-input">
+  <label for="check-{{.SeqNo}}-{{.N}}" class="toggle-label">
+    <h3><span class="{{ToUpper .Check.Status.String}}">{{ToUpper .Check.Status.String}}</span>
+      <code>{{.Check.Name}}</code></h3>
+  </label>
+  <div class="toggle-content">
     <div class="checkDetails">
-      <div>Checking took {{.Duration}}</div>
-      <div><code>{{.JSON}}</code></div>
-      {{if eq .Status 3 5}}<pre class="description">{{.Error.Error}}</pre>{{end}}
+      <div>Checking took {{.Check.Duration}}</div>
+      <div><code>{{.Check.JSON}}</code></div>
+      {{if eq .Check.Status 3 5}}<pre class="description">{{.Check.Error.Error}}</pre>{{end}}
     </div>
   </div>
 </div>
@@ -49,18 +46,16 @@ var htmlCheckTmpl = `{{define "CHECK"}}
 `
 
 var htmlTestTmpl = `{{define "TEST"}}
-<div class="toggle{{if gt .Status 2}}Visible{{end}}">
-  <div class="collapsed">
-    <h2 class="toggleButton">{{.Reporting.SeqNo}}:
+<div class="toggle">
+  <input type="checkbox" value="selected" {{if gt .Status 2}}checked{{end}}
+         id="test-{{.Reporting.SeqNo}}" class="toggle-input">
+  <label for="test-{{.Reporting.SeqNo}}" class="toggle-label">
+    <h2>{{.Reporting.SeqNo}}:
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
-      "{{.Name}}" <small>(<code>{{.Reporting.Filename}}</code>, {{.FullDuration}})</small> ▹
+      "{{.Name}}" <small>(<code>{{.Reporting.Filename}}</code>, {{.FullDuration}})</small>
     </h2>
-  </div>
-  <div class="expanded">
-    <h2 class="toggleButton">{{.Reporting.SeqNo}}: 
-      <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
-      "{{.Name}}" <small>(<code>{{.Reporting.Filename}}</code>, {{.FullDuration}})</small> ▾
-    </h2>
+  </label>
+  <div class="toggle-content">
     <div class="testDetails">
       <div class="reqresp"><code>
         {{if .Request.Request}}
@@ -79,18 +74,17 @@ var htmlTestTmpl = `{{define "TEST"}}
 	Full Duration: {{.FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
         Request Duration: {{.Duration}} <br/>
-        {{if .Error}}<br/><strong>Error:</strong> {{.Error}}{{end}}<br/>
+        {{if .Error}}<br/><strong>Error:</strong> {{.Error}}<br/>{{end}}
       </div>
-      <div>
-        {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
-        {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
-        {{if .Request.SentParams}}{{template "FORMDATA" .Request.SentParams}}{{end}}
-        {{if or .Variables .ExValues}}{{template "VARIABLES" .}}{{end}}
-        <br/>
-      </div>
+      {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
+      {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
+      {{if .Request.SentParams}}{{template "FORMDATA" dict "Params" .Request.SentParams "SeqNo" .Reporting.SeqNo}}{{end}}
+      {{if or .Variables .ExValues}}{{template "VARIABLES" .}}{{end}}
       {{if eq .Status 2 3 4 5}}{{if .CheckResults}}
         <div class="checks">
-          {{range $i, $c := .CheckResults}}{{template "CHECK" .}}{{end}}
+          {{range $i, $e := .CheckResults}}
+{{template "CHECK" dict "Check" . "SeqNo" $.Reporting.SeqNo "N" $i}}
+          {{end}}
         </div>
       {{end}}{{end}}
     </div>
@@ -102,16 +96,18 @@ var htmlHeaderTmpl = `{{define "HEADER"}}
 <div class="httpheader">
   {{range $h, $v := .}}
     {{range $v}}
-      <code><strong>{{printf "%25s: " $h}}</strong> {{.}}</code></br>
+      <code><strong>{{printf "%25s: " $h}}</strong> {{.}}</code><br>
     {{end}}
   {{end}}
 </div>
 {{end}}`
 
 var htmlResponseTmpl = `{{define "RESPONSE"}}
-<div class="toggle2">
-  <div class="expanded2">
-    <h3 class="toggleButton2">HTTP Response ▾</h3>
+<div class="toggle">
+  <input type="checkbox" value="selected" checked
+         id="resp-{{.Reporting.SeqNo}}" class="toggle-input">
+  <label for="resp-{{.Reporting.SeqNo}}" class="toggle-label"><h3>HTTP Response</h3></label>
+  <div class="toggle-content">
     <div class="responseDetails">
       {{if .Response.Response}}
         {{.Response.Response.Proto}} <strong>{{.Response.Response.Status}}</strong><br/>
@@ -126,55 +122,53 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
       {{end}}
     </div>
   </div>
-  <div class="collapsed2">
-    <h3 class="toggleButton2">HTTP Response ▹</h3>
-  </div>
 </div>
 {{end}}
 `
 
 var htmlRequestTmpl = `{{define "REQUEST"}}
-<div class="toggle2">
-  <div class="expanded2">
-    <h3 class="toggleButton2">HTTP Request ▾</h3>
+<div class="toggle">
+  <input type="checkbox" value="selected"
+         id="req-{{.Reporting.SeqNo}}" class="toggle-input">
+  <label for="req-{{.Reporting.SeqNo}}" class="toggle-label"><h3>HTTP Request</h3></label>
+  <div class="toggle-content">
     <div class="requestDetails">
       <code><strong>{{.Request.Request.Method}}</strong> {{.Request.Request.URL.String}}
-          {{range .Response.Redirections}}</br>GET {{.}}{{end}}
+          {{range .Response.Redirections}}<br>GET {{.}}{{end}}
       </code>
       {{template "HEADER" .Request.Request.Header}}
-<pre>{{.Request.SentBody}}</pre>
+<pre>{{clean .Request.SentBody}}</pre>
     </div>
-  </div>
-  <div class="collapsed2">
-    <h3 class="toggleButton2">HTTP Request ▹</h3>
   </div>
 </div>
 {{end}}
 `
 
 var htmlFormdataTmpl = `{{define "FORMDATA"}}
-<div class="toggle2">
-  <div class="expanded2">
-    <h3 class="toggleButton2">Form Data ▾</h3>
+<div class="toggle">
+  <input type="checkbox" value="selected"
+         id="form-{{.SeqNo}}" class="toggle-input">
+  <label for="form-{{.SeqNo}}" class="toggle-label"><h3>Form Data</h3></label>
+  <div class="toggle-content">
     <div class="formdataDetails">
-      {{range $k, $vs := .}}
+      {{range $k, $vs := .Params}}
         {{range $v := $vs}}
-          <code><strong>{{printf "%25s: " $k}}</strong>{{printf "%q" $v}}</code></br>
+          <code><strong>{{printf "%25s: " $k}}</strong>{{printf "%q" $v}}</code><br>
         {{end}}
       {{end}}
     </div>
-  </div>
-  <div class="collapsed2">
-    <h3 class="toggleButton2">Form Data ▹</h3>
   </div>
 </div>
 {{end}}
 `
 
 var htmlVariablesTmpl = `{{define "VARIABLES"}}
-<div class="toggle2">
-  <div class="expanded2">
-    <h3 class="toggleButton2">Variables ▾</h3>
+<div class="toggle">
+  <input type="checkbox" value="selected"
+         id="var-{{.Reporting.SeqNo}}" class="toggle-input">
+  <label for="var-{{.Reporting.SeqNo}}" class="toggle-label"><h3>Variables</h3></label>
+
+  <div class="toggle-content">
     <div class="variableDetail">
         {{if .Variables}}Variables:<br/>
           {{range $k, $v := .Variables}}
@@ -187,9 +181,6 @@ var htmlVariablesTmpl = `{{define "VARIABLES"}}
           {{end}}
         {{end}}
     </div>
-  </div>
-  <div class="collapsed2">
-    <h3 class="toggleButton2">Variables ▹</h3>
   </div>
 </div>
 {{end}}
@@ -209,30 +200,61 @@ var shortSuiteTmpl = `======  Result of {{.Name}} =======
 
 var htmlStyleTmpl = `{{define "STYLE"}}
 <style>
-.toggleButton { cursor: pointer; }
-.toggleButton2 { cursor: pointer; }
 
-.toggle .collapsed { display: block; }
-.toggle .expanded { display: none; }
-.toggleVisible .collapsed { display: none; }
-.toggleVisible .expanded { display: block; }
+.toggle {
+	margin: 0 auto;
+        padding-top: 0.2em;
+        padding-bottom: 0.2em;
+}
 
-.toggle2 .collapsed2 { display: block; }
-.toggle2 .expanded2 { display: none; }
-.toggleVisible2 .collapsed2 { display: none; }
-.toggleVisible2 .expanded2 { display: block; }
+.toggle-label {
+	cursor: pointer;
+	display: block;
+}
 
-.summary { padding-top: 1ex; }
+.toggle-label:after {
+	content: " ▾";
+}
+
+.toggle-content {
+	margin-bottom: 0.5ex;
+}
+
+.toggle-input {
+	display: none;
+}
+
+.toggle-input:not(checked) ~ .toggle-content {
+	display: none;
+}
+
+.toggle-input:checked ~ .toggle-content {
+	display: block;
+}
+
+.toggle-input:checked ~ .toggle-label:after {
+	content: " ▹";
+}
+
+.summary {
+  padding: 1ex 0 1ex 0;
+}
+
+.checks {
+  padding: 1ex 0 1ex 0;
+}
 
 h2 { 
   margin-top: 0.5em;
   margin-bottom: 0.2em;
+  display: inline;
 }
 
 h3 { 
   font-size: 1em;
   margin-top: 0.5em;
   margin-bottom: 0em;
+  display: inline;
 }
 .testDetails { margin-left: 1em; }
 .checkDetails { margin-left: 2em; }
@@ -247,57 +269,6 @@ h3 {
 
 pre.description { font-family: serif; margin: 0px; }
 </style>
-{{end}}`
-
-var htmlJavascriptTmpl = `{{define "JAVASCRIPT"}}
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
-<script type="text/javascript">
-(function() {
-'use strict';
-
-function bindToggle(el) {
-  $('.toggleButton', el).click(function() {
-    if ($(el).is('.toggle')) {
-      $(el).addClass('toggleVisible').removeClass('toggle');
-    } else {
-      $(el).addClass('toggle').removeClass('toggleVisible');
-    }
-  });
-}
-function bindToggles(selector) {
-  $(selector).each(function(i, el) {
-    bindToggle(el);
-  });
-}
-
-function bindToggle2(el) {
-  console.log("bindToggle2 for " + el);
-  $('.toggleButton2', el).click(function() {
-    if ($(el).is('.toggle2')) {
-      $(el).addClass('toggleVisible2').removeClass('toggle2');
-    } else {
-      $(el).addClass('toggle2').removeClass('toggleVisible2');
-    }
-  });
-}
-
-function bindToggles2(selector) {
-console.log("bindToggles2("+selector+")");
-  $(selector).each(function(i, el) {
-    bindToggle2(el);
-  });
-}
-
-$(document).ready(function() {
-console.log("bindingstuff");
-  bindToggles(".toggle");
-  bindToggles(".toggleVisible");
-  bindToggles2(".toggle2");
-  bindToggles2(".toggleVisible2");
-});
-
-})();
-</script>
 {{end}}`
 
 var htmlSuiteTmpl = `<!DOCTYPE html>
@@ -315,7 +286,7 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 
 {{.Description}}
 
-<div id="summary">
+<div class="summary">
   Status: <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> <br/>
   Started: {{.Started}} <br/>
   Full Duration: {{.Duration}}
@@ -323,7 +294,6 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 
 {{range .Tests}}{{template "TEST" .}}{{end}}
 
-{{template "JAVASCRIPT"}}
 </body>
 </html>
 `
@@ -333,6 +303,59 @@ var (
 	ShortSuiteTmpl *template.Template
 	HtmlSuiteTmpl  *htmltemplate.Template
 )
+
+type LoopIteration struct {
+	Data      interface{}
+	I         int // 0-based loop index
+	N         int // 1-based loop index
+	Odd, Even bool
+}
+
+func loopIteration(idx interface{}, data interface{}) (LoopIteration, error) {
+	i, ok := idx.(int)
+	if !ok {
+		return LoopIteration{}, fmt.Errorf("idx is not int")
+	}
+	return LoopIteration{
+		Data: data,
+		I:    i,
+		N:    i + 1,
+		Odd:  i%2 == 0,
+		Even: i%2 == 1,
+	}, nil
+}
+
+func dict(args ...interface{}) (map[string]interface{}, error) {
+	n := len(args)
+	if n%2 == 1 {
+		return nil, errors.New("odd number of arguments to dict")
+	}
+	dict := make(map[string]interface{}, n/2)
+	for i := 0; i < n; i += 2 {
+		key, ok := args[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict key of type %T", args[i])
+		}
+		dict[key] = args[i+1]
+	}
+	return dict, nil
+}
+
+func cleanSentBody(s string) string {
+	runes := make([]rune, 0, 2000)
+	for i, r := range s {
+		if r < 0x1f || (r >= 0x7f && r <= 0x9f) {
+			runes = append(runes, '\uFFFD')
+		} else {
+			runes = append(runes, r)
+		}
+		if i >= 4090 {
+			runes = append(runes, '\u2026')
+			break
+		}
+	}
+	return string(runes)
+}
 
 func init() {
 	fm := make(template.FuncMap)
@@ -355,6 +378,9 @@ func init() {
 	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{
 		"ToUpper": strings.ToUpper,
 		"Summary": ht.Summary,
+		"loop":    loopIteration,
+		"dict":    dict,
+		"clean":   cleanSentBody,
 	})
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlSuiteTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
@@ -365,7 +391,6 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlFormdataTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlVariablesTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
-	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlJavascriptTmpl))
 }
 
 func (s *Suite) PrintReport(w io.Writer) error {
