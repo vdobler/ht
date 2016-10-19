@@ -7,7 +7,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 
+	hjson "github.com/hjson/hjson-go"
+	"github.com/vdobler/ht/populate"
 	"github.com/vdobler/ht/suite"
 )
 
@@ -271,13 +272,19 @@ func fillVariablesFlagFrom(variablesFile string) {
 		fmt.Fprintf(os.Stderr, "Cannot read variable file %q: %s\n", variablesFile, err)
 		os.Exit(8)
 	}
-	v := map[string]string{}
-	err = json.Unmarshal(data, &v)
+	v := map[string]interface{}{}
+	err = hjson.Unmarshal(data, &v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot unmarshal variable file %q: %s\n", variablesFile, err)
 		os.Exit(8)
 	}
-	for n, k := range v {
+	vv := map[string]string{}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Malformed variable file %q: %s\n", variablesFile, err)
+		os.Exit(8)
+	}
+	err = populate.Strict(vv, v)
+	for n, k := range vv {
 		if _, ok := variablesFlag[n]; !ok {
 			variablesFlag[n] = k
 		}
