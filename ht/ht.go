@@ -490,9 +490,9 @@ func (t *Test) Run() error {
 	t.Duration = time.Since(start)
 	if t.Execution.Tries > 1 {
 		if t.Status == Pass {
-			t.debugf("polling succeeded after %d tries", try)
+			t.debugf("Trying succeeded after %d tries", try)
 		} else {
-			t.debugf("polling failed all %d tries", maxTries)
+			t.debugf("Trying failed all %d tries", maxTries)
 		}
 	}
 
