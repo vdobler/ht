@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	hjson "github.com/hjson/hjson-go"
+	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/populate"
 	"github.com/vdobler/ht/suite"
 )
@@ -141,22 +142,33 @@ func loadSuites(args []string) []*suite.RawSuite {
 	only, skip := splitTestIDs(onlyFlag), splitTestIDs(skipFlag)
 
 	// Input and setup suites from command line arguments.
+	exit := false
 	for _, arg := range args {
 		s, err := suite.LoadRawSuite(arg, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot read suite %q: %s\n", arg, err)
-			os.Exit(8)
+			exit = true
+			continue
 		}
 		// for varName, varVal := range variablesFlag {
 		// 	suite.Variables[varName] = varVal
 		// }
 		err = s.Validate(variablesFlag)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(8)
+			if el, ok := err.(ht.ErrorList); ok {
+				for _, msg := range el.AsStrings() {
+					fmt.Fprintln(os.Stderr, msg)
+				}
+			} else {
+				fmt.Fprintln(os.Stderr, err.Error())
+			}
+			exit = true
 		}
 		// setVerbosity(s)
 		suites = append(suites, s)
+	}
+	if exit {
+		os.Exit(8)
 	}
 
 	// Merge only into skip.
@@ -181,6 +193,12 @@ func loadSuites(args []string) []*suite.RawSuite {
 			}
 		}
 	}
+
+	// Propagate verbosity from command line to suite/test.
+	for _, s := range suites {
+		setVerbosity(s)
+	}
+
 	return suites
 }
 

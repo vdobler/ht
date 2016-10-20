@@ -202,10 +202,15 @@ func (suite *Suite) updateVariables(test *ht.Test) {
 
 	for varname, value := range test.Extract() {
 		if old, ok := suite.scope[varname]; ok {
-			suite.Log.Printf("Updating variable %q from %q to %q\n",
-				varname, old, value)
+			if value != old {
+				suite.Log.Printf("Updating variable %q to %q\n",
+					varname, value)
+			} else {
+				suite.Log.Printf("Keeping  variable %q as %q\n",
+					varname, value)
+			}
 		} else {
-			suite.Log.Printf("Setting new variable %q to %q\n",
+			suite.Log.Printf("Setting  variable %q to %q\n",
 				varname, value)
 		}
 		suite.scope[varname] = value

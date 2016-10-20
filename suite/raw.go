@@ -533,10 +533,8 @@ func rawTestFromInline(name, dir string, fs FileSystem, inline map[string]interf
 
 // Validate rs to make sure it can be decoded into welformed ht.Tests.
 func (rs *RawSuite) Validate(variables map[string]string) error {
-	fmt.Println("Validation Suite", rs.Name)
 	el := ht.ErrorList{}
-	for i, rt := range rs.tests {
-		fmt.Printf("Validating Test %d %q\n", i, rt)
+	for _, rt := range rs.tests {
 		_, err := rt.ToTest(variables)
 		if err != nil {
 			fmt.Printf("invalid test %s (%s included by %s): %s\n",
@@ -574,7 +572,7 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 			test.Status = ht.Skipped
 			return nil
 		}
-		// test.Execution.Verbosity = 2
+		test.Execution.Verbosity = rs.Verbosity
 		test.Run()
 		if test.Status > ht.Pass && i <= setup {
 			return ErrSkipExecution

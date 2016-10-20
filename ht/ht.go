@@ -433,6 +433,8 @@ func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 // request, problems reading the body or any failing checks do not trigger a
 // non-nil return value.
 func (t *Test) Run() error {
+	t.infof("Running")
+
 	t.Started = time.Now()
 
 	maxTries := t.Execution.Tries
@@ -445,8 +447,10 @@ func (t *Test) Run() error {
 		return nil
 	}
 
-	t.debugf("PreSleep %s", t.Execution.PreSleep)
-	time.Sleep(t.Execution.PreSleep)
+	if t.Execution.PreSleep > 0 {
+		t.debugf("PreSleep %s", t.Execution.PreSleep)
+		time.Sleep(t.Execution.PreSleep)
+	}
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
@@ -464,7 +468,11 @@ func (t *Test) Run() error {
 	for ; try <= maxTries; try++ {
 		t.Tries = try
 		if try > 1 {
-			time.Sleep(t.Execution.Wait)
+			t.infof("Retry %d", try)
+			if t.Execution.Wait > 0 {
+				t.debugf("Waiting %s", t.Execution.Wait)
+				time.Sleep(t.Execution.Wait)
+			}
 		}
 		err := t.prepare(t.Variables)
 		if err != nil {
@@ -488,10 +496,12 @@ func (t *Test) Run() error {
 		}
 	}
 
-	t.infof("test %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
+	t.infof("Result: %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
 
-	t.debugf("PostSleep %s", t.Execution.PostSleep)
-	time.Sleep(t.Execution.PostSleep)
+	if t.Execution.PostSleep > 0 {
+		t.debugf("PostSleep %s", t.Execution.PostSleep)
+		time.Sleep(t.Execution.PostSleep)
+	}
 
 	t.FullDuration = time.Since(t.Started)
 	return nil
@@ -531,7 +541,10 @@ func (t *Test) execute() {
 	}
 	if err == nil {
 		if len(t.Checks) > 0 {
-			time.Sleep(t.Execution.InterSleep)
+			if t.Execution.InterSleep > 0 {
+				t.debugf("PreSleep %s", t.Execution.InterSleep)
+				time.Sleep(t.Execution.InterSleep)
+			}
 			t.executeChecks(t.CheckResults)
 		} else {
 			t.Status = Pass
@@ -845,7 +858,7 @@ done:
 		t.infof("Redirection %d: %s", i+1, via)
 	}
 
-	t.debugf("request took %s, %s", t.Response.Duration, msg)
+	t.debugf("Request took %s, %s", t.Response.Duration, msg)
 
 	return err
 }
