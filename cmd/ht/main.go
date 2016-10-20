@@ -301,7 +301,13 @@ func fillVariablesFlagFrom(variablesFile string) {
 		fmt.Fprintf(os.Stderr, "Malformed variable file %q: %s\n", variablesFile, err)
 		os.Exit(8)
 	}
-	err = populate.Strict(vv, v)
+
+	err = populate.Strict(&vv, v)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Malformed variable file %q: %s\n", variablesFile, err)
+		os.Exit(8)
+	}
+
 	for n, k := range vv {
 		if _, ok := variablesFlag[n]; !ok {
 			variablesFlag[n] = k
