@@ -17,6 +17,7 @@ import (
 	"path"
 	"strings"
 	"text/template"
+	"time"
 	"unicode/utf8"
 
 	"github.com/vdobler/ht/ht"
@@ -36,7 +37,7 @@ var htmlCheckTmpl = `{{define "CHECK"}}
   </label>
   <div class="toggle-content">
     <div class="checkDetails">
-      <div>Checking took {{.Check.Duration}}</div>
+      <div>Checking took {{niceduration .Check.Duration}}</div>
       <div><code>{{.Check.JSON}}</code></div>
       {{if eq .Check.Status 3 5}}<pre class="description">{{.Check.Error.Error}}</pre>{{end}}
     </div>
@@ -52,7 +53,7 @@ var htmlTestTmpl = `{{define "TEST"}}
   <label for="test-{{.Reporting.SeqNo}}" class="toggle-label">
     <h2>{{.Reporting.SeqNo}}:
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
-      "{{.Name}}" <small>(<code>{{.Reporting.Filename}}</code>, {{.FullDuration}})</small>
+      "{{.Name}}" <small>(<code>{{.Reporting.Filename}}</code>, {{niceduration .FullDuration}})</small>
     </h2>
   </label>
   <div class="toggle-content">
@@ -70,10 +71,10 @@ var htmlTestTmpl = `{{define "TEST"}}
       </code></div>
       <div class="summary">
         <pre class="description">{{.Description}}</pre>
-	Started: {{.Started}}<br/>
-	Full Duration: {{.FullDuration}} <br/>
+	Started: {{nicetime .Started}}<br/>
+	Full Duration: {{niceduration .FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
-        Request Duration: {{.Duration}} <br/>
+        Request Duration: {{niceduration .Duration}} <br/>
         {{if .Error}}<br/><strong>Error:</strong> {{.Error}}<br/>{{end}}
       </div>
       {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
@@ -188,7 +189,7 @@ var htmlVariablesTmpl = `{{define "VARIABLES"}}
 
 var defaultSuiteTmpl = `{{Box (printf "%s: %s" (ToUpper .Status.String) .Name) ""}}{{if .Error}}
 Error: {{.Error}}{{end}}
-Started: {{.Started}}   Duration: {{.Duration}}
+Started: {{.Started}}   Duration: {{niceduration .Duration}}
 
 {{range .Tests}}{{template "TEST" .}}
 {{end}}
@@ -289,7 +290,7 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 <div class="summary">
   Status: <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> <br/>
   Started: {{.Started}} <br/>
-  Full Duration: {{.Duration}}
+  Full Duration: {{niceduration .Duration}}
 </div>
 
 {{range .Tests}}{{template "TEST" .}}{{end}}
@@ -357,11 +358,52 @@ func cleanSentBody(s string) string {
 	return string(runes)
 }
 
+func roundTimeToMS(t time.Time) time.Time {
+	return t.Round(time.Millisecond)
+}
+
+// roundDuration d to approximately 3 significant digits (but not less than
+// to full second).
+func roundDuration(d time.Duration) time.Duration {
+	round := func(d time.Duration, to time.Duration) time.Duration {
+		return to * ((d + to/2) / to)
+	}
+	min, sec, ms, mu, ns := time.Minute, time.Second, time.Millisecond, time.Microsecond, time.Nanosecond
+
+	// TODO: refactor once loops are invented.
+	if d >= 1*min {
+		return round(d, sec)
+	} else if d >= 10*sec {
+		return round(d, 100*ms)
+	} else if d >= 1*sec {
+		return round(d, 10*ms)
+	} else if d >= 100*ms {
+		return round(d, 1*ms)
+	} else if d >= 10*ms {
+		return round(d, 100*mu)
+	} else if d >= 1*ms {
+		return round(d, 10*mu)
+	} else if d >= 1*ms {
+		return round(d, 10*mu)
+	} else if d >= 100*mu {
+		return round(d, 1*mu)
+	} else if d >= 10*mu {
+		return round(d, 100*ns)
+	} else if d >= 1*mu {
+		return round(d, 100*ns)
+	} else if d >= 100*ns {
+		return round(d, 10*ns)
+	}
+	return d
+}
+
 func init() {
 	fm := make(template.FuncMap)
 	//fm["Underline"] = Underline
 	fm["Box"] = ht.Box
 	fm["ToUpper"] = strings.ToUpper
+	fm["nicetime"] = roundTimeToMS
+	fm["niceduration"] = roundDuration
 
 	SuiteTmpl = template.New("SUITE")
 	SuiteTmpl.Funcs(fm)
@@ -376,11 +418,13 @@ func init() {
 
 	HtmlSuiteTmpl = htmltemplate.New("SUITE")
 	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{
-		"ToUpper": strings.ToUpper,
-		"Summary": ht.Summary,
-		"loop":    loopIteration,
-		"dict":    dict,
-		"clean":   cleanSentBody,
+		"ToUpper":      strings.ToUpper,
+		"Summary":      ht.Summary,
+		"loop":         loopIteration,
+		"dict":         dict,
+		"clean":        cleanSentBody,
+		"nicetime":     roundTimeToMS,
+		"niceduration": roundDuration,
 	})
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlSuiteTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
