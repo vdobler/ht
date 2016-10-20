@@ -22,12 +22,7 @@ type Populator interface {
 func Strict(dst, src interface{}) error {
 	dv, sv := reflect.ValueOf(dst), reflect.ValueOf(src)
 	if dv.Kind() != reflect.Ptr || dv.IsNil() {
-		if dv.Kind() != reflect.Ptr {
-			fmt.Println(dv.Kind())
-		} else {
-			fmt.Println("IsNil")
-		}
-		return fmt.Errorf("Not a pointer or nil")
+		panic("populate: not a pointer or nil")
 	}
 	x := reflect.New(dv.Type()).Elem()
 	err := recFillWith(x, sv, x.Type().Elem().Name(), true)
