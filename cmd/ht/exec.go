@@ -6,15 +6,18 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
 	"path"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
@@ -150,9 +153,17 @@ func saveOutcome(outcome []*suite.Suite) {
 			log.Panic(err)
 		}
 	}
+
 	// Save consolidated cookies if required.
 	if cookiedump != "" {
 		if err := saveCookies(overallCookies, cookiedump); err != nil {
+			log.Panic(err)
+		}
+	}
+
+	// Save a overall report iff more than one suite was involved.
+	if len(outcome) > 1 {
+		if err := saveOverallReport(outputDir, outcome); err != nil {
 			log.Panic(err)
 		}
 	}
@@ -198,6 +209,60 @@ func saveCookies(cookies map[string]cookiejar.Entry, filename string) error {
 		return nil
 	}
 	return ioutil.WriteFile(filename, b, 0666)
+}
+
+func saveOverallReport(dirname string, outcome []*suite.Suite) error {
+	type Data struct {
+		Name, Path, Status string
+	}
+	data := []Data{}
+	for _, s := range outcome {
+		data = append(data,
+			Data{s.Name, sanitize.Filename(s.Name), strings.ToUpper(s.Status.String())})
+	}
+	tmplSrc := `<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <style>
+   .PASS { color: green; }
+   .FAIL { color: red; }
+   .ERROR { color: magenta; }
+   .NOTRUN { color: grey; }
+  </style>
+  <title>Overall Results</title>
+</head>
+<body>
+  <h1>Overall Result</h1>
+  <ul>
+    {{range .}}
+    <li>
+      <h2>
+        <a href="./{{.Path}}/_Report_.html" >
+          <span class="{{.Status}}">{{.Status}}</span> {{.Name}}
+        </a>
+      </h2>
+    </li>
+    {{end}}
+  </ul>
+</body>
+</html>
+`
+	templ := template.Must(template.New("report").Parse(tmplSrc))
+	buf := &bytes.Buffer{}
+	err := templ.Execute(buf, data)
+	if err != nil {
+		return err
+	}
+
+	file := dirname + "/_Report_.html"
+	err = ioutil.WriteFile(file, buf.Bytes(), 0666)
+	cwd, err := os.Getwd()
+	if err == nil {
+		reportURL := "file://" + path.Join(cwd, file)
+		fmt.Printf("Overall: %s\n", reportURL)
+	}
+	return err
 }
 
 func prepareHT() {
