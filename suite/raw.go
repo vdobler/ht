@@ -402,8 +402,8 @@ func (r *RawTest) toTest(variables map[string]string) (*ht.Test, error) {
 // ----------------------------------------------------------------------------
 //   RawSuite
 
-// SuiteElement represents one test in a RawSuite.
-type SuiteElement struct {
+// RawElement represents one test in a RawSuite.
+type RawElement struct {
 	File      string
 	Variables map[string]string
 
@@ -414,7 +414,7 @@ type SuiteElement struct {
 type RawSuite struct {
 	*File
 	Name, Description     string
-	Setup, Main, Teardown []SuiteElement
+	Setup, Main, Teardown []RawElement
 	KeepCookies           bool
 	OmitChecks            bool
 	Variables             map[string]string
@@ -454,7 +454,7 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 	}
 	rs.File = raw // re-set as decodeStritTo clears rs
 	dir := rs.File.Dirname()
-	load := func(elems []SuiteElement, which string) error {
+	load := func(elems []RawElement, which string) error {
 		for i, elem := range elems {
 			var err error
 			var rt *RawTest
