@@ -46,5 +46,9 @@ func runRun(cmd *Command, tests []*suite.RawTest) {
 		log.Println(err.Error())
 		os.Exit(3)
 	}
+
+	// Propagate verbosity from command line to suite/test.
+	setVerbosity(s)
+
 	runExecute(cmd, []*suite.RawSuite{s})
 }

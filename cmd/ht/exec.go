@@ -64,7 +64,6 @@ func runExecute(cmd *Command, suites []*suite.RawSuite) {
 	jar := loadCookies()
 
 	outcome := executeSuites(suites, variablesFlag, jar)
-
 	saveOutcome(outcome)
 }
 
@@ -322,7 +321,7 @@ func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *c
 
 	outcome := make([]*suite.Suite, len(suites))
 	for i, s := range suites {
-		logger.Println("Starting Suite", s.Name, s.File.Name)
+		logger.Println("Starting Suite", i+1, s.Name, s.File.Name)
 		outcome[i] = s.Execute(variables, jar, logger)
 		if carryVars {
 			variables = outcome[i].FinalVariables // carry over variables ???
