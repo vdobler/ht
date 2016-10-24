@@ -5,11 +5,10 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
+	"strings"
 )
 
 var cmdDoc = &Command{
@@ -18,9 +17,8 @@ var cmdDoc = &Command{
 	Description: "print godoc of type",
 	Flag:        flag.NewFlagSet("doc", flag.ContinueOnError),
 	Help: `
-Doc displays detail information of a type by running running
-'go doc github.com/vdobler/ht/ht <type>'. To use this subcommand
-you need a working Go installation and a local copy of ht's source.
+Doc displays detail information of types used in for writing tests.
+Only the most relevant type documentation is available.
 `,
 }
 
@@ -30,23 +28,15 @@ func runDoc(cmd *Command, args []string) {
 		os.Exit(9)
 	}
 
-	typ := args[0]
-	gocmd := exec.Command("go", "doc", "github.com/vdobler/ht/ht", typ)
-	output, err := gocmd.CombinedOutput()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error invoking go doc: %s\n%s\n", err, string(output))
+	typ := strings.ToLower(args[0])
+	doc, ok := typeDoc[typ]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "No information available for type %q\n", typ)
+		fmt.Fprintf(os.Stderr, "For serialization types try 'raw%s'.\n", typ)
 		os.Exit(9)
 	}
 
-	// This is inefficient, but okay direktly befor a os.Exit.
-	buf := &bytes.Buffer{}
-	for _, line := range bytes.Split(output, []byte("\n")) {
-		if bytes.HasPrefix(line, []byte("func (")) {
-			continue
-		}
-		buf.Write(line)
-		buf.WriteRune('\n')
-	}
-	fmt.Println(string(bytes.TrimSpace(buf.Bytes())))
+	fmt.Println(doc)
+
 	os.Exit(0)
 }
