@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -27,7 +28,6 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
-	"github.com/vdobler/ht/internal/json5"
 )
 
 var (
@@ -40,7 +40,7 @@ var (
 	DefaultAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 
 	// DefaultClientTimeout is the timeout used by the http clients.
-	DefaultClientTimeout = Duration(10 * time.Second)
+	DefaultClientTimeout = 10 * time.Second
 )
 
 // Transport is the http Transport used while making requests.
@@ -55,56 +55,6 @@ var Transport = &http.Transport{
 		InsecureSkipVerify: false,
 	},
 	TLSHandshakeTimeout: 10 * time.Second,
-}
-
-// URLValues is a url.Values with a fancier JSON unmarshalling.
-type URLValues url.Values
-
-// UnmarshalJSON produces a url.Values (i.e. a map[string][]string) from
-// various JSON5 representations. E.g.
-//    {
-//      a: 12,
-//      b: "foo",
-//      c: [ 23, "bar"]
-//    }
-// can be unmarshaled with the expected result.
-func (v *URLValues) UnmarshalJSON(data []byte) error {
-	vals := make(url.Values)
-	raw := map[string]json5.RawMessage{}
-	err := json5.Unmarshal(data, &raw)
-	if err != nil {
-		return err
-	}
-	for name, r := range raw {
-		var generic interface{}
-		err := json5.Unmarshal(r, &generic)
-		if err != nil {
-			return err
-		}
-		switch g := generic.(type) {
-		case float64:
-			vals[name] = []string{float64ToString(g)}
-		case string:
-			vals[name] = []string{g}
-		case []interface{}:
-			vals[name] = []string{}
-			for _, sub := range g {
-				switch gg := sub.(type) {
-				case float64:
-					vals[name] = append(vals[name], float64ToString(gg))
-				case string:
-					vals[name] = append(vals[name], gg)
-				default:
-					return fmt.Errorf("ht: illegal url query value %v of type %T for query parameter %s", sub, gg, name)
-				}
-			}
-		default:
-			return fmt.Errorf("ht: illegal url query value %v of type %T for query parameter %s", generic, g, name)
-		}
-	}
-
-	*v = URLValues(vals)
-	return nil
 }
 
 func float64ToString(f float64) string {
@@ -142,7 +92,7 @@ type Request struct {
 	//         as the filename. (There is no difference between the
 	//         @file and @vfile variants; variable substitution has
 	//         been performed already and is not done twice on direct-data.
-	Params URLValues `json:",omitempty"`
+	Params url.Values
 
 	// ParamsAs determines how the parameters in the Param field are sent:
 	//   "URL" or "": append properly encoded to URL
@@ -172,15 +122,15 @@ type Request struct {
 	// password which will be sent in a Basic Authentication header.
 	// If following redirects the authentication header is also sent
 	// on subsequent requests to the same host.
-	BasicAuthUser string
-	BasicAuthPass string
+	BasicAuthUser string `json:",omitempty"`
+	BasicAuthPass string `json:",omitempty"`
 
 	// Chunked turns of setting of the Content-Length header resulting
 	// in chunked transfer encoding of POST bodies.
-	Chunked bool
+	Chunked bool `json:",omitempty"`
 
 	// Timeout of this request. If zero use DefaultClientTimeout.
-	Timeout Duration `json:",omitempty"`
+	Timeout time.Duration `json:",omitempty"`
 
 	Request    *http.Request `json:"-"` // the 'real' request
 	SentBody   string        `json:"-"` // the 'real' body
@@ -194,14 +144,14 @@ type Response struct {
 	Response *http.Response `json:",omitempty"`
 
 	// Duration to receive response and read the whole body.
-	Duration Duration
+	Duration time.Duration `json:",omitempty"`
 
 	// The received body and the error got while reading it.
-	BodyStr string
-	BodyErr error
+	BodyStr string `json:",omitempty"`
+	BodyErr error  `json:",omitempty"`
 
 	// Redirections records the URLs of automatic GET requests due to redirects.
-	Redirections []string
+	Redirections []string `json:",omitempty"`
 }
 
 // Body returns a reader of the response body.
@@ -215,16 +165,24 @@ type Cookie struct {
 	Value string `json:",omitempty"`
 }
 
-// Poll determines if and how to redo a test after a failure or if the
-// test should be skipped altogether. The zero value of Poll means "Just do
-// the test once."
-type Poll struct {
-	// Maximum number of redos. Both 0 and 1 mean: "Just one try. No redo."
-	// Negative values indicate that the test should be skipped.
-	Max int `json:",omitempty"`
+// Execution contains parameters controlling the test execution.
+type Execution struct {
+	// Tries is the maximum number of tries made for this test.
+	// Both 0 and 1 mean: "Just one try. No redo."
+	// Negative values indicate that the test should be skipped
+	// altogether.
+	Tries int `json:",omitempty"`
 
-	// Duration to sleep between redos.
-	Sleep Duration `json:",omitempty"`
+	// Wait time between retries.
+	Wait time.Duration `json:",omitempty"`
+
+	// Pre-, Inter- and PostSleep are the sleep durations made
+	// before the request, between request and the checks and
+	// after the checks.
+	PreSleep, InterSleep, PostSleep time.Duration `json:",omitempty"`
+
+	// Verbosity level in logging.
+	Verbosity int `json:",omitempty"`
 }
 
 // ----------------------------------------------------------------------------
@@ -242,22 +200,14 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
-	// VarEx may be used to popultate variables from the response. TODO: Rename.
-	VarEx map[string]Extractor `json:",omitempty"`
-
-	Poll      Poll `json:",omitempty"`
-	Verbosity int  `json:",omitempty"` // Verbosity level in logging.
-
-	// Pre-, Inter- and PostSleep are the sleep durations made
-	// before the request, between request and the checks and
-	// after the checks.
-	PreSleep, InterSleep, PostSleep Duration `json:",omitempty"`
+	// Execution controls the test execution
+	Execution Execution `json:",omitempty"`
 
 	// Jar is the cookie jar to use
 	Jar *cookiejar.Jar `json:"-"`
 
-	// Variables contains variables attached to the Test itself. Variables
-	// provided during Run will overwrite variables in TestVars.
+	// Variables contains name/value-pairs used for variable substitution
+	// in files read in, e.g. for Request.Body = "@vfile:/path/to/file".
 	Variables map[string]string `json:",omitempty"`
 
 	// The following results are filled during Run.
@@ -266,8 +216,8 @@ type Test struct {
 	Status       Status        `json:"-"`
 	Started      time.Time     `json:"-"`
 	Error        error         `json:"-"`
-	Duration     Duration      `json:"-"`
-	FullDuration Duration      `json:"-"`
+	Duration     time.Duration `json:"-"`
+	FullDuration time.Duration `json:"-"`
 	Tries        int           `json:"-"`
 	CheckResults []CheckResult `json:"-"` // The individual checks.
 	Reporting    struct {
@@ -275,12 +225,30 @@ type Test struct {
 		Filename  string
 		Extension string
 	} `json:"-"`
-	VarValues map[string]string
-	ExValues  map[string]Extraction
 
-	client      *http.Client
-	specialVars []string
-	checks      []Check // prepared checks.
+	// VarEx may be used to popultate variables from the response. TODO: Rename.
+	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
+
+	// ExValues contains the result of the extractions.
+	ExValues map[string]Extraction `json:",omitempty"`
+
+	// Log is the logger to use
+	Log *log.Logger
+
+	client *http.Client
+}
+
+func (t *Test) Disable() {
+	t.Execution.Tries = -1
+}
+
+// CheckResult captures the outcom of a single check inside a test.
+type CheckResult struct {
+	Name     string        // Name of the check as registered.
+	JSON     string        // JSON serialization of check.
+	Status   Status        // Outcome of check. All status but Error
+	Duration time.Duration // How long the check took.
+	Error    ErrorList     // For a Status of Bogus or Fail.
 }
 
 // Extraction captures the result of a variable extraction.
@@ -402,7 +370,7 @@ func Merge(tests ...*Test) (*Test, error) {
 		m.Variables[n] = v
 	}
 
-	m.Request.Params = make(URLValues)
+	m.Request.Params = make(url.Values)
 	m.Request.Header = make(http.Header)
 	m.VarEx = make(map[string]Extractor)
 	for _, t := range tests {
@@ -411,21 +379,21 @@ func Merge(tests ...*Test) (*Test, error) {
 			return &m, err
 		}
 		m.Checks = append(m.Checks, t.Checks...)
-		if t.Poll.Max > m.Poll.Max {
-			m.Poll.Max = t.Poll.Max
+		if t.Execution.Tries > m.Execution.Tries {
+			m.Execution.Tries = t.Execution.Tries
 		}
-		if t.Poll.Sleep > m.Poll.Sleep {
-			m.Poll.Sleep = t.Poll.Sleep
+		if t.Execution.Wait > m.Execution.Wait {
+			m.Execution.Wait = t.Execution.Wait
 		}
 		if t.Request.Timeout > m.Request.Timeout {
 			m.Request.Timeout = t.Request.Timeout
 		}
-		if t.Verbosity > m.Verbosity {
-			m.Verbosity = t.Verbosity
+		if t.Execution.Verbosity > m.Execution.Verbosity {
+			m.Execution.Verbosity = t.Execution.Verbosity
 		}
-		m.PreSleep += t.PreSleep
-		m.InterSleep += t.InterSleep
-		m.PostSleep += t.PostSleep
+		m.Execution.PreSleep += t.Execution.PreSleep
+		m.Execution.InterSleep += t.Execution.InterSleep
+		m.Execution.PostSleep += t.Execution.PostSleep
 		for name, value := range t.VarEx {
 			if old, ok := m.VarEx[name]; ok && old != value {
 				return &m, fmt.Errorf("wont overwrite extractor for %s", name)
@@ -452,7 +420,7 @@ func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 
 // Run runs the test t. The actual HTTP request is crafted and executed and
 // the checks are performed on the received response. This whole process
-// is repeated on failure or skipped entirely according to t.Poll.
+// is repeated on failure or skipped entirely according to t.Execution.
 //
 // The given variables are subsituted into the relevant parts of the request
 // and the checks.
@@ -464,10 +432,12 @@ func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 // Run returns a non-nil error only if the test is bogus; a failing http
 // request, problems reading the body or any failing checks do not trigger a
 // non-nil return value.
-func (t *Test) Run(variables map[string]string) error {
+func (t *Test) Run() error {
+	t.infof("Running")
+
 	t.Started = time.Now()
 
-	maxTries := t.Poll.Max
+	maxTries := t.Execution.Tries
 	if maxTries == 0 {
 		maxTries = 1
 	}
@@ -477,22 +447,20 @@ func (t *Test) Run(variables map[string]string) error {
 		return nil
 	}
 
-	time.Sleep(time.Duration(t.PreSleep))
+	if t.Execution.PreSleep > 0 {
+		t.debugf("PreSleep %s", t.Execution.PreSleep)
+		time.Sleep(t.Execution.PreSleep)
+	}
 
 	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
 		t.CheckResults[i].Name = NameOf(c)
-		buf, err := json5.Marshal(c)
+		buf, err := json.Marshal(c)
 		if err != nil {
 			buf = []byte(err.Error())
 		}
 		t.CheckResults[i].JSON = string(buf)
 	}
-
-	// specialVars is the cached version of special variables (NOW, RANDOM)
-	// which can be cached from one try to the next, but this set may change
-	// from one run to the other so clear it here.
-	t.specialVars = nil
 
 	// Try until first success.
 	start := time.Now()
@@ -500,9 +468,13 @@ func (t *Test) Run(variables map[string]string) error {
 	for ; try <= maxTries; try++ {
 		t.Tries = try
 		if try > 1 {
-			time.Sleep(time.Duration(t.Poll.Sleep))
+			t.infof("Retry %d", try)
+			if t.Execution.Wait > 0 {
+				t.debugf("Waiting %s", t.Execution.Wait)
+				time.Sleep(t.Execution.Wait)
+			}
 		}
-		err := t.prepare(variables)
+		err := t.prepare(t.Variables)
 		if err != nil {
 			t.Status, t.Error = Bogus, err
 			return err
@@ -515,29 +487,32 @@ func (t *Test) Run(variables map[string]string) error {
 			break
 		}
 	}
-	t.Duration = Duration(time.Since(start))
-	if t.Poll.Max > 1 {
+	t.Duration = time.Since(start)
+	if t.Execution.Tries > 1 {
 		if t.Status == Pass {
-			t.debugf("polling succeeded after %d tries", try)
+			t.debugf("Trying succeeded after %d tries", try)
 		} else {
-			t.debugf("polling failed all %d tries", maxTries)
+			t.debugf("Trying failed all %d tries", maxTries)
 		}
 	}
 
-	t.infof("test %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
+	t.infof("Result: %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
 
-	time.Sleep(time.Duration(t.PostSleep))
+	if t.Execution.PostSleep > 0 {
+		t.debugf("PostSleep %s", t.Execution.PostSleep)
+		time.Sleep(t.Execution.PostSleep)
+	}
 
-	t.FullDuration = Duration(time.Since(t.Started))
+	t.FullDuration = time.Since(t.Started)
 	return nil
 }
 
-// AsJSON5 returns a JSON5 representation of the test. Executed tests can
+// AsJSON returns a JSON representation of the test. Executed tests can
 // be serialised and will contain basically all information required to
 // debug or re-run the test but note that several fields in the actual
 // *http.Request and *http.Response structs are cleared during this
 // serialisation.
-func (t *Test) AsJSON5() ([]byte, error) {
+func (t *Test) AsJSON() ([]byte, error) {
 	// Nil some un-serilisable stuff.
 	t.Jar = nil
 	t.client = nil
@@ -553,7 +528,7 @@ func (t *Test) AsJSON5() ([]byte, error) {
 		t.Response.Response.Body = nil
 	}
 
-	return json5.MarshalIndent(t, "", "    ")
+	return json.MarshalIndent(t, "", "    ")
 }
 
 // execute does a single request and check the response.
@@ -566,7 +541,10 @@ func (t *Test) execute() {
 	}
 	if err == nil {
 		if len(t.Checks) > 0 {
-			time.Sleep(time.Duration(t.InterSleep))
+			if t.Execution.InterSleep > 0 {
+				t.debugf("PreSleep %s", t.Execution.InterSleep)
+				time.Sleep(t.Execution.InterSleep)
+			}
 			t.executeChecks(t.CheckResults)
 		} else {
 			t.Status = Pass
@@ -580,52 +558,20 @@ func (t *Test) execute() {
 // prepare the test for execution by substituting the given variables and
 // crafting the underlying http request the checks.
 func (t *Test) prepare(variables map[string]string) error {
-	// Create appropriate replacer.
-	if t.specialVars == nil {
-		t.specialVars = t.findSpecialVariables()
-	}
-
-	// Make a deep copy of variables.
-	allVars := make(map[string]string)
-	for n, v := range t.Variables {
-		allVars[n] = v
-	}
-	for n, v := range variables {
-		allVars[n] = v
-	}
-
-	if len(t.specialVars) > 0 {
-		sv, err := specialVariables(time.Now(), t.specialVars)
-		if err != nil {
-			return err
-		}
-		// TODO: with mergeVariables(allVars, sv) the values in
-		// sv overwrite the ones in allVars. Using it the other
-		// way around like (sv, allVars) would allow the user to
-		// "overwrite" special variables, e.g. she could fix
-		// "{{NOW + 3m}}" to "Mon, 03 Oct 2016 18:00:07 MST"
-		// which might come handy.
-		allVars = mergeVariables(allVars, sv)
-	}
-	t.VarValues = allVars
-	repl, err := newReplacer(allVars)
-	if err != nil {
-		return err
-	}
 
 	// Create the request.
-	contentType, err := t.newRequest(repl)
+	contentType, err := t.newRequest(variables)
 	if err != nil {
 		err := fmt.Errorf("failed preparing request: %s", err.Error())
 		t.errorf("%s", err.Error())
 		return err
 	}
 
-	// Prepare the HTTP header.
+	// Prepare the HTTP header. TODO: Deep Coppy??
 	for h, v := range t.Request.Header {
 		rv := make([]string, len(v))
 		for i := range v {
-			rv[i] = repl.str.Replace(v[i])
+			rv[i] = v[i]
 		}
 		t.Request.Request.Header[h] = rv
 
@@ -640,32 +586,25 @@ func (t *Test) prepare(variables map[string]string) error {
 		t.Request.Request.Header.Set("User-Agent", DefaultUserAgent)
 	}
 	for _, cookie := range t.Request.Cookies {
-		cv := repl.str.Replace(cookie.Value)
-		t.Request.Request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cv})
+		t.Request.Request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cookie.Value})
 	}
 	// Basic Auth
 	if t.Request.BasicAuthUser != "" {
-		t.Request.Request.SetBasicAuth(
-			repl.str.Replace(t.Request.BasicAuthUser),
-			repl.str.Replace(t.Request.BasicAuthPass))
+		t.Request.Request.SetBasicAuth(t.Request.BasicAuthUser, t.Request.BasicAuthPass)
 	}
 
 	// Compile the checks.
-	t.checks = make([]Check, len(t.Checks))
-	cfc, cfce := []int{}, []string{}
+	cel := ErrorList{}
 	for i := range t.Checks {
-		t.checks[i] = SubstituteVariables(t.Checks[i], repl.str, repl.fn)
-		e := t.checks[i].Prepare()
+		e := t.Checks[i].Prepare()
 		if e != nil {
-			cfc = append(cfc, i)
-			cfce = append(cfce, e.Error())
+			cel = append(cel, e)
 			t.errorf("preparing check %d %q: %s",
 				i, NameOf(t.Checks[i]), e.Error())
 		}
 	}
-	if len(cfc) != 0 {
-		err := fmt.Errorf("bogus checks %v: %s", cfc, strings.Join(cfce, "; "))
-		return err
+	if len(cel) != 0 {
+		return cel
 	}
 
 	to := DefaultClientTimeout
@@ -691,14 +630,14 @@ func (t *Test) prepare(variables map[string]string) error {
 			Transport:     Transport,
 			CheckRedirect: cr,
 			Jar:           nil,
-			Timeout:       time.Duration(to),
+			Timeout:       to,
 		}
 	} else {
 		t.client = &http.Client{
 			Transport:     Transport,
 			CheckRedirect: dontFollowRedirects,
 			Jar:           nil,
-			Timeout:       time.Duration(to),
+			Timeout:       to,
 		}
 	}
 	if t.Jar != nil {
@@ -711,7 +650,7 @@ func (t *Test) prepare(variables map[string]string) error {
 // newRequest sets up the request field of t.
 // If a sepcial Content-Type header is needed (e.g. because of a multipart
 // body) it is returned.
-func (t *Test) newRequest(repl replacer) (contentType string, err error) {
+func (t *Test) newRequest(variables map[string]string) (contentType string, err error) {
 	// Set efaults for the request method and the parameter transmission type.
 	if t.Request.Method == "" {
 		t.Request.Method = "GET"
@@ -720,20 +659,20 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 		t.Request.ParamsAs = "URL"
 	}
 
-	// Apply variable substitution.
-	rurl := repl.str.Replace(t.Request.URL)
+	rurl := t.Request.URL
 	prurl, err := url.Parse(rurl)
 	if err != nil {
 		return "", err
 	}
 	t.Request.SentParams = prurl.Query()
 
-	urlValues := make(URLValues)
+	// Deep copy. TODO might be unnecessary.
+	urlValues := make(url.Values)
 	for param, vals := range t.Request.Params {
 		rv := make([]string, len(vals))
 		for i, v := range vals {
-			rv[i] = repl.str.Replace(v)
-			t.Request.SentParams.Add(param, rv[i])
+			rv[i] = v
+			t.Request.SentParams.Add(param, v)
 		}
 		urlValues[param] = rv
 	}
@@ -761,7 +700,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 			encoded := url.Values(urlValues).Encode()
 			t.Request.SentBody = encoded
 		case "multipart":
-			b, boundary, err := multipartBody(t.Request.Params, repl)
+			b, boundary, err := multipartBody(t.Request.Params, variables)
 			if err != nil {
 				return "", err
 			}
@@ -779,7 +718,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 
 	// The body.
 	if t.Request.Body != "" {
-		bodydata, _, err := fileData(repl.str.Replace(t.Request.Body), repl)
+		bodydata, _, err := fileData(t.Request.Body, variables)
 		if err != nil {
 			return "", err
 		}
@@ -813,7 +752,7 @@ func (t *Test) newRequest(repl replacer) (contentType string, err error) {
 //               basename is name-of-file
 //    anything-else
 //               s is anything-else and basename is ""
-func fileData(s string, repl replacer) (data string, basename string, err error) {
+func fileData(s string, variables map[string]string) (data string, basename string, err error) {
 	if !strings.HasPrefix(s, "@file:") && !strings.HasPrefix(s, "@vfile:") {
 		return s, "", nil
 	}
@@ -840,7 +779,7 @@ func fileData(s string, repl replacer) (data string, basename string, err error)
 	}
 	data = string(raw)
 	if typ == "@vfile" {
-		data = repl.str.Replace(data)
+		data = newReplacer(variables).Replace(data)
 	}
 	return data, basename, nil
 }
@@ -860,12 +799,12 @@ func (t *Test) executeRequest() error {
 
 	start := time.Now()
 
-	if t.Verbosity >= 4 {
-		t.tracef("Full Request follows")
-		t.Request.Request.Write(os.Stderr)
+	if t.Execution.Verbosity >= 4 {
+		buf := &bytes.Buffer{}
+		t.Request.Request.Write(buf)
+		t.tracef(" Full Request\n%s\n", buf.String())
 		// "Rewind body"
 		t.Request.Request.Body = ioutil.NopCloser(strings.NewReader(t.Request.SentBody))
-		t.tracef("Full Request end")
 	}
 
 	resp, err := t.client.Do(t.Request.Request)
@@ -874,7 +813,7 @@ func (t *Test) executeRequest() error {
 		// Clear err if it is just our redirect non-following policy.
 		err = nil
 		abortedRedirection = true
-		t.tracef("Aborted redirect chain")
+		t.debugf("Aborted redirect chain")
 	}
 
 	t.Response.Response = resp
@@ -891,7 +830,7 @@ func (t *Test) executeRequest() error {
 				t.Response.BodyErr = err
 				goto done
 			}
-			t.tracef("Unzipping gzip body")
+			t.debugf("Unzipping gzip body")
 		default:
 			reader = resp.Body
 		}
@@ -899,28 +838,27 @@ func (t *Test) executeRequest() error {
 		t.Response.BodyStr = string(bb)
 		t.Response.BodyErr = be
 		reader.Close()
-		if t.Verbosity >= 4 {
-			t.tracef("Full Response follows")
-			fmt.Fprintf(os.Stderr, "%s %s\n",
+		if t.Execution.Verbosity >= 4 {
+			buf := &bytes.Buffer{}
+			t.Response.Response.Header.Write(buf)
+
+			t.tracef(" Full Response\n%s %s\n\n%s",
 				t.Response.Response.Proto,
-				t.Response.Response.Status)
-			t.Response.Response.Header.Write(os.Stderr)
-			fmt.Fprintln(os.Stderr)
-			fmt.Fprintln(os.Stderr, t.Response.BodyStr)
-			t.tracef("Full Response end")
+				t.Response.Response.Status,
+				t.Response.BodyStr)
 		}
 	} else {
 		msg = fmt.Sprintf("fail %s", err.Error())
 	}
 
 done:
-	t.Response.Duration = Duration(time.Since(start))
+	t.Response.Duration = time.Since(start)
 
 	for i, via := range t.Response.Redirections {
 		t.infof("Redirection %d: %s", i+1, via)
 	}
 
-	t.debugf("request took %s, %s", t.Response.Duration, msg)
+	t.debugf("Request took %s, %s", t.Response.Duration, msg)
 
 	return err
 }
@@ -930,7 +868,7 @@ func (t *Test) executeFile() error {
 
 	start := time.Now()
 	defer func() {
-		t.Response.Duration = Duration(time.Since(start))
+		t.Response.Duration = time.Since(start)
 	}()
 
 	u := t.Request.Request.URL
@@ -994,17 +932,17 @@ func (t *Test) executeFile() error {
 // the tests are skipped.
 func (t *Test) executeChecks(result []CheckResult) {
 	done := false
-	for i, ck := range t.checks {
+	for i, ck := range t.Checks {
 		start := time.Now()
 		err := ck.Execute(t)
-		result[i].Duration = Duration(time.Since(start))
+		result[i].Duration = time.Since(start)
 		if el, ok := err.(ErrorList); ok {
 			result[i].Error = el
 		} else {
 			result[i].Error = ErrorList{err}
 		}
 		if err != nil {
-			t.debugf("check %d %s failed: %s", i, NameOf(ck), err)
+			t.debugf("Check %d %s Fail: %s", i+1, NameOf(ck), err)
 			if _, ok := err.(MalformedCheck); ok {
 				result[i].Status = Bogus
 			} else {
@@ -1016,9 +954,14 @@ func (t *Test) executeChecks(result []CheckResult) {
 			// Abort needles checking if all went wrong.
 			if i == 0 { // only first check is checked against StatusCode/200.
 				sc, ok := ck.(StatusCode)
-				psc, pok := ck.(*StatusCode)
-				if (ok && sc.Expect == 200) || (pok && psc.Expect == 200) {
-					t.tracef("skipping remaining tests")
+				if !ok {
+					if psc, pok := ck.(*StatusCode); pok {
+						ok = true
+						sc = *psc
+					}
+				}
+				if ok && sc.Expect == 200 {
+					t.debugf("skipping remaining tests as bad StatusCode %s", t.Response.Response.Status)
 					// Clear Status and Error field as these might be
 					// populated from a prior try run of the test.
 					for j := 1; j < len(result); j++ {
@@ -1030,7 +973,7 @@ func (t *Test) executeChecks(result []CheckResult) {
 			}
 		} else {
 			result[i].Status = Pass
-			t.tracef("check %d %s: Pass", i, NameOf(ck))
+			t.debugf("Check %d %s: Pass", i+1, NameOf(ck))
 		}
 		if result[i].Status > t.Status {
 			t.Status = result[i].Status
@@ -1046,34 +989,34 @@ func (t *Test) prepared() bool {
 }
 
 func (t *Test) errorf(format string, v ...interface{}) {
-	if t.Verbosity >= 0 {
+	if t.Execution.Verbosity >= 0 && t.Log != nil {
 		format = "ERROR " + format + " [%q]"
 		v = append(v, t.Name)
-		log.Printf(format, v...)
+		t.Log.Printf(format, v...)
 	}
 }
 
 func (t *Test) infof(format string, v ...interface{}) {
-	if t.Verbosity >= 1 {
-		format = "INFO " + format + " [%q]"
+	if t.Execution.Verbosity >= 1 && t.Log != nil {
+		format = "INFO  " + format + " [%q]"
 		v = append(v, t.Name)
-		log.Printf(format, v...)
+		t.Log.Printf(format, v...)
 	}
 }
 
 func (t *Test) debugf(format string, v ...interface{}) {
-	if t.Verbosity >= 2 {
+	if t.Execution.Verbosity >= 2 && t.Log != nil {
 		format = "DEBUG " + format + " [%q]"
 		v = append(v, t.Name)
-		log.Printf(format, v...)
+		t.Log.Printf(format, v...)
 	}
 }
 
 func (t *Test) tracef(format string, v ...interface{}) {
-	if t.Verbosity >= 3 {
-		format = "TRACE " + format + " [%q]"
-		v = append(v, t.Name)
-		log.Printf(format, v...)
+	if t.Execution.Verbosity >= 3 && t.Log != nil {
+		format = "TRACE Begin [%q]" + format + "TRACE End"
+		v = append([]interface{}{t.Name}, v...)
+		t.Log.Printf(format, v...)
 	}
 }
 
@@ -1089,7 +1032,7 @@ func escapeQuotes(s string) string {
 // multipartBody formats the given param as a proper multipart/form-data
 // body and returns a reader ready to use as the body as well as the
 // multipart boundary to be include in the content type.
-func multipartBody(param map[string][]string, repl replacer) (io.ReadCloser, string, error) {
+func multipartBody(param map[string][]string, variables map[string]string) (io.ReadCloser, string, error) {
 	var body = &bytes.Buffer{}
 
 	isFile := func(v string) bool {
@@ -1122,7 +1065,7 @@ func multipartBody(param map[string][]string, repl replacer) (io.ReadCloser, str
 			if !isFile(vv) {
 				continue // already written
 			}
-			err := addFilePart(mpwriter, n, vv, repl)
+			err := addFilePart(mpwriter, n, vv, variables)
 			if err != nil {
 				return nil, "", err
 			}
@@ -1134,8 +1077,8 @@ func multipartBody(param map[string][]string, repl replacer) (io.ReadCloser, str
 }
 
 // addFilePart to mpwriter where the parameter n has a @file:-value vv.
-func addFilePart(mpwriter *multipart.Writer, n, vv string, repl replacer) error {
-	data, basename, err := fileData(vv, repl)
+func addFilePart(mpwriter *multipart.Writer, n, vv string, variables map[string]string) error {
+	data, basename, err := fileData(vv, variables)
 	if err != nil {
 		return err
 	}
@@ -1172,10 +1115,25 @@ func addFilePart(mpwriter *multipart.Writer, n, vv string, repl replacer) error 
 //  Methods of Poll and ClientPool
 
 // Skip return whether the test should be skipped.
-func (p Poll) Skip() bool {
-	return p.Max < 0
+func (p Execution) Skip() bool {
+	return p.Tries < 0
 }
 
 func dontFollowRedirects(*http.Request, []*http.Request) error {
 	return redirectNofollow
+}
+
+// newReplacer produces a strings.Replacer which
+// given variables with their values. A key of the form "#123" (i.e. hash
+// followed by literal decimal integer) is treated as an integer substitution.
+// Other keys are treated as string variables which subsitutes "{{k}}" with
+// vars[k] for a key k. Maybe just have a look at the code.
+func newReplacer(vars map[string]string) *strings.Replacer {
+	oldnew := []string{}
+	for k, v := range vars {
+		// A string substitution.
+		oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
+		oldnew = append(oldnew, v)
+	}
+	return strings.NewReplacer(oldnew...)
 }

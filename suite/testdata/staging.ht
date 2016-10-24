@@ -1,0 +1,7 @@
+{
+    Name: "Staging Mixin"
+    Request: { Header: { "X-Mode": "staging" } }
+    Checks: [
+        {Check: "StatusCode", Expect: 302}
+    ] 
+}

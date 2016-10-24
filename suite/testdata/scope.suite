@@ -1,0 +1,16 @@
+{
+    Name: Testsuite to check variable handling
+    Main: [
+        { File: "scope.ht"
+          Variables: {
+              B: 202
+              C: 203
+          }
+        }
+    ]
+    Variables: {
+        C:  303
+        B:  304
+        D:  305
+    }
+}

@@ -1,21 +1,26 @@
 {
-    Name: "Suite for Testing Load",
-    KeepCookies: true,
-    OmitChecks: false,
+    Name: "Suite for Testing Load"
+    KeepCookies: true
+    OmitChecks: false
     Setup: [
-        "a.ht"
+        { File: "a.ht"
+          Variables: {
+              VAR_A: "vala2",
+              VAR_C: "valc"
+          }
+        }
     ],
     comment: "see Foo. B et al., Journal of examples and Comments 123, p456",
     Tests: [
-        "a.ht",
-        "b.ht",
-	"c/d.ht",
+        {File: "a.ht"}
+        {File: "b.ht", Variables: {"foo": "bar"}}
+	{File: "c/d.ht"}
     ],
     Teardown: [
-       "b.ht",
-    ],
-    Verbosity: 2,  
+       {File: "b.ht"}
+    ]
+    Verbosity: 2
     Variables: {
-       VARNAME: "varvalue",
+       VARNAME: "varvalue"
     }
 }

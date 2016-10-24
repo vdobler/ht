@@ -9,4 +9,8 @@
     Checks: [
         {Check: "StatusCode", Expect: 200, "comment": "222 is not good"},
     ],
+    Variables: {
+        VAR_A: "vala",
+        VAR_B: "valb",
+    }
 }

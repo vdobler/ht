@@ -40,8 +40,8 @@ var setCookieTests = []TC{
 	{cookieResp, &SetCookie{Name: "a", Path: Condition{Equals: "/XXX"}}, someError},
 	{cookieResp, &SetCookie{Name: "a", Domain: Condition{Suffix: ".org"}}, nil},
 	{cookieResp, &SetCookie{Name: "a", Domain: Condition{Suffix: "XXX"}}, someError},
-	{cookieResp, &SetCookie{Name: "a", MinLifetime: Duration(10 * time.Second)}, nil},
-	{cookieResp, &SetCookie{Name: "a", MinLifetime: Duration(30 * time.Second)}, someError},
+	{cookieResp, &SetCookie{Name: "a", MinLifetime: 10 * time.Second}, nil},
+	{cookieResp, &SetCookie{Name: "a", MinLifetime: 30 * time.Second}, someError},
 
 	// Different types of cookies
 	{cookieResp, &SetCookie{Name: "a", Type: "persistent secure exposed"}, nil},

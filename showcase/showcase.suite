@@ -5,41 +5,52 @@
 
     Setup: [
         // Retrying and polling
-        "wait-for-startup.ht",
+        {File: "wait-for-startup.ht"}
 
         // Initiate session and extract variables
-        "extract.ht",
+        {File: "extract.ht"}
     ],
 
-    Tests: [
+    Main: [
         // Prepare system by loading data
-        "load-data.ht", 
+        {File: "load-data.ht"}
 
         // Shows a lot of checks
-        "homepage.ht",
+        {File: "homepage.ht"}
 
         // Redirections and Cookies
-        "login.ht",
+        {File: "login.ht", Variables: {user:"admin", pass:"secret"}}
 
         // Logical OR of checks and image checking
-        "logo.ht",
+        {File: "logo.ht"}
 
+
+        // Checking JSON responses
+        {File: "json-api.ht"}
+
+        // Parametrized test
+        {
+            File: "search.ht"
+            Variables: {TERM: "gluon", RESULTS: "12", COUNT: "-1"}
+        }
         // Logical NOR of checks and XML checking        
-        "xml.ht",
-
-         // Checking JSON responses
-        "json-api.ht",
-
-         // Looping/iterating tests and variables	
-        "search.ht",
+        {File: "xml.ht"}
+        {
+            File: "search.ht"
+            Variables: {TERM: "quark", RESULTS: "8", COUNT: "-1"}
+        }
+        {
+            File: "search.ht"
+            Variables: {TERM: "tachyon", RESULTS: "no", COUNT: "1"}
+        }
 
         // Checking binary response bodies and HTTP headers.
-        "pdf.ht",       
+        {File: "pdf.ht"}       
     ],
 
     Teardown: [
         // Turn demo server off
-        "shutdown.ht"
+        {File: "shutdown.ht"}
     ],
 
     // Variables can be set or overwritten from the command line.

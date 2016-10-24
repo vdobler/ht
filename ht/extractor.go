@@ -16,7 +16,7 @@ import (
 	"github.com/andybalholm/cascadia"
 	"github.com/nytlabs/gojsonexplode"
 	"github.com/robertkrimen/otto"
-	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/populate"
 	"golang.org/x/net/html"
 )
 
@@ -66,6 +66,7 @@ func init() {
 	RegisterExtractor(JSONExtractor{})
 	RegisterExtractor(CookieExtractor{})
 	RegisterExtractor(JSExtractor{})
+	RegisterExtractor(SetVariable{})
 }
 
 // ----------------------------------------------------------------------------
@@ -83,13 +84,15 @@ func (em ExtractorMap) MarshalJSON() ([]byte, error) {
 	buf.WriteRune('{')
 	i := 0
 	for name, ex := range em {
-		raw, err := json5.Marshal(ex)
+		raw, err := json.Marshal(ex)
 		if err != nil {
 			return nil, err
 		}
+		buf.WriteRune('"')
 		buf.WriteString(name)
+		buf.WriteRune('"')
 		buf.WriteRune(':')
-		buf.WriteString(`{Extractor: "`)
+		buf.WriteString(`{"Extractor": "`)
 		buf.WriteString(NameOf(ex))
 		buf.WriteRune('"')
 		if string(raw) != "{}" {
@@ -107,21 +110,34 @@ func (em ExtractorMap) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// UnmarshalJSON unmarshals data to a map of Extractors.
-func (em *ExtractorMap) UnmarshalJSON(data []byte) error {
-	if *em == nil {
-		*em = make(ExtractorMap)
-	}
-	raw := map[string]json5.RawMessage{}
-	err := json5.Unmarshal(data, &raw)
+func (em *ExtractorMap) Populate(src interface{}) error {
+	types := make(map[string]struct {
+		Extractor string
+	})
+
+	err := populate.Lax(&types, src)
 	if err != nil {
 		return err
 	}
-	for name, ex := range raw {
-		exName, exDef, err := extractSingleFieldFromJSON5("Extractor", ex)
-		if err != nil {
-			return err
+
+	raw := make(map[string]interface{})
+	srcMap, ok := src.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("ht: cannot populate %T to variable extractor object")
+	}
+
+	for name := range types {
+		r, ok := srcMap[name].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("ht: cannot populate extractor for %q from %T", name, srcMap[name])
 		}
+		delete(r, "Extractor")
+		raw[name] = r
+	}
+
+	exes := make(map[string]Extractor)
+	for name, ex := range types {
+		exName := ex.Extractor
 		typ, ok := ExtractorRegistry[exName]
 		if !ok {
 			return fmt.Errorf("ht: no such extractor %s", exName)
@@ -130,12 +146,14 @@ func (em *ExtractorMap) UnmarshalJSON(data []byte) error {
 			typ = typ.Elem()
 		}
 		extractor := reflect.New(typ)
-		err = json5.Unmarshal(exDef, extractor.Interface())
+		err = populate.Strict(extractor.Interface(), raw[name])
 		if err != nil {
-			return err
+			return fmt.Errorf("ht: cannot build extractor for %q: %s", name, err)
 		}
-		(*em)[name] = extractor.Interface().(Extractor)
+		exes[name] = extractor.Interface().(Extractor)
+
 	}
+	*em = exes
 	return nil
 }
 
@@ -247,12 +265,10 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 // extracted as the empty string i.e. null and "" are indistinguashable.
 //
 // Note that JSONExtractor behaves differently than the JSON check:
-//  - JSONExctractor strips quotes from strings (which is okay)
-//  - JSONExtractor selects elements with the Path field (which is a design
-//    error)
+// JSONExctractor strips quotes from strings if the string is not empty.
 type JSONExtractor struct {
-	// Path in the flattened JSON map to extract.
-	Path string `json:",omitempty"`
+	// Element in the flattened JSON map to extract.
+	Element string `json:",omitempty"`
 
 	// Sep is the separator in Path.
 	// A zero value is equivalent to "."
@@ -281,7 +297,7 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 		return "", fmt.Errorf("unable to parse exploded JSON: %s", err.Error())
 	}
 
-	val, ok := flat[e.Path]
+	val, ok := flat[e.Element]
 	if !ok {
 		return "", ErrNotFound
 	}
@@ -289,7 +305,7 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 	// The element might be present but null like in {"a": null} in wich
 	// case val==nil.
 	if val == nil {
-		// TODO: ist this the most sensible outcome?  Or would
+		// TODO: is this the most sensible outcome?  Or would
 		// "", ErrNotFound be better?
 		return "", nil
 	}
@@ -353,8 +369,8 @@ func (e JSExtractor) Extract(t *Test) (string, error) {
 	// Reading the script with fileData is a hack as it accepts
 	// the @vfile syntax but cannot do the variable replacements
 	// as Prepare is called on the already 'replaced' checked.
-	repl, _ := newReplacer(nil)
-	source, basename, err := fileData(e.Script, repl)
+
+	source, basename, err := fileData(e.Script, nil) // TODO: can use t.Variables here!
 	if err != nil {
 		return "", err
 	}
@@ -410,4 +426,18 @@ func (e JSExtractor) Extract(t *Test) (string, error) {
 		return "", err
 	}
 	return str, nil
+}
+
+// ----------------------------------------------------------------------------
+// SetVariable
+
+// SetVariable allows to pragmatically "extract" a fixed value.
+type SetVariable struct {
+	// To is the value to extract.
+	To string
+}
+
+// Extract implements Extractor's Extract method.
+func (e SetVariable) Extract(t *Test) (string, error) {
+	return e.To, nil
 }

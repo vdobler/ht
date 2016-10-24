@@ -42,7 +42,7 @@ type SetCookie struct {
 	// MinLifetime is the expectetd minimum lifetime of the cookie.
 	// A positive value enforces a persistent cookie.
 	// Negative values are illegal (use DelteCookie instead).
-	MinLifetime Duration `json:",omitempty"`
+	MinLifetime time.Duration `json:",omitempty"`
 
 	// Absent indicates that the cookie with the given Name must not be received.
 	Absent bool `json:",omitempty"`
@@ -90,12 +90,12 @@ func (c SetCookie) Execute(t *Test) error {
 
 	if c.MinLifetime > 0 {
 		if cookie.MaxAge > 0 {
-			if int(time.Duration(c.MinLifetime).Seconds()) > cookie.MaxAge {
+			if int(c.MinLifetime.Seconds()) > cookie.MaxAge {
 				return fmt.Errorf("MaxAge %ds of cookie %s too short, want > %s",
 					cookie.MaxAge, c.Name, c.MinLifetime)
 			}
 		} else if !cookie.Expires.IsZero() {
-			min := time.Now().Add(time.Duration(c.MinLifetime))
+			min := time.Now().Add(c.MinLifetime)
 			if min.Before(cookie.Expires) {
 				return fmt.Errorf("Expires %ss of cookie %s too early, want > %s",
 					cookie.Expires.Format(time.RFC1123), c.Name,

@@ -14,4 +14,7 @@
     Checks: [
         {Check: "StatusCode", Expect: 300},
     ],
+    Variables: {
+        "FOOVAR": "FOOVAL",
+    },
 }

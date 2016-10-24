@@ -5,6 +5,7 @@
 package ht
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -13,14 +14,13 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/vdobler/ht/internal/json5"
 )
 
 var verboseTest = flag.Bool("ht.verbose", false, "be verbose during testing")
@@ -52,7 +52,7 @@ func TestSkippingChecks(t *testing.T) {
 			Request: Request{
 				Method: "GET",
 				URL:    ts.URL + "/",
-				Params: URLValues{
+				Params: url.Values{
 					"status": []string{fmt.Sprintf("%d", tc.code)}},
 			},
 			Checks: []Check{
@@ -67,7 +67,7 @@ func TestSkippingChecks(t *testing.T) {
 			test.Checks[0] = &sc0
 			test.Checks[1] = &sc1
 		}
-		test.Run(nil)
+		test.Run()
 		if test.CheckResults[0].Status != tc.fstatus ||
 			test.CheckResults[1].Status != tc.sstatus {
 			t.Errorf("%d,%t: %d against %d/%d, got %s/%s want %s/%s", i, tc.pointer, tc.code,
@@ -83,7 +83,7 @@ func TestParameterHandling(t *testing.T) {
 	test := Test{Request: Request{
 		Method: "POST",
 		URL:    "http://www.test.org",
-		Params: URLValues{
+		Params: url.Values{
 			"single":  []string{"abc"},
 			"multi":   []string{"1", "2"},
 			"special": []string{"A%+& &?/Z"},
@@ -124,7 +124,7 @@ func TestMultipartParameterHandling(t *testing.T) {
 	test := Test{Request: Request{
 		Method: "POST",
 		URL:    "http://www.test.org",
-		Params: URLValues{
+		Params: url.Values{
 			"single":  []string{"abc"},
 			"multi":   []string{"1", "2"},
 			"special": []string{"A%+& &?/Z"},
@@ -225,11 +225,10 @@ func TestSendBody(t *testing.T) {
 	test := Test{Request: Request{
 		Method: "POST",
 		URL:    "http://www.test.org",
-		Body:   "@vfile:testdata/{{FILENAME}}",
+		Body:   "@vfile:testdata/somefile.txt",
 	}}
 	err := test.prepare(map[string]string{
-		"FILENAME": "somefile.txt",
-		"XYZ":      "+++",
+		"XYZ": "+++",
 	})
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
@@ -237,47 +236,6 @@ func TestSendBody(t *testing.T) {
 	if test.Request.SentBody != "Hello +++ World.\n" {
 		t.Errorf("got %q", test.Request.SentBody)
 	}
-}
-
-func TestRTStats(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
-	defer ts.Close()
-
-	test := &Test{
-		Name: "Sleep {{SMIN}}-{{SMAX}}",
-		Request: Request{
-			Method: "GET",
-			URL:    ts.URL + "/",
-			Params: URLValues{
-				"smin": []string{"{{SMIN}}"},
-				"smax": []string{"{{SMAX}}"},
-				"fail": {"5"},
-			},
-			FollowRedirects: false,
-			Timeout:         Duration(150 * time.Millisecond),
-		},
-		Checks: []Check{
-			StatusCode{200},
-		},
-	}
-
-	rtimes := map[string][]string{
-		"SMIN": {"5", "30", "50"},
-		"SMAX": {"20", "70", "100"},
-	}
-	tests, _ := Repeat(test, 3, rtimes)
-
-	suite := &Suite{
-		Name:        "Response Time Statistics",
-		Tests:       tests,
-		KeepCookies: true,
-	}
-
-	err := suite.Prepare()
-	if err != nil || len(suite.Tests) != 3 {
-		t.Fatalf("Unexpected error: %v %d", err, len(suite.Tests))
-	}
-
 }
 
 // ----------------------------------------------------------------------------
@@ -466,23 +424,23 @@ func TestPolling(t *testing.T) {
 			Request: Request{
 				Method: "GET",
 				URL:    ts.URL + "/",
-				Params: URLValues{
+				Params: url.Values{
 					"n": {"3"},
 					"t": {tc.typ},
 				},
-				Timeout: Duration(60 * time.Millisecond),
+				Timeout: 60 * time.Millisecond,
 			},
 			Checks: []Check{
 				StatusCode{200},
 			},
-			Poll: Poll{
-				Max:   tc.max,
-				Sleep: Duration(200),
+			Execution: Execution{
+				Tries: tc.max,
+				Wait:  5 * time.Millisecond,
 			},
 		}
-		test.Run(nil)
+		test.Run()
 		if got := test.Status; got != tc.want {
-			t.Errorf("%d: got %s, want %s", i, got, tc.want)
+			t.Errorf("%d: got %s, want %s (error=%s)", i, got, tc.want, test.Error)
 		}
 		if tc.want == Pass && test.Error != nil {
 			t.Errorf("%d: got non-nil eror: %+v", i, test.Error)
@@ -499,75 +457,24 @@ func TestClientTimeout(t *testing.T) {
 		Request: Request{
 			Method: "GET",
 			URL:    ts.URL + "/",
-			Params: URLValues{
+			Params: url.Values{
 				"smin": {"100"}, "smax": {"110"},
 			},
 			FollowRedirects: false,
-			Timeout:         Duration(40 * time.Millisecond),
+			Timeout:         40 * time.Millisecond,
 		},
 		Checks: []Check{
 			StatusCode{200},
 		},
 	}
 	start := time.Now()
-	test.Run(nil)
+	test.Run()
 	if d := time.Since(start); d > 99*time.Millisecond {
 		t.Errorf("Took too long: %s", d)
 	}
 
 	if test.Status != Error {
 		t.Errorf("Got status %s, want Error", test.Status)
-	}
-}
-
-func TestMarshalTest(t *testing.T) {
-	test := &Test{
-		Name:        "Search",
-		Description: "Some searches",
-		Request: Request{
-			URL: "https://{{HOST}}/de/tools/suche.html",
-			Params: URLValues{
-				"q": []string{"{{QUERY}}"},
-				"w": []string{"AB", "XZ"},
-			},
-			FollowRedirects: true,
-			ParamsAs:        "URL",
-			Body:            "Some data to send.",
-			Header: http.Header{
-				"User-Agent": {"Our-Test-Agent"},
-			},
-			Cookies: []Cookie{
-				{Name: "first", Value: "false"},
-				{Name: "trusted", Value: "true"},
-			},
-		},
-		Checks: []Check{
-			StatusCode{200},
-			&Body{Contains: "© 2014", Count: 1},
-		},
-	}
-
-	data, err := json5.MarshalIndent(test, "", "    ")
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-	if *verboseTest {
-		fmt.Println(string(data))
-	}
-	recreated := Test{}
-	err = json5.Unmarshal(data, &recreated)
-	if err != nil {
-		w := err.(*json5.UnmarshalTypeError)
-		t.Fatalf("Unexpected error: %#v\n%s\n%#v", err, w, recreated)
-	}
-
-	data2, err := json5.MarshalIndent(recreated, "", "    ")
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-
-	if string(data) != string(data2) {
-		t.Fatalf("Missmatch. Got\n%s\nWant\n%s\n", data2, data)
 	}
 }
 
@@ -589,7 +496,7 @@ func TestMerge(t *testing.T) {
 				"User-Agent": []string{"A User Agent"},
 				"Special-A":  []string{"Special A Value"},
 			},
-			Params: URLValues{
+			Params: url.Values{
 				"q": []string{"foo-A"},
 				"a": []string{"aa", "AA"},
 			},
@@ -600,9 +507,11 @@ func TestMerge(t *testing.T) {
 			FollowRedirects: true,
 			Chunked:         false,
 		},
-		PreSleep:   Duration(100),
-		InterSleep: Duration(120),
-		PostSleep:  Duration(140),
+		Execution: Execution{
+			PreSleep:   100,
+			InterSleep: 120,
+			PostSleep:  140,
+		},
 	}
 
 	b = &Test{
@@ -614,7 +523,7 @@ func TestMerge(t *testing.T) {
 				"User-Agent": []string{"B User Agent"},
 				"Special-B":  []string{"Special B Value"},
 			},
-			Params: URLValues{
+			Params: url.Values{
 				"q": []string{"foo-B"},
 				"b": []string{"bb", "BB"},
 			},
@@ -627,7 +536,9 @@ func TestMerge(t *testing.T) {
 			BasicAuthUser:   "foo.bar",
 			BasicAuthPass:   "secret",
 		},
-		InterSleep: Duration(300),
+		Execution: Execution{
+			InterSleep: 300,
+		},
 	}
 
 	c, err := Merge(a, b)
@@ -635,7 +546,7 @@ func TestMerge(t *testing.T) {
 		t.Fatalf("Unexpected error %#v", err)
 	}
 	if *verboseTest {
-		jr, err := json5.Marshal(c)
+		jr, err := json.Marshal(c)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -672,83 +583,11 @@ func TestMerge(t *testing.T) {
 			c.Request.FollowRedirects, c.Request.Chunked)
 	}
 
-	if c.PreSleep != 100 || c.InterSleep != 420 || c.PostSleep != 140 {
+	if c.Execution.PreSleep != 100 || c.Execution.InterSleep != 420 || c.Execution.PostSleep != 140 {
 		t.Errorf("Bad sleep times. Got pre=%s, inter=%s, post=%s",
-			c.PreSleep, c.InterSleep, c.PostSleep)
+			c.Execution.PreSleep, c.Execution.InterSleep, c.Execution.PostSleep)
 	}
 
-}
-
-func TestUnmarshalURLValues(t *testing.T) {
-	j := []byte(`{
-    q: 7,
-    w: "foo",
-    z: [ 3, 1, 4, 1 ],
-    x: [ "bar", "quz" ],
-    y: [ 2, "waz", 9 ],
-    v: [ 1.2, -1.2, 4.00001, -4.00001, 3.999999, -3.99999 ]
-}`)
-
-	var uv URLValues
-	err := json5.Unmarshal(j, &uv)
-	if err != nil {
-		t.Fatalf("Unexpected error %#v", err)
-	}
-
-	s, err := json5.MarshalIndent(uv, "", "    ")
-	if err != nil {
-		t.Fatalf("Unexpected error %#v", err)
-	}
-
-	if string(s) != `{
-    q: [
-        "7"
-    ],
-    v: [
-        "1.2",
-        "-1.2",
-        "4.00001",
-        "-4.00001",
-        "3.999999",
-        "-3.99999"
-    ],
-    w: [
-        "foo"
-    ],
-    x: [
-        "bar",
-        "quz"
-    ],
-    y: [
-        "2",
-        "waz",
-        "9"
-    ],
-    z: [
-        "3",
-        "1",
-        "4",
-        "1"
-    ]
-}` {
-		t.Errorf("Got unexpected value:\n%s", s)
-	}
-
-}
-
-func TestUnmarshalURLValuesError(t *testing.T) {
-	for i, tc := range []string{
-		`{q: {a:1, b:2}}`,
-		`{q: [ [1,2], [3,4] ] }`,
-		`{q: [ 1, 2, {a:7, b:8}, 3 ] }`,
-	} {
-
-		var uv URLValues
-		err := json5.Unmarshal([]byte(tc), &uv)
-		if err == nil {
-			t.Errorf("%d. missing error on %s", i, tc)
-		}
-	}
 }
 
 func bodyReadTestHandler(w http.ResponseWriter, r *http.Request) {
@@ -783,7 +622,7 @@ func TestReadBody(t *testing.T) {
 			},
 			Checks: []Check{NoServerError{}},
 		}
-		test.Run(nil)
+		test.Run()
 
 		if test.Response.BodyErr != nil {
 			t.Errorf("Path %q: Unexpected problem reading body: %#v",
@@ -900,7 +739,7 @@ func TestFileSchema(t *testing.T) {
 		}
 		method, want := test.Name[:p], test.Name[p+1:]
 		test.Request.Method = method
-		err = test.Run(nil)
+		err = test.Run()
 		if err != nil {
 			t.Fatalf("%d. %s: Unexpected error: ", err)
 		}

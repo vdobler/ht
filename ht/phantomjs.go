@@ -599,7 +599,7 @@ func writePhantomScript(file *os.File, t *Test, action string) error {
 // to load all referenced assets and render the page. For obvious reason this
 // cannot be determined with absolute accuracy.
 type RenderingTime struct {
-	Max Duration
+	Max time.Duration
 }
 
 // Prepare implements Check's Prepare method.
@@ -647,10 +647,10 @@ func (d RenderingTime) Execute(t *Test) error {
 	// As TestRenderingTimeOffset does compute the arithemtic mean
 	// this must be considered a valid scientific studie. At least
 	// in social sience standards.
-	took -= time.Duration(99 * time.Millisecond)
+	took -= 99 * time.Millisecond
 
-	total := took + time.Duration(t.Response.Duration)
-	if total <= time.Duration(d.Max) {
+	total := took + t.Response.Duration
+	if total <= d.Max {
 		return nil
 	}
 

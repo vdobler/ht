@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/vdobler/ht/ht"
-	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/suite"
 )
 
 var cmdList = &Command{
@@ -24,55 +24,46 @@ the tests and prints the list of tests.
 }
 
 var (
-	checkFlag bool
-	fullFlag  bool
+	fullFlag bool
 )
 
 func init() {
-	cmdList.Flag.BoolVar(&checkFlag, "check", false,
-		"including checks inlisting")
 	cmdList.Flag.BoolVar(&fullFlag, "full", false,
-		"print complete tests")
+		"print more details")
 }
 
-func runList(cmd *Command, suites []*ht.Suite) {
+func runList(cmd *Command, suites []*suite.RawSuite) {
 	// TODO: provide templated output
-	for sNo, suite := range suites {
-		stitle := fmt.Sprintf("Suite %d: %s", sNo+1, suite.Name)
+	for sNo, s := range suites {
+		fmt.Println()
+		stitle := fmt.Sprintf("Suite %d: %s (%s)", sNo+1, s.Name, s.File.Name)
 		fmt.Printf("%s\n", ht.Underline(stitle, "-", ""))
-		for tNo, test := range suite.Setup {
-			id := fmt.Sprintf("%d.u%d", sNo+1, tNo+1)
-			displayTest(id, test)
-		}
-		for tNo, test := range suite.Tests {
-			id := fmt.Sprintf("%d.%d", sNo+1, tNo+1)
-			displayTest(id, test)
-		}
-		for tNo, test := range suite.Teardown {
-			id := fmt.Sprintf("%d.d%d", sNo+1, tNo+1)
+		for tNo, test := range s.RawTests() {
+			typ := "Main"
+			if tNo < len(s.Setup) {
+				typ = "Setup"
+			} else if tNo >= len(s.Setup)+len(s.Main) {
+				typ = "Teardown"
+			}
+			id := fmt.Sprintf("%d.%d %-8s", sNo+1, tNo+1, typ)
 			displayTest(id, test)
 		}
 	}
 }
 
-func displayTest(id string, test *ht.Test) {
-	fmt.Printf("%-6s %s\n", id, test.Name)
+func displayTest(id string, test *suite.RawTest) {
+	fmt.Printf("%-6s %s", id, test.File.Name)
 	if fullFlag {
-		buf, err := json5.MarshalIndent(test, "         ", "    ")
+		ht, err := test.ToTest(variablesFlag)
 		if err != nil {
-			buf = []byte(err.Error())
+			fmt.Printf("  oops: %s\n", err)
+			return
 		}
-		fmt.Println("        ", string(buf))
-		fmt.Println()
-	} else if checkFlag {
-		for _, check := range test.Checks {
-			name := ht.NameOf(check)
-			buf, err := json5.Marshal(check)
-			if err != nil {
-				buf = []byte(err.Error())
-			}
-			fmt.Printf("           %-14s %s\n", name, buf)
+		method := "GET"
+		if ht.Request.Method != "" {
+			method = ht.Request.Method
 		}
-		fmt.Println()
+		fmt.Printf("  %q  %s %s\n", ht.Name, method, ht.Request.URL)
 	}
+	fmt.Println()
 }

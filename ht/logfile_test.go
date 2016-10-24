@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -43,7 +44,7 @@ func TestLogfile(t *testing.T) {
 		Request: Request{
 			Method: "GET",
 			URL:    ts.URL + "/",
-			Params: URLValues{"data": []string{data}},
+			Params: url.Values{"data": []string{data}},
 		},
 		Checks: []Check{
 			&StatusCode{Expect: 200},                                                         // pass
@@ -57,7 +58,7 @@ func TestLogfile(t *testing.T) {
 			&Logfile{Path: "testdata/logfile", Disallow: []string{"Hubba bubba"}},            // pass
 		},
 	}
-	err := test.Run(nil)
+	err := test.Run()
 	if err != nil {
 		t.Fatalf("Unexpected error: %+v", err)
 	}
@@ -80,7 +81,7 @@ func testLogfileRemote(t *testing.T, ts *httptest.Server, wd string, m string, l
 		Request: Request{
 			Method: "GET",
 			URL:    ts.URL + "/",
-			Params: URLValues{"data": []string{data}},
+			Params: url.Values{"data": []string{data}},
 		},
 		Checks: []Check{
 			&StatusCode{Expect: 200}, // pass
@@ -88,7 +89,7 @@ func testLogfileRemote(t *testing.T, ts *httptest.Server, wd string, m string, l
 		},
 	}
 
-	err := test.Run(nil)
+	err := test.Run()
 	if err != nil {
 		t.Fatalf("%s file: Unexpected error: %+v", m, err)
 	}

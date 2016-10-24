@@ -1,0 +1,10 @@
+{
+    Name: "Test A",
+    Request: {
+        URL: "http://aaa.aaa.aaa",
+	FollowAllRedirects: true,
+        Header: {
+            Multi: [ "A" ],
+        },
+    },
+}

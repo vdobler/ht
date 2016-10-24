@@ -4,11 +4,13 @@ ht.test
 tmp/*
 *.R
 *.png
+_Result_.html
 showcase/showcase
 cmd/ht/ht
 cmd/ht/ht_linux
 cmd/ht/ht_darwin
 cmd/ht/ht_windows.exe
+cmd/ht/Documentation.*
 *.bined.jpg
 2016_*
 ht/testdata/logfile

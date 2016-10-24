@@ -6,12 +6,14 @@ package ht
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
-	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/internal/hjson"
+	"github.com/vdobler/ht/populate"
 )
 
 var exampleHTML = `
@@ -117,7 +119,7 @@ func TestJSONExtractor(t *testing.T) {
 				BodyStr: tc.body,
 			},
 		}
-		ex := JSONExtractor{Path: tc.path}
+		ex := JSONExtractor{Element: tc.path}
 		got, err := ex.Extract(test)
 		if err != nil {
 			if tc.err == nil {
@@ -282,23 +284,23 @@ func TestMarshalExtractorMap(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	err = json5.Indent(buf, out, "", "    ")
+	err = json.Indent(buf, out, "", "    ")
 	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
+		t.Fatalf("Unexpected error: %#v\n%s", err, out)
 	}
 
 	fooExpected := `
-    Foo: {
-        Extractor: "HTMLExtractor",
-        Selector: "div.footer p.copyright span.year",
-        Attribute: "~text~"
+    "Foo": {
+        "Extractor": "HTMLExtractor",
+        "Selector": "div.footer p.copyright span.year",
+        "Attribute": "~text~"
     }`
 
 	barExpected := `
-    Bar: {
-        Extractor: "BodyExtractor",
-        Regexp: "[A-Z]+[0-9]+",
-        Submatch: 1
+    "Bar": {
+        "Extractor": "BodyExtractor",
+        "Regexp": "[A-Z]+[0-9]+",
+        "Submatch": 1
     }`
 	if s := buf.String(); !strings.Contains(s, fooExpected) || !strings.Contains(s, barExpected) {
 
@@ -306,8 +308,9 @@ func TestMarshalExtractorMap(t *testing.T) {
 	}
 }
 
-func TestUnmarshalExtractorMap(t *testing.T) {
+func TestPopulateExtractorMap(t *testing.T) {
 	j := []byte(`{
+VarEx: {
     Foo: {
         Extractor: "HTMLExtractor",
         Selector: "form input[type=password]",
@@ -318,13 +321,22 @@ func TestUnmarshalExtractorMap(t *testing.T) {
         Regexp: "[A-Z]+[0-9]*[g-p]",
         Submatch: 3
     }
-}`)
-
-	em := ExtractorMap{}
-	err := (&em).UnmarshalJSON(j)
+}}`)
+	var raw interface{}
+	err := hjson.Unmarshal([]byte(j), &raw)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
+
+	ve := struct {
+		VarEx ExtractorMap
+	}{}
+
+	err = populate.Strict(&ve, raw)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	em := ve.VarEx
 
 	if len(em) != 2 {
 		t.Fatalf("Wrong len, got %d\n%#v", len(em), em)

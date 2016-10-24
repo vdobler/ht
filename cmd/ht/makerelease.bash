@@ -6,6 +6,8 @@ set -e
 GO=/usr/local/go/bin/go
 echo "### Using $($GO version)"
 
+echo "### Generating godoc data"
+go run gendoc.go
 
 version=$(git describe)
 export GO15VENDOREXPERIMENT="1" 

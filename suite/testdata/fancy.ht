@@ -1,0 +1,15 @@
+{
+    Name: "Fancy Test"
+    Mixin: [
+        "common.mix",
+    ]
+    Request: {
+        URL: "{{PROTOCOL}}://{{HOST}}/some/path"
+    }
+
+    Variables: {
+        MIXIN: "nil.ht"
+        PROTOCOL: "http"
+        HOST: "{{DOMAIN}}"
+    }
+}

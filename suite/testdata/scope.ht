@@ -1,0 +1,11 @@
+{
+    Name: Test of variable Handling
+    Request: { URL: "file:///etc/passwd" }
+    Variables: {
+        A: 101
+        B: 102
+        C: 103
+        D: 104
+        E: 105
+    }   
+}

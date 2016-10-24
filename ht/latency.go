@@ -113,7 +113,7 @@ func (L *Latency) Execute(t *Test) error {
 			checks = append(checks, c)
 		}
 		cpy.Checks = checks
-		cpy.Verbosity = 0
+		cpy.Execution.Verbosity = 0
 
 		if t.Jar != nil {
 			if L.IndividualSessions {
@@ -136,7 +136,7 @@ func (L *Latency) Execute(t *Test) error {
 			prewarmed++
 			wg.Add(1)
 			go func(ex *Test) {
-				ex.Run(t.VarValues)
+				ex.Run()
 				wg.Done()
 			}(tests[i])
 		}
@@ -153,7 +153,7 @@ func (L *Latency) Execute(t *Test) error {
 		go func(ex *Test, id int) {
 			for {
 				wg2.Add(1)
-				ex.Run(t.VarValues)
+				ex.Run()
 				results <- latencyResult{
 					status:   ex.Status,
 					started:  ex.Started,
@@ -216,7 +216,7 @@ func (L *Latency) Execute(t *Test) error {
 			strconv.Itoa(L.Concurrent),
 			r.started.Format(time.RFC3339Nano),
 			r.status.String(),
-			(r.duration / Duration(time.Millisecond)).String(),
+			(r.duration / time.Millisecond).String(),
 			fmt.Sprintf("%t", completed),
 		})
 	}
@@ -255,7 +255,7 @@ func (L *Latency) Execute(t *Test) error {
 type latencyResult struct {
 	status   Status
 	started  time.Time
-	duration Duration
+	duration time.Duration
 	execBy   int
 }
 

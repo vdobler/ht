@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 var sampleHTML = `<!doctype html>
@@ -179,6 +180,7 @@ func htmlLinksHandler(w http.ResponseWriter, r *http.Request) {
 		status = 302
 	}
 	linksHandlerCalls <- r.Host + r.URL.String()
+	time.Sleep(2 * time.Microsecond)
 	http.Error(w, "Link Handler", status)
 }
 
@@ -307,7 +309,7 @@ func TestHTMLLinkFiltering(t *testing.T) {
 	}
 }
 
-func testHTMLLinks(t *testing.T, urls []string) (called []string, err error) {
+func testHTMLLinks(t *testing.T, urls []string, max time.Duration) (called []string, err error) {
 	ts1 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
 	defer ts1.Close()
 	ts2 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
@@ -336,10 +338,10 @@ func testHTMLLinks(t *testing.T, urls []string) (called []string, err error) {
 	test := &Test{
 		Request:   Request{Request: &http.Request{URL: baseURL}},
 		Response:  Response{BodyStr: body},
-		Verbosity: 1,
+		Execution: Execution{Verbosity: 1},
 	}
 
-	check := Links{Which: "a img link script", Concurrency: 2}
+	check := Links{Which: "a img link script", Concurrency: 2, MaxTime: max}
 	err = check.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
@@ -365,12 +367,34 @@ func TestHTMLLinksOkay(t *testing.T) {
 		"/foo",
 		"/waz",
 	}
-	called, err := testHTMLLinks(t, urls)
+	called, err := testHTMLLinks(t, urls, 20*time.Millisecond)
 	if err != nil {
 		t.Errorf("Unexpected error: %#v", err)
 	}
 	if len(called) != 5 {
 		t.Errorf("Unexpected error: %v", called)
+	}
+}
+
+func TestHTMLLinksTooSlow(t *testing.T) {
+	// 20 URLs each at least 2musec at 2 concurrent request take at least 10 musec.
+	urls := []string{
+		"/impressum.html",
+		"/js/jquery.js",
+		"/foo",
+		"/supertoll/bild.gif",
+		"/foo",
+		"/waz",
+		"/foo/bar",
+		"/waz/bar",
+		"/foo/123",
+		"/waz/123",
+		"/foo/123/bar",
+		"/waz/123/bar",
+	}
+	_, err := testHTMLLinks(t, urls, 10*time.Microsecond)
+	if err == nil {
+		t.Fatalf("Missing error")
 	}
 }
 
@@ -383,7 +407,7 @@ func TestHTMLLinksBroken(t *testing.T) {
 		"/404/foo",
 		"/404/waz",
 	}
-	called, err := testHTMLLinks(t, urls)
+	called, err := testHTMLLinks(t, urls, 20*time.Millisecond)
 	if err == nil {
 		t.Fatalf("Missing error: %#v", err)
 	}

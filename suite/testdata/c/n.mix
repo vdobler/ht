@@ -1,0 +1,12 @@
+{
+    Name: "Mixin N",
+    BasedOn: [ "r.mix", "../s.mix" ],
+    Request: {
+        Header: {
+            Multi: [ "N" ],
+        },
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 410},
+    ],
+}

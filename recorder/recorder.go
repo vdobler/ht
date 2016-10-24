@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"image"
 	"io"
@@ -32,7 +33,6 @@ import (
 	"github.com/andybalholm/cascadia"
 	"github.com/vdobler/ht/fingerprint"
 	"github.com/vdobler/ht/ht"
-	"github.com/vdobler/ht/internal/json5"
 	"github.com/vdobler/ht/sanitize"
 )
 
@@ -363,7 +363,7 @@ func printHeader(which string, header http.Header) {
 	fmt.Println()
 }
 
-// Test is a reduced version of ht.Test suitable for serialization to JSON5.
+// Test is a reduced version of ht.Test suitable for serialization to JSON.
 type Test struct {
 	Name        string
 	Description string   `json:",omitempty"`
@@ -372,7 +372,7 @@ type Test struct {
 	Checks      ht.CheckList `json:",omitempty"`
 }
 
-// Suite is a reduced version of ht.Suite suitable to serialization to JSON5.
+// Suite is a reduced version of ht.Suite suitable to serialization to JSON.
 type Suite struct {
 	Name        string
 	Description string `json:",omitempty"`
@@ -457,7 +457,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 				URL:      urlString,
 				Cookies:  cookies,
 				Header:   e.Request.Header,
-				Params:   ht.URLValues(params),
+				Params:   params,
 				ParamsAs: paramsAs,
 				Body:     body,
 			},
@@ -527,7 +527,7 @@ func scanRequestBody(e *Event) (body string, params url.Values, as string) {
 }
 
 func writeTest(test *Test, filename string) error {
-	data, err := json5.MarshalIndent(test, "", "    ")
+	data, err := json.MarshalIndent(test, "", "    ")
 	if err != nil {
 		return err
 	}
@@ -540,7 +540,7 @@ func writeTest(test *Test, filename string) error {
 
 // TODO: combine with writeTest
 func writeSuite(suite Suite, filename string) error {
-	data, err := json5.MarshalIndent(suite, "", "    ")
+	data, err := json.MarshalIndent(suite, "", "    ")
 	if err != nil {
 		return err
 	}
@@ -630,7 +630,7 @@ func extractHTMLChecks(e Event) ht.CheckList {
 		Head:        true,
 		Which:       "a img link script",
 		Concurrency: 4,
-		Timeout:     ht.Duration(20 * time.Second),
+		Timeout:     20 * time.Second,
 		IgnoredLinks: []ht.Condition{
 			{Contains: "www.facebook.com/"},
 			{Contains: "www.twitter.com/"},
@@ -753,7 +753,7 @@ func createSetCookieCheck(c *http.Cookie, now time.Time) *ht.SetCookie {
 		if lt > 10*time.Second {
 			lt -= 10 * time.Second
 		}
-		sc.MinLifetime = ht.Duration(lt)
+		sc.MinLifetime = lt
 	} else {
 		flags = append(flags, "session")
 	}

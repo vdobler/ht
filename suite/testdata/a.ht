@@ -1,0 +1,20 @@
+{
+    Name: "Test A",
+    Description: "Descr: {{VAR_A}} {{VAR_B}}",
+    Request: {
+        URL: "http://aaa.aaa.aaa",
+        Header: {
+            Multi: [ "A" ],
+        },
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 200, "comment": "222 is not good"},
+    ],
+    VarEx: {
+        WAZ: {Extractor: "JSONExtractor", Element: "foo.bar.zip"},
+    },
+    Variables: {
+        VAR_A: "vala",
+        VAR_B: "valb",
+    }
+}

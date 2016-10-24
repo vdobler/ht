@@ -1,0 +1,20 @@
+{
+    Name: "Test B",
+    Mixin: [ "m.mix" ],
+    Request: {
+        URL: "http://bbb.bbb.bbb",
+        Params: {
+            aparam: [ "alphaB" ],
+            bparam: [ "betaB" ],
+        },
+        Header: {
+            Multi: [ "B" ],
+        },
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 300},
+    ],
+    Variables: {
+        "FOOVAR": "FOOVAL",
+    },
+}

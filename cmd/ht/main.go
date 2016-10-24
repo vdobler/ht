@@ -10,20 +10,21 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
+	hjson "github.com/hjson/hjson-go"
 	"github.com/vdobler/ht/ht"
-	"github.com/vdobler/ht/internal/json5"
+	"github.com/vdobler/ht/populate"
+	"github.com/vdobler/ht/suite"
 )
 
 // A Command is one of the subcommands of ht.
 type Command struct {
 	// One of RunSuites, RunTest and RunArgs must be provided by the command.
-	RunSuites func(cmd *Command, suites []*ht.Suite)
-	RunTests  func(cmd *Command, tests []*ht.Test)
+	RunSuites func(cmd *Command, suites []*suite.RawSuite)
+	RunTests  func(cmd *Command, tests []*suite.RawTest)
 	RunArgs   func(cmd *Command, tests []string)
 
 	Usage       string        // must start with command name
@@ -56,18 +57,16 @@ func init() {
 		cmdVersion,
 		cmdHelp,
 		cmdDoc,
-		cmdRecord,
+		// cmdRecord,
 		cmdList,
 		cmdQuick,
 		cmdRun,
 		cmdExec,
-		cmdWarmup,
-		cmdDebug,
-		cmdBench,
-		cmdMonitor,
+		// cmdBench,
+		// cmdMonitor,
 		cmdFingerprint,
 		cmdReconstruct,
-		// cmdPerf,
+		cmdLoad,
 	}
 }
 
@@ -90,10 +89,9 @@ The commands are:
 %s
 Run  ht help <command> to display the usage of <command>.
 
-Tests IDs have the following format <suite>.<type><test> with <suite> and
+Tests IDs have the following format <suite>.<test> with <suite> and
 <test> the sequential numbers of the suite and the test inside the suite.
-Type is either empty, "u" for setUp test or "d" for tearDown tests. <test>
-maybe a single number like "3" or a range like "3-7".
+<test> maybe a single number like "3" or a range like "3-7".
 `, formatedCmdList)
 }
 
@@ -137,109 +135,77 @@ func main() {
 	os.Exit(9)
 }
 
-func loadSuites(args []string) []*ht.Suite {
-	var suites []*ht.Suite
-
-	logger := log.New(os.Stdout, "", log.LstdFlags)
+func loadSuites(args []string) []*suite.RawSuite {
+	var suites []*suite.RawSuite
 
 	// Handle -only and -skip flags.
 	only, skip := splitTestIDs(onlyFlag), splitTestIDs(skipFlag)
 
 	// Input and setup suites from command line arguments.
-	for _, s := range args {
-		suite, err := ht.LoadSuite(s)
+	exit := false
+	for _, arg := range args {
+		s, err := suite.LoadRawSuite(arg, nil)
 		if err != nil {
-			log.Printf("Cannot read suite %q: %s", s, err)
-			os.Exit(8)
+			fmt.Fprintf(os.Stderr, "Cannot read suite %q: %s\n", arg, err)
+			exit = true
+			continue
 		}
-		for varName, varVal := range variablesFlag {
-			suite.Variables[varName] = varVal
-		}
-		suite.Log = logger
-		err = suite.Prepare()
+		// for varName, varVal := range variablesFlag {
+		// 	suite.Variables[varName] = varVal
+		// }
+		err = s.Validate(variablesFlag)
 		if err != nil {
-			log.Println(err.Error())
-			os.Exit(8)
+			if el, ok := err.(ht.ErrorList); ok {
+				for _, msg := range el.AsStrings() {
+					fmt.Fprintln(os.Stderr, msg)
+				}
+			} else {
+				fmt.Fprintln(os.Stderr, err.Error())
+			}
+			exit = true
 		}
-		setVerbosity(suite)
-		suites = append(suites, suite)
+		// setVerbosity(s)
+		suites = append(suites, s)
+	}
+	if exit {
+		os.Exit(8)
+	}
+
+	// Merge only into skip.
+	if len(only) > 0 {
+		for sNo := range suites {
+			for tNo := range suites[sNo].RawTests() {
+				id := fmt.Sprintf("%d.%d", sNo+1, tNo+1)
+				if !only[id] {
+					skip[id] = true
+				}
+			}
+		}
 	}
 
 	// Disable tests based on the -only and -skip flags.
-	for sNo, suite := range suites {
-		for tNo, test := range suite.Setup {
-			shouldRun(test, fmt.Sprintf("%d.U%d", sNo+1, tNo+1), only, skip)
+	for sNo := range suites {
+		for tNo, rt := range suites[sNo].RawTests() {
+			id := fmt.Sprintf("%d.%d", sNo+1, tNo+1)
+			if skip[id] {
+				rt.Disable()
+				fmt.Printf("Skipping test %s %q\n", id, rt.Name)
+			}
 		}
-		for tNo, test := range suite.Tests {
-			shouldRun(test, fmt.Sprintf("%d.%d", sNo+1, tNo+1), only, skip)
-		}
-		for tNo, test := range suite.Teardown {
-			shouldRun(test, fmt.Sprintf("%d.D%d", sNo+1, tNo+1), only, skip)
-		}
+	}
+
+	// Propagate verbosity from command line to suite/test.
+	for _, s := range suites {
+		setVerbosity(s)
 	}
 
 	return suites
 }
 
-// set (-verbosity) or increase (-v ... -vvvv) test verbosities of s.
-func setVerbosity(s *ht.Suite) {
-	set := func(tests []*ht.Test) {
-		for i := range tests {
-			if verbosity != -99 {
-				tests[i].Verbosity = verbosity
-			} else if vvvv {
-				tests[i].Verbosity += 4
-			} else if vvv {
-				tests[i].Verbosity += 3
-			} else if vv {
-				tests[i].Verbosity += 2
-			} else if v {
-				tests[i].Verbosity += 1
-			}
-		}
-	}
-
-	set(s.Setup)
-	set(s.Tests)
-	set(s.Teardown)
-}
-
-// loadTests loads single Tests and combines them into an artificial
-// Suite, ready for execution. Unrolling happens, but only the first
-// unrolled test gets included into the suite.
-func loadTests(args []string) []*ht.Test {
-	tt := []*ht.Test{}
-	// Input and setup tests from command line arguments.
-	for _, t := range args {
-		tests, err := ht.LoadTest(t)
-		if err != nil {
-			log.Printf("Cannot read test %q: %s", t, err)
-			os.Exit(8)
-		}
-		tt = append(tt, tests[0])
-	}
-
-	return tt
-}
-
-// shouldRun disables t if needed.
-func shouldRun(t *ht.Test, id string, only, skip map[string]struct{}) {
-	if _, ok := skip[id]; ok {
-		t.Poll.Max = -1
-		log.Printf("Skipping test %s %q", id, t.Name)
-		return
-	}
-	if _, ok := only[id]; !ok && len(only) > 0 {
-		t.Poll.Max = -1
-		log.Printf("Not running test %s %q", id, t.Name)
-		return
-	}
-}
-
-func splitTestIDs(f string) (ids map[string]struct{}) {
-	ids = make(map[string]struct{})
+func splitTestIDs(f string) map[string]bool {
+	ids := make(map[string]bool)
 	if len(f) == 0 {
-		return
+		return ids
 	}
 	fp := strings.Split(f, ",")
 	for _, x := range fp {
@@ -248,18 +214,6 @@ func splitTestIDs(f string) (ids map[string]struct{}) {
 		if len(xp) == 2 {
 			s, t = xp[0], xp[1]
 		}
-		typ := ""
-		switch t[0] {
-		case 'U', 'u', 'S', 's':
-			typ = "U"
-			t = t[1:]
-		case 'D', 'd', 'T', 't':
-			typ = "D"
-			t = t[1:]
-		default:
-			typ = ""
-		}
-
 		sNo := mustAtoi(s)
 		beg, end := 1, 99
 		if i := strings.Index(t, "-"); i > -1 {
@@ -274,8 +228,8 @@ func splitTestIDs(f string) (ids map[string]struct{}) {
 			end = beg
 		}
 		for tNo := beg; tNo <= end; tNo++ {
-			id := fmt.Sprintf("%d.%s%d", sNo, typ, tNo)
-			ids[id] = struct{}{}
+			id := fmt.Sprintf("%d.%d", sNo, tNo)
+			ids[id] = true
 		}
 	}
 	return ids
@@ -284,20 +238,43 @@ func splitTestIDs(f string) (ids map[string]struct{}) {
 func mustAtoi(s string) int {
 	n, err := strconv.Atoi(s)
 	if err != nil {
-		log.Fatalf("%s", err.Error())
+		fmt.Fprintf(os.Stderr, "%s", err.Error())
+		os.Exit(9)
 	}
 	return n
 }
 
-// add current working direcory to end of include path slice if not already
-// there.
-func addCWD(i *cmdlIncl) {
-	for _, p := range *i {
-		if p == "." {
-			return
-		}
+// set (-verbosity) or increase (-v ... -vvvv) test verbosities of s.
+func setVerbosity(rs *suite.RawSuite) {
+	if verbosity != -99 {
+		rs.Verbosity = verbosity
+	} else if vvvv {
+		rs.Verbosity += 4
+	} else if vvv {
+		rs.Verbosity += 3
+	} else if vv {
+		rs.Verbosity += 2
+	} else if v {
+		rs.Verbosity += 1
 	}
-	*i = append(*i, ".")
+}
+
+// loadTests loads single Tests and combines them into an artificial
+// Suite, ready for execution. Unrolling happens, but only the first
+// unrolled test gets included into the suite.
+func loadTests(args []string) []*suite.RawTest {
+	tt := []*suite.RawTest{}
+	// Input and setup tests from command line arguments.
+	for _, arg := range args {
+		test, err := suite.LoadRawTest(arg, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot read test %q: %s\n", arg, err)
+			os.Exit(8)
+		}
+		tt = append(tt, test)
+	}
+
+	return tt
 }
 
 // fillVariablesFlagFrom reads in the file variablesFile and sets the
@@ -310,16 +287,28 @@ func fillVariablesFlagFrom(variablesFile string) {
 	}
 	data, err := ioutil.ReadFile(variablesFile)
 	if err != nil {
-		log.Printf("Cannot read variable file %q: %s", variablesFile, err)
+		fmt.Fprintf(os.Stderr, "Cannot read variable file %q: %s\n", variablesFile, err)
 		os.Exit(8)
 	}
-	v := map[string]string{}
-	err = json5.Unmarshal(data, &v)
+	v := map[string]interface{}{}
+	err = hjson.Unmarshal(data, &v)
 	if err != nil {
-		log.Printf("Cannot unmarshal variable file %q: %s", variablesFile, err)
+		fmt.Fprintf(os.Stderr, "Cannot unmarshal variable file %q: %s\n", variablesFile, err)
 		os.Exit(8)
 	}
-	for n, k := range v {
+	vv := map[string]string{}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Malformed variable file %q: %s\n", variablesFile, err)
+		os.Exit(8)
+	}
+
+	err = populate.Strict(&vv, v)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Malformed variable file %q: %s\n", variablesFile, err)
+		os.Exit(8)
+	}
+
+	for n, k := range vv {
 		if _, ok := variablesFlag[n]; !ok {
 			variablesFlag[n] = k
 		}

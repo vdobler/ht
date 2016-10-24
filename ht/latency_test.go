@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"sync"
 	"testing"
@@ -115,10 +116,10 @@ func TestLatency(t *testing.T) {
 			Request: Request{
 				Method: "GET",
 				URL:    ts.URL + "/",
-				Params: URLValues{
+				Params: url.Values{
 					"n": []string{"100000"},
 				},
-				Timeout: Duration(100 * time.Millisecond),
+				Timeout: 100 * time.Millisecond,
 			},
 			Checks: []Check{
 				StatusCode{200},
@@ -129,12 +130,12 @@ func TestLatency(t *testing.T) {
 					// DumpTo:     "foo.xxx",
 				},
 			},
-			Verbosity: 0,
+			Execution: Execution{Verbosity: 0},
 		}
 		if *verboseTest {
-			test.Verbosity = 1
+			test.Execution.Verbosity = 1
 		}
-		test.Run(nil)
+		test.Run()
 
 		if *verboseTest {
 			test.PrintReport(os.Stdout)
@@ -167,7 +168,7 @@ func TestSessionLatency(t *testing.T) {
 				Name: kind,
 				Request: Request{
 					URL:     ts.URL + "/",
-					Timeout: Duration(500 * time.Millisecond),
+					Timeout: 500 * time.Millisecond,
 				},
 				Checks: []Check{
 					StatusCode{200},
@@ -179,14 +180,14 @@ func TestSessionLatency(t *testing.T) {
 						IndividualSessions: kind == "indiv",
 					},
 				},
-				Verbosity: 0,
+				Execution: Execution{Verbosity: 0},
 				Jar:       jar,
 			}
 			if *verboseTest {
-				test.Verbosity = 1
+				test.Execution.Verbosity = 1
 			}
 
-			test.Run(nil)
+			test.Run()
 
 			// shared tests pass, indiv fail
 			if kind == "shared" && test.Status != Pass {

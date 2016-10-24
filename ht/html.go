@@ -46,7 +46,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 		Request: Request{
 			Method: "POST",
 			URL:    "http://validator.w3.org/nu/",
-			Params: URLValues{
+			Params: url.Values{
 				"file": {file},
 			},
 			ParamsAs: "multipart",
@@ -54,7 +54,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 				"Accept":     {"text/html,application/xhtml+xml"},
 				"User-Agent": {"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36"},
 			},
-			Timeout: Duration(20 * time.Second),
+			Timeout: 20 * time.Second,
 		},
 		Checks: CheckList{
 			StatusCode{Expect: 200},
@@ -64,7 +64,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 	// TODO: properly limit global rate at which we fire to W3C validator
 	time.Sleep(100 * time.Millisecond)
 
-	err := test.Run(nil)
+	err := test.Run()
 	if err != nil {
 		return CantCheck{err}
 	}
@@ -416,15 +416,19 @@ type Links struct {
 	Concurrency int `json:",omitempty"`
 
 	// Timeout is the client timeout if different from main test.
-	Timeout Duration `json:",omitempty"`
+	Timeout time.Duration `json:",omitempty"`
 
 	// OnlyLinks and IgnoredLinks can be used to select only a subset of
 	// all links.
 	OnlyLinks, IgnoredLinks []Condition `json:",omitempty"`
 
-	// FailMixedContent will report a failure for any mixed content
-	// if
+	// FailMixedContent will report a failure for any mixed content, i.e.
+	// resources retrieved via http for a https HTML page.
 	FailMixedContent bool
+
+	// MaxTime is the maximum duration allowed to retrieve all the linked
+	// resources. A zero value means unlimited time allowed.
+	MaxTime time.Duration
 
 	tags []string
 }
@@ -476,7 +480,7 @@ func (c *Links) Execute(t *Test) error {
 	if err != nil {
 		return err
 	}
-	suite := &Suite{}
+	suite := &Collection{}
 	method := "GET"
 	if c.Head {
 		method = "HEAD"
@@ -528,7 +532,9 @@ func (c *Links) Execute(t *Test) error {
 			Checks: CheckList{
 				StatusCode{Expect: 200},
 			},
-			Verbosity: t.Verbosity - 1,
+			Execution: Execution{
+				Verbosity: t.Execution.Verbosity - 1,
+			},
 		}
 		test.PopulateCookies(t.Jar, t.Request.Request.URL)
 		if ru, err := url.Parse(r); err == nil &&
@@ -539,15 +545,12 @@ func (c *Links) Execute(t *Test) error {
 		suite.Tests = append(suite.Tests, test)
 	}
 
-	err = suite.Prepare()
-	if err != nil {
-		return CantCheck{fmt.Errorf("Constructed meta test are bad: %s", err)}
-	}
 	conc := 1
 	if c.Concurrency > 1 {
 		conc = c.Concurrency
 	}
-	suite.ExecuteConcurrent(conc)
+	started := time.Now()
+	suite.ExecuteConcurrent(conc, nil)
 	if suite.Status != Pass {
 		for _, test := range suite.Tests {
 			if test.Status == Error || test.Status == Bogus {
@@ -558,6 +561,13 @@ func (c *Links) Execute(t *Test) error {
 					test.Request.URL,
 					test.Response.Response.StatusCode))
 			}
+		}
+	}
+	if c.MaxTime > 0 {
+		if took := time.Since(started); took > c.MaxTime {
+			broken = append(broken,
+				fmt.Errorf("retrieval of %d links took %s (allowed %s)",
+					len(urefs), took, c.MaxTime))
 		}
 	}
 

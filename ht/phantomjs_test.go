@@ -15,6 +15,8 @@ import (
 	"os/exec"
 	"testing"
 	"time"
+
+	"github.com/vdobler/ht/cookiejar"
 )
 
 var geometryTests = []struct {
@@ -284,18 +286,13 @@ func TestScreenshotPass(t *testing.T) {
 		u := ts.URL + "/screenshot" + passingScreenshotTests[i].Request.URL
 		passingScreenshotTests[i].Request.URL = u
 	}
-	suite := Suite{
-		KeepCookies: true,
-		Tests:       passingScreenshotTests,
+	suite := Collection{
+		Tests: passingScreenshotTests,
 	}
-
-	err := suite.Prepare()
-	if err != nil {
-		t.Fatal(err)
-	}
-	suite.Execute()
+	jar, _ := cookiejar.New(nil)
+	suite.ExecuteConcurrent(1, jar)
 	if *verboseTest {
-		suite.PrintReport(os.Stdout)
+		// suite.PrintReport(os.Stdout)
 	}
 
 	if suite.Status != Pass {
@@ -353,18 +350,14 @@ func TestScreenshotFail(t *testing.T) {
 		u := ts.URL + "/screenshot" + failingScreenshotTests[i].Request.URL
 		failingScreenshotTests[i].Request.URL = u
 	}
-	suite := Suite{
-		KeepCookies: true,
-		Tests:       failingScreenshotTests,
+	suite := Collection{
+		Tests: failingScreenshotTests,
 	}
 
-	err := suite.Prepare()
-	if err != nil {
-		t.Fatal(err)
-	}
-	suite.Execute()
+	jar, _ := cookiejar.New(nil)
+	suite.ExecuteConcurrent(1, jar)
 	if *verboseTest {
-		suite.PrintReport(os.Stdout)
+		// suite.PrintReport(os.Stdout)
 	}
 
 	if suite.Status != Fail {
@@ -435,18 +428,14 @@ func TestRenderedHTMLPassing(t *testing.T) {
 		u := ts.URL + "/screenshot" + passingRenderedHTMLTests[i].Request.URL
 		passingRenderedHTMLTests[i].Request.URL = u
 	}
-	suite := Suite{
-		KeepCookies: true,
-		Tests:       passingRenderedHTMLTests,
+	suite := Collection{
+		Tests: passingRenderedHTMLTests,
 	}
 
-	err := suite.Prepare()
-	if err != nil {
-		t.Fatal(err)
-	}
-	suite.Execute()
+	jar, _ := cookiejar.New(nil)
+	suite.ExecuteConcurrent(1, jar)
 	if *verboseTest {
-		suite.PrintReport(os.Stdout)
+		// suite.PrintReport(os.Stdout)
 	}
 
 	if suite.Status != Pass {
@@ -484,7 +473,7 @@ var passingRenderingTimeTests = []*Test{
 		Name:    "Welcome Anonymous, rendered body",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{
-			&RenderingTime{Max: Duration(80 * time.Millisecond)},
+			&RenderingTime{Max: 80 * time.Millisecond},
 		},
 	},
 	{Request: Request{URL: "/login?user=Joe"}},
@@ -492,7 +481,7 @@ var passingRenderingTimeTests = []*Test{
 		Name:    "Welcome Joe",
 		Request: Request{URL: "/welcome"},
 		Checks: []Check{
-			&RenderingTime{Max: Duration(120 * time.Millisecond)},
+			&RenderingTime{Max: 120 * time.Millisecond},
 		},
 	},
 }
@@ -505,18 +494,14 @@ func TestRenderingTime(t *testing.T) {
 		u := ts.URL + "/screenshot" + passingRenderingTimeTests[i].Request.URL
 		passingRenderingTimeTests[i].Request.URL = u
 	}
-	suite := Suite{
-		KeepCookies: true,
-		Tests:       passingRenderingTimeTests,
+	suite := Collection{
+		Tests: passingRenderingTimeTests,
 	}
 
-	err := suite.Prepare()
-	if err != nil {
-		t.Fatal(err)
-	}
-	suite.Execute()
+	jar, _ := cookiejar.New(nil)
+	suite.ExecuteConcurrent(1, jar)
 	if *verboseTest {
-		suite.PrintReport(os.Stdout)
+		// suite.PrintReport(os.Stdout)
 	}
 
 	if test := suite.Tests[0]; test.Status != Fail {

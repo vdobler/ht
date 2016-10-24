@@ -1,0 +1,4 @@
+{
+    Name: "Basic Mixin"
+    Request: { Header: { "X-Mode": "basic" } } 
+}

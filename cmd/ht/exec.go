@@ -5,21 +5,25 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
 	"path"
 	"sort"
-	"sync"
+	"strings"
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/sanitize"
+	"github.com/vdobler/ht/suite"
 )
 
 var cmdExec = &Command{
@@ -28,10 +32,12 @@ var cmdExec = &Command{
 	Description: "generate request and test response",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `
-Exec loads the given suites, unrolls the tests, prepares the tests and
-executes them. The flags -skip and -only allow to fine control which
-tests in the suite(s) are executed. Variables set with the -D flag overwrite
-variables read from file with -Dfile.
+Exec loads the given suites and executes them.
+Variables set with the -D flag overwrite variables read from file with -Dfile.
+The current variable assignment at the end of a suite carries over to the next
+suite. All suites (which keep cookies) share a common jar if cookies are
+loaded via -cookie flag; otherwise each suite has its own cookiejar.
+
 The exit code is 3 if bogus tests or checks are found, 2 if test errors
 are present, 1 if only check failures occurred and 0 if everything passed,
 nothing was executed or everything was skipped. Note that the status of
@@ -39,43 +45,49 @@ Teardown test are ignored while determining the exit code.
 	`,
 }
 
+var carryVars bool
+
 func init() {
-	cmdExec.Flag.BoolVar(&serialFlag, "serial", true,
-		"run suites one after the other instead of concurrently")
 	addOnlyFlag(cmdExec.Flag)
 	addSkipFlag(cmdExec.Flag)
 
 	addTestFlags(cmdExec.Flag)
 	addOutputFlag(cmdExec.Flag)
+
+	cmdExec.Flag.BoolVar(&carryVars, "carry", false,
+		"carry variables from finished suite to next suite")
+
 }
 
-var (
-	serialFlag bool
-)
+func runExecute(cmd *Command, suites []*suite.RawSuite) {
+	prepareHT()
+	jar := loadCookies()
 
-func runExecute(cmd *Command, suites []*ht.Suite) {
-	prepareExecution(suites)
+	outcome := executeSuites(suites, variablesFlag, jar)
 
-	executeSuites(suites)
+	saveOutcome(outcome)
+}
 
+func saveOutcome(outcome []*suite.Suite) {
+	if outputDir == "" {
+		outputDir = time.Now().Format("2006-01-02_15h04m05s")
+	}
+	os.MkdirAll(outputDir, 0766)
 	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
-	for s := range suites {
-		suites[s].PrintReport(os.Stdout)
+	for _, s := range outcome {
+		s.PrintReport(os.Stdout)
 	}
 
 	overallStatus := ht.NotRun
 	overallVars := make(map[string]string)
 	overallCookies := make(map[string]cookiejar.Entry)
 
-	for s := range suites {
-		suites[s].PrintShortReport(os.Stdout)
-		fmt.Println()
-
+	for _, s := range outcome {
 		// Statistics
-		if suites[s].Status > overallStatus {
-			overallStatus = suites[s].Status
+		if s.Status > overallStatus {
+			overallStatus = s.Status
 		}
-		for _, r := range suites[s].AllTests() {
+		for _, r := range s.Tests {
 			switch r.Status {
 			case ht.Pass:
 				totalPass++
@@ -91,23 +103,23 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			total++
 		}
 
-		dirname := outputDir + "/" + sanitize.Filename(suites[s].Name)
-		fmt.Printf("Saving result of suite %q to folder %q.\n", suites[s].Name, dirname)
+		dirname := outputDir + "/" + sanitize.Filename(s.Name)
+		fmt.Printf("Saving result of suite %q to folder %q.\n", s.Name, dirname)
 		err := os.MkdirAll(dirname, 0766)
 		if err != nil {
 			log.Panic(err)
 		}
-		err = suites[s].HTMLReport(dirname)
+		err = suite.HTMLReport(dirname, s)
 		if err != nil {
 			log.Panic(err)
 		}
 
 		cwd, err := os.Getwd()
 		if err == nil {
-			reportURL := "file://" + path.Join(cwd, dirname, "Report.html")
+			reportURL := "file://" + path.Join(cwd, dirname, "_Report_.html")
 			fmt.Printf("See %s\n", reportURL)
 		}
-		junit, err := suites[s].JUnit4XML()
+		junit, err := s.JUnit4XML()
 		if err != nil {
 			log.Panic(err)
 		}
@@ -117,12 +129,12 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 		}
 
 		// Consolidate all variables.
-		saveVariables(suites[s].Variables, path.Join(dirname, "variables.json"))
-		for name, value := range suites[s].Variables {
+		saveVariables(s.FinalVariables, path.Join(dirname, "variables.json"))
+		for name, value := range s.FinalVariables {
 			overallVars[name] = value
 		}
 		// Consolidate cookies.
-		if jar := getJar(suites[s]); jar != nil {
+		if jar := s.Jar; jar != nil {
 			cookies := make(map[string]cookiejar.Entry)
 			for _, tld := range jar.ETLDsPlus1(nil) {
 				for _, cookie := range jar.Entries(tld, nil) {
@@ -141,9 +153,17 @@ func runExecute(cmd *Command, suites []*ht.Suite) {
 			log.Panic(err)
 		}
 	}
+
 	// Save consolidated cookies if required.
 	if cookiedump != "" {
 		if err := saveCookies(overallCookies, cookiedump); err != nil {
+			log.Panic(err)
+		}
+	}
+
+	// Save a overall report iff more than one suite was involved.
+	if len(outcome) > 1 {
+		if err := saveOverallReport(outputDir, outcome); err != nil {
 			log.Panic(err)
 		}
 	}
@@ -183,17 +203,6 @@ func saveVariables(vars map[string]string, filename string) error {
 	return ioutil.WriteFile(filename, b, 0666)
 }
 
-func getJar(suite *ht.Suite) *cookiejar.Jar {
-	if !suite.KeepCookies {
-		return nil
-	}
-	at := suite.AllTests()
-	if len(at) == 0 {
-		return nil
-	}
-	return at[0].Jar
-}
-
 func saveCookies(cookies map[string]cookiejar.Entry, filename string) error {
 	b, err := json.MarshalIndent(cookies, "    ", "")
 	if err != nil {
@@ -202,15 +211,58 @@ func saveCookies(cookies map[string]cookiejar.Entry, filename string) error {
 	return ioutil.WriteFile(filename, b, 0666)
 }
 
-func prepareExecution(suites []*ht.Suite) {
-	if outputDir == "" {
-		outputDir = time.Now().Format("2006-01-02_15h04m05s")
+func saveOverallReport(dirname string, outcome []*suite.Suite) error {
+	type Data struct {
+		Name, Path, Status string
 	}
-	os.MkdirAll(outputDir, 0766)
+	data := []Data{}
+	for _, s := range outcome {
+		data = append(data,
+			Data{s.Name, sanitize.Filename(s.Name), strings.ToUpper(s.Status.String())})
+	}
+	tmplSrc := `<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <style>
+   .PASS { color: green; }
+   .FAIL { color: red; }
+   .ERROR { color: magenta; }
+   .NOTRUN { color: grey; }
+  </style>
+  <title>Overall Results</title>
+</head>
+<body>
+  <h1>Overall Result</h1>
+  <ul>
+    {{range .}}
+    <li>
+      <h2>
+        <a href="./{{.Path}}/_Report_.html" >
+          <span class="{{.Status}}">{{.Status}}</span> {{.Name}}
+        </a>
+      </h2>
+    </li>
+    {{end}}
+  </ul>
+</body>
+</html>
+`
+	templ := template.Must(template.New("report").Parse(tmplSrc))
+	buf := &bytes.Buffer{}
+	err := templ.Execute(buf, data)
+	if err != nil {
+		return err
+	}
 
-	prepareHT()
-
-	loadCookies(suites)
+	file := dirname + "/_Report_.html"
+	err = ioutil.WriteFile(file, buf.Bytes(), 0666)
+	cwd, err := os.Getwd()
+	if err == nil {
+		reportURL := "file://" + path.Join(cwd, file)
+		fmt.Printf("Overall: %s\n", reportURL)
+	}
+	return err
 }
 
 func prepareHT() {
@@ -218,14 +270,14 @@ func prepareHT() {
 	if randomSeed == 0 {
 		randomSeed = time.Now().UnixNano()
 	}
-	log.Printf("Seeding random number generator with %d", randomSeed)
+	fmt.Printf("Seeding random number generator with %d.\n", randomSeed)
 	ht.Random = rand.New(rand.NewSource(randomSeed))
 	if skipTLSVerify {
-		log.Println("Skipping verification of TLS certificates presented by any server.")
+		fmt.Println("Skipping verification of TLS certificates presented by any server.\n")
 		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
 	}
 	ht.PhantomJSExecutable = phantomjs
-	log.Printf("Using %q as PhantomJS executable", phantomjs)
+	fmt.Printf("Using %q as PhantomJS executable.\n", phantomjs)
 
 	// Log variables and values sorted by variable name.
 	varnames := make([]string, 0, len(variablesFlag))
@@ -234,14 +286,14 @@ func prepareHT() {
 	}
 	sort.Strings(varnames)
 	for _, v := range varnames {
-		log.Printf("Variable %s = %q", v, variablesFlag[v])
+		fmt.Printf("Variable %s = %q\n", v, variablesFlag[v])
 	}
 
 }
 
-func loadCookies(suites []*ht.Suite) {
+func loadCookies() *cookiejar.Jar {
 	if cookie == "" {
-		return
+		return nil
 	}
 	buf, err := ioutil.ReadFile(cookie)
 	if err != nil {
@@ -258,34 +310,24 @@ func loadCookies(suites []*ht.Suite) {
 		cs = append(cs, c)
 	}
 
-	for s := range suites {
-		if jar := getJar(suites[s]); jar != nil {
-			jar.LoadEntries(cs)
-		}
-	}
+	jar, _ := cookiejar.New(nil)
+	jar.LoadEntries(cs)
+	return jar
 }
 
-func executeSuites(suites []*ht.Suite) {
-	var wg sync.WaitGroup
-	for i := range suites {
-		if serialFlag {
-			suites[i].Execute()
-			if suites[i].Status > ht.Pass {
-				log.Printf("Suite %d %q failed: %s", i+1,
-					suites[i].Name,
-					suites[i].Error.Error())
-			}
-		} else {
-			wg.Add(1)
-			go func(i int) {
-				suites[i].Execute()
-				if suites[i].Status > ht.Pass {
-					log.Printf("Suite %d %q failed: %s", i+1,
-						suites[i].Name, suites[i].Error.Error())
-				}
-				wg.Done()
-			}(i)
+func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *cookiejar.Jar) []*suite.Suite {
+	bufferedStdout := bufio.NewWriterSize(os.Stdout, 256)
+	defer bufferedStdout.Flush()
+	logger := log.New(bufferedStdout, "", 0)
+
+	outcome := make([]*suite.Suite, len(suites))
+	for i, s := range suites {
+		logger.Println("Starting Suite", s.Name, s.File.Name)
+		outcome[i] = s.Execute(variables, jar, logger)
+		if carryVars {
+			variables = outcome[i].FinalVariables // carry over variables ???
 		}
+		bufferedStdout.Flush()
 	}
-	wg.Wait()
+	return outcome
 }

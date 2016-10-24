@@ -1,0 +1,35 @@
+{
+    Name: Dummy Throughput Test
+    Description: For test only
+    Scenarios: [
+        {
+            File:       "bot.suite"
+            Percentage: 15
+            MaxThreads: 10
+	    OmitChecks: true
+            Variables: {
+                SCENVAR1: "scenvar1",
+                SCENVAR2: "scenvar1+{{TTVAR2}}",
+            }
+        },
+        {
+            File:       "surfer.suite"
+            Percentage: 60
+            MaxThreads: 15
+	    OmitChecks: false
+        },
+        {
+            File:       "geek.suite"
+            Percentage: 25
+            MaxThreads: 5
+	    OmitChecks: false
+        },
+
+
+    ]
+
+    Variables: {
+        TTVAR1: "ttvar1"
+        TTVAR2: "ttvar2+{{GLOBALVAR}}"
+    }
+}

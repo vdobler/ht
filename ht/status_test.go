@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 )
@@ -23,7 +24,7 @@ func TestStatusCode(t *testing.T) {
 			Request: Request{
 				Method:          "GET",
 				URL:             ts.URL + "/",
-				Params:          URLValues{"status": []string{s}},
+				Params:          url.Values{"status": []string{s}},
 				FollowRedirects: false,
 			},
 			Checks: []Check{
@@ -32,7 +33,7 @@ func TestStatusCode(t *testing.T) {
 			},
 		}
 
-		test.Run(nil)
+		test.Run()
 		if test.Status != Pass {
 			t.Errorf("Unexpected error for %d: %s", code, test.Error)
 		}
@@ -53,13 +54,13 @@ func TestNoServerError(t *testing.T) {
 			Request: Request{
 				Method:          "GET",
 				URL:             ts.URL + "/",
-				Params:          URLValues{"status": []string{s}},
+				Params:          url.Values{"status": []string{s}},
 				FollowRedirects: false,
 			},
 			Checks: []Check{NoServerError{}},
 		}
 
-		test.Run(nil)
+		test.Run()
 
 		if code >= 500 {
 			if test.Status != Fail {
