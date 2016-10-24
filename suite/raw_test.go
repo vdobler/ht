@@ -139,8 +139,9 @@ func TestLoadRawSuite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
-	fmt.Printf("%#v\n", raw)
-	pp("RawSuite", raw)
+	if testing.Verbose() {
+		pp("RawSuite", raw)
+	}
 	if len(raw.RawTests()) != 5 {
 		panic(len(raw.RawTests()))
 	}
@@ -164,9 +165,10 @@ func TestRawSuiteExecute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
-	// pp("Raw", raw)
-	for i, test := range raw.RawTests() {
-		fmt.Printf("%d. %q\n", i, test.Name)
+	if testing.Verbose() {
+		for i, test := range raw.RawTests() {
+			fmt.Printf("%d. %q\n", i, test.Name)
+		}
 	}
 
 	vars := map[string]string{
@@ -176,20 +178,23 @@ func TestRawSuiteExecute(t *testing.T) {
 
 	s := raw.Execute(vars, nil, logger())
 	fmt.Println("STATUS ==", s.Status, s.Error)
-	// pp("Suite", s)
 
-	err = s.PrintReport(os.Stdout)
-	if err != nil {
-		t.Fatalf("Unexpected error %s", err)
+	if testing.Verbose() {
+		err = s.PrintReport(os.Stdout)
+		if err != nil {
+			t.Fatalf("Unexpected error %s", err)
+		}
 	}
 
 	for i, test := range s.Tests {
 		fmt.Printf("%d. %q ==> %s (%v)\n", i, test.Name, test.Status, test.Error)
 	}
 
-	err = HTMLReport(".", s)
-	if err != nil {
-		t.Fatalf("Unexpected error %s", err)
+	if testing.Verbose() {
+		err = HTMLReport(".", s)
+		if err != nil {
+			t.Fatalf("Unexpected error %s", err)
+		}
 	}
 
 }
