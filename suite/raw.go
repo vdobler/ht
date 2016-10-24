@@ -552,16 +552,17 @@ func (rs *RawSuite) Validate(variables map[string]string) error {
 // Execute the raw suite rs and capture the outcome in a Suite.
 func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
 	suite := NewFromRaw(rs, global, jar, logger)
-	setup, main := len(rs.Setup), len(rs.Main)
+	N := len(rs.tests)
+	setup, main, teardown := len(rs.Setup), len(rs.Main), len(rs.Teardown)
 	i := 0
 	executor := func(test *ht.Test) error {
 		i++
 		if i <= setup {
 			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i)
-		} else if i <= setup+main {
-			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup)
-		} else {
+		} else if i > N-teardown {
 			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main)
+		} else {
+			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup)
 		}
 
 		if test.Status == ht.Bogus || test.Status == ht.Skipped {
@@ -584,7 +585,7 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 	suite.Iterate(executor)
 	status := ht.NotRun
 	errors := ht.ErrorList{}
-	for i := 0; i < setup+main && i < len(suite.Tests); i++ {
+	for i := 0; i < N-teardown && i < len(suite.Tests); i++ {
 		if ts := suite.Tests[i].Status; ts > status {
 			status = ts
 		}
