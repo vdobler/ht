@@ -155,17 +155,20 @@ func (suite *Suite) Iterate(executor Executor) {
 			test.Status = ht.Bogus
 			test.Error = err
 		}
+		test.Jar = suite.Jar
+		test.Log = suite.Log
+
 		if exstat == ErrSkipExecution {
 			test.Status = ht.Skipped
 		}
 
-		test.Jar = suite.Jar
-		// test.Execution.Verbosity = rs.Verbosity
-		test.Log = suite.Log
-
-		exstat = executor(test)
+		newexstat := executor(test)
 		if test.Status == ht.Pass {
 			suite.updateVariables(test)
+		}
+
+		if exstat != ErrSkipExecution {
+			exstat = newexstat
 		}
 
 		suite.Tests = append(suite.Tests, test)
