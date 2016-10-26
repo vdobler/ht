@@ -217,7 +217,11 @@ func saveOverallReport(dirname string, outcome []*suite.Suite) error {
 	data := []Data{}
 	for _, s := range outcome {
 		data = append(data,
-			Data{s.Name, sanitize.Filename(s.Name), strings.ToUpper(s.Status.String())})
+			Data{
+				Name:   s.Name,
+				Path:   sanitize.Filename(s.Name),
+				Status: strings.ToUpper(s.Status.String()),
+			})
 	}
 	tmplSrc := `<!DOCTYPE html>
 <html>
