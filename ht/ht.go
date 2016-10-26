@@ -893,14 +893,14 @@ func (t *Test) executeFile() error {
 		if err != nil {
 			return err
 		}
-		t.Response.BodyStr = fmt.Sprintf("Successfuly deleted %s", u)
+		t.Response.BodyStr = fmt.Sprintf("Successfully deleted %s", u)
 		t.Response.BodyErr = nil
 	case "PUT":
 		err := ioutil.WriteFile(u.Path, []byte(t.Request.Body), 0666)
 		if err != nil {
 			return err
 		}
-		t.Response.BodyStr = fmt.Sprintf("Successfuly wrote %s", u)
+		t.Response.BodyStr = fmt.Sprintf("Successfully wrote %s", u)
 		t.Response.BodyErr = nil
 
 	default:

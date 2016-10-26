@@ -305,6 +305,7 @@ var (
 	HtmlSuiteTmpl  *htmltemplate.Template
 )
 
+// LoopIteration helps ranging over Data in a template.
 type LoopIteration struct {
 	Data      interface{}
 	I         int // 0-based loop index
@@ -437,10 +438,12 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
 }
 
+// PrintReport outputs a textual report of s to w.
 func (s *Suite) PrintReport(w io.Writer) error {
 	return SuiteTmpl.Execute(w, s)
 }
 
+// PrintShortReport outputs a short textual report of s to w.
 func (s *Suite) PrintShortReport(w io.Writer) error {
 	return ShortSuiteTmpl.Execute(w, s)
 }

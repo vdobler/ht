@@ -138,7 +138,7 @@ type pool struct {
 	Misses  int
 }
 
-// IDSep is the seperator string used in constructing IDs for the individual
+// IDSep is the separator string used in constructing IDs for the individual
 // test executed. The test Name are (miss)used to report details:
 //
 //     <ScenarioNo>/<ThreadNo>/<Repetition>/<TestNo> IDSep <ScenarioName> IDSep <TestName>

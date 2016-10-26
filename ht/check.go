@@ -140,6 +140,7 @@ func (cl CheckList) MarshalJSON() ([]byte, error) {
 	return []byte(result), nil
 }
 
+// Populate implements populate.Populator.Populate.
 func (cl *CheckList) Populate(src interface{}) error {
 	types := []struct {
 		Check string

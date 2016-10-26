@@ -637,7 +637,7 @@ func TestReadBody(t *testing.T) {
 func TestFileSchema(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("Unexpected error: ", err)
+		t.Fatalf("Unexpected error: %s", err)
 	}
 	u := "file://" + wd + "/testdata/fileprotocol"
 
@@ -650,7 +650,7 @@ func TestFileSchema(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfuly wrote " + u},
+				&Body{Prefix: "Successfully wrote " + u},
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
@@ -662,7 +662,7 @@ func TestFileSchema(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfuly wrote " + u},
+				&Body{Prefix: "Successfully wrote " + u},
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
@@ -715,7 +715,7 @@ func TestFileSchema(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfuly deleted " + u},
+				&Body{Prefix: "Successfully deleted " + u},
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
@@ -726,7 +726,7 @@ func TestFileSchema(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfuly deleted " + u},
+				&Body{Prefix: "Successfully deleted " + u},
 				&Header{Header: "Foo", Absent: true},
 			},
 		},

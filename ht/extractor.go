@@ -110,6 +110,7 @@ func (em ExtractorMap) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Populate implements populate.Populator.Populate.
 func (em *ExtractorMap) Populate(src interface{}) error {
 	types := make(map[string]struct {
 		Extractor string
@@ -123,7 +124,7 @@ func (em *ExtractorMap) Populate(src interface{}) error {
 	raw := make(map[string]interface{})
 	srcMap, ok := src.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("ht: cannot populate %T to variable extractor object")
+		return fmt.Errorf("ht: cannot populate %T to variable extractor object", src)
 	}
 
 	for name := range types {
@@ -302,7 +303,7 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 		return "", ErrNotFound
 	}
 
-	// The element might be present but null like in {"a": null} in wich
+	// The element might be present but null like in {"a": null} in which
 	// case val==nil.
 	if val == nil {
 		// TODO: is this the most sensible outcome?  Or would

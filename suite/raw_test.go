@@ -267,7 +267,7 @@ func TestChecklist(t *testing.T) {
 		t.Errorf("Wrong type, got %T", test.Checks[3])
 	} else {
 		if len(none.Of) != 3 {
-			t.Error("Got %d, want 3", len(none.Of))
+			t.Errorf("Got %d, want 3", len(none.Of))
 		}
 
 		// NoneOf 0

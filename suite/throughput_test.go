@@ -236,7 +236,9 @@ func TestThroughput(t *testing.T) {
 		fmt.Println("==> ", err.Error())
 	}
 	if testing.Verbose() && false {
-		fmt.Println("\n   FAILURES\n=================\n")
+		fmt.Println("")
+		fmt.Println("   FAILURES")
+		fmt.Println("=================")
 		failures.PrintReport(os.Stdout)
 		err = HTMLReport("./testdata", failures)
 		if err != nil {

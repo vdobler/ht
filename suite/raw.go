@@ -74,7 +74,7 @@ type File struct {
 	Name string
 }
 
-// NewFile reads the given file and returns it as a File.
+// LoadFile reads the given file and returns it as a File.
 func LoadFile(filename string) (*File, error) {
 	filename = filepath.ToSlash(filename)
 	filename = path.Clean(filename)
@@ -87,7 +87,7 @@ func LoadFile(filename string) (*File, error) {
 	var soup interface{}
 	err = hjson.Unmarshal(data, &soup)
 	if err != nil {
-		// TOOD: better error message here
+		// TODO: better error message here
 		return nil, fmt.Errorf("file %s not valid hjson: %s", filename, err)
 	}
 
@@ -143,7 +143,7 @@ func (f *File) decodeLaxTo(x interface{}) error {
 }
 
 // populate x with the decoded f. Top level properties in in drop are
-// dropped before atempting a strict population
+// dropped before attempting a strict population
 func (f *File) decodeStrictTo(x interface{}, drop []string) error {
 	var soup interface{}
 	err := hjson.Unmarshal([]byte(f.Data), &soup)
@@ -211,9 +211,13 @@ func (r *RawTest) String() string {
 	return r.File.Name
 }
 
-// Disable and Enable  r.
-func (r *RawTest) Disable()        { r.disabled = true }
-func (r *RawTest) Enable()         { r.disabled = false }
+// Disable r.
+func (r *RawTest) Disable() { r.disabled = true }
+
+// Enable r.
+func (r *RawTest) Enable() { r.disabled = false }
+
+// IsEnable reports if r is enabled.
 func (r *RawTest) IsEnabled() bool { return !r.disabled }
 
 // LoadRawTest reads filename and produces a new RawTest.
@@ -410,7 +414,7 @@ type RawElement struct {
 	Test map[string]interface{}
 }
 
-// RawSuite
+// RawSuite represents a suite as represented on disk as a HJSON file.
 type RawSuite struct {
 	*File
 	Name, Description     string
@@ -423,10 +427,12 @@ type RawSuite struct {
 	tests []*RawTest
 }
 
+// RawTests return all tests in rs.
 func (rs *RawSuite) RawTests() []*RawTest {
 	return rs.tests
 }
 
+// AddRawTest adds ts to the tests in rs.
 func (rs *RawSuite) AddRawTests(ts ...*RawTest) {
 	rs.tests = append(rs.tests, ts...)
 }
