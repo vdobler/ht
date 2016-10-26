@@ -33,12 +33,15 @@ Execute a throughput test with the given suite.
 
 var queryPerSecond float64
 var testDuration time.Duration
+var rampDuration time.Duration
 
 func init() {
 	cmdLoad.Flag.Float64Var(&queryPerSecond, "rate", 20,
 		"make `qps` reqest per second")
 	cmdLoad.Flag.DurationVar(&testDuration, "duration", 30*time.Second,
 		"duration of throughput test")
+	cmdLoad.Flag.DurationVar(&rampDuration, "ramp", 5*time.Second,
+		"ramp duration to reach desired request rate")
 	addOutputFlag(cmdLoad.Flag)
 }
 
@@ -63,7 +66,7 @@ func runLoad(cmd *Command, args []string) {
 	}
 
 	prepareHT()
-	data, failures, lterr := suite.Throughput(scenarios, queryPerSecond, testDuration)
+	data, failures, lterr := suite.Throughput(scenarios, queryPerSecond, testDuration, rampDuration)
 
 	if outputDir == "" {
 		outputDir = time.Now().Format("2006-01-02_15h04m05s")
@@ -288,6 +291,11 @@ p <- p + geom_histogram(binwidth=3)
 p <- p + facet_grid(Test ~ ., scales="free_y")
 p <- p + fillScale
 ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
+
+p <- ggplot(d, aes(x=Elapsed, y=Rate))
+p <- p + geom_point(size=3) + geom_smooth()
+ggsave("rate.png", plot=p, width=10, height=8, dpi=100)
+
 `
 	ioutil.WriteFile(outputDir+"/throughput.R", []byte(script), 0666)
 
