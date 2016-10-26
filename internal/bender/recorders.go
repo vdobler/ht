@@ -66,6 +66,12 @@ type TestData struct {
 	Overage      time.Duration
 }
 
+type ByStarted []TestData
+
+func (s ByStarted) Len() int           { return len(s) }
+func (s ByStarted) Less(i, j int) bool { return s[i].Started.Before(s[j].Started) }
+func (s ByStarted) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 func NewDataRecorder(data *[]TestData) Recorder {
 	return func(e Event) {
 		if e.Typ != EndRequestEvent {
