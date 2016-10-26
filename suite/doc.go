@@ -4,7 +4,7 @@
 
 /*
 Package suite contains functions to input tests from disk and execute suites
-of tests in a controled way.
+of tests in a controlled way.
 
 
 Variable Handling

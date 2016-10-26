@@ -276,7 +276,7 @@ func prepareHT() {
 	fmt.Printf("Seeding random number generator with %d.\n", randomSeed)
 	ht.Random = rand.New(rand.NewSource(randomSeed))
 	if skipTLSVerify {
-		fmt.Println("Skipping verification of TLS certificates presented by any server.\n")
+		fmt.Println("Skipping verification of TLS certificates presented by any server.")
 		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
 	}
 	ht.PhantomJSExecutable = phantomjs

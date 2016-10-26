@@ -207,18 +207,18 @@ type RawTest struct {
 	disabled    bool
 }
 
-func (r *RawTest) String() string {
-	return r.File.Name
+func (rt *RawTest) String() string {
+	return rt.File.Name
 }
 
-// Disable r.
-func (r *RawTest) Disable() { r.disabled = true }
+// Disable rt.
+func (rt *RawTest) Disable() { rt.disabled = true }
 
-// Enable r.
-func (r *RawTest) Enable() { r.disabled = false }
+// Enable rt.
+func (rt *RawTest) Enable() { rt.disabled = false }
 
-// IsEnable reports if r is enabled.
-func (r *RawTest) IsEnabled() bool { return !r.disabled }
+// IsEnabled reports if rt is enabled.
+func (rt *RawTest) IsEnabled() bool { return !rt.disabled }
 
 // LoadRawTest reads filename and produces a new RawTest.
 func LoadRawTest(filename string, fs FileSystem) (*RawTest, error) {
@@ -381,8 +381,8 @@ func (m *Mixin) toTest() (*ht.Test, error) {
 	return rt.toTest(nil)
 }
 
-func (r *RawTest) toTest(variables map[string]string) (*ht.Test, error) {
-	m, err := r.File.decode()
+func (rt *RawTest) toTest(variables map[string]string) (*ht.Test, error) {
+	m, err := rt.File.decode()
 	if err != nil {
 		return nil, err
 	}

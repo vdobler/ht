@@ -238,6 +238,7 @@ type Test struct {
 	client *http.Client
 }
 
+// Disable disables t by setting the maximum number of tries to -1.
 func (t *Test) Disable() {
 	t.Execution.Tries = -1
 }

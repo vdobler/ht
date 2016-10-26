@@ -30,7 +30,7 @@ type Suite struct {
 
 	Tests []*ht.Test // The Tests to execute
 
-	Variables      map[string]string // The inital variable assignemnt
+	Variables      map[string]string // The initial variable assignemnt
 	FinalVariables map[string]string // The final set of variables.
 	Jar            *cookiejar.Jar    // The cookie jar used
 	Log            *log.Logger       // The logger used.
@@ -124,7 +124,7 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 	return suite
 }
 
-// An executor is responsible for executing the given test during the
+// A Executor is responsible for executing the given test during the
 // Iterate'ion of a Suite. It should return nil if execution should continue
 // and Err{Abort,Skip}Execution to stop further iteration.
 type Executor func(test *ht.Test) error

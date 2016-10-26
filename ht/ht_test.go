@@ -741,7 +741,7 @@ func TestFileSchema(t *testing.T) {
 		test.Request.Method = method
 		err = test.Run()
 		if err != nil {
-			t.Fatalf("%d. %s: Unexpected error: ", err)
+			t.Fatalf("%d. %s: Unexpected error: ", i, err)
 		}
 
 		got := test.Status.String()
