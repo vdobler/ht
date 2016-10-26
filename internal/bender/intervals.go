@@ -34,15 +34,24 @@ func ExponentialIntervalGenerator(rate float64) IntervalGenerator {
 	}
 }
 
-type Step struct {
-	Rate float64
-	For  time.Duration
-}
-
-func RampedExponentialIntervalGenerator(ramp []Step) IntervalGenerator {
-	rate := ramp[0].Rate / float64(time.Second)
+// RampedExponentialIntervalGenerator increases the average rate linearely
+// from 0 to rate during the given ramp duration and keeps rate afterwards.
+func RampedExponentialIntervalGenerator(rate float64, ramp time.Duration) IntervalGenerator {
+	rate = rate / float64(time.Second)
+	framp := float64(ramp)
+	start := time.Now()
 	return func(_ int64) int64 {
-		return int64(rand.ExpFloat64() / rate)
+		elapsed := float64(time.Since(start))
+		factor := elapsed / framp
+		if factor > 1 {
+			factor = 1
+		} else if factor < 0.05 {
+			// Do not let effective rate drop below 20% of the
+			// final targe rate: Otherwise the tests does not
+			// realy start as basicaly no request are generated.
+			factor = 0.05
+		}
+		return int64(rand.ExpFloat64() / (factor * rate))
 	}
 }
 
