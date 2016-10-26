@@ -37,6 +37,7 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -144,6 +145,8 @@ type pool struct {
 //
 var IDSep = "\u2237"
 
+// newThread starts a new thread/goroutine which iterates tests in the pool's
+// scenario.
 func (p *pool) newThread(stop chan bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -210,8 +213,13 @@ func (p *pool) newThread(stop chan bool) {
 }
 
 func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, stop chan bool) ([]*pool, error) {
-	pools := make([]*pool, len(scenarios))
+	// Choosing a scenario to contribute to the total set of request is done
+	// by looking up a (thead) pool with the desired probability: Pool indixec
+	// are distributed in 100 selectors.
 	selector := make([]int, 100)
+
+	// Set up a pool for each scenario and start an initial thread per pool.
+	pools := make([]*pool, len(scenarios))
 	j := 0
 	for i, s := range scenarios {
 		pool := pool{
@@ -237,6 +245,9 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 
 	gracetime := time.Second / time.Duration(5*rate)
 	go func() {
+		// Select a pool (i.e. a scenario) and take a request from
+		// this pool. If pool cannot deliver: Start a new thread in
+		// this pool. Repeat until stop signaled.
 		for {
 			rn := rand.Intn(100)
 			pool := pools[selector[rn]]
@@ -269,7 +280,7 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 // It returns a summary of all request, all failed tests collected into a Suite
 // and an error indicating if the throughput test reached the targeted rate and
 // distribution.
-func Throughput(scenarios []Scenario, rate float64, duration time.Duration) ([]bender.TestData, *Suite, error) {
+func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration) ([]bender.TestData, *Suite, error) {
 	for i := range scenarios {
 		// Setup must be called for all scenarios!
 		fmt.Printf("Scenario %d %q: Running setup\n",
@@ -292,6 +303,9 @@ func Throughput(scenarios []Scenario, rate float64, duration time.Duration) ([]b
 	request := make(chan bender.Test, len(scenarios))
 	stop := make(chan bool)
 	intervals := bender.ExponentialIntervalGenerator(rate)
+	if ramp > 0 {
+		intervals = bender.RampedExponentialIntervalGenerator(rate, ramp)
+	}
 
 	pools, err := makeRequest(scenarios, rate, request, stop)
 	if err != nil {
@@ -491,8 +505,15 @@ func DataPrint(data []bender.TestData, out io.Writer) {
 
 }
 
-// DataToCSV prints data as a CVS table to out.
+// DataToCSV prints data as a CVS table to out after sorting data by Started.
 func DataToCSV(data []bender.TestData, out io.Writer) error {
+	sort.Sort(bender.ByStarted(data))
+	rateWindow := time.Second
+	if fullDuration := data[len(data)-1].Started.Sub(data[0].Started); fullDuration < 5*time.Second {
+		rateWindow = 500 * time.Millisecond
+	} else if fullDuration > 30*time.Second {
+		rateWindow = 2 * time.Second
+	}
 	writer := csv.NewWriter(out)
 	defer writer.Flush()
 
@@ -500,6 +521,7 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 		"Number",
 		"Started",
 		"Elapsed",
+		"Rate",
 		"Status",
 		"ReqDuration",
 		"TestDuration",
@@ -523,17 +545,13 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 	}
 
 	first := data[0].Started
-	for _, d := range data {
-		if d.Started.Before(first) {
-			first = d.Started
-		}
-	}
 
 	r := make([]string, 0, 16)
 	for i, d := range data {
 		r = append(r, fmt.Sprintf("%d", i))
 		r = append(r, d.Started.Format("2006-01-02T15:04:05.99999Z07:00"))
 		r = append(r, fmt.Sprintf("%.3f", dToMs(d.Started.Sub(first))))
+		r = append(r, fmt.Sprintf("%.1f", effectiveRate(i, data, rateWindow)))
 		r = append(r, d.Status.String())
 		r = append(r, fmt.Sprintf("%.3f", dToMs(d.ReqDuration)))
 		r = append(r, fmt.Sprintf("%.3f", dToMs(d.TestDuration)))
@@ -557,6 +575,32 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 
 		r = r[:0]
 	}
+	writer.Flush()
 
 	return nil
+}
+
+// effectiveRate returns the number of request in data in a window
+// around sample i.
+func effectiveRate(i int, data []bender.TestData, window time.Duration) float64 {
+	t0 := data[i].Started
+	a, b := i, i
+	for a > 0 && t0.Sub(data[a].Started) < window/2 {
+		a--
+	}
+	for b < len(data)-1 && data[b].Started.Sub(t0) < window/2 {
+		b++
+	}
+	n := float64(b-a+1) / float64(window/time.Second)
+
+	if a == 0 || b == len(data)-1 {
+		// Window is capped. Compensate n for to narrow window.
+		effectiveWindow := data[b].Started.Sub(data[a].Started)
+		if effectiveWindow == 0 {
+			effectiveWindow = window
+		}
+		n *= float64(window) / float64(effectiveWindow)
+	}
+
+	return float64(n)
 }

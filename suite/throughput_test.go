@@ -35,6 +35,7 @@ func waitHandler(w http.ResponseWriter, r *http.Request) {
 	dv, exp := r.FormValue("dyn"), r.FormValue("exp")
 	if dv != exp {
 		http.Error(w, "Bad dyn value", http.StatusForbidden)
+		return
 	}
 
 	http.Error(w, fmt.Sprintf("Slept for %s", s), status)
@@ -230,12 +231,11 @@ func TestThroughput(t *testing.T) {
 		},
 	}
 
-	data, failures, err := Throughput(scenarios, 50, 5*time.Second)
+	data, failures, err := Throughput(scenarios, 50, 10*time.Second, 3*time.Second)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
-
-	if testing.Verbose() {
+	if testing.Verbose() && false {
 		fmt.Println("\n   FAILURES\n=================\n")
 		failures.PrintReport(os.Stdout)
 		err = HTMLReport("./testdata", failures)
@@ -269,7 +269,10 @@ func TestThroughput(t *testing.T) {
 	}
 	defer file.Close()
 
-	DataToCSV(data, file)
+	err = DataToCSV(data, file)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
 
 	script := `
 library(ggplot2)
@@ -295,6 +298,10 @@ p <- p + geom_histogram(binwidth=3)
 p <- p + facet_grid(Test ~ ., scales="free_y")
 p <- p + fillScale
 ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
+
+p <- ggplot(d, aes(x=Elapsed, y=Rate))
+p <- p + geom_point(size=3) + geom_smooth()
+ggsave("rate.png", plot=p, width=10, height=8, dpi=100)
 `
 	ioutil.WriteFile("testdata/throughput.R", []byte(script), 0666)
 }
@@ -351,7 +358,7 @@ func TestThroughput2(t *testing.T) {
 		}
 	}
 
-	data, _, err := Throughput(scenarios, 100, 4*time.Second)
+	data, _, err := Throughput(scenarios, 100, 4*time.Second, 0)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
@@ -390,6 +397,10 @@ p <- p + geom_histogram(binwidth=3)
 p <- p + facet_grid(Test ~ ., scales="free_y")
 p <- p + fillScale
 ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
+
+p <- ggplot(d, aes(x=Elapsed, y=Rate))
+p <- p + geom_point(size=3)
+ggsave("rate.png", plot=p, width=10, height=8, dpi=100)
 `
 	ioutil.WriteFile("testdata/throughput.R", []byte(script), 0666)
 }
