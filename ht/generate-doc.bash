@@ -25,8 +25,8 @@ godoc2html Test
 echo "<h3>Request</h2>"
 godoc2html Request
 
-echo "<h3>Poll</h2>"
-godoc2html Poll
+echo "<h3>Execution</h2>"
+godoc2html Execution
 
 echo "<h2>Checks</h2>"
 for c in $checks; do
