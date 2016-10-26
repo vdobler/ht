@@ -3,55 +3,546 @@
 package main
 
 var typeDoc = map[string]string{
-	"test": "type Test struct {\n" +
-		"\tName        string\n" +
-		"\tDescription string \n" +
+	"anyone": "type AnyOne struct {\n" +
+		"\t// Of is the list of checks to execute.\n" +
+		"\tOf CheckList\n" +
+		"}\n" +
+		"    AnyOne checks that at least one Of the embedded checks passes. It is the\n" +
+		"    short circuiting boolean OR of the underlying checks. Check execution stops\n" +
+		"    once the first passing check is found. Example (in JSON5 notation) to check\n" +
+		"    status code for '202 OR 404':\n" +
 		"\n" +
-		"\t// Request is the HTTP request.\n" +
-		"\tRequest Request\n" +
+		"    {\n" +
+		"        Check: \"AnyOne\", Of: [\n" +
+		"            {Check: \"StatusCode\", Expect: 202},\n" +
+		"            {Check: \"StatusCode\", Expect: 404},\n" +
+		"        ]\n" +
+		"    }",
+	"body": "type Body Condition\n" +
+		"    Body provides simple condition checks on the response body.",
+	"bodyextractor": "type BodyExtractor struct {\n" +
+		"\t// Regexp is the regular expression to look for in the body.\n" +
+		"\tRegexp string\n" +
 		"\n" +
-		"\t// Checks contains all checks to perform on the response to the HTTP request.\n" +
-		"\tChecks CheckList\n" +
+		"\t// SubMatch selects which submatch (capturing group) of Regexp shall\n" +
+		"\t// be returned. A 0 value indicates the whole match.\n" +
+		"\tSubmatch int \n" +
+		"}\n" +
+		"    BodyExtractor extracts a value from the uninterpreted response body via a\n" +
+		"    regular expression.",
+	"checklist": "type CheckList []Check\n" +
+		"    CheckList is a slice of checks with the sole purpose of attaching JSON\n" +
+		"    (un)marshaling methods.",
+	"condition": "type Condition struct {\n" +
+		"\t// Equals is the exact value to be expected.\n" +
+		"\t// No other tests are performed if Equals is non-zero as these\n" +
+		"\t// other tests would be redundant.\n" +
+		"\tEquals string \n" +
 		"\n" +
-		"\t// Execution controls the test execution\n" +
-		"\tExecution Execution \n" +
+		"\t// Prefix is the required prefix\n" +
+		"\tPrefix string \n" +
 		"\n" +
-		"\t// Jar is the cookie jar to use\n" +
-		"\tJar *cookiejar.Jar \n" +
+		"\t// Suffix is the required suffix.\n" +
+		"\tSuffix string \n" +
 		"\n" +
-		"\t// Variables contains name/value-pairs used for variable substitution\n" +
-		"\t// in files read in, e.g. for Request.Body = \"@vfile:/path/to/file\".\n" +
-		"\tVariables map[string]string \n" +
+		"\t// Contains must be contained in the string.\n" +
+		"\tContains string \n" +
 		"\n" +
-		"\t// The following results are filled during Run.\n" +
-		"\t// This should be collected into something like struct TestResult{...}.\n" +
-		"\tResponse     Response      \n" +
-		"\tStatus       Status        \n" +
-		"\tStarted      time.Time     \n" +
-		"\tError        error         \n" +
-		"\tDuration     time.Duration \n" +
-		"\tFullDuration time.Duration \n" +
-		"\tTries        int           \n" +
-		"\tCheckResults []CheckResult  // The individual checks.\n" +
-		"\tReporting    struct {\n" +
-		"\t\tSeqNo     string\n" +
-		"\t\tFilename  string\n" +
-		"\t\tExtension string\n" +
-		"\t} \n" +
+		"\t// Regexp is a regular expression to look for.\n" +
+		"\tRegexp string \n" +
 		"\n" +
-		"\t// VarEx may be used to popultate variables from the response. TODO: Rename.\n" +
-		"\tVarEx ExtractorMap // map[string]Extractor \n" +
+		"\t// Count determines how many occurrences of Contains or Regexp\n" +
+		"\t// are required for a match:\n" +
+		"\t//     0: Any positive number of matches is okay\n" +
+		"\t//   > 0: Exactly that many matches required\n" +
+		"\t//   < 0: No match allowed (invert the condition)\n" +
+		"\tCount int \n" +
 		"\n" +
-		"\t// ExValues contains the result of the extractions.\n" +
-		"\tExValues map[string]Extraction \n" +
-		"\n" +
-		"\t// Log is the logger to use\n" +
-		"\tLog *log.Logger\n" +
+		"\t// Min and Max are the minimum and maximum length the string may\n" +
+		"\t// have. Two zero values disables this test.\n" +
+		"\tMin, Max int \n" +
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
-		"    Test is a single logical test which does one HTTP request and checks a\n" +
-		"    number of Checks on the received Response.",
+		"    Condition is a conjunction of tests against a string. Note that Contains and\n" +
+		"    Regexp conditions both use the same Count; most likely one would use either\n" +
+		"    Contains or Regexp but not both.",
+	"contenttype": "type ContentType struct {\n" +
+		"\t// Is is the wanted content type. It may be abrevated, e.g.\n" +
+		"\t// \"json\" would match \"application/json\"\n" +
+		"\tIs string\n" +
+		"\n" +
+		"\t// Charset is an optional charset\n" +
+		"\tCharset string \n" +
+		"}\n" +
+		"    ContentType checks the Content-Type header.",
+	"cookie": "type Cookie struct {\n" +
+		"\tName  string\n" +
+		"\tValue string \n" +
+		"}\n" +
+		"    Cookie is a HTTP cookie.",
+	"cookieextractor": "type CookieExtractor struct {\n" +
+		"\tName string // Name is the name of the cookie.\n" +
+		"}\n" +
+		"    CookieExtractor extracts the value of a cookie received in a Set-Cookie\n" +
+		"    header. The value of the first cookie with the given name is extracted.",
+	"customjs": "type CustomJS struct {\n" +
+		"\t// Script is JavaScript code to be evaluated.\n" +
+		"\t//\n" +
+		"\t// The script may be read from disk with the following syntax:\n" +
+		"\t//     @file:/path/to/script\n" +
+		"\tScript string \n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    CustomJS executes the provided JavaScript.\n" +
+		"\n" +
+		"    The current Test is present in the JavaScript VM via binding the name \"Test\"\n" +
+		"    at top-level to the current Test being checked.\n" +
+		"\n" +
+		"    The Script's last value indicates success or failure:\n" +
+		"\n" +
+		"    - Success: true, 0, \"\"\n" +
+		"    - Failure: false, any number != 0, any string != \"\"\n" +
+		"\n" +
+		"    CustomJS can be useful to log an excerpt of response (or the request) via\n" +
+		"    console.log.\n" +
+		"\n" +
+		"    The JavaScript code is interpreted by otto. See the documentation at\n" +
+		"    https://godoc.org/github.com/robertkrimen/otto for details.",
+	"deletecookie": "type DeleteCookie struct {\n" +
+		"\tName   string\n" +
+		"\tPath   string \n" +
+		"\tDomain string \n" +
+		"}\n" +
+		"    DeleteCookie checks that the HTTP response properly deletes all cookies\n" +
+		"    matching Name, Path and Domain. Path and Domain are optional in which case\n" +
+		"    all cookies with the given Name are checked for deletion.",
+	"execution": "type Execution struct {\n" +
+		"\t// Tries is the maximum number of tries made for this test.\n" +
+		"\t// Both 0 and 1 mean: \"Just one try. No redo.\"\n" +
+		"\t// Negative values indicate that the test should be skipped\n" +
+		"\t// altogether.\n" +
+		"\tTries int \n" +
+		"\n" +
+		"\t// Wait time between retries.\n" +
+		"\tWait time.Duration \n" +
+		"\n" +
+		"\t// Pre-, Inter- and PostSleep are the sleep durations made\n" +
+		"\t// before the request, between request and the checks and\n" +
+		"\t// after the checks.\n" +
+		"\tPreSleep, InterSleep, PostSleep time.Duration \n" +
+		"\n" +
+		"\t// Verbosity level in logging.\n" +
+		"\tVerbosity int \n" +
+		"}\n" +
+		"    Execution contains parameters controlling the test execution.",
+	"extractormap": "type ExtractorMap map[string]Extractor\n" +
+		"    ExtractorMap is a map of Extractors with the sole purpose of attaching JSON\n" +
+		"    (un)marshaling methods.",
+	"finalurl": "type FinalURL Condition\n" +
+		"    FinalURL checks the last URL after following all redirects. This check is\n" +
+		"    useful only for tests with Request.FollowRedirects=true",
+	"htmlcontains": "type HTMLContains struct {\n" +
+		"\t// Selector is the CSS selector of the HTML elements.\n" +
+		"\tSelector string\n" +
+		"\n" +
+		"\t// Text contains the expected plain text content of the HTML elements\n" +
+		"\t// selected through the given selector.\n" +
+		"\tText []string \n" +
+		"\n" +
+		"\t// Raw turns of white space normalization and will check the unprocessed\n" +
+		"\t// text content.\n" +
+		"\tRaw bool \n" +
+		"\n" +
+		"\t// Complete makes sure that no excess HTML elements are found:\n" +
+		"\t// If true the len(Text) must be equal to the number of HTML elements\n" +
+		"\t// selected for the check to succeed.\n" +
+		"\tComplete bool \n" +
+		"\n" +
+		"\t// InOrder makes the check fail if the selected HTML elements have a\n" +
+		"\t// different order than given in Text.\n" +
+		"\tInOrder bool \n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    HTMLContains checks the text content (and optionally the order) of HTML\n" +
+		"    elements selected by a CSS rule.\n" +
+		"\n" +
+		"    The text content found in the HTML document is normalized by roughly the\n" +
+		"    following procedure:\n" +
+		"\n" +
+		"    1.  Newlines are inserted around HTML block elements\n" +
+		"        (i.e. any non-inline element)\n" +
+		"    2.  Newlines and tabs are replaced by spaces.\n" +
+		"    3.  Multiple spaces are replaced by one space.\n" +
+		"    4.  Leading and trailing spaces are trimmed of.\n" +
+		"\n" +
+		"    As an example consider the following HTML:\n" +
+		"\n" +
+		"    <html><body>\n" +
+		"      <ul class=\"fancy\"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>\n" +
+		"    </body></html>\n" +
+		"\n" +
+		"    The normalized text selected by a Selector of \"ul.fancy\" would be\n" +
+		"\n" +
+		"    \"One Second Three\"",
+	"htmlextractor": "type HTMLExtractor struct {\n" +
+		"\t// Selector is the CSS selector of an element, e.g.\n" +
+		"\t//     head meta[name=\"_csrf\"]   or\n" +
+		"\t//     form#login input[name=\"tok\"]\n" +
+		"\t//     div.token span\n" +
+		"\tSelector string\n" +
+		"\n" +
+		"\t// Attribute is the name of the attribute from which the\n" +
+		"\t// value should be extracted.  The magic value \"~text~\" refers to the\n" +
+		"\t// normalized text content of the element and ~rawtext~ to the raw\n" +
+		"\t// text content.\n" +
+		"\t// E.g. in the examples above the following should be sensible:\n" +
+		"\t//     content\n" +
+		"\t//     value\n" +
+		"\t//     ~text~\n" +
+		"\tAttribute string\n" +
+		"}\n" +
+		"    HTMLExtractor allows to extract data from an executed Test. It supports\n" +
+		"    extracting HTML attribute values and HTML text node values. Examples for\n" +
+		"    CSRF token in the HTML:\n" +
+		"\n" +
+		"    <meta name=\"_csrf\" content=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\" />\n" +
+		"    <input type=\"hidden\" name=\"_csrf\" value=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\"/>",
+	"htmltag": "type HTMLTag struct {\n" +
+		"\t// Selector is the CSS selector of the HTML elements.\n" +
+		"\tSelector string\n" +
+		"\n" +
+		"\t// Count determines the number of occurrences to check for:\n" +
+		"\t//     < 0: no occurrence\n" +
+		"\t//    == 0: one ore more occurrences\n" +
+		"\t//     > 0: exactly that many occurrences\n" +
+		"\tCount int \n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    HTMLTag checks for the existens of HTML elements selected by CSS selectors.",
+	"header": "type Header struct {\n" +
+		"\t// Header is the HTTP header to check.\n" +
+		"\tHeader string\n" +
+		"\n" +
+		"\t// Condition is applied to the first header value. A zero value checks\n" +
+		"\t// for the existence of the given Header only.\n" +
+		"\tCondition \n" +
+		"\n" +
+		"\t// Absent indicates that no header Header shall be part of the response.\n" +
+		"\tAbsent bool \n" +
+		"}\n" +
+		"    Header provides a textual test of single-valued HTTP headers.",
+	"identity": "type Identity struct {\n" +
+		"\t// SHA1 is the expected hash as shown by sha1sum of the whole body.\n" +
+		"\t// E.g. 2ef7bde608ce5404e97d5f042f95f89f1c232871 for a \"Hello World!\"\n" +
+		"\t// body (no newline).\n" +
+		"\tSHA1 string\n" +
+		"}\n" +
+		"    Identity checks the value of the response body by comparing its SHA1 hash to\n" +
+		"    the expected SHA1 value.",
+	"image": "type Image struct {\n" +
+		"\t// Format is the format of the image as registered in package image.\n" +
+		"\tFormat string \n" +
+		"\n" +
+		"\t// If > 0 check width or height of image.\n" +
+		"\tWidth, Height int \n" +
+		"\n" +
+		"\t// Fingerprint is either the 16 hex digit long Block Mean Value hash or\n" +
+		"\t// the 24 hex digit long Color Histogram hash of the image.\n" +
+		"\tFingerprint string \n" +
+		"\n" +
+		"\t// Threshold is the limit up to which the received image may differ\n" +
+		"\t// from the given BMV or ColorHist fingerprint.\n" +
+		"\tThreshold float64 \n" +
+		"}\n" +
+		"    Image checks image format, size and fingerprint. As usual a zero value of a\n" +
+		"    field skips the check of that property. Image fingerprinting is done via\n" +
+		"    github.com/vdobler/ht/fingerprint. Only one of BMV or ColorHist should be\n" +
+		"    used as there is just one threshold.",
+	"jsextractor": "type JSExtractor struct {\n" +
+		"\t// Script is JavaScript code to be evaluated.\n" +
+		"\t//\n" +
+		"\t// The script may be read from disk with the following syntax:\n" +
+		"\t//     @file:/path/to/script\n" +
+		"\tScript string \n" +
+		"}\n" +
+		"    JSExtractor extracts arbirtary stuff via custom JavaScript code.\n" +
+		"\n" +
+		"    The current Test is present in the JavaScript VM via binding the name \"Test\"\n" +
+		"    at top-level to the current Test being checked.\n" +
+		"\n" +
+		"    The Script is evaluated and the final expression is the value extracted with\n" +
+		"    the following excpetions:\n" +
+		"\n" +
+		"    - undefined or null is treated as an error\n" +
+		"    - Objects and Arrays are treated as errors. The error message is reporteds\n" +
+		"      in the field 'errmsg' of the object or the index 0 of the array.\n" +
+		"    - Strings, Numbers and Bools are treated as properly extracted values\n" +
+		"      which are returned.\n" +
+		"    - Other types result in undefined behaviour.\n" +
+		"\n" +
+		"    The JavaScript code is interpreted by otto. See the documentation at\n" +
+		"    https://godoc.org/github.com/robertkrimen/otto for details.",
+	"json": "type JSON struct {\n" +
+		"\t// Element in the flattened JSON map to apply the Condition to.\n" +
+		"\t// E.g.  \"foo.2\" in \"{foo: [4,5,6,7]}\" would be 6.\n" +
+		"\t// An empty value result in just a check for 'wellformedness' of\n" +
+		"\t// the JSON.\n" +
+		"\tElement string \n" +
+		"\n" +
+		"\t// Condition to apply to the value selected by Element.\n" +
+		"\t// If Condition is the zero value then only the existence of\n" +
+		"\t// a JSON element selected by Element is checked.\n" +
+		"\t// Note that Condition is checked against the actual value in the\n" +
+		"\t// flattened JSON map which will contain the quotation marks for\n" +
+		"\t// string values.\n" +
+		"\tCondition \n" +
+		"\n" +
+		"\t// Sep is the separator in Element when checking the Condition.\n" +
+		"\t// A zero value is equivalent to \".\"\n" +
+		"\tSep string \n" +
+		"}\n" +
+		"    JSON allow to check a single string, number, boolean or null element in a\n" +
+		"    JSON document against a Condition.\n" +
+		"\n" +
+		"    Elements of the JSON document are selected by an element selector. In the\n" +
+		"    JSON document\n" +
+		"\n" +
+		"    { \"foo\": 5, \"bar\": [ 1, \"qux\", 3 ], \"waz\": true, \"nil\": null }\n" +
+		"\n" +
+		"    the follwing element selector are present and have the shown values:\n" +
+		"\n" +
+		"    foo       5\n" +
+		"    bar.0     1\n" +
+		"    bar.1     \"qux\"\n" +
+		"    bar.2     3\n" +
+		"    waz       true\n" +
+		"    nil       null",
+	"jsonexpr": "type JSONExpr struct {\n" +
+		"\t// Expression is a boolean gojee expression which must evaluate\n" +
+		"\t// to true for the check to pass.\n" +
+		"\tExpression string \n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    JSONExpr allows checking JSON documents via gojee expressions. See\n" +
+		"    github.com/nytlabs/gojee (or the vendored version) for details.\n" +
+		"\n" +
+		"    Consider this JSON:\n" +
+		"\n" +
+		"    { \"foo\": 5, \"bar\": [ 1, 2, 3 ] }\n" +
+		"\n" +
+		"    The follwing expression have these truth values:\n" +
+		"\n" +
+		"    .foo == 5                    true\n" +
+		"    $len(.bar) > 2               true as $len(.bar)==3\n" +
+		"    .bar[1] == 2                 true\n" +
+		"    (.foo == 9) || (.bar[0]<7)   true as .bar[0]==1\n" +
+		"    $max(.bar) == 3              true\n" +
+		"    $has(.bar, 7)                false as bar has no 7",
+	"jsonextractor": "type JSONExtractor struct {\n" +
+		"\t// Element in the flattened JSON map to extract.\n" +
+		"\tElement string \n" +
+		"\n" +
+		"\t// Sep is the separator in Path.\n" +
+		"\t// A zero value is equivalent to \".\"\n" +
+		"\tSep string \n" +
+		"}\n" +
+		"    JSONExtractor extracts a value from a JSON response body. It uses\n" +
+		"    github.com/nytlabs/gojsonexplode to flatten the JSON file for easier access.\n" +
+		"    Only the lowest level of elements may be accessed: In the JSON {\"c\":[1,2,3]}\n" +
+		"    \"c\" is not available, but c.2 is and equals 3. JSON null values are\n" +
+		"    extracted as the empty string i.e. null and \"\" are indistinguashable.\n" +
+		"\n" +
+		"    Note that JSONExtractor behaves differently than the JSON check:\n" +
+		"    JSONExctractor strips quotes from strings if the string is not empty.",
+	"latency": "type Latency struct {\n" +
+		"\t// N is the number if request to measure. It should be much larger\n" +
+		"\t// than Concurrent. Default is 50.\n" +
+		"\tN int \n" +
+		"\n" +
+		"\t// Concurrent is the number of concurrent requests in flight.\n" +
+		"\t// Defaults to 2.\n" +
+		"\tConcurrent int \n" +
+		"\n" +
+		"\t// Limits is a string of the following form:\n" +
+		"\t//    \"50% ≤ 150ms; 80% ≤ 200ms; 95% ≤ 250ms; 0.9995 ≤ 0.9s\"\n" +
+		"\t// The limits above would require the median of the response\n" +
+		"\t// times to be <= 150 ms and would allow only 1 request in 2000 to\n" +
+		"\t// exced 900ms.\n" +
+		"\t// Note that it must be the ≤ sign (U+2264), a plain < or a <=\n" +
+		"\t// is not recognized.\n" +
+		"\tLimits string \n" +
+		"\n" +
+		"\t// IndividualSessions tries to run the concurrent requests in\n" +
+		"\t// individual sessions: A new one for each of the Concurrent many\n" +
+		"\t// requests (not N many sessions).\n" +
+		"\t// This is done by using a fresh cookiejar so it won't work if the\n" +
+		"\t// request requires prior login.\n" +
+		"\tIndividualSessions bool \n" +
+		"\n" +
+		"\t// If SkipChecks is true no checks are performed i.e. only the\n" +
+		"\t// requests are executed.\n" +
+		"\tSkipChecks bool \n" +
+		"\n" +
+		"\t// DumpTo is the filename where the latencies are reported.\n" +
+		"\t// The special values \"stdout\" and \"stderr\" are recognized.\n" +
+		"\tDumpTo string \n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    Latency provides checks against percentils of the response time latency.",
+	"links": "type Links struct {\n" +
+		"\t// Which links to test; a space separated list of tag tag names:\n" +
+		"\t//     'a',   'link',  'img',  'script', 'video', 'audio', 'source'\n" +
+		"\t// E.g. use \"a img\" to check the href attribute of all a-tags and\n" +
+		"\t// the src attribute of all img-tags.\n" +
+		"\tWhich string\n" +
+		"\n" +
+		"\t// Head triggers HEAD requests instead of GET requests.\n" +
+		"\tHead bool \n" +
+		"\n" +
+		"\t// Concurrency determines how many of the found links are checked\n" +
+		"\t// concurrently. A zero value indicates sequential checking.\n" +
+		"\tConcurrency int \n" +
+		"\n" +
+		"\t// Timeout is the client timeout if different from main test.\n" +
+		"\tTimeout time.Duration \n" +
+		"\n" +
+		"\t// OnlyLinks and IgnoredLinks can be used to select only a subset of\n" +
+		"\t// all links.\n" +
+		"\tOnlyLinks, IgnoredLinks []Condition \n" +
+		"\n" +
+		"\t// FailMixedContent will report a failure for any mixed content, i.e.\n" +
+		"\t// resources retrieved via http for a https HTML page.\n" +
+		"\tFailMixedContent bool\n" +
+		"\n" +
+		"\t// MaxTime is the maximum duration allowed to retrieve all the linked\n" +
+		"\t// resources. A zero value means unlimited time allowed.\n" +
+		"\tMaxTime time.Duration\n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    Links checks links and references in HTML pages for availability.\n" +
+		"\n" +
+		"    It can reports mixed content as a failure by setting FailMixedContent. (See\n" +
+		"    https://w3c.github.io/webappsec-mixed-content/). Links will upgrade any\n" +
+		"    non-anchor links if the original reqesponse contains\n" +
+		"\n" +
+		"    Content-Security-Policy: upgrade-insecure-requests\n" +
+		"\n" +
+		"    in the HTTP header.",
+	"logfile": "type Logfile struct {\n" +
+		"\t// Path is the file system path to the logfile.\n" +
+		"\tPath string\n" +
+		"\n" +
+		"\t// Condition the newly written stuff must fulfill.\n" +
+		"\tCondition \n" +
+		"\n" +
+		"\t// Disallow states what is forbidden in the written log.\n" +
+		"\tDisallow []string \n" +
+		"\n" +
+		"\t// Remote contains access data for a foreign (Unix) server which\n" +
+		"\t// is contacted via ssh.\n" +
+		"\tRemote struct {\n" +
+		"\t\t// Host is the hostname:port. A port of :22 is optional.\n" +
+		"\t\tHost string\n" +
+		"\n" +
+		"\t\t// User contains the name of the user used to make the\n" +
+		"\t\t// ssh connection to Host\n" +
+		"\t\tUser string\n" +
+		"\n" +
+		"\t\t// Password and/or Keyfile used to authenticate\n" +
+		"\t\tPassword string \n" +
+		"\t\tKeyFile  string \n" +
+		"\t} \n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    Logfile provides checks on a file (i.e. it ignores the HTTP response).\n" +
+		"\n" +
+		"    During preparation the current size of the file identified by Path is\n" +
+		"    determined. When the check executes it seeks to that position and examines\n" +
+		"    anything written to the file since the preparation of the check.\n" +
+		"\n" +
+		"    Logfile on remote (Unix) machines may be accessed via ssh (experimental).",
+	"noservererror": "type NoServerError struct{}\n" +
+		"    NoServerError checks the HTTP status code for not being a 5xx server error\n" +
+		"    and that the body could be read without errors or timeouts.",
+	"none": "type None struct {\n" +
+		"\t// Of is the list of checks to execute.\n" +
+		"\tOf CheckList\n" +
+		"}\n" +
+		"    None checks that none Of the embedded checks passes. It is the NOT of the\n" +
+		"    short circuiting boolean AND of the underlying checks. Check execution stops\n" +
+		"    once the first passing check is found. It Example (in JSON5 notation) to\n" +
+		"    check for non-occurrence of 'foo' in body:\n" +
+		"\n" +
+		"    {\n" +
+		"        Check: \"None\", Of: [\n" +
+		"            {Check: \"Body\", Contains: \"foo\"},\n" +
+		"        ]\n" +
+		"    }",
+	"redirect": "type Redirect struct {\n" +
+		"\t// To is matched against the Location header. It may begin with,\n" +
+		"\t// end with or contain three dots \"...\" which indicate that To should\n" +
+		"\t// match the end, the start or both ends of the Location header\n" +
+		"\t// value. (Note that only one occurrence of \"...\" is supported.\"\n" +
+		"\tTo string\n" +
+		"\n" +
+		"\t// If StatusCode is greater zero it is the required HTTP status code\n" +
+		"\t// expected in this response. If zero, the valid status codes are\n" +
+		"\t// 301 (Moved Permanently), 302 (Found), 303 (See Other) and\n" +
+		"\t// 307 (Temporary Redirect)\n" +
+		"\tStatusCode int \n" +
+		"}\n" +
+		"    Redirect checks for a singe HTTP redirection.\n" +
+		"\n" +
+		"    Note that this check cannot be used on tests with\n" +
+		"\n" +
+		"    Request.FollowRedirects = true\n" +
+		"\n" +
+		"    as Redirect checks only the final response which will not be a redirection\n" +
+		"    if redirections are followed automatically.",
+	"redirectchain": "type RedirectChain struct {\n" +
+		"\t// Via contains the necessary URLs accessed during a redirect chain.\n" +
+		"\t//\n" +
+		"\t// Any URL may start with, end with or contain three dots \"...\" which\n" +
+		"\t// indicate a suffix, prefix or suffix+prefix match like in the To\n" +
+		"\t// field of Redirect.\n" +
+		"\tVia []string\n" +
+		"}\n" +
+		"    RedirectChain checks steps in a redirect chain. The check passes if all\n" +
+		"    stations in Via have been accessed in order; the actual redirect chain may\n" +
+		"    hit additional stations.\n" +
+		"\n" +
+		"    Note that this check can be used on tests with\n" +
+		"\n" +
+		"    Request.FollowRedirects = true",
+	"renderedhtml": "type RenderedHTML struct {\n" +
+		"\t// Checks to perform on the renderd HTML.\n" +
+		"\t// Sensible checks are those operating on the response body.\n" +
+		"\tChecks CheckList\n" +
+		"\n" +
+		"\t// KeepAs is the file name to store the rendered HTML to.\n" +
+		"\t// Useful for debugging purpose.\n" +
+		"\tKeepAs string \n" +
+		"}\n" +
+		"    RenderedHTML applies checks to the HTML after processing through the\n" +
+		"    headless browser PhantomJS. This processing will load external resources and\n" +
+		"    evaluate the JavaScript. The checks are run against this 'rendered' HTML\n" +
+		"    code.",
+	"renderingtime": "type RenderingTime struct {\n" +
+		"\tMax time.Duration\n" +
+		"}\n" +
+		"    RenderingTime limits the maximal allowed time to render a whole HTML page.\n" +
+		"\n" +
+		"    The \"rendering time\" is the response time plus how long it takes PhantomJS\n" +
+		"    to load all referenced assets and render the page. For obvious reason this\n" +
+		"    cannot be determined with absolute accuracy.",
 	"request": "type Request struct {\n" +
 		"\t// Method is the HTTP method to use.\n" +
 		"\t// A empty method is equivalent to \"GET\"\n" +
@@ -123,152 +614,6 @@ var typeDoc = map[string]string{
 		"\tSentParams url.Values     // the 'real' parameters\n" +
 		"}\n" +
 		"    Request is a HTTP request.",
-	"cookie": "type Cookie struct {\n" +
-		"\tName  string\n" +
-		"\tValue string \n" +
-		"}\n" +
-		"    Cookie is a HTTP cookie.",
-	"execution": "type Execution struct {\n" +
-		"\t// Tries is the maximum number of tries made for this test.\n" +
-		"\t// Both 0 and 1 mean: \"Just one try. No redo.\"\n" +
-		"\t// Negative values indicate that the test should be skipped\n" +
-		"\t// altogether.\n" +
-		"\tTries int \n" +
-		"\n" +
-		"\t// Wait time between retries.\n" +
-		"\tWait time.Duration \n" +
-		"\n" +
-		"\t// Pre-, Inter- and PostSleep are the sleep durations made\n" +
-		"\t// before the request, between request and the checks and\n" +
-		"\t// after the checks.\n" +
-		"\tPreSleep, InterSleep, PostSleep time.Duration \n" +
-		"\n" +
-		"\t// Verbosity level in logging.\n" +
-		"\tVerbosity int \n" +
-		"}\n" +
-		"    Execution contains parameters controlling the test execution.",
-	"checklist": "type CheckList []Check\n" +
-		"    CheckList is a slice of checks with the sole purpose of attaching JSON\n" +
-		"    (un)marshaling methods.",
-	"extractormap": "type ExtractorMap map[string]Extractor\n" +
-		"    ExtractorMap is a map of Extractors with the sole purpose of attaching JSON\n" +
-		"    (un)marshaling methods.",
-	"condition": "type Condition struct {\n" +
-		"\t// Equals is the exact value to be expected.\n" +
-		"\t// No other tests are performed if Equals is non-zero as these\n" +
-		"\t// other tests would be redundant.\n" +
-		"\tEquals string \n" +
-		"\n" +
-		"\t// Prefix is the required prefix\n" +
-		"\tPrefix string \n" +
-		"\n" +
-		"\t// Suffix is the required suffix.\n" +
-		"\tSuffix string \n" +
-		"\n" +
-		"\t// Contains must be contained in the string.\n" +
-		"\tContains string \n" +
-		"\n" +
-		"\t// Regexp is a regular expression to look for.\n" +
-		"\tRegexp string \n" +
-		"\n" +
-		"\t// Count determines how many occurrences of Contains or Regexp\n" +
-		"\t// are required for a match:\n" +
-		"\t//     0: Any positive number of matches is okay\n" +
-		"\t//   > 0: Exactly that many matches required\n" +
-		"\t//   < 0: No match allowed (invert the condition)\n" +
-		"\tCount int \n" +
-		"\n" +
-		"\t// Min and Max are the minimum and maximum length the string may\n" +
-		"\t// have. Two zero values disables this test.\n" +
-		"\tMin, Max int \n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    Condition is a conjunction of tests against a string. Note that Contains and\n" +
-		"    Regexp conditions both use the same Count; most likely one would use either\n" +
-		"    Contains or Regexp but not both.",
-	"renderedhtml": "type RenderedHTML struct {\n" +
-		"\t// Checks to perform on the renderd HTML.\n" +
-		"\t// Sensible checks are those operating on the response body.\n" +
-		"\tChecks CheckList\n" +
-		"\n" +
-		"\t// KeepAs is the file name to store the rendered HTML to.\n" +
-		"\t// Useful for debugging purpose.\n" +
-		"\tKeepAs string \n" +
-		"}\n" +
-		"    RenderedHTML applies checks to the HTML after processing through the\n" +
-		"    headless browser PhantomJS. This processing will load external resources and\n" +
-		"    evaluate the JavaScript. The checks are run against this 'rendered' HTML\n" +
-		"    code.",
-	"logfile": "type Logfile struct {\n" +
-		"\t// Path is the file system path to the logfile.\n" +
-		"\tPath string\n" +
-		"\n" +
-		"\t// Condition the newly written stuff must fulfill.\n" +
-		"\tCondition \n" +
-		"\n" +
-		"\t// Disallow states what is forbidden in the written log.\n" +
-		"\tDisallow []string \n" +
-		"\n" +
-		"\t// Remote contains access data for a foreign (Unix) server which\n" +
-		"\t// is contacted via ssh.\n" +
-		"\tRemote struct {\n" +
-		"\t\t// Host is the hostname:port. A port of :22 is optional.\n" +
-		"\t\tHost string\n" +
-		"\n" +
-		"\t\t// User contains the name of the user used to make the\n" +
-		"\t\t// ssh connection to Host\n" +
-		"\t\tUser string\n" +
-		"\n" +
-		"\t\t// Password and/or Keyfile used to authenticate\n" +
-		"\t\tPassword string \n" +
-		"\t\tKeyFile  string \n" +
-		"\t} \n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    Logfile provides checks on a file (i.e. it ignores the HTTP response).\n" +
-		"\n" +
-		"    During preparation the current size of the file identified by Path is\n" +
-		"    determined. When the check executes it seeks to that position and examines\n" +
-		"    anything written to the file since the preparation of the check.\n" +
-		"\n" +
-		"    Logfile on remote (Unix) machines may be accessed via ssh (experimental).",
-	"sorted": "type Sorted struct {\n" +
-		"\t// Text is the list of text fragments to look for in the\n" +
-		"\t// response body or the normalized text content of the\n" +
-		"\t// HTML page.\n" +
-		"\tText []string\n" +
-		"\n" +
-		"\t// AllowedMisses is the number of elements of Text which may\n" +
-		"\t// not be present in the response body. The default of 0 means\n" +
-		"\t// all elements of Text must be present.\n" +
-		"\tAllowedMisses int \n" +
-		"}\n" +
-		"    Sorted checks for an ordered occurrence of items. The check Sorted could be\n" +
-		"    replaced by a Regexp based Body test without loss of functionality; Sorted\n" +
-		"    just makes the idea of \"looking for a sorted occurrence\" clearer.\n" +
-		"\n" +
-		"    If the response has a Content-Type header indicating a HTML response the\n" +
-		"    HTML will be parsed and the text content normalized as described in the\n" +
-		"    HTMLContains check.",
-	"redirectchain": "type RedirectChain struct {\n" +
-		"\t// Via contains the necessary URLs accessed during a redirect chain.\n" +
-		"\t//\n" +
-		"\t// Any URL may start with, end with or contain three dots \"...\" which\n" +
-		"\t// indicate a suffix, prefix or suffix+prefix match like in the To\n" +
-		"\t// field of Redirect.\n" +
-		"\tVia []string\n" +
-		"}\n" +
-		"    RedirectChain checks steps in a redirect chain. The check passes if all\n" +
-		"    stations in Via have been accessed in order; the actual redirect chain may\n" +
-		"    hit additional stations.\n" +
-		"\n" +
-		"    Note that this check can be used on tests with\n" +
-		"\n" +
-		"    Request.FollowRedirects = true",
-	"utf8encoded": "type UTF8Encoded struct{}\n" +
-		"    UTF8Encoded checks that the response body is valid UTF-8 without BOMs.",
 	"resilience": "type Resilience struct {\n" +
 		"\t// Methods is the space separated list of HTTP methods to check,\n" +
 		"\t// e.g. \"GET POST HEAD\". The empty value will test the original\n" +
@@ -356,149 +701,11 @@ var typeDoc = map[string]string{
 		"    This check will make a wast amount of request to the given URL including the\n" +
 		"    modifying and non-idempotent methods POST, PUT, and DELETE. Some care using\n" +
 		"    this check is advisable.",
-	"statuscode": "type StatusCode struct {\n" +
-		"\t// Expect is the value to expect, e.g. 302.\n" +
-		"\t//\n" +
-		"\t// If Expect <= 9 it matches a whole range of status codes, e.g.\n" +
-		"\t// with Expect==4 any of the 4xx status codes would fulfill this check.\n" +
-		"\tExpect int\n" +
+	"responsetime": "type ResponseTime struct {\n" +
+		"\tLower  time.Duration \n" +
+		"\tHigher time.Duration \n" +
 		"}\n" +
-		"    StatusCode checks the HTTP statuscode.",
-	"xml": "type XML struct {\n" +
-		"\t// Path is a XPath expression understood by gopkg.in/xmlpath.v2.\n" +
-		"\tPath string\n" +
-		"\n" +
-		"\t// Condition the first element addressed by Path must fulfill.\n" +
-		"\tCondition\n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    XML allows to check XML request bodies.",
-	"w3cvalidhtml": "type W3CValidHTML struct {\n" +
-		"\t// AllowedErrors is the number of allowed errors (after ignoring errors).\n" +
-		"\tAllowedErrors int \n" +
-		"\n" +
-		"\t// IgnoredErrros is a list of error messages to be ignored completely.\n" +
-		"\tIgnoredErrors []Condition \n" +
-		"}\n" +
-		"    W3CValidHTML checks for valid HTML but checking the response body via the\n" +
-		"    online checker from W3C which is very strict.",
-	"none": "type None struct {\n" +
-		"\t// Of is the list of checks to execute.\n" +
-		"\tOf CheckList\n" +
-		"}\n" +
-		"    None checks that none Of the embedded checks passes. It is the NOT of the\n" +
-		"    short circuiting boolean AND of the underlying checks. Check execution stops\n" +
-		"    once the first passing check is found. It Example (in JSON5 notation) to\n" +
-		"    check for non-occurrence of 'foo' in body:\n" +
-		"\n" +
-		"    {\n" +
-		"        Check: \"None\", Of: [\n" +
-		"            {Check: \"Body\", Contains: \"foo\"},\n" +
-		"        ]\n" +
-		"    }",
-	"htmltag": "type HTMLTag struct {\n" +
-		"\t// Selector is the CSS selector of the HTML elements.\n" +
-		"\tSelector string\n" +
-		"\n" +
-		"\t// Count determines the number of occurrences to check for:\n" +
-		"\t//     < 0: no occurrence\n" +
-		"\t//    == 0: one ore more occurrences\n" +
-		"\t//     > 0: exactly that many occurrences\n" +
-		"\tCount int \n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    HTMLTag checks for the existens of HTML elements selected by CSS selectors.",
-	"links": "type Links struct {\n" +
-		"\t// Which links to test; a space separated list of tag tag names:\n" +
-		"\t//     'a',   'link',  'img',  'script', 'video', 'audio', 'source'\n" +
-		"\t// E.g. use \"a img\" to check the href attribute of all a-tags and\n" +
-		"\t// the src attribute of all img-tags.\n" +
-		"\tWhich string\n" +
-		"\n" +
-		"\t// Head triggers HEAD requests instead of GET requests.\n" +
-		"\tHead bool \n" +
-		"\n" +
-		"\t// Concurrency determines how many of the found links are checked\n" +
-		"\t// concurrently. A zero value indicates sequential checking.\n" +
-		"\tConcurrency int \n" +
-		"\n" +
-		"\t// Timeout is the client timeout if different from main test.\n" +
-		"\tTimeout time.Duration \n" +
-		"\n" +
-		"\t// OnlyLinks and IgnoredLinks can be used to select only a subset of\n" +
-		"\t// all links.\n" +
-		"\tOnlyLinks, IgnoredLinks []Condition \n" +
-		"\n" +
-		"\t// FailMixedContent will report a failure for any mixed content, i.e.\n" +
-		"\t// resources retrieved via http for a https HTML page.\n" +
-		"\tFailMixedContent bool\n" +
-		"\n" +
-		"\t// MaxTime is the maximum duration allowed to retrieve all the linked\n" +
-		"\t// resources. A zero value means unlimited time allowed.\n" +
-		"\tMaxTime time.Duration\n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    Links checks links and references in HTML pages for availability.\n" +
-		"\n" +
-		"    It can reports mixed content as a failure by setting FailMixedContent. (See\n" +
-		"    https://w3c.github.io/webappsec-mixed-content/). Links will upgrade any\n" +
-		"    non-anchor links if the original reqesponse contains\n" +
-		"\n" +
-		"    Content-Security-Policy: upgrade-insecure-requests\n" +
-		"\n" +
-		"    in the HTTP header.",
-	"identity": "type Identity struct {\n" +
-		"\t// SHA1 is the expected hash as shown by sha1sum of the whole body.\n" +
-		"\t// E.g. 2ef7bde608ce5404e97d5f042f95f89f1c232871 for a \"Hello World!\"\n" +
-		"\t// body (no newline).\n" +
-		"\tSHA1 string\n" +
-		"}\n" +
-		"    Identity checks the value of the response body by comparing its SHA1 hash to\n" +
-		"    the expected SHA1 value.",
-	"validhtml": "type ValidHTML struct {\n" +
-		"\t// Ignore is a space separated list of issues to ignore.\n" +
-		"\t// You normaly won't skip detection of these issues as all issues\n" +
-		"\t// are fundamental flaws which are easy to fix.\n" +
-		"\tIgnore string \n" +
-		"}\n" +
-		"    ValidHTML checks for valid HTML 5; well kinda: It make sure that some common\n" +
-		"    but easy to detect fuckups are not present. The following issues are\n" +
-		"    detected:\n" +
-		"\n" +
-		"    * 'doctype':   not exactly one DOCTYPE\n" +
-		"    * 'structure': ill-formed tag nesting / tag closing\n" +
-		"    * 'uniqueids': uniqness of id attribute values\n" +
-		"    * 'lang':      ill-formed lang attributes\n" +
-		"    * 'attr':      dupplicate attributes\n" +
-		"    * 'escaping':  unescaped &, < and > characters or unknown entities\n" +
-		"    * 'label':     reference to nonexisting id in label tags\n" +
-		"    * 'url':       malformed URLs\n" +
-		"\n" +
-		"    Notes:\n" +
-		"\n" +
-		"    - HTML5 allows unescaped & in several circumstances but ValidHTML\n" +
-		"      reports all stray & as an error.\n" +
-		"    - The lang attributes are parse very lax, e.g. the non-canonical form\n" +
-		"      'de_CH' is considered valid (and equivalent to 'de-CH'). I don't\n" +
-		"      know how browser handle this.",
-	"anyone": "type AnyOne struct {\n" +
-		"\t// Of is the list of checks to execute.\n" +
-		"\tOf CheckList\n" +
-		"}\n" +
-		"    AnyOne checks that at least one Of the embedded checks passes. It is the\n" +
-		"    short circuiting boolean OR of the underlying checks. Check execution stops\n" +
-		"    once the first passing check is found. Example (in JSON5 notation) to check\n" +
-		"    status code for '202 OR 404':\n" +
-		"\n" +
-		"    {\n" +
-		"        Check: \"AnyOne\", Of: [\n" +
-		"            {Check: \"StatusCode\", Expect: 202},\n" +
-		"            {Check: \"StatusCode\", Expect: 404},\n" +
-		"        ]\n" +
-		"    }",
+		"    ResponseTime checks the response time.",
 	"screenshot": "type Screenshot struct {\n" +
 		"\t// Geometry of the screenshot in the form\n" +
 		"\t//     <width> x <height> [ + <left> + <top> [ * <zoom> ] ]\n" +
@@ -539,99 +746,6 @@ var typeDoc = map[string]string{
 		"}\n" +
 		"    Screenshot checks actual screenshots rendered via the headless browser\n" +
 		"    PhantomJS against a golden record of the expected screenshot.",
-	"noservererror": "type NoServerError struct{}\n" +
-		"    NoServerError checks the HTTP status code for not being a 5xx server error\n" +
-		"    and that the body could be read without errors or timeouts.",
-	"json": "type JSON struct {\n" +
-		"\t// Element in the flattened JSON map to apply the Condition to.\n" +
-		"\t// E.g.  \"foo.2\" in \"{foo: [4,5,6,7]}\" would be 6.\n" +
-		"\t// An empty value result in just a check for 'wellformedness' of\n" +
-		"\t// the JSON.\n" +
-		"\tElement string \n" +
-		"\n" +
-		"\t// Condition to apply to the value selected by Element.\n" +
-		"\t// If Condition is the zero value then only the existence of\n" +
-		"\t// a JSON element selected by Element is checked.\n" +
-		"\t// Note that Condition is checked against the actual value in the\n" +
-		"\t// flattened JSON map which will contain the quotation marks for\n" +
-		"\t// string values.\n" +
-		"\tCondition \n" +
-		"\n" +
-		"\t// Sep is the separator in Element when checking the Condition.\n" +
-		"\t// A zero value is equivalent to \".\"\n" +
-		"\tSep string \n" +
-		"}\n" +
-		"    JSON allow to check a single string, number, boolean or null element in a\n" +
-		"    JSON document against a Condition.\n" +
-		"\n" +
-		"    Elements of the JSON document are selected by an element selector. In the\n" +
-		"    JSON document\n" +
-		"\n" +
-		"    { \"foo\": 5, \"bar\": [ 1, \"qux\", 3 ], \"waz\": true, \"nil\": null }\n" +
-		"\n" +
-		"    the follwing element selector are present and have the shown values:\n" +
-		"\n" +
-		"    foo       5\n" +
-		"    bar.0     1\n" +
-		"    bar.1     \"qux\"\n" +
-		"    bar.2     3\n" +
-		"    waz       true\n" +
-		"    nil       null",
-	"redirect": "type Redirect struct {\n" +
-		"\t// To is matched against the Location header. It may begin with,\n" +
-		"\t// end with or contain three dots \"...\" which indicate that To should\n" +
-		"\t// match the end, the start or both ends of the Location header\n" +
-		"\t// value. (Note that only one occurrence of \"...\" is supported.\"\n" +
-		"\tTo string\n" +
-		"\n" +
-		"\t// If StatusCode is greater zero it is the required HTTP status code\n" +
-		"\t// expected in this response. If zero, the valid status codes are\n" +
-		"\t// 301 (Moved Permanently), 302 (Found), 303 (See Other) and\n" +
-		"\t// 307 (Temporary Redirect)\n" +
-		"\tStatusCode int \n" +
-		"}\n" +
-		"    Redirect checks for a singe HTTP redirection.\n" +
-		"\n" +
-		"    Note that this check cannot be used on tests with\n" +
-		"\n" +
-		"    Request.FollowRedirects = true\n" +
-		"\n" +
-		"    as Redirect checks only the final response which will not be a redirection\n" +
-		"    if redirections are followed automatically.",
-	"jsonexpr": "type JSONExpr struct {\n" +
-		"\t// Expression is a boolean gojee expression which must evaluate\n" +
-		"\t// to true for the check to pass.\n" +
-		"\tExpression string \n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    JSONExpr allows checking JSON documents via gojee expressions. See\n" +
-		"    github.com/nytlabs/gojee (or the vendored version) for details.\n" +
-		"\n" +
-		"    Consider this JSON:\n" +
-		"\n" +
-		"    { \"foo\": 5, \"bar\": [ 1, 2, 3 ] }\n" +
-		"\n" +
-		"    The follwing expression have these truth values:\n" +
-		"\n" +
-		"    .foo == 5                    true\n" +
-		"    $len(.bar) > 2               true as $len(.bar)==3\n" +
-		"    .bar[1] == 2                 true\n" +
-		"    (.foo == 9) || (.bar[0]<7)   true as .bar[0]==1\n" +
-		"    $max(.bar) == 3              true\n" +
-		"    $has(.bar, 7)                false as bar has no 7",
-	"header": "type Header struct {\n" +
-		"\t// Header is the HTTP header to check.\n" +
-		"\tHeader string\n" +
-		"\n" +
-		"\t// Condition is applied to the first header value. A zero value checks\n" +
-		"\t// for the existence of the given Header only.\n" +
-		"\tCondition \n" +
-		"\n" +
-		"\t// Absent indicates that no header Header shall be part of the response.\n" +
-		"\tAbsent bool \n" +
-		"}\n" +
-		"    Header provides a textual test of single-valued HTTP headers.",
 	"setcookie": "type SetCookie struct {\n" +
 		"\tName   string     // Name is the cookie name.\n" +
 		"\tValue  Condition  // Value is applied to the cookie value\n" +
@@ -659,256 +773,159 @@ var typeDoc = map[string]string{
 		"    SetCookie checks for cookies being properly set. Note that the Path and\n" +
 		"    Domain conditions are checked on the received Path and/or Domain and not on\n" +
 		"    the interpreted values according to RFC 6265.",
-	"deletecookie": "type DeleteCookie struct {\n" +
-		"\tName   string\n" +
-		"\tPath   string \n" +
-		"\tDomain string \n" +
-		"}\n" +
-		"    DeleteCookie checks that the HTTP response properly deletes all cookies\n" +
-		"    matching Name, Path and Domain. Path and Domain are optional in which case\n" +
-		"    all cookies with the given Name are checked for deletion.",
-	"image": "type Image struct {\n" +
-		"\t// Format is the format of the image as registered in package image.\n" +
-		"\tFormat string \n" +
-		"\n" +
-		"\t// If > 0 check width or height of image.\n" +
-		"\tWidth, Height int \n" +
-		"\n" +
-		"\t// Fingerprint is either the 16 hex digit long Block Mean Value hash or\n" +
-		"\t// the 24 hex digit long Color Histogram hash of the image.\n" +
-		"\tFingerprint string \n" +
-		"\n" +
-		"\t// Threshold is the limit up to which the received image may differ\n" +
-		"\t// from the given BMV or ColorHist fingerprint.\n" +
-		"\tThreshold float64 \n" +
-		"}\n" +
-		"    Image checks image format, size and fingerprint. As usual a zero value of a\n" +
-		"    field skips the check of that property. Image fingerprinting is done via\n" +
-		"    github.com/vdobler/ht/fingerprint. Only one of BMV or ColorHist should be\n" +
-		"    used as there is just one threshold.",
-	"latency": "type Latency struct {\n" +
-		"\t// N is the number if request to measure. It should be much larger\n" +
-		"\t// than Concurrent. Default is 50.\n" +
-		"\tN int \n" +
-		"\n" +
-		"\t// Concurrent is the number of concurrent requests in flight.\n" +
-		"\t// Defaults to 2.\n" +
-		"\tConcurrent int \n" +
-		"\n" +
-		"\t// Limits is a string of the following form:\n" +
-		"\t//    \"50% ≤ 150ms; 80% ≤ 200ms; 95% ≤ 250ms; 0.9995 ≤ 0.9s\"\n" +
-		"\t// The limits above would require the median of the response\n" +
-		"\t// times to be <= 150 ms and would allow only 1 request in 2000 to\n" +
-		"\t// exced 900ms.\n" +
-		"\t// Note that it must be the ≤ sign (U+2264), a plain < or a <=\n" +
-		"\t// is not recognized.\n" +
-		"\tLimits string \n" +
-		"\n" +
-		"\t// IndividualSessions tries to run the concurrent requests in\n" +
-		"\t// individual sessions: A new one for each of the Concurrent many\n" +
-		"\t// requests (not N many sessions).\n" +
-		"\t// This is done by using a fresh cookiejar so it won't work if the\n" +
-		"\t// request requires prior login.\n" +
-		"\tIndividualSessions bool \n" +
-		"\n" +
-		"\t// If SkipChecks is true no checks are performed i.e. only the\n" +
-		"\t// requests are executed.\n" +
-		"\tSkipChecks bool \n" +
-		"\n" +
-		"\t// DumpTo is the filename where the latencies are reported.\n" +
-		"\t// The special values \"stdout\" and \"stderr\" are recognized.\n" +
-		"\tDumpTo string \n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    Latency provides checks against percentils of the response time latency.",
-	"body": "type Body Condition\n" +
-		"    Body provides simple condition checks on the response body.",
-	"finalurl": "type FinalURL Condition\n" +
-		"    FinalURL checks the last URL after following all redirects. This check is\n" +
-		"    useful only for tests with Request.FollowRedirects=true",
-	"htmlcontains": "type HTMLContains struct {\n" +
-		"\t// Selector is the CSS selector of the HTML elements.\n" +
-		"\tSelector string\n" +
-		"\n" +
-		"\t// Text contains the expected plain text content of the HTML elements\n" +
-		"\t// selected through the given selector.\n" +
-		"\tText []string \n" +
-		"\n" +
-		"\t// Raw turns of white space normalization and will check the unprocessed\n" +
-		"\t// text content.\n" +
-		"\tRaw bool \n" +
-		"\n" +
-		"\t// Complete makes sure that no excess HTML elements are found:\n" +
-		"\t// If true the len(Text) must be equal to the number of HTML elements\n" +
-		"\t// selected for the check to succeed.\n" +
-		"\tComplete bool \n" +
-		"\n" +
-		"\t// InOrder makes the check fail if the selected HTML elements have a\n" +
-		"\t// different order than given in Text.\n" +
-		"\tInOrder bool \n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    HTMLContains checks the text content (and optionally the order) of HTML\n" +
-		"    elements selected by a CSS rule.\n" +
-		"\n" +
-		"    The text content found in the HTML document is normalized by roughly the\n" +
-		"    following procedure:\n" +
-		"\n" +
-		"    1.  Newlines are inserted around HTML block elements\n" +
-		"        (i.e. any non-inline element)\n" +
-		"    2.  Newlines and tabs are replaced by spaces.\n" +
-		"    3.  Multiple spaces are replaced by one space.\n" +
-		"    4.  Leading and trailing spaces are trimmed of.\n" +
-		"\n" +
-		"    As an example consider the following HTML:\n" +
-		"\n" +
-		"    <html><body>\n" +
-		"      <ul class=\"fancy\"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>\n" +
-		"    </body></html>\n" +
-		"\n" +
-		"    The normalized text selected by a Selector of \"ul.fancy\" would be\n" +
-		"\n" +
-		"    \"One Second Three\"",
-	"customjs": "type CustomJS struct {\n" +
-		"\t// Script is JavaScript code to be evaluated.\n" +
-		"\t//\n" +
-		"\t// The script may be read from disk with the following syntax:\n" +
-		"\t//     @file:/path/to/script\n" +
-		"\tScript string \n" +
-		"\n" +
-		"\t// Has unexported fields.\n" +
-		"}\n" +
-		"    CustomJS executes the provided JavaScript.\n" +
-		"\n" +
-		"    The current Test is present in the JavaScript VM via binding the name \"Test\"\n" +
-		"    at top-level to the current Test being checked.\n" +
-		"\n" +
-		"    The Script's last value indicates success or failure:\n" +
-		"\n" +
-		"    - Success: true, 0, \"\"\n" +
-		"    - Failure: false, any number != 0, any string != \"\"\n" +
-		"\n" +
-		"    CustomJS can be useful to log an excerpt of response (or the request) via\n" +
-		"    console.log.\n" +
-		"\n" +
-		"    The JavaScript code is interpreted by otto. See the documentation at\n" +
-		"    https://godoc.org/github.com/robertkrimen/otto for details.",
-	"renderingtime": "type RenderingTime struct {\n" +
-		"\tMax time.Duration\n" +
-		"}\n" +
-		"    RenderingTime limits the maximal allowed time to render a whole HTML page.\n" +
-		"\n" +
-		"    The \"rendering time\" is the response time plus how long it takes PhantomJS\n" +
-		"    to load all referenced assets and render the page. For obvious reason this\n" +
-		"    cannot be determined with absolute accuracy.",
-	"responsetime": "type ResponseTime struct {\n" +
-		"\tLower  time.Duration \n" +
-		"\tHigher time.Duration \n" +
-		"}\n" +
-		"    ResponseTime checks the response time.",
-	"contenttype": "type ContentType struct {\n" +
-		"\t// Is is the wanted content type. It may be abrevated, e.g.\n" +
-		"\t// \"json\" would match \"application/json\"\n" +
-		"\tIs string\n" +
-		"\n" +
-		"\t// Charset is an optional charset\n" +
-		"\tCharset string \n" +
-		"}\n" +
-		"    ContentType checks the Content-Type header.",
-	"jsextractor": "type JSExtractor struct {\n" +
-		"\t// Script is JavaScript code to be evaluated.\n" +
-		"\t//\n" +
-		"\t// The script may be read from disk with the following syntax:\n" +
-		"\t//     @file:/path/to/script\n" +
-		"\tScript string \n" +
-		"}\n" +
-		"    JSExtractor extracts arbirtary stuff via custom JavaScript code.\n" +
-		"\n" +
-		"    The current Test is present in the JavaScript VM via binding the name \"Test\"\n" +
-		"    at top-level to the current Test being checked.\n" +
-		"\n" +
-		"    The Script is evaluated and the final expression is the value extracted with\n" +
-		"    the following excpetions:\n" +
-		"\n" +
-		"    - undefined or null is treated as an error\n" +
-		"    - Objects and Arrays are treated as errors. The error message is reporteds\n" +
-		"      in the field 'errmsg' of the object or the index 0 of the array.\n" +
-		"    - Strings, Numbers and Bools are treated as properly extracted values\n" +
-		"      which are returned.\n" +
-		"    - Other types result in undefined behaviour.\n" +
-		"\n" +
-		"    The JavaScript code is interpreted by otto. See the documentation at\n" +
-		"    https://godoc.org/github.com/robertkrimen/otto for details.",
 	"setvariable": "type SetVariable struct {\n" +
 		"\t// To is the value to extract.\n" +
 		"\tTo string\n" +
 		"}\n" +
 		"    SetVariable allows to pragmatically \"extract\" a fixed value.",
-	"htmlextractor": "type HTMLExtractor struct {\n" +
-		"\t// Selector is the CSS selector of an element, e.g.\n" +
-		"\t//     head meta[name=\"_csrf\"]   or\n" +
-		"\t//     form#login input[name=\"tok\"]\n" +
-		"\t//     div.token span\n" +
-		"\tSelector string\n" +
+	"sorted": "type Sorted struct {\n" +
+		"\t// Text is the list of text fragments to look for in the\n" +
+		"\t// response body or the normalized text content of the\n" +
+		"\t// HTML page.\n" +
+		"\tText []string\n" +
 		"\n" +
-		"\t// Attribute is the name of the attribute from which the\n" +
-		"\t// value should be extracted.  The magic value \"~text~\" refers to the\n" +
-		"\t// normalized text content of the element and ~rawtext~ to the raw\n" +
-		"\t// text content.\n" +
-		"\t// E.g. in the examples above the following should be sensible:\n" +
-		"\t//     content\n" +
-		"\t//     value\n" +
-		"\t//     ~text~\n" +
-		"\tAttribute string\n" +
+		"\t// AllowedMisses is the number of elements of Text which may\n" +
+		"\t// not be present in the response body. The default of 0 means\n" +
+		"\t// all elements of Text must be present.\n" +
+		"\tAllowedMisses int \n" +
 		"}\n" +
-		"    HTMLExtractor allows to extract data from an executed Test. It supports\n" +
-		"    extracting HTML attribute values and HTML text node values. Examples for\n" +
-		"    CSRF token in the HTML:\n" +
+		"    Sorted checks for an ordered occurrence of items. The check Sorted could be\n" +
+		"    replaced by a Regexp based Body test without loss of functionality; Sorted\n" +
+		"    just makes the idea of \"looking for a sorted occurrence\" clearer.\n" +
 		"\n" +
-		"    <meta name=\"_csrf\" content=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\" />\n" +
-		"    <input type=\"hidden\" name=\"_csrf\" value=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\"/>",
-	"bodyextractor": "type BodyExtractor struct {\n" +
-		"\t// Regexp is the regular expression to look for in the body.\n" +
-		"\tRegexp string\n" +
-		"\n" +
-		"\t// SubMatch selects which submatch (capturing group) of Regexp shall\n" +
-		"\t// be returned. A 0 value indicates the whole match.\n" +
-		"\tSubmatch int \n" +
+		"    If the response has a Content-Type header indicating a HTML response the\n" +
+		"    HTML will be parsed and the text content normalized as described in the\n" +
+		"    HTMLContains check.",
+	"statuscode": "type StatusCode struct {\n" +
+		"\t// Expect is the value to expect, e.g. 302.\n" +
+		"\t//\n" +
+		"\t// If Expect <= 9 it matches a whole range of status codes, e.g.\n" +
+		"\t// with Expect==4 any of the 4xx status codes would fulfill this check.\n" +
+		"\tExpect int\n" +
 		"}\n" +
-		"    BodyExtractor extracts a value from the uninterpreted response body via a\n" +
-		"    regular expression.",
-	"jsonextractor": "type JSONExtractor struct {\n" +
-		"\t// Element in the flattened JSON map to extract.\n" +
-		"\tElement string \n" +
+		"    StatusCode checks the HTTP statuscode.",
+	"test": "type Test struct {\n" +
+		"\tName        string\n" +
+		"\tDescription string \n" +
 		"\n" +
-		"\t// Sep is the separator in Path.\n" +
-		"\t// A zero value is equivalent to \".\"\n" +
-		"\tSep string \n" +
-		"}\n" +
-		"    JSONExtractor extracts a value from a JSON response body. It uses\n" +
-		"    github.com/nytlabs/gojsonexplode to flatten the JSON file for easier access.\n" +
-		"    Only the lowest level of elements may be accessed: In the JSON {\"c\":[1,2,3]}\n" +
-		"    \"c\" is not available, but c.2 is and equals 3. JSON null values are\n" +
-		"    extracted as the empty string i.e. null and \"\" are indistinguashable.\n" +
+		"\t// Request is the HTTP request.\n" +
+		"\tRequest Request\n" +
 		"\n" +
-		"    Note that JSONExtractor behaves differently than the JSON check:\n" +
-		"    JSONExctractor strips quotes from strings if the string is not empty.",
-	"cookieextractor": "type CookieExtractor struct {\n" +
-		"\tName string // Name is the name of the cookie.\n" +
-		"}\n" +
-		"    CookieExtractor extracts the value of a cookie received in a Set-Cookie\n" +
-		"    header. The value of the first cookie with the given name is extracted.",
-	"rawtest": "type RawTest struct {\n" +
-		"\t*File\n" +
-		"\tMixins    []*Mixin          // Mixins of this test.\n" +
-		"\tVariables map[string]string // Variables are the defaults of the variables.\n" +
+		"\t// Checks contains all checks to perform on the response to the HTTP request.\n" +
+		"\tChecks CheckList\n" +
+		"\n" +
+		"\t// Execution controls the test execution\n" +
+		"\tExecution Execution \n" +
+		"\n" +
+		"\t// Jar is the cookie jar to use\n" +
+		"\tJar *cookiejar.Jar \n" +
+		"\n" +
+		"\t// Variables contains name/value-pairs used for variable substitution\n" +
+		"\t// in files read in, e.g. for Request.Body = \"@vfile:/path/to/file\".\n" +
+		"\tVariables map[string]string \n" +
+		"\n" +
+		"\t// The following results are filled during Run.\n" +
+		"\t// This should be collected into something like struct TestResult{...}.\n" +
+		"\tResponse     Response      \n" +
+		"\tStatus       Status        \n" +
+		"\tStarted      time.Time     \n" +
+		"\tError        error         \n" +
+		"\tDuration     time.Duration \n" +
+		"\tFullDuration time.Duration \n" +
+		"\tTries        int           \n" +
+		"\tCheckResults []CheckResult  // The individual checks.\n" +
+		"\tReporting    struct {\n" +
+		"\t\tSeqNo     string\n" +
+		"\t\tFilename  string\n" +
+		"\t\tExtension string\n" +
+		"\t} \n" +
+		"\n" +
+		"\t// VarEx may be used to popultate variables from the response. TODO: Rename.\n" +
+		"\tVarEx ExtractorMap // map[string]Extractor \n" +
+		"\n" +
+		"\t// ExValues contains the result of the extractions.\n" +
+		"\tExValues map[string]Extraction \n" +
+		"\n" +
+		"\t// Log is the logger to use\n" +
+		"\tLog *log.Logger\n" +
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
-		"    RawTest is a raw for of a test as read from disk with its mixins and its\n" +
-		"    variables.",
+		"    Test is a single logical test which does one HTTP request and checks a\n" +
+		"    number of Checks on the received Response.",
+	"utf8encoded": "type UTF8Encoded struct{}\n" +
+		"    UTF8Encoded checks that the response body is valid UTF-8 without BOMs.",
+	"validhtml": "type ValidHTML struct {\n" +
+		"\t// Ignore is a space separated list of issues to ignore.\n" +
+		"\t// You normaly won't skip detection of these issues as all issues\n" +
+		"\t// are fundamental flaws which are easy to fix.\n" +
+		"\tIgnore string \n" +
+		"}\n" +
+		"    ValidHTML checks for valid HTML 5; well kinda: It make sure that some common\n" +
+		"    but easy to detect fuckups are not present. The following issues are\n" +
+		"    detected:\n" +
+		"\n" +
+		"    * 'doctype':   not exactly one DOCTYPE\n" +
+		"    * 'structure': ill-formed tag nesting / tag closing\n" +
+		"    * 'uniqueids': uniqness of id attribute values\n" +
+		"    * 'lang':      ill-formed lang attributes\n" +
+		"    * 'attr':      dupplicate attributes\n" +
+		"    * 'escaping':  unescaped &, < and > characters or unknown entities\n" +
+		"    * 'label':     reference to nonexisting id in label tags\n" +
+		"    * 'url':       malformed URLs\n" +
+		"\n" +
+		"    Notes:\n" +
+		"\n" +
+		"    - HTML5 allows unescaped & in several circumstances but ValidHTML\n" +
+		"      reports all stray & as an error.\n" +
+		"    - The lang attributes are parse very lax, e.g. the non-canonical form\n" +
+		"      'de_CH' is considered valid (and equivalent to 'de-CH'). I don't\n" +
+		"      know how browser handle this.",
+	"w3cvalidhtml": "type W3CValidHTML struct {\n" +
+		"\t// AllowedErrors is the number of allowed errors (after ignoring errors).\n" +
+		"\tAllowedErrors int \n" +
+		"\n" +
+		"\t// IgnoredErrros is a list of error messages to be ignored completely.\n" +
+		"\tIgnoredErrors []Condition \n" +
+		"}\n" +
+		"    W3CValidHTML checks for valid HTML but checking the response body via the\n" +
+		"    online checker from W3C which is very strict.",
+	"xml": "type XML struct {\n" +
+		"\t// Path is a XPath expression understood by gopkg.in/xmlpath.v2.\n" +
+		"\tPath string\n" +
+		"\n" +
+		"\t// Condition the first element addressed by Path must fulfill.\n" +
+		"\tCondition\n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    XML allows to check XML request bodies.",
+	"rawelement": "type RawElement struct {\n" +
+		"\tFile      string\n" +
+		"\tVariables map[string]string\n" +
+		"\n" +
+		"\tTest map[string]interface{}\n" +
+		"}\n" +
+		"    RawElement represents one test in a RawSuite.",
+	"rawloadtest": "type RawLoadTest struct {\n" +
+		"\t*File\n" +
+		"\tName        string\n" +
+		"\tDescription string\n" +
+		"\tScenarios   []RawScenario\n" +
+		"\tVariables   map[string]string\n" +
+		"}\n" +
+		"    RawLoadTest as read from disk.",
+	"rawscenario": "type RawScenario struct {\n" +
+		"\tName       string            // Name of this Scenario\n" +
+		"\tFile       string            // File is the RawSuite to use as scenario\n" +
+		"\tPercentage int               // Percantage this scenario contributes to the load test.\n" +
+		"\tMaxThreads int               // MaxThreads to use for this scenario. 0 means unlimited.\n" +
+		"\tVariables  map[string]string // Variables used.\n" +
+		"\tOmitChecks bool              // OmitChecks in the tests.\n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    RawScenario represents a scenario in a load test.",
 	"rawsuite": "type RawSuite struct {\n" +
 		"\t*File\n" +
 		"\tName, Description     string\n" +
@@ -921,30 +938,13 @@ var typeDoc = map[string]string{
 		"\t// Has unexported fields.\n" +
 		"}\n" +
 		"    RawSuite",
-	"rawelement": "type RawElement struct {\n" +
-		"\tFile      string\n" +
-		"\tVariables map[string]string\n" +
-		"\n" +
-		"\tTest map[string]interface{}\n" +
-		"}\n" +
-		"    RawElement represents one test in a RawSuite.",
-	"rawscenario": "type RawScenario struct {\n" +
-		"\tName       string            // Name of this Scenario\n" +
-		"\tFile       string            // File is the RawSuite to use as scenario\n" +
-		"\tPercentage int               // Percantage this scenario contributes to the load test.\n" +
-		"\tMaxThreads int               // MaxThreads to use for this scenario. 0 means unlimited.\n" +
-		"\tVariables  map[string]string // Variables used.\n" +
-		"\tOmitChecks bool              // OmitChecks in the tests.\n" +
+	"rawtest": "type RawTest struct {\n" +
+		"\t*File\n" +
+		"\tMixins    []*Mixin          // Mixins of this test.\n" +
+		"\tVariables map[string]string // Variables are the defaults of the variables.\n" +
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
-		"    RawScenario represents a scenario in a load test.",
-	"rawloadtest": "type RawLoadTest struct {\n" +
-		"\t*File\n" +
-		"\tName        string\n" +
-		"\tDescription string\n" +
-		"\tScenarios   []RawScenario\n" +
-		"\tVariables   map[string]string\n" +
-		"}\n" +
-		"    RawLoadTest as read from disk.",
+		"    RawTest is a raw for of a test as read from disk with its mixins and its\n" +
+		"    variables.",
 }

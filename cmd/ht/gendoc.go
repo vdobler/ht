@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/vdobler/ht/ht"
@@ -45,6 +46,7 @@ func allTypes() []string {
 		t = append(t, "github.com/vdobler/ht/suite."+name)
 	}
 
+	sort.Strings(t)
 	return t
 }
 
