@@ -10,6 +10,10 @@ var jr = Response{BodyStr: `{"foo": 5, "bar": [1,2,3]}`}
 var ar = Response{BodyStr: `["jo nesbo",["jo nesbo","jo nesbo harry hole","jo nesbo sohn","jo nesbo koma","jo nesbo hörbuch","jo nesbo headhunter","jo nesbo pupspulver","jo nesbo leopard","jo nesbo schneemann","jo nesbo the son"],[{"nodes":[{"name":"Bücher","alias":"stripbooks"},{"name":"Trade-In","alias":"tradein-aps"},{"name":"Kindle-Shop","alias":"digital-text"}]},{}],[]]`}
 var jre = Response{BodyStr: `{"foo": 5, "bar": [1,"qux",3], "waz": true, "nil": null, "uuid": "ad09b43c-6538-11e6-8b77-86f30ca893d3"}`}
 var jrx = Response{BodyStr: `{"foo": 5, "blub...`}
+var jrs = Response{BodyStr: `"foo"`}
+var jri = Response{BodyStr: `123`}
+var jrf = Response{BodyStr: `45.67`}
+var jrm = Response{BodyStr: `"{\"foo\":5,\"bar\":[1,2,3]}"`} // "modern JSON"
 
 var jsonExpressionTests = []TC{
 	{jr, &JSONExpr{Expression: "(.foo == 5) && ($len(.bar)==3) && (.bar[1]==2)"}, nil},
@@ -54,6 +58,17 @@ var jsonConditionTests = []TC{
 
 	{jre, &JSON{}, nil},
 	{jrx, &JSON{}, someError},
+
+	{jri, &JSON{Element: ".", Condition: Condition{Equals: "123"}}, nil},
+	{jrf, &JSON{Element: ".", Condition: Condition{Equals: "45.67"}}, nil},
+	{jrs, &JSON{Element: ".", Condition: Condition{Contains: `foo`}}, nil},
+
+	{jrm, &JSON{Element: ".",
+		Embedded: &JSON{Element: "foo", Condition: Condition{Equals: "5"}}},
+		nil},
+	{jrm, &JSON{Element: ".",
+		Embedded: &JSON{Element: "bar.1", Condition: Condition{Equals: "2"}}},
+		nil},
 }
 
 func TestJSONCondition(t *testing.T) {

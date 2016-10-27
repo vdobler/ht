@@ -112,7 +112,7 @@ type JSON struct {
 	// E.g.  "foo.2" in "{foo: [4,5,6,7]}" would be 6.
 	// An empty value result in just a check for 'wellformedness' of
 	// the JSON.
-	Element string `json:",omitempty"`
+	Element string
 
 	// Condition to apply to the value selected by Element.
 	// If Condition is the zero value then only the existence of
@@ -120,7 +120,13 @@ type JSON struct {
 	// Note that Condition is checked against the actual value in the
 	// flattened JSON map which will contain the quotation marks for
 	// string values.
-	Condition `json:",omitempty"`
+	Condition
+
+	// Embeded is a JSON check applied to the value selected by
+	// Element. Useful when JSON contains embedded, quoted JSON as
+	// a string and checking via Condition is not practical.
+	// (It seems this nested JSON is common nowadays. I'm getting old.)
+	Embedded *JSON
 
 	// Sep is the separator in Element when checking the Condition.
 	// A zero value is equivalent to "."
