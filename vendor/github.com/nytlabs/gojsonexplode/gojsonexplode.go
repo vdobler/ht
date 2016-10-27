@@ -5,6 +5,7 @@ package gojsonexplode
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 )
 
@@ -109,7 +110,7 @@ func explodeMap(m map[string]interface{}, parent string, delimiter string) (map[
 // exploded/flattened json byte array
 func Explodejson(b []byte, d string) ([]byte, error) {
 	var input interface{}
-	var exploded map[string]interface{}
+	var exploded map[string]interface{} = make(map[string]interface{})
 	var out []byte
 	var err error
 	err = json.Unmarshal(b, &input)
@@ -127,8 +128,17 @@ func Explodejson(b []byte, d string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+	case string:
+		exploded[d] = t
+	case int:
+		exploded[d] = t
+	case float64:
+		exploded[d] = t
+	case bool:
+		exploded[d] = t
 	default:
 		// How did we get here? It is impossible!!
+		fmt.Printf("%s %#v\n", t, input)
 		return nil, errors.New("Possible error in JSON")
 	}
 	out, err = json.Marshal(exploded)
