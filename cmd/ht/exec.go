@@ -168,7 +168,7 @@ func saveOutcome(outcome []*suite.Suite) {
 	}
 
 	fmt.Println()
-	fmt.Printf("Total %d,  Passed %d, Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
+	fmt.Printf("Total %d,  Passed %d,  Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
 		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
 
 	switch overallStatus {
