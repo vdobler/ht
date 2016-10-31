@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	hjson "github.com/hjson/hjson-go"
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/populate"
 	"github.com/vdobler/ht/suite"
 )
