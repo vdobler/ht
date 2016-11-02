@@ -9,6 +9,7 @@ package ht
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/nytlabs/gojee"
 	"github.com/nytlabs/gojsonexplode"
@@ -134,14 +135,22 @@ type JSON struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (c *JSON) Prepare() (err error) { return c.Compile() }
+func (c *JSON) Prepare() error {
+	err := c.Compile()
+	if err != nil {
+		return err
+	}
+	if c.Embedded != nil {
+		return c.Embedded.Prepare()
+	}
+	return nil
+}
 
 // Execute implements Check's Execute method.
 func (c *JSON) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return ErrBadBody
 	}
-
 	sep := "."
 	if c.Sep != "" {
 		sep = c.Sep
@@ -157,18 +166,30 @@ func (c *JSON) Execute(t *Test) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse exploded JSON: %s", err.Error())
 	}
-
-	if c.Element == "" {
+	if c.Element == "" && c.Embedded == nil {
 		return nil // JSON was welformed, no further checks.
 	}
 
 	val, ok := flat[c.Element]
 	if !ok {
-		return ErrNotFound
+		return fmt.Errorf("element %s not found", c.Element)
 	}
-	if val == nil {
-		return c.Fulfilled("null")
+	sval := "null"
+	if val != nil {
+		sval = string(*val)
 	}
 
-	return c.FulfilledBytes([]byte(*val))
+	if c.Embedded != nil {
+		unquoted, err := strconv.Unquote(sval)
+		if err != nil {
+			return fmt.Errorf("element %s: %s", c.Element, err)
+		}
+		etest := &Test{Response: Response{BodyStr: unquoted}}
+		eerr := c.Embedded.Execute(etest)
+		if eerr != nil {
+			return fmt.Errorf("embedded: %s", eerr)
+		}
+	}
+
+	return c.Fulfilled(sval)
 }

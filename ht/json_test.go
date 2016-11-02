@@ -4,7 +4,10 @@
 
 package ht
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 var jr = Response{BodyStr: `{"foo": 5, "bar": [1,2,3]}`}
 var ar = Response{BodyStr: `["jo nesbo",["jo nesbo","jo nesbo harry hole","jo nesbo sohn","jo nesbo koma","jo nesbo hörbuch","jo nesbo headhunter","jo nesbo pupspulver","jo nesbo leopard","jo nesbo schneemann","jo nesbo the son"],[{"nodes":[{"name":"Bücher","alias":"stripbooks"},{"name":"Trade-In","alias":"tradein-aps"},{"name":"Kindle-Shop","alias":"digital-text"}]},{}],[]]`}
@@ -40,10 +43,11 @@ var jsonConditionTests = []TC{
 	{jr, &JSON{Element: "bar.2"}, nil},
 	{jr, &JSON{Element: "bar#1", Sep: "#", Condition: Condition{Equals: "2"}}, nil},
 	{jr, &JSON{Element: "foo", Condition: Condition{Equals: "bar"}}, someError},
-	{jr, &JSON{Element: "bar.3"}, ErrNotFound},
-	{jr, &JSON{Element: "bar.3", Condition: Condition{Equals: "2"}}, ErrNotFound},
-	{jr, &JSON{Element: "foo.wuz", Condition: Condition{Equals: "bar"}}, ErrNotFound},
-	{jr, &JSON{Element: "qux", Condition: Condition{Equals: "bar"}}, ErrNotFound},
+	{jr, &JSON{Element: "bar.3"}, fmt.Errorf("element bar.3 not found")},
+	{jr, &JSON{Element: "bar.3", Condition: Condition{Equals: "2"}}, someError},
+	{jr, &JSON{Element: "foo.wuz", Condition: Condition{Equals: "bar"}}, someError},
+	{jr, &JSON{Element: "qux", Condition: Condition{Equals: "bar"}},
+		fmt.Errorf("element qux not found")},
 
 	{ar, &JSON{Element: "0", Condition: Condition{Equals: `"jo nesbo"`}}, nil},
 	{ar, &JSON{Element: "1.4", Condition: Condition{Contains: `jo nesbo`}}, nil},
@@ -69,6 +73,9 @@ var jsonConditionTests = []TC{
 	{jrm, &JSON{Element: ".",
 		Embedded: &JSON{Element: "bar.1", Condition: Condition{Equals: "2"}}},
 		nil},
+	{jrm, &JSON{Element: ".",
+		Embedded: &JSON{Element: "bar.1", Condition: Condition{Equals: "XX"}}},
+		someError},
 }
 
 func TestJSONCondition(t *testing.T) {
