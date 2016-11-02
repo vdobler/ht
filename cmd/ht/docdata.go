@@ -291,7 +291,7 @@ var typeDoc = map[string]string{
 		"\t// E.g.  \"foo.2\" in \"{foo: [4,5,6,7]}\" would be 6.\n" +
 		"\t// An empty value result in just a check for 'wellformedness' of\n" +
 		"\t// the JSON.\n" +
-		"\tElement string \n" +
+		"\tElement string\n" +
 		"\n" +
 		"\t// Condition to apply to the value selected by Element.\n" +
 		"\t// If Condition is the zero value then only the existence of\n" +
@@ -299,7 +299,13 @@ var typeDoc = map[string]string{
 		"\t// Note that Condition is checked against the actual value in the\n" +
 		"\t// flattened JSON map which will contain the quotation marks for\n" +
 		"\t// string values.\n" +
-		"\tCondition \n" +
+		"\tCondition\n" +
+		"\n" +
+		"\t// Embeded is a JSON check applied to the value selected by\n" +
+		"\t// Element. Useful when JSON contains embedded, quoted JSON as\n" +
+		"\t// a string and checking via Condition is not practical.\n" +
+		"\t// (It seems this nested JSON is common nowadays. I'm getting old.)\n" +
+		"\tEmbedded *JSON\n" +
 		"\n" +
 		"\t// Sep is the separator in Element when checking the Condition.\n" +
 		"\t// A zero value is equivalent to \".\"\n" +
@@ -937,7 +943,7 @@ var typeDoc = map[string]string{
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
-		"    RawSuite",
+		"    RawSuite represents a suite as represented on disk as a HJSON file.",
 	"rawtest": "type RawTest struct {\n" +
 		"\t*File\n" +
 		"\tMixins    []*Mixin          // Mixins of this test.\n" +
