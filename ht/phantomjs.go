@@ -46,6 +46,12 @@ const debugRenderingTime = false
 
 // Screenshot checks actual screenshots rendered via the headless browser
 // PhantomJS against a golden record of the expected screenshot.
+//
+// Note that PhantomJS will make additional request to fetch all linked
+// resources in the HTML page. If the original request has BasicAuthUser
+// (and BasicAuthPass) set this credentials will be sent to all linked
+// resources of the page. Depending on where these resources are located
+// this might be a security issue.
 type Screenshot struct {
 	// Geometry of the screenshot in the form
 	//     <width> x <height> [ + <left> + <top> [ * <zoom> ] ]
@@ -206,6 +212,7 @@ page.onLoadFinished = function(status){
     }
     phantom.exit();
 };
+%s
 page.setContent(theContent, theURL);
 `
 
@@ -237,6 +244,13 @@ func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 			c.HttpOnly, c.Secure, expires)
 	}
 
+	basicAuth := ""
+	if t.Request.BasicAuthUser != "" {
+		basicAuth = fmt.Sprintf(
+			"page.customHeaders={'Authorization': 'Basic '+btoa(%q)};",
+			t.Request.BasicAuthUser+":"+t.Request.BasicAuthPass)
+	}
+
 	_, err := fmt.Fprintf(file, screenshotScript,
 		t.Name, 15000,
 		t.Response.BodyStr, t.Request.Request.URL.String(),
@@ -246,6 +260,7 @@ func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 		cc,
 		s.Script,
 		out,
+		basicAuth,
 	)
 	return err
 }

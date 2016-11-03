@@ -173,13 +173,20 @@ func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, screenshotGreetHTML, name)
 	case "/screenshot/css":
-		user := "white"
+		color := "white"
 		if cookie, err := r.Cookie("user"); err == nil {
-			user = cookie.Value
+			color = cookie.Value
+			if cookie.Value == "rt" {
+				color = "olive"
+				ban, bap, ok := r.BasicAuth()
+				if ok && ban == "rt" && bap == "secret" {
+					color = "lime"
+				}
+			}
 		}
 		w.Header().Set("Content-Type", "text/css")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, screenshotCSS, user)
+		fmt.Fprintf(w, screenshotCSS, color)
 	case "/screenshot/welcome":
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
@@ -234,6 +241,43 @@ var passingScreenshotTests = []*Test{
 				Geometry: "96x32",
 				Expected: "./testdata/greet-red.png",
 				Actual:   "./testdata/greet-red_actual.png",
+			},
+		},
+	},
+
+	// Log out again, clear cookie.
+	{Request: Request{URL: "/login?user"}},
+
+	// User rt's background depends on basic auth:
+	// Without proper basic auth background is olive.
+	{Request: Request{URL: "/login?user=rt"}},
+	{
+		Name:    "Greet RT user (olive bg)",
+		Request: Request{URL: "/greet?name=rt"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry: "96x32",
+				Expected: "./testdata/greet-rt.png",
+				Actual:   "./testdata/greet-rt_actual.png",
+			},
+		},
+	},
+
+	// User rt's background depends on basic auth:
+	// With proper basic auth background is lime.
+	{Request: Request{URL: "/login?user=rt"}},
+	{
+		Name: "Greet RT user (lime bg)",
+		Request: Request{
+			URL:           "/greet?name=rt",
+			BasicAuthUser: "rt",
+			BasicAuthPass: "secret",
+		},
+		Checks: []Check{
+			&Screenshot{
+				Geometry: "96x32",
+				Expected: "./testdata/greet-rt-auth.png",
+				Actual:   "./testdata/greet-rt-auth_actual.png",
 			},
 		},
 	},
@@ -337,6 +381,23 @@ var failingScreenshotTests = []*Test{
 				Geometry:          "96x32",
 				Expected:          "./testdata/greet-anon.png",
 				AllowedDifference: 20, // 51 is the hard limit
+			},
+		},
+	},
+
+	{Request: Request{URL: "/login?user=rt"}},
+	{
+		Name: "Greet RT user with bad authentication",
+		Request: Request{
+			URL:           "/greet?name=rt",
+			BasicAuthUser: "rt",
+			BasicAuthPass: "wrong",
+		},
+		Checks: []Check{
+			&Screenshot{
+				Geometry: "96x32",
+				Expected: "./testdata/greet-rt-auth.png",
+				Actual:   "./testdata/greet-rt-auth_bad.png",
 			},
 		},
 	},
