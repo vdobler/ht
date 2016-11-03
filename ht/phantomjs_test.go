@@ -49,14 +49,14 @@ func TestParseGeometry(t *testing.T) {
 			t.Errorf("%d. %q: Missing error", i, tc.s)
 			continue
 		}
-		if g.width != tc.width || g.height != tc.height {
-			t.Errorf("%d. %q: Wrong size, got %dx%d", i, tc.s, g.width, g.height)
+		if g.Width != tc.width || g.Height != tc.height {
+			t.Errorf("%d. %q: Wrong size, got %dx%d", i, tc.s, g.Width, g.Height)
 		}
-		if g.top != tc.top || g.left != tc.left {
-			t.Errorf("%d. %q: Wrong offset, got +%d+%d", i, tc.s, g.left, g.top)
+		if g.Top != tc.top || g.Left != tc.left {
+			t.Errorf("%d. %q: Wrong offset, got +%d+%d", i, tc.s, g.Left, g.Top)
 		}
-		if g.zoom != tc.zoom {
-			t.Errorf("%d. %q: Wrong zoom, go %d", i, tc.s, g.zoom)
+		if g.Zoom != tc.zoom {
+			t.Errorf("%d. %q: Wrong zoom, go %d", i, tc.s, g.Zoom)
 		}
 
 	}

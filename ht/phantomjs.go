@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
@@ -37,7 +38,7 @@ var PhantomJSExecutable = "phantomjs"
 // Check via sync.Once and report PhantomJS based tests as bogus if not
 // available.
 
-const debugScreenshot = false
+const debugScreenshot = true
 const debugRenderedHTML = false
 const debugRenderingTime = false
 
@@ -105,8 +106,8 @@ func (s *Screenshot) Prepare() error {
 	if err != nil {
 		return err
 	}
-	if s.geom.zoom == 0 {
-		s.geom.zoom = 100
+	if s.geom.Zoom == 0 {
+		s.geom.Zoom = 100
 	}
 
 	// Parse IgnoredRegion
@@ -115,7 +116,7 @@ func (s *Screenshot) Prepare() error {
 		if err != nil {
 			return err
 		}
-		r := image.Rect(geom.left, geom.top, geom.left+geom.width, geom.top+geom.height)
+		r := image.Rect(geom.Left, geom.Top, geom.Left+geom.Width, geom.Top+geom.Height)
 		s.ignored = append(s.ignored, r)
 	}
 
@@ -131,9 +132,14 @@ func (s *Screenshot) Prepare() error {
 }
 
 type geometry struct {
-	width, height int
-	left, top     int
-	zoom          int // in percent
+	Width, Height int
+	Left, Top     int
+	Zoom          int // in percent
+}
+
+// FloatZoom returns the zoom as a float between 0 and 1.
+func (g geometry) FloatZoom() float64 {
+	return float64(g.Zoom) / 100
 }
 
 // "640x480+16+32*125%"  -->  geometry
@@ -147,7 +153,7 @@ func parseGeometry(s string) (geometry, error) {
 		return geom, fmt.Errorf("malformed geometry %q", s)
 	}
 	if len(p) == 2 {
-		geom.zoom, err = strconv.Atoi(strings.Trim(p[1], " \t%"))
+		geom.Zoom, err = strconv.Atoi(strings.Trim(p[1], " \t%"))
 		if err != nil {
 			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 		}
@@ -159,13 +165,13 @@ func parseGeometry(s string) (geometry, error) {
 		return geom, fmt.Errorf("malformed geometry %q", s)
 	}
 	if len(p) == 3 {
-		geom.top, err = strconv.Atoi(strings.TrimSpace(p[2]))
+		geom.Top, err = strconv.Atoi(strings.TrimSpace(p[2]))
 		if err != nil {
 			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 		}
 	}
 	if len(p) >= 2 {
-		geom.left, err = strconv.Atoi(strings.TrimSpace(p[1]))
+		geom.Left, err = strconv.Atoi(strings.TrimSpace(p[1]))
 		if err != nil {
 			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 		}
@@ -176,11 +182,11 @@ func parseGeometry(s string) (geometry, error) {
 	if len(p) != 2 {
 		return geom, fmt.Errorf("malformed geometry %q", s)
 	}
-	geom.width, err = strconv.Atoi(strings.TrimSpace(p[0]))
+	geom.Width, err = strconv.Atoi(strings.TrimSpace(p[0]))
 	if err != nil {
 		return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 	}
-	geom.height, err = strconv.Atoi(strings.TrimSpace(p[1]))
+	geom.Height, err = strconv.Atoi(strings.TrimSpace(p[1]))
 	if err != nil {
 		return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
 	}
@@ -188,33 +194,62 @@ func parseGeometry(s string) (geometry, error) {
 	return geom, nil
 }
 
-var screenshotScript = `
-// Screenshot during test %q.
-setTimeout(function() {
-    console.log('Timeout');
-    phantom.exit();
-}, %d);
+type screenshotData struct {
+	Test          *Test
+	GlobalTimeout int
+	Geom          geometry
+	Output        string
+	Script        string
+	Cookies       []cookiejar.Entry
+}
+
+var screenshotTemplate = `
+// Screenshot during test {{printf "%q" .Test.Name}}
+
+setTimeout(function(){console.log('FAIL timeout'); phantom.exit(1);}, {{.GlobalTimeout}});
 var page = require('webpage').create();
-var theContent = %q;
-var theURL = %q;
-page.viewportSize = { width: %d, height: %d };
-page.clipRect = { top: %d, left: %d, width: %d, height: %d };
-page.zoomFactor = %.4f;
-%s
+var theURL = {{printf "%q" .Test.Request.Request.URL}};;
+var theContent = {{printf "%q" .Test.Response.BodyStr}};
+
+page.viewportSize = { width: {{.Geom.Width}}, height: {{.Geom.Height}} };
+page.clipRect = { top: {{.Geom.Top}}, left: {{.Geom.Left}}, width: {{.Geom.Width}}, height: {{.Geom.Height}} };
+page.zoomFactor = {{printf "%.4f" .Geom.FloatZoom}};
+
+{{range .Cookies}}
+phantom.addCookie({
+  'name'    : {{printf "%q" .Name}},
+  'value'   : {{printf "%q" .Value}},
+  'domain'  : {{printf "%q" .Domain}},
+  'path'    : {{printf "%q" .Path}},
+  'httponly': {{.HttpOnly}},
+  'secure'  : {{.Secure}},
+  'expires' : "{{.Expires.Format "Mon, 02 Jan 2006 15:04:05 MST"}}"
+});
+{{end}}
+
+{{with .Test.Request}}
+{{if .BasicAuthUser}}
+page.customHeaders={'Authorization': 'Basic '+btoa({{printf "%q" .BasicAuthUser}}+":"+{{printf "%q" .BasicAuthPass}})};
+{{end}}{{end}}
+
 page.onLoadFinished = function(status){
     if(status === 'success') {
         page.evaluate(function() {
-             %s
+             {{.Script}}
         });
-        page.render(%q);
+        page.render({{printf "%q" .Output}});
+        console.log('PASS');
+        phantom.exit(0);
     } else {
-        console.log('Failure');
+        console.log('FAIL loading');
+        phantom.exit(1);
     }
-    phantom.exit();
 };
-%s
+
 page.setContent(theContent, theURL);
 `
+
+var screenshotTmpl = template.Must(template.New("phantomscript").Parse(screenshotTemplate))
 
 var addCookieScript = `
 phantom.addCookie({
@@ -231,37 +266,23 @@ phantom.addCookie({
 func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 	defer file.Close() // eat error, sorry
 
-	cc := ""
+	data := screenshotData{
+		Test:          t,
+		GlobalTimeout: 15000,
+		Geom:          s.geom,
+		Output:        out,
+		Script:        s.Script,
+	}
 	for _, c := range t.allCookies() {
 		// Something is bogus here. If the domain is unset or does not
 		// start with a dot than PhantomJS will ignore it (addCookie
 		// returns flase). So it seems as if it is impossible in
 		// PhantomJS to distinguish a host-only form a domain cookie?
 		c.Domain = "." + c.Domain
-		expires := c.Expires.Format(time.RFC1123)
-		cc += fmt.Sprintf(addCookieScript,
-			c.Name, c.Value, c.Domain, c.Path,
-			c.HttpOnly, c.Secure, expires)
+		data.Cookies = append(data.Cookies, c)
 	}
+	err := screenshotTmpl.Execute(file, data)
 
-	basicAuth := ""
-	if t.Request.BasicAuthUser != "" {
-		basicAuth = fmt.Sprintf(
-			"page.customHeaders={'Authorization': 'Basic '+btoa(%q)};",
-			t.Request.BasicAuthUser+":"+t.Request.BasicAuthPass)
-	}
-
-	_, err := fmt.Fprintf(file, screenshotScript,
-		t.Name, 15000,
-		t.Response.BodyStr, t.Request.Request.URL.String(),
-		s.geom.width, s.geom.height,
-		s.geom.top, s.geom.left, s.geom.width, s.geom.height,
-		float64(s.geom.zoom)/100,
-		cc,
-		s.Script,
-		out,
-		basicAuth,
-	)
 	return err
 }
 
