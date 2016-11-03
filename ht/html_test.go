@@ -369,7 +369,7 @@ func TestHTMLLinksOkay(t *testing.T) {
 	}
 	called, err := testHTMLLinks(t, urls, 20*time.Millisecond)
 	if err != nil {
-		t.Errorf("Unexpected error: %#v", err)
+		t.Errorf("Unexpected error: %#v %s", err, err)
 	}
 	if len(called) != 5 {
 		t.Errorf("Unexpected error: %v", called)
