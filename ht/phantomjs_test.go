@@ -574,3 +574,100 @@ func TestRenderingTime(t *testing.T) {
 			test.Name, test.Status, test.Error)
 	}
 }
+
+// ----------------------------------------------------------------------------
+// Fany stuff in screenshooting
+
+var animationHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <title>Animation</title>
+</head>
+<body style="background-color: white">
+
+<h3 id="waiting"><p>Waiting...</p></h3>
+<h3 id="ready" style="display: none"><p>Ready!</p></h3>
+
+<script>
+setTimeout(function(){
+  var e = document.getElementById('waiting');
+  e.style.display = 'none';
+}, 500);
+
+setTimeout(function(){
+  var e = document.getElementById('ready');
+  e.style.display = 'block';
+}, %s);
+</script>
+
+</body>
+</html>
+`
+
+func animationHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	readyDelay := "1000" // one second
+	delay := r.FormValue("delay")
+	if delay != "" {
+		readyDelay = delay
+	}
+
+	fmt.Fprintf(w, animationHTML, readyDelay)
+}
+
+func TestFancyScreenshotPass(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(animationHandler))
+	defer ts.Close()
+
+	test := &Test{
+		Name:    "Fancy Screenshot",
+		Request: Request{URL: ts.URL},
+		Checks: []Check{
+			&Screenshot{
+				Geometry:           "128x64+0+0",
+				WaitUntilVisible:   []string{"#ready"},
+				WaitUntilInvisible: []string{"#waiting"},
+				Expected:           "./testdata/animated.png",
+				Actual:             "./testdata/animated_actual.png",
+			},
+		},
+	}
+
+	err := test.Run()
+	if err != nil {
+		t.Errorf("Unexpected error %s (%#v)", err, err)
+	}
+	if test.Status != Pass || test.Error != nil {
+		t.Errorf("Want status=Pass and nil error, got %s, %s <%T>", test.Status, err, err)
+	}
+}
+
+func TestFancyScreenshotFail(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(animationHandler))
+	defer ts.Close()
+
+	test := &Test{
+		Name:    "Fancy Screenshot",
+		Request: Request{URL: ts.URL + "?delay=6000"},
+		Checks: []Check{
+			&Screenshot{
+				Geometry:           "128x64+0+0",
+				WaitUntilVisible:   []string{"#ready"},
+				WaitUntilInvisible: []string{"#waiting"},
+				Expected:           "./testdata/animated-fail.png",
+				Actual:             "./testdata/animated-fail_actual.png",
+			},
+		},
+	}
+
+	err := test.Run()
+	if err != nil {
+		t.Errorf("Unexpected error %s (%#v)", err, err)
+	}
+	if test.Status != Fail || test.Error == nil {
+		t.Errorf("Want status=Fail and non-nil error, got %s, %s <%T>", test.Status, err, err)
+	}
+	fmt.Println("===> ", test.Error.Error())
+}

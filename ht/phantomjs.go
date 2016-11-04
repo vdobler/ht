@@ -64,6 +64,20 @@ type Screenshot struct {
 	// (unscrolled) desktop browser at 100%.
 	Geometry string `json:",omitempty"`
 
+	// WaitUntilVisible selects elements in the DOM by theri CSS selector
+	// which must be visible before rendering the screenshot.
+	WaitUntilVisible []string
+
+	// WaitUntilInvisible selects elements in the DOM by theri CSS selector
+	// which must be invisible before rendering the screenshot.
+	WaitUntilInvisible []string
+
+	// Script is JavaScript code to be evaluated after page loading but
+	// before rendering the page. You can use it e.g. to hide elements
+	// which are non-deterministic using code like:
+	//    $("#keyvisual > div.slides").css("visibility", "hidden");
+	Script string `json:",omitempty"`
+
 	// Expected is the file path of the 'golden record' image to test
 	// the actual screenshot against.
 	Expected string `json:",omitempty"`
@@ -82,12 +96,6 @@ type Screenshot struct {
 	// The entries are specify rectangles in the form of the Geometry
 	// (with ignored zoom factor).
 	IgnoreRegion []string `json:",omitempty"`
-
-	// Script is JavaScript code to be evaluated after page loading but
-	// before rendering the page. You can use it e.g. to hide elements
-	// which are non-deterministic using code like:
-	//    $("#keyvisual > div.slides").css("visibility", "hidden");
-	Script string `json:",omitempty"`
 
 	geom    geometry          // parsed Geometry
 	ignored []image.Rectangle // parsed IgnoreRegion
@@ -194,19 +202,56 @@ func parseGeometry(s string) (geometry, error) {
 	return geom, nil
 }
 
-type screenshotData struct {
+type phantomjsData struct {
 	Test          *Test
 	GlobalTimeout int
 	Geom          geometry
 	Output        string
 	Script        string
 	Cookies       []cookiejar.Entry
+	Vis, Invis    []string
+
+	ReadyCode, TimeoutCode string
 }
 
 var screenshotTemplate = `
 // Screenshot during test {{printf "%q" .Test.Name}}
 
-setTimeout(function(){console.log('FAIL timeout'); phantom.exit(1);}, {{.GlobalTimeout}});
+/**
+ * Wait until the test condition is true or a timeout occurs. Useful for
+ * waiting on a server response or for a ui change (fadeIn, etc.) to occur.
+ *
+ *  - testFx javascript condition that evaluates to a boolean,
+ *    passed in as a callback
+ *  - onReady what to do when testFx condition is fulfilled,
+ *    passed in as a callback
+ *  - onTimeout waht to do on timeout
+ */
+"use strict";
+function waitFor(testFx, onReady, onTimeout) {
+    var maxtimeOutMillis = {{.GlobalTimeout}}, 
+        start = new Date().getTime(),
+        condition = false,
+        interval = setInterval(function() {
+            if ( (new Date().getTime() - start < maxtimeOutMillis) && !condition ) {
+                // If not time-out yet and condition not yet fulfilled
+                condition = testFx();
+            } else {
+                if(!condition) {
+                    // If condition still not fulfilled (timeout but
+		    // condition is 'false')
+                    onTimeout();
+                } else {
+                    // Condition fulfilled 
+                    // Do what it's supposed to do once the condition is fulfilled
+                    onReady(); 
+                    clearInterval(interval); //< Stop this interval
+                }
+            }
+        }, 200); // repeat check every 200ms
+};
+
+setTimeout(function(){console.log('FAIL timeout'); phantom.exit(1);}, {{.GlobalTimeout}}+1000);
 var page = require('webpage').create();
 var theURL = {{printf "%q" .Test.Request.Request.URL}};;
 var theContent = {{printf "%q" .Test.Response.BodyStr}};
@@ -214,6 +259,8 @@ var theContent = {{printf "%q" .Test.Response.BodyStr}};
 page.viewportSize = { width: {{.Geom.Width}}, height: {{.Geom.Height}} };
 page.clipRect = { top: {{.Geom.Top}}, left: {{.Geom.Left}}, width: {{.Geom.Width}}, height: {{.Geom.Height}} };
 page.zoomFactor = {{printf "%.4f" .Geom.FloatZoom}};
+var system = require('system');
+page.onConsoleMessage = function(msg) { system.stdout.writeLine('console: ' + msg); };
 
 {{range .Cookies}}
 phantom.addCookie({
@@ -232,14 +279,34 @@ phantom.addCookie({
 page.customHeaders={'Authorization': 'Basic '+btoa({{printf "%q" .BasicAuthUser}}+":"+{{printf "%q" .BasicAuthPass}})};
 {{end}}{{end}}
 
+// What to do once the content is set and the page loaded:
 page.onLoadFinished = function(status){
     if(status === 'success') {
-        page.evaluate(function() {
-             {{.Script}}
-        });
-        page.render({{printf "%q" .Output}});
-        console.log('PASS');
-        phantom.exit(0);
+
+        waitFor(
+            function() { // testFx
+                return page.evaluate(function(){
+		      function isVisible(selector) {
+		          var e = document.querySelector(selector);
+		          if ( e === null ) { return false; }
+		          return e.offsetHeight > 0;
+		      };
+                      return true 
+{{range .Vis}}          && (isVisible('{{.}}')) {{end}}
+{{range .Invis}}        && !(isVisible('{{.}}')) {{end}} ;
+                });
+            }
+            ,
+            function() {  // onReady
+                {{.Script}} // optional custom code
+                {{.ReadyCode}}
+            }
+            ,
+            function() { // onTimeout
+                {{.TimeoutCode}}
+            }
+        );
+
     } else {
         console.log('FAIL loading');
         phantom.exit(1);
@@ -266,12 +333,18 @@ phantom.addCookie({
 func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 	defer file.Close() // eat error, sorry
 
-	data := screenshotData{
+	data := phantomjsData{
 		Test:          t,
-		GlobalTimeout: 15000,
+		GlobalTimeout: 5000,
 		Geom:          s.geom,
 		Output:        out,
 		Script:        s.Script,
+		Vis:           s.WaitUntilVisible,
+		Invis:         s.WaitUntilInvisible,
+
+		ReadyCode: fmt.Sprintf("page.render(%q);  console.log('PASS'); phantom.exit(0);", out),
+		// Generate screenshot even when timeout to faciliate debugging.
+		TimeoutCode: fmt.Sprintf("page.render(%q);  console.log('FAIL timeout waiting'); phantom.exit(1);", out),
 	}
 	for _, c := range t.allCookies() {
 		// Something is bogus here. If the domain is unset or does not
