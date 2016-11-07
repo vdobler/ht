@@ -343,15 +343,14 @@ func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 
 	test, err := substituted.toTest(variables)
 	if err != nil {
-		return bogus, fmt.Errorf("cannot produce Test from %s: %s", rt, err)
+		return bogus, fmt.Errorf("cannot produce Test: %s", err)
 	}
 
 	mixins := make([]*ht.Test, len(substituted.Mixins))
 	for i, rawmix := range substituted.Mixins {
 		mix, err := rawmix.toTest()
 		if err != nil {
-			return bogus, fmt.Errorf("cannot produce mixin from %s: %s",
-				rawmix.File.Name, err)
+			return bogus, fmt.Errorf("cannot produce Mixin: %s", err)
 		}
 		mixins[i] = mix
 	}
@@ -543,8 +542,8 @@ func (rs *RawSuite) Validate(variables map[string]string) error {
 	for _, rt := range rs.tests {
 		_, err := rt.ToTest(variables)
 		if err != nil {
-			fmt.Printf("invalid test %s (%s included by %s): %s\n",
-				rt.Name, rt.File.Name, rs.File.Name, err)
+			fmt.Printf("invalid test %s (included by %s): %s\n",
+				rt.File.Name, rs.File.Name, err)
 			el = append(el, err)
 		}
 	}

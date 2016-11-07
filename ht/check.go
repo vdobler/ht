@@ -148,22 +148,19 @@ func (cl *CheckList) Populate(src interface{}) error {
 
 	err := populate.Lax(&types, src)
 	if err != nil {
-		fmt.Println("!! Check type extraction failed", err)
-		return err
+		return fmt.Errorf("cannot determine type of check: %s", err)
 	}
 
 	raw := make([]map[string]interface{}, len(types))
 	srcList, ok := src.([]interface{})
 	if !ok {
-		fmt.Printf("Fuck 1 %#v\n", srcList)
-		return fmt.Errorf("Fuck1")
+		return fmt.Errorf("ht: unable to construct list of checks, cannot deserialise %T", src)
 	}
 
 	for i := range raw {
 		r, ok := srcList[i].(map[string]interface{})
 		if !ok {
-			fmt.Printf("Fuck 2 %#v\n", srcList[i])
-			return fmt.Errorf("Fuck 2")
+			return fmt.Errorf("ht: unable to construct check, cannot deserialise %T", src)
 		}
 		delete(r, "Check")
 		raw[i] = r
@@ -174,7 +171,7 @@ func (cl *CheckList) Populate(src interface{}) error {
 		checkName := t.Check
 		typ, ok := CheckRegistry[checkName]
 		if !ok {
-			return fmt.Errorf("ht: no such check %s", checkName)
+			return fmt.Errorf("no such check %s", checkName)
 		}
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
@@ -182,8 +179,8 @@ func (cl *CheckList) Populate(src interface{}) error {
 		rcheck := reflect.New(typ)
 		err = populate.Strict(rcheck.Interface(), raw[i])
 		if err != nil {
-			fmt.Println("Fuck 3", err)
-			return err
+			return fmt.Errorf("problems constructing check %d %s: %s",
+				i+1, checkName, err)
 		}
 		list[i] = rcheck.Interface().(Check)
 	}
