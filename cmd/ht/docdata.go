@@ -529,6 +529,8 @@ var typeDoc = map[string]string{
 		"\n" +
 		"    Request.FollowRedirects = true",
 	"renderedhtml": "type RenderedHTML struct {\n" +
+		"\tBrowser\n" +
+		"\n" +
 		"\t// Checks to perform on the renderd HTML.\n" +
 		"\t// Sensible checks are those operating on the response body.\n" +
 		"\tChecks CheckList\n" +
@@ -542,6 +544,8 @@ var typeDoc = map[string]string{
 		"    evaluate the JavaScript. The checks are run against this 'rendered' HTML\n" +
 		"    code.",
 	"renderingtime": "type RenderingTime struct {\n" +
+		"\tBrowser\n" +
+		"\n" +
 		"\tMax time.Duration\n" +
 		"}\n" +
 		"    RenderingTime limits the maximal allowed time to render a whole HTML page.\n" +
@@ -713,15 +717,7 @@ var typeDoc = map[string]string{
 		"}\n" +
 		"    ResponseTime checks the response time.",
 	"screenshot": "type Screenshot struct {\n" +
-		"\t// Geometry of the screenshot in the form\n" +
-		"\t//     <width> x <height> [ + <left> + <top> [ * <zoom> ] ]\n" +
-		"\t// which generates a screenshot (width x height) pixels located\n" +
-		"\t// at (left,top) while simulating a browser viewport of\n" +
-		"\t// again (width x height) at a zoom level of zoom %.\n" +
-		"\t//\n" +
-		"\t// It defaults to \"1280x720+0+0*100\" which simulates a\n" +
-		"\t// (unscrolled) desktop browser at 100%.\n" +
-		"\tGeometry string \n" +
+		"\tBrowser\n" +
 		"\n" +
 		"\t// Expected is the file path of the 'golden record' image to test\n" +
 		"\t// the actual screenshot against.\n" +
@@ -742,16 +738,16 @@ var typeDoc = map[string]string{
 		"\t// (with ignored zoom factor).\n" +
 		"\tIgnoreRegion []string \n" +
 		"\n" +
-		"\t// Script is JavaScript code to be evaluated after page loading but\n" +
-		"\t// before rendering the page. You can use it e.g. to hide elements\n" +
-		"\t// which are non-deterministic using code like:\n" +
-		"\t//    $(\"#keyvisual > div.slides\").css(\"visibility\", \"hidden\");\n" +
-		"\tScript string \n" +
-		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
 		"    Screenshot checks actual screenshots rendered via the headless browser\n" +
-		"    PhantomJS against a golden record of the expected screenshot.",
+		"    PhantomJS against a golden record of the expected screenshot.\n" +
+		"\n" +
+		"    Note that PhantomJS will make additional request to fetch all linked\n" +
+		"    resources in the HTML page. If the original request has BasicAuthUser (and\n" +
+		"    BasicAuthPass) set this credentials will be sent to all linked resources of\n" +
+		"    the page. Depending on where these resources are located this might be a\n" +
+		"    security issue.",
 	"setcookie": "type SetCookie struct {\n" +
 		"\tName   string     // Name is the cookie name.\n" +
 		"\tValue  Condition  // Value is applied to the cookie value\n" +
