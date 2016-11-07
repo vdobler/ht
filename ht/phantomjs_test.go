@@ -36,9 +36,9 @@ var geometryTests = []struct {
 	{"axb+c+d*e", 0, 0, 0, 0, 0, false},
 }
 
-func TestParseGeometry(t *testing.T) {
+func TestNewGeometry(t *testing.T) {
 	for i, tc := range geometryTests {
-		g, err := parseGeometry(tc.s)
+		g, err := newGeometry(tc.s)
 		if err != nil {
 			if tc.ok {
 				t.Errorf("%d. %q: Unexpected error %s", i, tc.s, err)
@@ -211,7 +211,7 @@ var passingScreenshotTests = []*Test{
 		Request: Request{URL: "/home"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry: "128x64+0+0",
+				Browser:  Browser{Geometry: "128x64+0+0"},
 				Expected: "./testdata/home.png",
 				Actual:   "./testdata/home_actual.png",
 			},
@@ -224,7 +224,7 @@ var passingScreenshotTests = []*Test{
 		Request: Request{URL: "/greet"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry: "96x32",
+				Browser:  Browser{Geometry: "96x32"},
 				Expected: "./testdata/greet-anon.png",
 				Actual:   "./testdata/greet-anon_actual.png",
 			},
@@ -238,7 +238,7 @@ var passingScreenshotTests = []*Test{
 		Request: Request{URL: "/greet?name=Red"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry: "96x32",
+				Browser:  Browser{Geometry: "96x32"},
 				Expected: "./testdata/greet-red.png",
 				Actual:   "./testdata/greet-red_actual.png",
 			},
@@ -256,7 +256,7 @@ var passingScreenshotTests = []*Test{
 		Request: Request{URL: "/greet?name=rt"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry: "96x32",
+				Browser:  Browser{Geometry: "96x32"},
 				Expected: "./testdata/greet-rt.png",
 				Actual:   "./testdata/greet-rt_actual.png",
 			},
@@ -275,7 +275,7 @@ var passingScreenshotTests = []*Test{
 		},
 		Checks: []Check{
 			&Screenshot{
-				Geometry: "96x32",
+				Browser:  Browser{Geometry: "96x32"},
 				Expected: "./testdata/greet-rt-auth.png",
 				Actual:   "./testdata/greet-rt-auth_actual.png",
 			},
@@ -290,8 +290,12 @@ var passingScreenshotTests = []*Test{
 		Name:    "Greet Anonymous (different sizes)",
 		Request: Request{URL: "/greet"},
 		Checks: []Check{
-			&Screenshot{Geometry: "64x16", Expected: "./testdata/greet-anon.png"},
-			&Screenshot{Geometry: "128x48", Expected: "./testdata/greet-anon.png"},
+			&Screenshot{
+				Browser:  Browser{Geometry: "64x16"},
+				Expected: "./testdata/greet-anon.png"},
+			&Screenshot{
+				Browser:  Browser{Geometry: "128x48"},
+				Expected: "./testdata/greet-anon.png"},
 		},
 	},
 
@@ -301,7 +305,7 @@ var passingScreenshotTests = []*Test{
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry:     "96x32",
+				Browser:      Browser{Geometry: "96x32"},
 				Expected:     "./testdata/greet-anon.png",
 				IgnoreRegion: []string{"30x40+57+18"},
 			},
@@ -314,7 +318,7 @@ var passingScreenshotTests = []*Test{
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry:          "96x32",
+				Browser:           Browser{Geometry: "96x32"},
 				Expected:          "./testdata/greet-anon.png",
 				AllowedDifference: 60, // 51 is the hard limit
 			},
@@ -355,7 +359,7 @@ var failingScreenshotTests = []*Test{
 		Request: Request{URL: "/home"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry: "128x64+0+0",
+				Browser:  Browser{Geometry: "128x64+0+0"},
 				Expected: "./testdata/greet-anon.png",
 			},
 		},
@@ -366,7 +370,7 @@ var failingScreenshotTests = []*Test{
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry:     "96x32",
+				Browser:      Browser{Geometry: "96x32"},
 				Expected:     "./testdata/greet-anon.png",
 				IgnoreRegion: []string{"30x30+57+18"},
 			},
@@ -378,7 +382,7 @@ var failingScreenshotTests = []*Test{
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry:          "96x32",
+				Browser:           Browser{Geometry: "96x32"},
 				Expected:          "./testdata/greet-anon.png",
 				AllowedDifference: 20, // 51 is the hard limit
 			},
@@ -395,7 +399,7 @@ var failingScreenshotTests = []*Test{
 		},
 		Checks: []Check{
 			&Screenshot{
-				Geometry: "96x32",
+				Browser:  Browser{Geometry: "96x32"},
 				Expected: "./testdata/greet-rt-auth.png",
 				Actual:   "./testdata/greet-rt-auth_bad.png",
 			},
@@ -626,11 +630,12 @@ func TestFancyScreenshotPass(t *testing.T) {
 		Request: Request{URL: ts.URL},
 		Checks: []Check{
 			&Screenshot{
-				Geometry:           "128x64+0+0",
-				WaitUntilVisible:   []string{"#ready"},
-				WaitUntilInvisible: []string{"#waiting"},
-				Expected:           "./testdata/animated.png",
-				Actual:             "./testdata/animated_actual.png",
+				Browser: Browser{Geometry: "128x64+0+0",
+					WaitUntilVisible:   []string{"#ready"},
+					WaitUntilInvisible: []string{"#waiting"},
+				},
+				Expected: "./testdata/animated.png",
+				Actual:   "./testdata/animated_actual.png",
 			},
 		},
 	}
@@ -653,11 +658,13 @@ func TestFancyScreenshotFail(t *testing.T) {
 		Request: Request{URL: ts.URL + "?delay=6000"},
 		Checks: []Check{
 			&Screenshot{
-				Geometry:           "128x64+0+0",
-				WaitUntilVisible:   []string{"#ready"},
-				WaitUntilInvisible: []string{"#waiting"},
-				Expected:           "./testdata/animated-fail.png",
-				Actual:             "./testdata/animated-fail_actual.png",
+				Browser: Browser{
+					Geometry:           "128x64+0+0",
+					WaitUntilVisible:   []string{"#ready"},
+					WaitUntilInvisible: []string{"#waiting"},
+				},
+				Expected: "./testdata/animated-fail.png",
+				Actual:   "./testdata/animated-fail_actual.png",
 			},
 		},
 	}
@@ -669,5 +676,4 @@ func TestFancyScreenshotFail(t *testing.T) {
 	if test.Status != Fail || test.Error == nil {
 		t.Errorf("Want status=Fail and non-nil error, got %s, %s <%T>", test.Status, err, err)
 	}
-	fmt.Println("===> ", test.Error.Error())
 }

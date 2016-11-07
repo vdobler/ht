@@ -27,50 +27,49 @@ import (
 func init() {
 	RegisterCheck(&Screenshot{})
 	RegisterCheck(&RenderedHTML{})
-	RegisterCheck(RenderingTime{})
+	RegisterCheck(&RenderingTime{})
 }
 
 // PhantomJSExecutable is command to run PhantomJS. Use an absolute path if
 // phantomjs is not on your PATH or you whish to use a special version.
 var PhantomJSExecutable = "phantomjs"
 
+// DefaultGeometry is the default screen size, viewport and zoom used in
+// browser based test if no geometry is explicitely set.
+// Its value represents a unscrolled (+0+=), desktop browser (1280x720)
+// at 100% zoom.
+var DefaultGeometry = "1280x720+0+0*100"
+
 // TODO: PhantomJS is something external which might not be available
 // Check via sync.Once and report PhantomJS based tests as bogus if not
 // available.
 
-const debugScreenshot = true
+const debugScreenshot = false
 const debugRenderedHTML = false
 const debugRenderingTime = false
 
 // ----------------------------------------------------------------------------
-// Screenshot
+// Browser
 
-// Screenshot checks actual screenshots rendered via the headless browser
-// PhantomJS against a golden record of the expected screenshot.
-//
-// Note that PhantomJS will make additional request to fetch all linked
-// resources in the HTML page. If the original request has BasicAuthUser
-// (and BasicAuthPass) set this credentials will be sent to all linked
-// resources of the page. Depending on where these resources are located
-// this might be a security issue.
-type Screenshot struct {
+// Browser collects information needed for the checks Screenshot, RenderedHTML
+// and RenderingTime which use PhantomJS as a headless browser.
+type Browser struct {
 	// Geometry of the screenshot in the form
 	//     <width> x <height> [ + <left> + <top> [ * <zoom> ] ]
 	// which generates a screenshot (width x height) pixels located
 	// at (left,top) while simulating a browser viewport of
 	// again (width x height) at a zoom level of zoom %.
 	//
-	// It defaults to "1280x720+0+0*100" which simulates a
-	// (unscrolled) desktop browser at 100%.
+	// It defaults to DefaultGeometry if unset.
 	Geometry string `json:",omitempty"`
 
 	// WaitUntilVisible selects elements in the DOM by theri CSS selector
 	// which must be visible before rendering the screenshot.
-	WaitUntilVisible []string
+	WaitUntilVisible []string `json:",omitempty"`
 
 	// WaitUntilInvisible selects elements in the DOM by theri CSS selector
 	// which must be invisible before rendering the screenshot.
-	WaitUntilInvisible []string
+	WaitUntilInvisible []string `json:",omitempty"`
 
 	// Script is JavaScript code to be evaluated after page loading but
 	// before rendering the page. You can use it e.g. to hide elements
@@ -78,143 +77,47 @@ type Screenshot struct {
 	//    $("#keyvisual > div.slides").css("visibility", "hidden");
 	Script string `json:",omitempty"`
 
-	// Expected is the file path of the 'golden record' image to test
-	// the actual screenshot against.
-	Expected string `json:",omitempty"`
+	// Timeout is the maximum duration to wait for the headless browser
+	// to prepare the page. Defaults to 5 seconds if unset.
+	Timeout time.Duration
 
-	// Actual is the name of the file the actual rendered screenshot is
-	// saved to.
-	// An empty value disables storing the generated screenshot.
-	Actual string `json:",omitempty"`
-
-	// AllowedDifference is the total number of pixels which may
-	// differ between the two screenshots while still passing this check.
-	AllowedDifference int `json:",omitempty"`
-
-	// IgnoreRegion is a list of regions which are ignored during
-	// comparing the actual screenshot to the golden record.
-	// The entries are specify rectangles in the form of the Geometry
-	// (with ignored zoom factor).
-	IgnoreRegion []string `json:",omitempty"`
-
-	geom    geometry          // parsed Geometry
-	ignored []image.Rectangle // parsed IgnoreRegion
-	golden  image.Image       // Expected screenshot.
+	geom geometry // parsed Geometry
 }
 
-// Prepare implements Check's Prepare method.
-func (s *Screenshot) Prepare() error {
-
+// prepare Geometry, geoam and Timeout
+func (b *Browser) prepare() error {
 	// Prepare Geoometry.
-	if s.Geometry == "" {
-		s.Geometry = "1280x720+0+0*100"
+	if b.Geometry == "" {
+		b.Geometry = DefaultGeometry
 	}
 	var err error
-	s.geom, err = parseGeometry(s.Geometry)
+	b.geom, err = newGeometry(b.Geometry)
 	if err != nil {
 		return err
 	}
-	if s.geom.Zoom == 0 {
-		s.geom.Zoom = 100
+	if b.geom.Zoom == 0 {
+		b.geom.Zoom = 100
 	}
 
-	// Parse IgnoredRegion
-	for _, ign := range s.IgnoreRegion {
-		geom, err := parseGeometry(ign)
-		if err != nil {
-			return err
-		}
-		r := image.Rect(geom.Left, geom.Top, geom.Left+geom.Width, geom.Top+geom.Height)
-		s.ignored = append(s.ignored, r)
-	}
-
-	// Prepare golden record.
-	s.golden, err = readImage(s.Expected)
-	if err != nil {
-		if _, ok := err.(*os.PathError); !ok {
-			return err // File exists but not an image
-		}
+	if b.Timeout == 0 {
+		b.Timeout = 5 * time.Second
 	}
 
 	return nil
 }
 
-type geometry struct {
-	Width, Height int
-	Left, Top     int
-	Zoom          int // in percent
-}
-
-// FloatZoom returns the zoom as a float between 0 and 1.
-func (g geometry) FloatZoom() float64 {
-	return float64(g.Zoom) / 100
-}
-
-// "640x480+16+32*125%"  -->  geometry
-func parseGeometry(s string) (geometry, error) {
-	geom := geometry{}
-	var err error
-
-	// "* zoom" is optional
-	p := strings.Split(s, "*")
-	if len(p) > 2 {
-		return geom, fmt.Errorf("malformed geometry %q", s)
-	}
-	if len(p) == 2 {
-		geom.Zoom, err = strconv.Atoi(strings.Trim(p[1], " \t%"))
-		if err != nil {
-			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
-		}
-	}
-
-	// "+ top + left" are optional
-	p = strings.Split(p[0], "+")
-	if len(p) > 3 {
-		return geom, fmt.Errorf("malformed geometry %q", s)
-	}
-	if len(p) == 3 {
-		geom.Top, err = strconv.Atoi(strings.TrimSpace(p[2]))
-		if err != nil {
-			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
-		}
-	}
-	if len(p) >= 2 {
-		geom.Left, err = strconv.Atoi(strings.TrimSpace(p[1]))
-		if err != nil {
-			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
-		}
-	}
-
-	// "width x height" is mandatory
-	p = strings.Split(p[0], "x")
-	if len(p) != 2 {
-		return geom, fmt.Errorf("malformed geometry %q", s)
-	}
-	geom.Width, err = strconv.Atoi(strings.TrimSpace(p[0]))
-	if err != nil {
-		return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
-	}
-	geom.Height, err = strconv.Atoi(strings.TrimSpace(p[1]))
-	if err != nil {
-		return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
-	}
-
-	return geom, nil
-}
-
 type phantomjsData struct {
-	Test          *Test
-	GlobalTimeout int
-	Geom          geometry
-	Output        string
-	Script        string
-	Cookies       []cookiejar.Entry
-	Vis, Invis    []string
+	Test       *Test
+	Timeout    int
+	Geom       geometry
+	Script     string
+	Cookies    []cookiejar.Entry
+	Vis, Invis []string
 
 	ReadyCode, TimeoutCode string
 }
 
-var screenshotTemplate = `
+var phantomjsTemplate = `
 // Screenshot during test {{printf "%q" .Test.Name}}
 
 /**
@@ -229,7 +132,7 @@ var screenshotTemplate = `
  */
 "use strict";
 function waitFor(testFx, onReady, onTimeout) {
-    var maxtimeOutMillis = {{.GlobalTimeout}}, 
+    var maxtimeOutMillis = {{.Timeout}}, 
         start = new Date().getTime(),
         condition = false,
         interval = setInterval(function() {
@@ -251,7 +154,7 @@ function waitFor(testFx, onReady, onTimeout) {
         }, 200); // repeat check every 200ms
 };
 
-setTimeout(function(){console.log('FAIL timeout'); phantom.exit(1);}, {{.GlobalTimeout}}+1000);
+setTimeout(function(){console.log('FAIL timeout'); phantom.exit(1);}, {{.Timeout}}+1000);
 var page = require('webpage').create();
 var theURL = {{printf "%q" .Test.Request.Request.URL}};;
 var theContent = {{printf "%q" .Test.Response.BodyStr}};
@@ -316,7 +219,7 @@ page.onLoadFinished = function(status){
 page.setContent(theContent, theURL);
 `
 
-var screenshotTmpl = template.Must(template.New("phantomscript").Parse(screenshotTemplate))
+var phantomjsTmpl = template.Must(template.New("phantomscript").Parse(phantomjsTemplate))
 
 var addCookieScript = `
 phantom.addCookie({
@@ -330,21 +233,21 @@ phantom.addCookie({
 });
 `
 
-func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
-	defer file.Close() // eat error, sorry
-
+// write a PhantomJS script to file which renderes the response in t, waits
+// for (in)visible elements as defined in b, and executes ready or timeout
+// accordingly.
+// So ready and timeout should contain the actual PhantomJS commands to
+// execute and must terminate PhantomJS.
+func (b Browser) writeScript(file *os.File, t *Test, ready, timeout string) error {
 	data := phantomjsData{
-		Test:          t,
-		GlobalTimeout: 5000,
-		Geom:          s.geom,
-		Output:        out,
-		Script:        s.Script,
-		Vis:           s.WaitUntilVisible,
-		Invis:         s.WaitUntilInvisible,
-
-		ReadyCode: fmt.Sprintf("page.render(%q);  console.log('PASS'); phantom.exit(0);", out),
-		// Generate screenshot even when timeout to faciliate debugging.
-		TimeoutCode: fmt.Sprintf("page.render(%q);  console.log('FAIL timeout waiting'); phantom.exit(1);", out),
+		Test:        t,
+		Timeout:     int(b.Timeout.Nanoseconds() / 1e6),
+		Geom:        b.geom,
+		Script:      b.Script,
+		Vis:         b.WaitUntilVisible,
+		Invis:       b.WaitUntilInvisible,
+		ReadyCode:   ready,
+		TimeoutCode: timeout,
 	}
 	for _, c := range t.allCookies() {
 		// Something is bogus here. If the domain is unset or does not
@@ -354,9 +257,146 @@ func (s *Screenshot) writeScript(file *os.File, t *Test, out string) error {
 		c.Domain = "." + c.Domain
 		data.Cookies = append(data.Cookies, c)
 	}
-	err := screenshotTmpl.Execute(file, data)
+	err := phantomjsTmpl.Execute(file, data)
+	if err != nil {
+		file.Close() // try at least
+		return fmt.Errorf("cannot write temporary script: %s", err)
+	}
 
-	return err
+	err = file.Close()
+	if err != nil {
+		return fmt.Errorf("cannot write temporary script: %s", err)
+	}
+
+	return nil
+}
+
+// ----------------------------------------------------------------------------
+// Screenshot
+
+// Screenshot checks actual screenshots rendered via the headless browser
+// PhantomJS against a golden record of the expected screenshot.
+//
+// Note that PhantomJS will make additional request to fetch all linked
+// resources in the HTML page. If the original request has BasicAuthUser
+// (and BasicAuthPass) set this credentials will be sent to all linked
+// resources of the page. Depending on where these resources are located
+// this might be a security issue.
+type Screenshot struct {
+	Browser
+
+	// Expected is the file path of the 'golden record' image to test
+	// the actual screenshot against.
+	Expected string `json:",omitempty"`
+
+	// Actual is the name of the file the actual rendered screenshot is
+	// saved to.
+	// An empty value disables storing the generated screenshot.
+	Actual string `json:",omitempty"`
+
+	// AllowedDifference is the total number of pixels which may
+	// differ between the two screenshots while still passing this check.
+	AllowedDifference int `json:",omitempty"`
+
+	// IgnoreRegion is a list of regions which are ignored during
+	// comparing the actual screenshot to the golden record.
+	// The entries are specify rectangles in the form of the Geometry
+	// (with ignored zoom factor).
+	IgnoreRegion []string `json:",omitempty"`
+
+	ignored []image.Rectangle // parsed IgnoreRegion
+	golden  image.Image       // Expected screenshot.
+}
+
+// Prepare implements Check's Prepare method.
+func (s *Screenshot) Prepare() error {
+	err := s.Browser.prepare()
+	if err != nil {
+		return err
+	}
+
+	// Parse IgnoredRegion
+	for _, ign := range s.IgnoreRegion {
+		geom, err := newGeometry(ign)
+		if err != nil {
+			return err
+		}
+		r := image.Rect(geom.Left, geom.Top, geom.Left+geom.Width, geom.Top+geom.Height)
+		s.ignored = append(s.ignored, r)
+	}
+
+	// Prepare golden record.
+	s.golden, err = readImage(s.Expected)
+	if err != nil {
+		if _, ok := err.(*os.PathError); !ok {
+			return err // File exists but not an image
+		}
+	}
+
+	return nil
+}
+
+type geometry struct {
+	Width, Height int
+	Left, Top     int
+	Zoom          int // in percent
+}
+
+// FloatZoom returns the zoom as a float between 0 and 1.
+func (g geometry) FloatZoom() float64 {
+	return float64(g.Zoom) / 100
+}
+
+// "640x480+16+32*125%"  -->  geometry
+func newGeometry(s string) (geometry, error) {
+	geom := geometry{}
+	var err error
+
+	// "* zoom" is optional
+	p := strings.Split(s, "*")
+	if len(p) > 2 {
+		return geom, fmt.Errorf("malformed geometry %q", s)
+	}
+	if len(p) == 2 {
+		geom.Zoom, err = strconv.Atoi(strings.Trim(p[1], " \t%"))
+		if err != nil {
+			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
+		}
+	}
+
+	// "+ top + left" are optional
+	p = strings.Split(p[0], "+")
+	if len(p) > 3 {
+		return geom, fmt.Errorf("malformed geometry %q", s)
+	}
+	if len(p) == 3 {
+		geom.Top, err = strconv.Atoi(strings.TrimSpace(p[2]))
+		if err != nil {
+			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
+		}
+	}
+	if len(p) >= 2 {
+		geom.Left, err = strconv.Atoi(strings.TrimSpace(p[1]))
+		if err != nil {
+			return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
+		}
+	}
+
+	// "width x height" is mandatory
+	p = strings.Split(p[0], "x")
+	if len(p) != 2 {
+		return geom, fmt.Errorf("malformed geometry %q", s)
+	}
+	geom.Width, err = strconv.Atoi(strings.TrimSpace(p[0]))
+	if err != nil {
+		return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
+	}
+	geom.Height, err = strconv.Atoi(strings.TrimSpace(p[1]))
+	if err != nil {
+		return geom, fmt.Errorf("malformed geometry %q: %s", s, err)
+	}
+
+	return geom, nil
 }
 
 // Execute implements Check's Execute method.
@@ -386,9 +426,19 @@ func (s *Screenshot) Execute(t *Test) error {
 			defer os.Remove(actual)
 		}
 	}
-	err = s.writeScript(file, t, actual)
+
+	readyCode := fmt.Sprintf("page.render(%q); "+
+		"console.log('PASS'); "+
+		"phantom.exit(0);",
+		actual)
+	// Generate screenshot even when timeout to faciliate debugging.
+	timeoutCode := fmt.Sprintf("page.render(%q); "+
+		"console.log('FAIL timeout waiting'); "+
+		"phantom.exit(1);",
+		actual)
+	err = s.Browser.writeScript(file, t, readyCode, timeoutCode)
 	if err != nil {
-		return fmt.Errorf("cannot write temporary script: %s", err)
+		return err
 	}
 	if debugScreenshot {
 		fmt.Println("Created PhantomJS script:", script)
@@ -532,6 +582,8 @@ func (t *Test) allCookies() []cookiejar.Entry {
 // and evaluate the JavaScript. The checks are run against this 'rendered'
 // HTML code.
 type RenderedHTML struct {
+	Browser
+
 	// Checks to perform on the renderd HTML.
 	// Sensible checks are those operating on the response body.
 	Checks CheckList
@@ -542,7 +594,12 @@ type RenderedHTML struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (r RenderedHTML) Prepare() error {
+func (r *RenderedHTML) Prepare() error {
+	err := r.Browser.prepare()
+	if err != nil {
+		return err
+	}
+
 	if len(r.Checks) == 0 {
 		return fmt.Errorf("RenderedHTML without checks is a useless noop")
 	}
@@ -563,7 +620,7 @@ func (r RenderedHTML) Prepare() error {
 }
 
 // Execute implements Check's Execute method.
-func (r RenderedHTML) Execute(t *Test) error {
+func (r *RenderedHTML) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return ErrBadBody
 	}
@@ -615,7 +672,7 @@ func (r RenderedHTML) Execute(t *Test) error {
 
 // content returns the page content after rendering (and evaluating JavaScript)
 // via PhantomJS.
-func (r RenderedHTML) content(t *Test) (string, error) {
+func (r *RenderedHTML) content(t *Test) (string, error) {
 	file, err := tempfile.TempFile("", "renderedhtml-", ".js")
 	if err != nil {
 		return "", fmt.Errorf("cannot write temporary script: %s", err)
@@ -625,9 +682,15 @@ func (r RenderedHTML) content(t *Test) (string, error) {
 		defer os.Remove(script)
 	}
 
-	err = writePhantomScript(file, t, "console.log(''+page.content);")
+	readyCode := "console.log('PASS'); " +
+		"console.log(''+page.content);" +
+		"phantom.exit(0);"
+	timeoutCode := "console.log('FAIL timeout waiting'); " +
+		"console.log(''+page.content);" +
+		"phantom.exit(1);"
+	err = r.Browser.writeScript(file, t, readyCode, timeoutCode)
 	if err != nil {
-		return "", fmt.Errorf("cannot write temporary script: %s", err)
+		return "", err
 	}
 	if debugRenderedHTML {
 		fmt.Println("Created PhantomJS script:", script)
@@ -652,53 +715,6 @@ func (r RenderedHTML) content(t *Test) (string, error) {
 
 }
 
-var renderedHTMLScript = `
-// Screenshot during test %q.
-setTimeout(function() {
-    console.log('FAIL timeout');
-    phantom.exit();
-}, %d);
-var page = require('webpage').create();
-var theContent = %q;
-var theURL = %q;
-%s  // <-- The cookies
-page.onLoadFinished = function(status){
-    if(status === 'success') {
-        console.log('PASS');
-        %s // <-- the action
-    } else {
-        console.log('FAIL rendering');
-    }
-    phantom.exit();
-};
-page.setContent(theContent, theURL);
-`
-
-// TODO: refactor by extracting common stuff from Screenshot.writeScript
-func writePhantomScript(file *os.File, t *Test, action string) error {
-	defer file.Close() // eat error, sorry
-
-	phantomCookies := ""
-	for _, c := range t.allCookies() {
-		// Something is bogus here. If the domain is unset or does not
-		// start with a dot than PhantomJS will ignore it (addCookie
-		// returns flase). So it seems as if it is impossible in
-		// PhantomJS to distinguish a host-only form a domain cookie?
-		c.Domain = "." + c.Domain
-		expires := c.Expires.Format(time.RFC1123)
-		phantomCookies += fmt.Sprintf(addCookieScript,
-			c.Name, c.Value, c.Domain, c.Path,
-			c.HttpOnly, c.Secure, expires)
-	}
-
-	_, err := fmt.Fprintf(file, renderedHTMLScript,
-		t.Name, 15000,
-		t.Response.BodyStr, t.Request.Request.URL.String(),
-		phantomCookies, action,
-	)
-	return err
-}
-
 // ----------------------------------------------------------------------------
 // RenderingTime
 
@@ -708,14 +724,18 @@ func writePhantomScript(file *os.File, t *Test, action string) error {
 // to load all referenced assets and render the page. For obvious reason this
 // cannot be determined with absolute accuracy.
 type RenderingTime struct {
+	Browser
+
 	Max time.Duration
 }
 
 // Prepare implements Check's Prepare method.
-func (d RenderingTime) Prepare() error { return nil }
+func (d *RenderingTime) Prepare() error {
+	return d.Browser.prepare()
+}
 
 // Execute implements Check's Execute method.
-func (d RenderingTime) Execute(t *Test) error {
+func (d *RenderingTime) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return ErrBadBody
 	}
@@ -728,9 +748,11 @@ func (d RenderingTime) Execute(t *Test) error {
 	if !debugRenderingTime {
 		defer os.Remove(script)
 	}
-	err = writePhantomScript(file, t, "")
+	readyCode := "console.log('PASS'); phantom.exit(0);"
+	timeoutCode := "console.log('FAIL timeout waiting'); phantom.exit(1);"
+	err = d.Browser.writeScript(file, t, readyCode, timeoutCode)
 	if err != nil {
-		return err // TODO: wrap to mark as bogus ?
+		return err
 	}
 	if debugRenderingTime {
 		fmt.Println("Created PhantomJS script:", script)
