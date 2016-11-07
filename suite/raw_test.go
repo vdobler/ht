@@ -75,7 +75,7 @@ func TestErrorReporting(t *testing.T) {
 	if err == nil {
 		t.Fatalf("no error")
 	}
-	want := "cannot produce Test from testdata/wrong2.ht: unknown field FollowAllRedirects in Test.Request"
+	want := "unknown field FollowAllRedirects in Test.Request"
 	if got := err.Error(); got != want {
 		t.Errorf("Got:  %q\n,Want: %q", got, want)
 	}

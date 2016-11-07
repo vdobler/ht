@@ -343,14 +343,14 @@ func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 
 	test, err := substituted.toTest(variables)
 	if err != nil {
-		return bogus, fmt.Errorf("cannot produce Test: %s", err)
+		return bogus, err
 	}
 
 	mixins := make([]*ht.Test, len(substituted.Mixins))
 	for i, rawmix := range substituted.Mixins {
 		mix, err := rawmix.toTest()
 		if err != nil {
-			return bogus, fmt.Errorf("cannot produce Mixin: %s", err)
+			return bogus, err
 		}
 		mixins[i] = mix
 	}
@@ -537,12 +537,20 @@ func rawTestFromInline(name, dir string, fs FileSystem, inline map[string]interf
 }
 
 // Validate rs to make sure it can be decoded into welformed ht.Tests.
-func (rs *RawSuite) Validate(variables map[string]string) error {
+func (rs *RawSuite) Validate(global map[string]string) error {
+	suiteScope := newScope(global, rs.Variables, true)
+	suiteScope["SUITE_DIR"] = rs.File.Dirname()
+	suiteScope["SUITE_NAME"] = rs.File.Basename()
+
 	el := ht.ErrorList{}
 	for _, rt := range rs.tests {
-		_, err := rt.ToTest(variables)
+		callScope := newScope(suiteScope, rt.contextVars, true)
+		testScope := newScope(callScope, rt.Variables, false)
+		testScope["TEST_DIR"] = rt.File.Dirname()
+		testScope["TEST_NAME"] = rt.File.Basename()
+		_, err := rt.ToTest(testScope)
 		if err != nil {
-			fmt.Printf("invalid test %s (included by %s): %s\n",
+			err := fmt.Errorf("invalid test %s (included by %s): %s",
 				rt.File.Name, rs.File.Name, err)
 			el = append(el, err)
 		}
