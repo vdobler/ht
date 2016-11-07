@@ -28,6 +28,7 @@ var (
 )
 
 func init() {
+	addVarsFlags(cmdList.Flag)
 	cmdList.Flag.BoolVar(&fullFlag, "full", false,
 		"print more details")
 }

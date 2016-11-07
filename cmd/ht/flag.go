@@ -78,9 +78,13 @@ var (
 	cookie           string            // flag -cookie
 )
 
-func addTestFlags(fs *flag.FlagSet) {
+func addVarsFlags(fs *flag.FlagSet) {
 	addVariablesFlag(fs)
 	addDfileFlag(fs)
+}
+
+func addTestFlags(fs *flag.FlagSet) {
+	addVarsFlags(fs)
 	addVerbosityFlag(fs)
 	addSeedFlag(fs)
 	addSkiptlsverifyFlag(fs)
