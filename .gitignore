@@ -16,3 +16,4 @@ cmd/ht/Documentation.*
 ht/testdata/logfile
 cmd/ht/testdata/*.ht
 cmd/ht/testdata/*.suite
+_Report_.html
