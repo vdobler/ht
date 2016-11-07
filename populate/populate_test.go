@@ -234,3 +234,37 @@ func TestPopulator(t *testing.T) {
 
 	fmt.Printf("%#v\n", v)
 }
+
+// ----------------------------------------------------------------------------
+// Embedding
+
+type Embedded struct {
+	A int
+}
+
+type Outer struct {
+	String string
+	Embedded
+}
+
+func TestEmbedding(t *testing.T) {
+	data := `{
+    String: "foo"
+    A: 124
+}`
+	var raw interface{}
+	err := hjson.Unmarshal([]byte(data), &raw)
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
+
+	v := Outer{}
+
+	err = Strict(&v, raw)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if v.A != 124 {
+		t.Errorf("v.A=%d, want 124", v.A)
+	}
+}
