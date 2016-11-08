@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"image"
 	"image/png"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -516,23 +514,6 @@ func TestRenderedHTMLPassing(t *testing.T) {
 // ----------------------------------------------------------------------------
 // RenderingTime
 
-func TestRenderingTimeOffset(t *testing.T) {
-	if !debugRenderingTime || !testing.Verbose() {
-		return
-	}
-	ioutil.WriteFile("testdata/exit.js", []byte("phantom.exit();\n"), 0666)
-	defer os.Remove("testdata/exit.js")
-
-	total := time.Duration(0)
-	for i := 0; i < 25; i++ {
-		start := time.Now()
-		cmd := exec.Command(PhantomJSExecutable, "exit.js")
-		cmd.CombinedOutput()
-		total += time.Since(start)
-	}
-	t.Logf("PhantomJS invocation takes %s.", total/25)
-}
-
 var passingRenderingTimeTests = []*Test{
 	{
 		Name:    "Welcome Anonymous, rendered body",
@@ -579,6 +560,72 @@ func TestRenderingTime(t *testing.T) {
 	}
 }
 
+var passingRenderingTimeTests2 = []*Test{
+	{
+		Name:    "Welcome Anonymous, rendered body",
+		Request: Request{URL: "/welcome"},
+		Checks: []Check{
+			&RenderingTime{Max: 80 * time.Millisecond},
+		},
+	},
+	{Request: Request{URL: "/login?user=Joe"}},
+	{
+		Name:    "Welcome Joe",
+		Request: Request{URL: "/welcome"},
+		Checks: []Check{
+			&RenderingTime{Max: 120 * time.Millisecond},
+		},
+	},
+}
+
+func TestRenderingTime2(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(animationHandler))
+	defer ts.Close()
+
+	test1 := &Test{
+		Request: Request{URL: ts.URL},
+		Checks: []Check{
+			&RenderingTime{
+				Browser: Browser{Geometry: "128x64+0+0",
+					WaitUntilVisible:   []string{"#ready"},
+					WaitUntilInvisible: []string{"#waiting"},
+				},
+				Max: 1050 * time.Millisecond,
+			},
+		},
+	}
+	err1 := test1.Run()
+	if err1 != nil {
+		t.Errorf("Unexpected error %s (%#v)", err1, err1)
+	}
+	if test1.Status != Pass || test1.Error != nil {
+		t.Errorf("Want status=Pass and nil error, got %s, %s <%T>",
+			test1.Status, test1.Error, test1.Error)
+	}
+
+	test2 := &Test{
+		Request: Request{URL: ts.URL},
+		Checks: []Check{
+			&RenderingTime{
+				Browser: Browser{Geometry: "128x64+0+0",
+					WaitUntilVisible:   []string{"#ready"},
+					WaitUntilInvisible: []string{"#waiting"},
+				},
+				Max: 500 * time.Millisecond,
+			},
+		},
+	}
+	err2 := test2.Run()
+	if err2 != nil {
+		t.Errorf("Unexpected error %s (%#v)", err2, err2)
+	}
+	if test2.Status != Fail || test2.Error == nil {
+		t.Errorf("Want status=Fail and error, got %s, %s <%T>",
+			test2.Status, test2.Error, test2.Error)
+	}
+
+}
+
 // ----------------------------------------------------------------------------
 // Fany stuff in screenshooting
 
@@ -597,7 +644,7 @@ var animationHTML = `<!DOCTYPE html>
 setTimeout(function(){
   var e = document.getElementById('waiting');
   e.style.display = 'none';
-}, 500);
+}, 400);
 
 setTimeout(function(){
   var e = document.getElementById('ready');
@@ -612,7 +659,7 @@ setTimeout(function(){
 func animationHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	readyDelay := "1000" // one second
+	readyDelay := "800"
 	delay := r.FormValue("delay")
 	if delay != "" {
 		readyDelay = delay
@@ -633,6 +680,7 @@ func TestFancyScreenshotPass(t *testing.T) {
 				Browser: Browser{Geometry: "128x64+0+0",
 					WaitUntilVisible:   []string{"#ready"},
 					WaitUntilInvisible: []string{"#waiting"},
+					Timeout:            1500 * time.Millisecond,
 				},
 				Expected: "./testdata/animated.png",
 				Actual:   "./testdata/animated_actual.png",
@@ -645,7 +693,8 @@ func TestFancyScreenshotPass(t *testing.T) {
 		t.Errorf("Unexpected error %s (%#v)", err, err)
 	}
 	if test.Status != Pass || test.Error != nil {
-		t.Errorf("Want status=Pass and nil error, got %s, %s <%T>", test.Status, err, err)
+		t.Errorf("Want status=Pass and nil error, got %s, %s <%T>",
+			test.Status, test.Error, test.Error)
 	}
 }
 
@@ -655,13 +704,14 @@ func TestFancyScreenshotFail(t *testing.T) {
 
 	test := &Test{
 		Name:    "Fancy Screenshot",
-		Request: Request{URL: ts.URL + "?delay=6000"},
+		Request: Request{URL: ts.URL + "?delay=2000"},
 		Checks: []Check{
 			&Screenshot{
 				Browser: Browser{
 					Geometry:           "128x64+0+0",
 					WaitUntilVisible:   []string{"#ready"},
 					WaitUntilInvisible: []string{"#waiting"},
+					Timeout:            1500 * time.Millisecond,
 				},
 				Expected: "./testdata/animated-fail.png",
 				Actual:   "./testdata/animated-fail_actual.png",

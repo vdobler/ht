@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -151,7 +152,7 @@ function waitFor(testFx, onReady, onTimeout) {
                     clearInterval(interval); //< Stop this interval
                 }
             }
-        }, 200); // repeat check every 200ms
+        }, 50); // repeat check every 50ms
 };
 
 setTimeout(function(){console.log('FAIL timeout'); phantom.exit(1);}, {{.Timeout}}+1000);
@@ -720,9 +721,9 @@ func (r *RenderedHTML) content(t *Test) (string, error) {
 
 // RenderingTime limits the maximal allowed time to render a whole HTML page.
 //
-// The "rendering time" is the response time plus how long it takes PhantomJS
-// to load all referenced assets and render the page. For obvious reason this
-// cannot be determined with absolute accuracy.
+// The "rendering time" is how long it takes PhantomJS to load all referenced
+// assets and render the page. For obvious reason this cannot be determined
+// with absolute accuracy.
 type RenderingTime struct {
 	Browser
 
@@ -733,6 +734,9 @@ type RenderingTime struct {
 func (d *RenderingTime) Prepare() error {
 	return d.Browser.prepare()
 }
+
+var phantomjsInvocationOverhead time.Duration
+var phantomjsOnce sync.Once
 
 // Execute implements Check's Execute method.
 func (d *RenderingTime) Execute(t *Test) error {
@@ -758,6 +762,9 @@ func (d *RenderingTime) Execute(t *Test) error {
 		fmt.Println("Created PhantomJS script:", script)
 	}
 
+	phantomjsOnce.Do(calibratePhantomjsOverhead)
+	t.debugf("PhantomJS invocation overhead: %s", phantomjsInvocationOverhead)
+
 	start := time.Now()
 	cmd := exec.Command(PhantomJSExecutable, script)
 	output, err := cmd.CombinedOutput()
@@ -772,18 +779,45 @@ func (d *RenderingTime) Execute(t *Test) error {
 		return fmt.Errorf("Problems with PhantomJS: %q", string(output))
 	}
 
-	// Subtract overhead for invoking PhantomJS.
-	// The overhead was determined by running TestRenderingTimeOffset
-	// with debugRenderingTime==true on my local machine.
-	// As TestRenderingTimeOffset does compute the arithemtic mean
-	// this must be considered a valid scientific studie. At least
-	// in social sience standards.
-	took -= 99 * time.Millisecond
-
-	total := took + t.Response.Duration
-	if total <= d.Max {
+	took -= phantomjsInvocationOverhead
+	if took < 1*time.Millisecond {
+		took = 1 * time.Millisecond
+	}
+	t.infof("Rendering page took %s", took)
+	if took <= d.Max {
 		return nil
 	}
 
-	return fmt.Errorf("total time %s", total)
+	return fmt.Errorf("rendering time %s", took)
+}
+
+func calibratePhantomjsOverhead() {
+	tf, err := ioutil.TempFile("", "phantomjs")
+	if err != nil {
+		return
+	}
+	name := tf.Name()
+	_, err = tf.WriteString("phantom.exit(0);")
+	tf.Close() // eat error, sorry
+	if err != nil {
+		return
+	}
+
+	d := make([]time.Duration, 7)
+	for i := range d {
+		start := time.Now()
+		cmd := exec.Command(PhantomJSExecutable, name)
+		cmd.CombinedOutput()
+		d[i] = time.Since(start)
+	}
+
+	// Average all but the first warmup ones.
+	warmup := 2
+	sum := time.Duration(0)
+	for i := warmup; i < len(d); i++ {
+		sum += d[i]
+	}
+	phantomjsInvocationOverhead = sum / time.Duration(len(d)-warmup)
+
+	os.Remove(name)
 }
