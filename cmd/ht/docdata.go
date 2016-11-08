@@ -550,9 +550,9 @@ var typeDoc = map[string]string{
 		"}\n" +
 		"    RenderingTime limits the maximal allowed time to render a whole HTML page.\n" +
 		"\n" +
-		"    The \"rendering time\" is the response time plus how long it takes PhantomJS\n" +
-		"    to load all referenced assets and render the page. For obvious reason this\n" +
-		"    cannot be determined with absolute accuracy.",
+		"    The \"rendering time\" is how long it takes PhantomJS to load all referenced\n" +
+		"    assets and render the page. For obvious reason this cannot be determined\n" +
+		"    with absolute accuracy.",
 	"request": "type Request struct {\n" +
 		"\t// Method is the HTTP method to use.\n" +
 		"\t// A empty method is equivalent to \"GET\"\n" +
