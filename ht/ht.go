@@ -475,7 +475,7 @@ func (t *Test) Run() error {
 				time.Sleep(t.Execution.Wait)
 			}
 		}
-		err := t.prepare(t.Variables)
+		err := t.prepare()
 		if err != nil {
 			t.Status, t.Error = Bogus, err
 			return err
@@ -546,7 +546,7 @@ func (t *Test) execute() {
 				t.debugf("InterSleep %s", t.Execution.InterSleep)
 				time.Sleep(t.Execution.InterSleep)
 			}
-			t.executeChecks(t.CheckResults)
+			t.executeChecks()
 		} else {
 			t.Status = Pass
 		}
@@ -559,10 +559,10 @@ func (t *Test) execute() {
 // prepare the test for execution by crafting the underlying http request and
 // preparing the checks.
 // Variables are used only for variable substitution in file bodies.
-func (t *Test) prepare(variables map[string]string) error {
+func (t *Test) prepare() error {
 
 	// Create the request.
-	contentType, err := t.newRequest(variables)
+	contentType, err := t.newRequest()
 	if err != nil {
 		err := fmt.Errorf("failed preparing request: %s", err.Error())
 		t.errorf("%s", err.Error())
@@ -652,7 +652,7 @@ func (t *Test) prepare(variables map[string]string) error {
 // newRequest sets up the request field of t.
 // If a sepcial Content-Type header is needed (e.g. because of a multipart
 // body) it is returned.
-func (t *Test) newRequest(variables map[string]string) (contentType string, err error) {
+func (t *Test) newRequest() (contentType string, err error) {
 	// Set efaults for the request method and the parameter transmission type.
 	if t.Request.Method == "" {
 		t.Request.Method = "GET"
@@ -702,7 +702,7 @@ func (t *Test) newRequest(variables map[string]string) (contentType string, err 
 			encoded := url.Values(urlValues).Encode()
 			t.Request.SentBody = encoded
 		case "multipart":
-			b, boundary, err := multipartBody(t.Request.Params, variables)
+			b, boundary, err := multipartBody(t.Request.Params, t.Variables)
 			if err != nil {
 				return "", err
 			}
@@ -720,7 +720,7 @@ func (t *Test) newRequest(variables map[string]string) (contentType string, err 
 
 	// The body.
 	if t.Request.Body != "" {
-		bodydata, _, err := fileData(t.Request.Body, variables)
+		bodydata, _, err := fileData(t.Request.Body, t.Variables)
 		if err != nil {
 			return "", err
 		}
@@ -932,23 +932,23 @@ func (t *Test) executeFile() error {
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) executeChecks(result []CheckResult) {
+func (t *Test) executeChecks() {
 	done := false
 	for i, ck := range t.Checks {
 		start := time.Now()
 		err := ck.Execute(t)
-		result[i].Duration = time.Since(start)
+		t.CheckResults[i].Duration = time.Since(start)
 		if el, ok := err.(ErrorList); ok {
-			result[i].Error = el
+			t.CheckResults[i].Error = el
 		} else {
-			result[i].Error = ErrorList{err}
+			t.CheckResults[i].Error = ErrorList{err}
 		}
 		if err != nil {
 			t.debugf("Check %d %s Fail: %s", i+1, NameOf(ck), err)
 			if _, ok := err.(MalformedCheck); ok {
-				result[i].Status = Bogus
+				t.CheckResults[i].Status = Bogus
 			} else {
-				result[i].Status = Fail
+				t.CheckResults[i].Status = Fail
 			}
 			if t.Error == nil {
 				t.Error = err
@@ -966,19 +966,19 @@ func (t *Test) executeChecks(result []CheckResult) {
 					t.debugf("skipping remaining tests as bad StatusCode %s", t.Response.Response.Status)
 					// Clear Status and Error field as these might be
 					// populated from a prior try run of the test.
-					for j := 1; j < len(result); j++ {
-						result[j].Status = Skipped
-						result[j].Error = nil
+					for j := 1; j < len(t.CheckResults); j++ {
+						t.CheckResults[j].Status = Skipped
+						t.CheckResults[j].Error = nil
 					}
 					done = true
 				}
 			}
 		} else {
-			result[i].Status = Pass
+			t.CheckResults[i].Status = Pass
 			t.debugf("Check %d %s: Pass", i+1, NameOf(ck))
 		}
-		if result[i].Status > t.Status {
-			t.Status = result[i].Status
+		if t.CheckResults[i].Status > t.Status {
+			t.Status = t.CheckResults[i].Status
 		}
 		if done {
 			break

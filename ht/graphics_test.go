@@ -54,7 +54,7 @@ func TestResponseTimeHistogram(t *testing.T) {
 		},
 	}
 
-	err := test.prepare(nil)
+	err := test.prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

@@ -93,7 +93,7 @@ func TestParameterHandling(t *testing.T) {
 	}}
 
 	// As part of the URL.
-	err := test.prepare(nil)
+	err := test.prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -107,7 +107,7 @@ func TestParameterHandling(t *testing.T) {
 
 	// URLencoded in the body.
 	test.Request.ParamsAs = "body"
-	err = test.prepare(nil)
+	err = test.prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -133,9 +133,11 @@ func TestMultipartParameterHandling(t *testing.T) {
 			"dfile":   []string{"@file:@name:the-data"},
 		},
 		ParamsAs: "multipart",
-	}}
+	},
+		Variables: map[string]string{"XYZ": "+++"},
+	}
 
-	err := test.prepare(map[string]string{"XYZ": "+++"})
+	err := test.prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -226,10 +228,10 @@ func TestSendBody(t *testing.T) {
 		Method: "POST",
 		URL:    "http://www.test.org",
 		Body:   "@vfile:testdata/somefile.txt",
-	}}
-	err := test.prepare(map[string]string{
-		"XYZ": "+++",
-	})
+	},
+		Variables: map[string]string{"XYZ": "+++"},
+	}
+	err := test.prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
