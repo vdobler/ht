@@ -543,7 +543,7 @@ func (t *Test) execute() {
 	if err == nil {
 		if len(t.Checks) > 0 {
 			if t.Execution.InterSleep > 0 {
-				t.debugf("PreSleep %s", t.Execution.InterSleep)
+				t.debugf("InterSleep %s", t.Execution.InterSleep)
 				time.Sleep(t.Execution.InterSleep)
 			}
 			t.executeChecks(t.CheckResults)
@@ -556,8 +556,9 @@ func (t *Test) execute() {
 	}
 }
 
-// prepare the test for execution by substituting the given variables and
-// crafting the underlying http request the checks.
+// prepare the test for execution by crafting the underlying http request and
+// preparing the checks.
+// Variables are used only for variable substitution in file bodies.
 func (t *Test) prepare(variables map[string]string) error {
 
 	// Create the request.
