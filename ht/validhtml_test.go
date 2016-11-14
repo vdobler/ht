@@ -155,7 +155,6 @@ func TestCheckHTMLEscaping(t *testing.T) {
 		} else if !tc.okay && len(state.errors) == 0 {
 			t.Errorf("%d. %q: Missing error", i, tc.raw)
 		}
-		return
 	}
 }
 
