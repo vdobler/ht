@@ -419,95 +419,6 @@ func (t *Test) PopulateCookies(jar *cookiejar.Jar, u *url.URL) {
 	}
 }
 
-// Run runs the test t. The actual HTTP request is crafted and executed and
-// the checks are performed on the received response. This whole process
-// is repeated on failure or skipped entirely according to t.Execution.
-//
-// The given variables are subsituted into the relevant parts of the request
-// and the checks.
-//
-// Normally all checks in t.Checks are executed. If the first check in
-// t.Checks is a StatusCode check against 200 and it fails, then the rest of
-// the tests are skipped.
-//
-// Run returns a non-nil error only if the test is bogus; a failing http
-// request, problems reading the body or any failing checks do not trigger a
-// non-nil return value.
-func (t *Test) Run() error {
-	t.infof("Running")
-
-	t.Started = time.Now()
-
-	maxTries := t.Execution.Tries
-	if maxTries == 0 {
-		maxTries = 1
-	}
-	if maxTries < 0 {
-		// This test is deliberately skipped. A zero duration is okay.
-		t.Status = Skipped
-		return nil
-	}
-
-	if t.Execution.PreSleep > 0 {
-		t.debugf("PreSleep %s", t.Execution.PreSleep)
-		time.Sleep(t.Execution.PreSleep)
-	}
-
-	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
-	for i, c := range t.Checks {
-		t.CheckResults[i].Name = NameOf(c)
-		buf, err := json.Marshal(c)
-		if err != nil {
-			buf = []byte(err.Error())
-		}
-		t.CheckResults[i].JSON = string(buf)
-	}
-
-	// Try until first success.
-	start := time.Now()
-	try := 1
-	for ; try <= maxTries; try++ {
-		t.Tries = try
-		if try > 1 {
-			t.infof("Retry %d", try)
-			if t.Execution.Wait > 0 {
-				t.debugf("Waiting %s", t.Execution.Wait)
-				time.Sleep(t.Execution.Wait)
-			}
-		}
-		err := t.prepare()
-		if err != nil {
-			t.Status, t.Error = Bogus, err
-			return err
-		}
-		// Clear status and error; is updated in executeChecks.
-		t.Status, t.Error = NotRun, nil
-		t.Response = Response{}
-		t.execute()
-		if t.Status == Pass {
-			break
-		}
-	}
-	t.Duration = time.Since(start)
-	if t.Execution.Tries > 1 {
-		if t.Status == Pass {
-			t.debugf("Trying succeeded after %d tries", try)
-		} else {
-			t.debugf("Trying failed all %d tries", maxTries)
-		}
-	}
-
-	t.infof("Result: %s (%s %s)", t.Status, t.Duration, t.Response.Duration)
-
-	if t.Execution.PostSleep > 0 {
-		t.debugf("PostSleep %s", t.Execution.PostSleep)
-		time.Sleep(t.Execution.PostSleep)
-	}
-
-	t.FullDuration = time.Since(t.Started)
-	return nil
-}
-
 // AsJSON returns a JSON representation of the test. Executed tests can
 // be serialised and will contain basically all information required to
 // debug or re-run the test but note that several fields in the actual
@@ -530,6 +441,92 @@ func (t *Test) AsJSON() ([]byte, error) {
 	}
 
 	return json.MarshalIndent(t, "", "    ")
+}
+
+// Run runs the test t. The actual HTTP request is crafted and executed and
+// the checks are performed on the received response. This whole process
+// is repeated on failure or skipped entirely according to t.Execution.
+//
+// The given variables are subsituted into the relevant parts of the request
+// and the checks.
+//
+// Normally all checks in t.Checks are executed. If the first check in
+// t.Checks is a StatusCode check against 200 and it fails, then the rest of
+// the tests are skipped.
+//
+// Run returns a non-nil error only if the test is bogus; a failing http
+// request, problems reading the body or any failing checks do not trigger a
+// non-nil return value.
+func (t *Test) Run() error {
+	t.Started = time.Now()
+	defer func() { t.FullDuration = time.Since(t.Started) }()
+
+	t.infof("Running")
+
+	if t.Execution.Tries < 0 {
+		// This test is deliberately skipped.
+		t.Status = Skipped
+		return nil
+	} else if t.Execution.Tries == 0 {
+		t.Execution.Tries = 1
+	}
+
+	// Prepare checks and request. Both may declare the Test to be bogus.
+	err := t.prepareChecks()
+	if err != nil {
+		t.Status, t.Error = Bogus, err
+		return err
+	}
+	t.prepareRequest()
+	if err != nil {
+		t.Status, t.Error = Bogus, err
+		return err
+	}
+
+	if t.Execution.PreSleep > 0 {
+		t.debugf("PreSleep %s", t.Execution.PreSleep)
+		time.Sleep(t.Execution.PreSleep)
+	}
+
+	// Try until first success.
+	start := time.Now()
+	try := 1
+	for ; try <= t.Execution.Tries; try++ {
+		t.Tries = try
+		if try > 1 {
+			t.infof("Retry %d", try)
+			if t.Execution.Wait > 0 {
+				t.debugf("Waiting %s", t.Execution.Wait)
+				time.Sleep(t.Execution.Wait)
+			}
+		}
+		t.resetRequest()
+		// Clear status and error; is updated in executeChecks.
+		t.Status, t.Error = NotRun, nil
+		t.Response = Response{}
+		t.execute()
+		if t.Status == Pass {
+			break
+		}
+	}
+	t.Duration = time.Since(start)
+	if t.Execution.Tries > 1 {
+		if t.Status == Pass {
+			t.debugf("Trying succeeded after %d tries", t.Tries)
+		} else {
+			t.debugf("Trying failed all %d tries", t.Execution.Tries)
+		}
+	}
+
+	t.infof("Result: %s (%s %s) %d tries", t.Status,
+		t.Duration, t.Response.Duration, t.Tries)
+
+	if t.Execution.PostSleep > 0 {
+		t.debugf("PostSleep %s", t.Execution.PostSleep)
+		time.Sleep(t.Execution.PostSleep)
+	}
+
+	return nil
 }
 
 // execute does a single request and check the response.
@@ -556,11 +553,46 @@ func (t *Test) execute() {
 	}
 }
 
-// prepare the test for execution by crafting the underlying http request and
-// preparing the checks.
-// Variables are used only for variable substitution in file bodies.
-func (t *Test) prepare() error {
+func (t *Test) prepareChecks() error {
+	// Compile the checks.
+	cel := ErrorList{}
+	for i := range t.Checks {
+		e := t.Checks[i].Prepare()
+		if e != nil {
+			cel = append(cel, e)
+			t.errorf("preparing check %d %q: %s",
+				i, NameOf(t.Checks[i]), e.Error())
+		}
+	}
+	if len(cel) != 0 {
+		return cel
+	}
 
+	// Prepare CheckResults.
+	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
+	for i, c := range t.Checks {
+		t.CheckResults[i].Name = NameOf(c)
+		buf, err := json.Marshal(c)
+		if err != nil {
+			buf = []byte(err.Error())
+		}
+		t.CheckResults[i].JSON = string(buf)
+	}
+
+	return nil
+}
+
+// resetRequest rewinds the request body reader.
+func (t *Test) resetRequest() {
+	if t.Request.SentBody == "" {
+		return
+	}
+	body := ioutil.NopCloser(strings.NewReader(t.Request.SentBody))
+	t.Request.Request.Body = body
+}
+
+// prepare the test for execution by crafting the underlying http request
+func (t *Test) prepareRequest() error {
 	// Create the request.
 	contentType, err := t.newRequest()
 	if err != nil {
@@ -593,20 +625,6 @@ func (t *Test) prepare() error {
 	// Basic Auth
 	if t.Request.BasicAuthUser != "" {
 		t.Request.Request.SetBasicAuth(t.Request.BasicAuthUser, t.Request.BasicAuthPass)
-	}
-
-	// Compile the checks.
-	cel := ErrorList{}
-	for i := range t.Checks {
-		e := t.Checks[i].Prepare()
-		if e != nil {
-			cel = append(cel, e)
-			t.errorf("preparing check %d %q: %s",
-				i, NameOf(t.Checks[i]), e.Error())
-		}
-	}
-	if len(cel) != 0 {
-		return cel
 	}
 
 	to := DefaultClientTimeout
@@ -727,8 +745,8 @@ func (t *Test) newRequest() (contentType string, err error) {
 		t.Request.SentBody = bodydata
 	}
 
-	body := ioutil.NopCloser(strings.NewReader(t.Request.SentBody))
-	t.Request.Request, err = http.NewRequest(t.Request.Method, rurl, body)
+	// body := ioutil.NopCloser(strings.NewReader(t.Request.SentBody))
+	t.Request.Request, err = http.NewRequest(t.Request.Method, rurl, nil /*body*/)
 	if err != nil {
 		return "", err
 	}

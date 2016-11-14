@@ -93,7 +93,7 @@ func TestParameterHandling(t *testing.T) {
 	}}
 
 	// As part of the URL.
-	err := test.prepare()
+	err := test.prepareRequest()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
@@ -107,10 +107,11 @@ func TestParameterHandling(t *testing.T) {
 
 	// URLencoded in the body.
 	test.Request.ParamsAs = "body"
-	err = test.prepare()
+	err = test.prepareRequest()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
+	test.resetRequest()
 	full, err := ioutil.ReadAll(test.Request.Request.Body)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
@@ -137,10 +138,11 @@ func TestMultipartParameterHandling(t *testing.T) {
 		Variables: map[string]string{"XYZ": "+++"},
 	}
 
-	err := test.prepare()
+	err := test.prepareRequest()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
+	test.resetRequest()
 	ct := test.Request.Request.Header.Get("Content-Type")
 	mt, p, err := mime.ParseMediaType(ct)
 	if err != nil {
@@ -231,7 +233,7 @@ func TestSendBody(t *testing.T) {
 	},
 		Variables: map[string]string{"XYZ": "+++"},
 	}
-	err := test.prepare()
+	err := test.prepareRequest()
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err.Error())
 	}
