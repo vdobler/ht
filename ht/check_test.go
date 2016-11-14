@@ -117,7 +117,6 @@ var prepareError = fmt.Errorf("prepare error")
 const ms = 1e6
 
 func runTest(t *testing.T, i int, tc TC) {
-	tc.r.Body()
 	fakeTest := Test{Response: tc.r}
 	if err := tc.c.Prepare(); err != nil {
 		if tc.e != prepareError {

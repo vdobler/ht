@@ -155,8 +155,8 @@ type Response struct {
 }
 
 // Body returns a reader of the response body.
-func (resp *Response) Body() *bytes.Reader {
-	return bytes.NewReader([]byte(resp.BodyStr)) // TODO
+func (resp *Response) Body() io.Reader {
+	return strings.NewReader(resp.BodyStr)
 }
 
 // Cookie is a HTTP cookie.
