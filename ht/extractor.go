@@ -349,7 +349,7 @@ func (e CookieExtractor) Extract(t *Test) (string, error) {
 // The Script is evaluated and the final expression is the value
 // extracted with the following excpetions:
 //  - undefined or null is treated as an error
-//  - Objects and Arrays are treated as errors. The error message is reporteds
+//  - Objects and Arrays are treated as errors. The error message is reported
 //    in the field 'errmsg' of the object or the index 0 of the array.
 //  - Strings, Numbers and Bools are treated as properly extracted values
 //    which are returned.
