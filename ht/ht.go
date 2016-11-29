@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -534,10 +533,17 @@ func (t *Test) Run() error {
 // execute does a single request and check the response.
 func (t *Test) execute() {
 	var err error
-	if t.Request.Request.URL.Scheme == "file" {
+	switch t.Request.Request.URL.Scheme {
+	case "file":
 		err = t.executeFile()
-	} else {
+	case "http", "https":
 		err = t.executeRequest()
+	case "bash":
+		err = t.executeBash()
+	default:
+		t.Status = Bogus
+		t.Error = fmt.Errorf("ht: unrecognized URL scheme %q", t.Request.Request.URL.Scheme)
+		return
 	}
 	if err == nil {
 		if len(t.Checks) > 0 {
@@ -629,9 +635,8 @@ func (t *Test) prepareRequest() error {
 		t.Request.Request.SetBasicAuth(t.Request.BasicAuthUser, t.Request.BasicAuthPass)
 	}
 
-	to := DefaultClientTimeout
-	if t.Request.Timeout > 0 {
-		to = t.Request.Timeout
+	if t.Request.Timeout <= 0 {
+		t.Request.Timeout = DefaultClientTimeout
 	}
 
 	if t.Request.FollowRedirects {
@@ -652,14 +657,14 @@ func (t *Test) prepareRequest() error {
 			Transport:     Transport,
 			CheckRedirect: cr,
 			Jar:           nil,
-			Timeout:       to,
+			Timeout:       t.Request.Timeout,
 		}
 	} else {
 		t.client = &http.Client{
 			Transport:     Transport,
 			CheckRedirect: dontFollowRedirects,
 			Jar:           nil,
-			Timeout:       to,
+			Timeout:       t.Request.Timeout,
 		}
 	}
 	if t.Jar != nil {
@@ -883,66 +888,6 @@ done:
 	t.debugf("Request took %s, %s", t.Response.Duration, msg)
 
 	return err
-}
-
-func (t *Test) executeFile() error {
-	t.infof("%s %q", t.Request.Request.Method, t.Request.Request.URL.String())
-
-	start := time.Now()
-	defer func() {
-		t.Response.Duration = time.Since(start)
-	}()
-
-	u := t.Request.Request.URL
-	if u.Host != "" {
-		if u.Host != "localhost" && u.Host != "127.0.0.1" { // TODO IPv6
-			return fmt.Errorf("file:// on remote host not implemented")
-		}
-	}
-
-	switch t.Request.Method {
-	case "GET":
-		file, err := os.Open(u.Path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		body, err := ioutil.ReadAll(file)
-		t.Response.BodyStr = string(body)
-		t.Response.BodyErr = err
-	case "DELETE":
-		err := os.Remove(u.Path)
-		if err != nil {
-			return err
-		}
-		t.Response.BodyStr = fmt.Sprintf("Successfully deleted %s", u)
-		t.Response.BodyErr = nil
-	case "PUT":
-		err := ioutil.WriteFile(u.Path, []byte(t.Request.Body), 0666)
-		if err != nil {
-			return err
-		}
-		t.Response.BodyStr = fmt.Sprintf("Successfully wrote %s", u)
-		t.Response.BodyErr = nil
-
-	default:
-		return fmt.Errorf("method %s not supported on file:// URL", t.Request.Method)
-	}
-
-	// Fake a http.Response
-	t.Response.Response = &http.Response{
-		Status:     "200 OK",
-		StatusCode: 200,
-		Proto:      "HTTP/1.1",
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Header:     make(http.Header),
-		Body:       nil, // already close and consumed
-		Trailer:    make(http.Header),
-		Request:    t.Request.Request,
-	}
-
-	return nil
 }
 
 // executeChecks applies the checks in t to the HTTP response received during
