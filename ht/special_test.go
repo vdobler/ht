@@ -1,4 +1,4 @@
-// Copyright 2014 Volker Dobler.  All rights reserved.
+// Copyright 2016 Volker Dobler.  All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -15,7 +15,7 @@ import (
 // ----------------------------------------------------------------------------
 // file:// pseudo request.
 
-func TestFileSchema(t *testing.T) {
+func TestFilePseudorequest(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
@@ -24,7 +24,7 @@ func TestFileSchema(t *testing.T) {
 
 	tests := []*Test{
 		&Test{
-			Name: "PUT Pass",
+			Name: "PUT-Pass",
 			Request: Request{
 				URL:  u,
 				Body: "Tadadadaaa!",
@@ -36,7 +36,7 @@ func TestFileSchema(t *testing.T) {
 			},
 		},
 		&Test{
-			Name: "PUT Error",
+			Name: "PUT-Error",
 			Request: Request{
 				URL:  u + "/iouer/cxxs/dlkfj",
 				Body: "Tadadadaaa!",
@@ -48,7 +48,7 @@ func TestFileSchema(t *testing.T) {
 			},
 		},
 		&Test{
-			Name: "GET Pass",
+			Name: "GET-Pass",
 			Request: Request{
 				URL: u,
 			},
@@ -59,7 +59,7 @@ func TestFileSchema(t *testing.T) {
 			},
 		},
 		&Test{
-			Name: "GET Fail",
+			Name: "GET-Fail",
 			Request: Request{
 				URL: u,
 			},
@@ -70,7 +70,7 @@ func TestFileSchema(t *testing.T) {
 			},
 		},
 		&Test{
-			Name: "GET Error",
+			Name: "GET-Error",
 			Request: Request{
 				URL: u + "/slkdj/cxmvn",
 			},
@@ -80,7 +80,7 @@ func TestFileSchema(t *testing.T) {
 			},
 		},
 		&Test{
-			Name: "GET Error",
+			Name: "GET-Error",
 			Request: Request{
 				URL: "file://remote.host/some/path",
 			},
@@ -90,7 +90,7 @@ func TestFileSchema(t *testing.T) {
 			},
 		},
 		&Test{
-			Name: "DELETE Pass",
+			Name: "DELETE-Pass",
 			Request: Request{
 				URL: u,
 			},
@@ -101,7 +101,7 @@ func TestFileSchema(t *testing.T) {
 			},
 		},
 		&Test{
-			Name: "DELETE Error",
+			Name: "DELETE-Error",
 			Request: Request{
 				URL: u + "/sdjdfh/oieru",
 			},
@@ -114,29 +114,30 @@ func TestFileSchema(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		p := strings.Index(test.Name, " ")
+		p := strings.Index(test.Name, "-")
 		if p == -1 {
-			t.Fatalf("Ooops: no space in %d. Name: %s", i, test.Name)
+			t.Fatalf("Ooops: no '-' in %d. Name: %s", i, test.Name)
 		}
-		method, want := test.Name[:p], test.Name[p+1:]
-		test.Request.Method = method
-		err = test.Run()
-		if err != nil {
-			t.Fatalf("%d. %s: Unexpected error: ", i, err)
-		}
+		t.Run(test.Name, func(t *testing.T) {
+			method, want := test.Name[:p], test.Name[p+1:]
+			test.Request.Method = method
+			err = test.Run()
+			if err != nil {
+				t.Fatalf("Unexpected error: %s <%T>", err, err)
+			}
 
-		got := test.Status.String()
-		if got != want {
-			t.Errorf("%d. %s: got %s, want %s. (Error=%v)",
-				i, test.Name, got, want, test.Error)
-		}
+			got := test.Status.String()
+			if got != want {
+				t.Errorf("Fot %s, want %s. (Error=%v)", got, want, test.Error)
+			}
+		})
 	}
 }
 
 // ----------------------------------------------------------------------------
 // bash:// pseudo request
 
-func TestBash(t *testing.T) {
+func TestBashPseudorequest(t *testing.T) {
 	t.Run("Okay", testBashOkay)
 	t.Run("Exit2", testBashNonzeroExit)
 	t.Run("Timeout", testBashTimeout)
