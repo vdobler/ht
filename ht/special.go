@@ -2,6 +2,46 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Pseudo Request
+//
+// Ht allows to make several types of pseudo request: A request which is not a
+// HTTP1.1 request but generates output which can be checked via the existing
+// checks. The schema of the Test.Request.URL determines the request type.
+// Normal HTTP request are made with the two schemas "http" and "https".
+// Additionaly the following types of pseudo request are available:
+//
+// "file" pseudo request
+//     This type of pseudo request can be used to read, write and delete a file
+//     on the filesystem:
+//        - The GET request method tries to read the file given by the URL.Path
+//          and returns the content as the response body.
+//        - The PUT requets method tries to store the Request.Body under the
+//          path given by URL.Path.
+//        - The DELETE request method tries to delete the file given by the
+//          URL.Path.
+//        - The returned HTTP status code is 200 except if any file operation
+//          fails in which the Test has status Error.
+//
+// "bash" pseudo request
+//     This type of pseudo request executes a bash script and captures its
+//     output as the response.
+//        - The script is providen in the Request.Body
+//        - The working directory is taken to be URL.Path
+//        - Environment is populated from the Request.Params
+//        - The Request.Method and the Request.Header are ignored.
+//        - The script execution is caneceld after Request.Timout (or the
+//          default timeout).
+//     The outcome is encoded as follows:
+//        - The combined output (stdout and stderr) of the script is returned
+//          as the Response.BodyStr.
+//        - The HTTP status code is
+//             200 if the script's exit code is 0.
+//             408 if the script was canceled due to timeout
+//             500 if the exit code is != 0.
+//        - The Response.Header["Exit-Status"] is used to return the exit
+//          status in case of 200 and 500 (sucess and failure).
+//
+//
 package ht
 
 import (
@@ -76,11 +116,6 @@ func (t *Test) executeFile() error {
 }
 
 // executeBash executes a bash script:
-//   - the script is executed on the host given by the request URL
-//   - the script is taken from the request body
-//   - the working directory is the path of the request URL
-//   - the environment is populated from the request header
-//   - the combined output of the script os the response body
 func (t *Test) executeBash() error {
 	t.infof("Bash script in %q", t.Request.Request.URL.String())
 
@@ -118,9 +153,9 @@ func (t *Test) executeBash() error {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "/bin/bash", name)
 	cmd.Dir = workDir
-	for k, v := range t.Request.Header {
+	for k, v := range t.Request.Params {
 		if strings.Contains(k, "=") {
-			t.errorf("Environment variable %q from HTTP header contains =; dropped.", k)
+			t.errorf("Environment variable %q from Params contains =; dropped.", k)
 			continue
 		}
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v[0]))
@@ -148,6 +183,8 @@ func (t *Test) executeBash() error {
 		t.Response.Response.Status = "500 Internal Server Error"
 		t.Response.Response.StatusCode = 500
 		t.Response.Response.Header.Set("Exit-Status", err.Error())
+	} else {
+		t.Response.Response.Header.Set("Exit-Status", "exit status 0")
 	}
 
 	return nil

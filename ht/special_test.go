@@ -5,8 +5,7 @@
 package ht
 
 import (
-	"fmt"
-	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -138,11 +137,18 @@ func TestFileSchema(t *testing.T) {
 // bash:// pseudo request
 
 func TestBash(t *testing.T) {
+	t.Run("Okay", testBashOkay)
+	t.Run("Exit2", testBashNonzeroExit)
+	t.Run("Timeout", testBashTimeout)
+	t.Run("Error", testBashError)
+}
+
+func testBashOkay(t *testing.T) {
 	test := &Test{
 		Name: "Simple Bash Execution",
 		Request: Request{
 			URL: "bash://localhost/tmp",
-			Header: http.Header{
+			Params: url.Values{
 				"FOO_VAR": []string{"wuz baz"},
 			},
 			Body: `
@@ -155,16 +161,20 @@ echo "FOO_VAR=$FOO_VAR"
 			&StatusCode{Expect: 200},
 			&Body{Contains: "we are in /tmp"},
 			&Body{Contains: "wuz baz"},
+			&Header{Header: "Exit-Status", Condition: Condition{Equals: "exit status 0"}},
 		},
 	}
 
 	if err := test.Run(); err != nil {
 		t.Fatalf("Unexpected error %s <%T>", err, err)
 	}
-	test.PrintReport(os.Stdout)
+	if test.Status != Pass {
+		test.PrintReport(os.Stdout)
+		t.Errorf("Got test status %s (want Pass)", test.Status)
+	}
 }
 
-func TestBashNonzeroExit(t *testing.T) {
+func testBashNonzeroExit(t *testing.T) {
 	test := &Test{
 		Name: "Bash script with exit code 2.",
 		Request: Request{
@@ -172,22 +182,22 @@ func TestBashNonzeroExit(t *testing.T) {
 			Body: `echo Aaaaaarg....; exit 2; `,
 		},
 		Checks: CheckList{
-			&StatusCode{Expect: 200},
-			&Body{Contains: "we are in /tmp"},
-			&Body{Contains: "wuz baz"},
+			&StatusCode{Expect: 500},
+			&Body{Contains: "Aaaaaarg"},
+			&Header{Header: "Exit-Status", Condition: Condition{Equals: "exit status 2"}},
 		},
 	}
 
 	if err := test.Run(); err != nil {
 		t.Fatalf("Unexpected error %s <%T>", err, err)
 	}
-	fmt.Println("Body:\n", test.Response.BodyStr)
-	test.PrintReport(os.Stdout)
-	fmt.Printf("Error %q <%T>\n", test.Error, test.Error)
-	fmt.Println("Exit Status: ", test.Response.Response.Header.Get("Exit-Status"))
+	if test.Status != Pass {
+		test.PrintReport(os.Stdout)
+		t.Errorf("Got test status %s (want Pass)", test.Status)
+	}
 }
 
-func TestBashTimeout(t *testing.T) {
+func testBashTimeout(t *testing.T) {
 	test := &Test{
 		Name: "A too long running script.",
 		Request: Request{
@@ -212,7 +222,7 @@ func TestBashTimeout(t *testing.T) {
 	}
 }
 
-func TestBashError(t *testing.T) {
+func testBashError(t *testing.T) {
 	test := &Test{
 		Name: "A bogus script.",
 		Request: Request{
