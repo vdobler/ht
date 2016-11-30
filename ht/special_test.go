@@ -5,6 +5,7 @@
 package ht
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -246,5 +247,79 @@ func testBashError(t *testing.T) {
 			t.Errorf("Got wrong error %s", e)
 		}
 		test.PrintReport(os.Stdout)
+	}
+}
+
+// ----------------------------------------------------------------------------
+// sql:// pseudo request
+
+func TestSQLPseudorequest(t *testing.T) {
+	t.Run("Select", testSQLSelect)
+	t.Run("Insert", testSQLInsert)
+}
+
+func testSQLSelect(t *testing.T) {
+	test := &Test{
+		Name: "SQL Select",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Params: url.Values{
+				"DSN": []string{"vd:vd@tcp(172.17.0.2:3306)/vd"},
+			},
+			Body: `
+SELECT id AS orderID, product, price
+FROM orders
+ORDER BY price DESC;
+`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+			&JSON{Element: "0.price",
+				Condition: Condition{Equals: `"35"`}},
+			&JSON{Element: "1.product",
+				Condition: Condition{Equals: `"Speilzeugzug"`}},
+		},
+	}
+
+	if err := test.Run(); err != nil {
+		t.Fatalf("Unexpected error %s <%T>", err, err)
+	}
+	if test.Status != Pass {
+		test.PrintReport(os.Stdout)
+		fmt.Println(test.Response.BodyStr)
+		t.Errorf("Got test status %s (want Pass)", test.Status)
+	}
+}
+
+func testSQLInsert(t *testing.T) {
+	test := &Test{
+		Name: "SQL Insert",
+		Request: Request{
+			Method: "POST",
+			URL:    "sql://mysql",
+			Params: url.Values{
+				"DSN": []string{"vd:vd@tcp(172.17.0.2:3306)/vd"},
+			},
+			Body: `
+INSERT INTO orders (id, product,price)
+VALUES(45, "Puzzle", 15);`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+			&JSON{Element: "LastInsertId.Value",
+				Condition: Condition{Equals: `0`}},
+			&JSON{Element: "RowsAffected.Value",
+				Condition: Condition{Equals: `1`}},
+		},
+	}
+
+	if err := test.Run(); err != nil {
+		t.Fatalf("Unexpected error %s <%T>", err, err)
+	}
+	if test.Status != Pass {
+		test.PrintReport(os.Stdout)
+		fmt.Println(test.Response.BodyStr)
+		t.Errorf("Got test status %s (want Pass)", test.Status)
 	}
 }

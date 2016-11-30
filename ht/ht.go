@@ -540,6 +540,8 @@ func (t *Test) execute() {
 		err = t.executeRequest()
 	case "bash":
 		err = t.executeBash()
+	case "sql":
+		err = t.executeSQL()
 	default:
 		t.Status = Bogus
 		t.Error = fmt.Errorf("ht: unrecognized URL scheme %q", t.Request.Request.URL.Scheme)

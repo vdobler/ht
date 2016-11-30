@@ -41,11 +41,23 @@
 //        - The Response.Header["Exit-Status"] is used to return the exit
 //          status in case of 200 and 500 (sucess and failure).
 //
+// "sql" pseudo request
+//     This type of pseudo request executes a database query (using package
+//     database/sql.
+//        - The database driver is selected via URL.Host
+//        - The data source name is taken from Params["DSN"]
+//        - The SQL query is read from the Request.Body
+//        - For a GET Request.Method the SQL query is passed to sql.Query,
+//          for a POST method the SQL query is passed to sql.Execute.
+//     The result if the query is returned in the Response.BodyStr
 //
 package ht
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -53,6 +65,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func (t *Test) executeFile() error {
@@ -188,4 +202,155 @@ func (t *Test) executeBash() error {
 	}
 
 	return nil
+}
+
+// executeSQL executes a SQL query:
+func (t *Test) executeSQL() error {
+	t.infof("SQL query in %q", t.Request.Request.URL.String())
+
+	start := time.Now()
+	defer func() {
+		t.Response.Duration = time.Since(start)
+	}()
+
+	u := t.Request.Request.URL
+	if u.Host == "" {
+		return fmt.Errorf("ht: missing database driver name (host of URL) in sql pseudo query")
+	}
+	dsn := t.Request.Params.Get("DSN")
+	if dsn == "" {
+		return fmt.Errorf("sql:// missing data source name (DSN parameter) in sql pseudo query")
+	}
+
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return err
+	}
+
+	if t.Request.Body == "" {
+		return fmt.Errorf("ht: missing query (reqquest body) in sql pseudo query")
+	}
+
+	// Fake a http.Response
+	t.Response.Response = &http.Response{
+		Status:     "200 OK",
+		StatusCode: 200,
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Body:       nil, // already close and consumed
+		Trailer:    make(http.Header),
+		Request:    t.Request.Request,
+	}
+	// TODO: set content type to JSON
+
+	switch t.Request.Method {
+	case "GET":
+		t.Response.BodyStr, err = sqlQuery(db, t.Request.Body)
+		if err != nil {
+			return err
+		}
+	case "POST":
+		t.Response.BodyStr, err = sqlExecute(db, t.Request.Body)
+		if err != nil {
+			return err
+		}
+
+	default:
+		// TODO: this should render the Test into state Bogus, not just Error.
+		return fmt.Errorf("ht: illegal method %s for sql pseuo query", t.Request.Method)
+	}
+
+	return nil
+}
+
+// Returns a json like
+//    {
+//        "LastInsertId": { "Value": 1234 },
+//        "RowsAffected": {
+//            "Value": 0,
+//            "Error": "something went wrong"
+//        }
+//    }
+func sqlExecute(db *sql.DB, query string) (string, error) {
+	result, err := db.Exec(query)
+	if err != nil {
+		return "", err
+	}
+
+	tmp := struct {
+		LastInsertId struct {
+			Value int64
+			Error string `json:",omitempty"`
+		}
+		RowsAffected struct {
+			Value int64
+			Error string `json:",omitempty"`
+		}
+	}{}
+
+	lii, liiErr := result.LastInsertId()
+	tmp.LastInsertId.Value = lii
+	if liiErr != nil {
+		tmp.LastInsertId.Error = liiErr.Error()
+	}
+
+	ra, raErr := result.RowsAffected()
+	tmp.RowsAffected.Value = ra
+	if raErr != nil {
+		tmp.RowsAffected.Error = raErr.Error()
+	}
+	body, err := json.MarshalIndent(tmp, "", "    ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
+}
+
+func sqlQuery(db *sql.DB, query string) (string, error) {
+	rows, err := db.Query(query)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	columns, err := rows.Columns()
+	if err != nil {
+		return "", err
+	}
+
+	buf := bytes.Buffer{}
+	buf.WriteString("[\n  ")
+
+	values := make([]string, len(columns))
+	ptrs := make([]interface{}, len(columns))
+	for i := range values {
+		ptrs[i] = &values[i]
+	}
+	tmp := make(map[string]string)
+	sep := ""
+	for rows.Next() {
+		err = rows.Scan(ptrs...)
+		if err != nil {
+			return "", err
+		}
+		for i, col := range columns {
+			tmp[col] = values[i]
+		}
+		record, err := json.MarshalIndent(tmp, "  ", "  ")
+		if err != nil {
+			return buf.String(), err
+		}
+		buf.WriteString(sep)
+		buf.Write(record)
+		sep = ",\n  "
+	}
+	buf.WriteString("\n]")
+	err = rows.Err() // get any error encountered during iteration
+	if err != nil {
+		return buf.String(), err
+	}
+
+	return buf.String(), nil
 }
