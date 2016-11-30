@@ -267,6 +267,7 @@ func TestSQLPseudorequest(t *testing.T) {
 	t.Run("Select", testSQLSelect)
 	t.Run("Insert", testSQLInsert)
 	t.Run("BadQuery", testSQLBadQuery)
+	t.Run("Single", testSQLSingle)
 }
 
 func testSQLCreate(t *testing.T) {
@@ -318,9 +319,9 @@ func testSQLFill(t *testing.T) {
 INSERT INTO orders
   (product,price)
 VALUES
-  ("Badetuch", 17.30),
+  ("Badetuch", 17.10),
   ("Taschenmesser", 24.00),
-  ("Puzzle", 9.90)
+  ("Puzzle", 9.70)
 ;
 `,
 		},
@@ -365,7 +366,7 @@ ORDER BY price DESC;
 			&JSON{Element: "1.product",
 				Condition: Condition{Equals: `"Badetuch"`}},
 			&JSON{Element: "2.price",
-				Condition: Condition{Equals: `"9.90"`}},
+				Condition: Condition{Equals: `"9.70"`}},
 			&JSON{Element: "2.product",
 				Condition: Condition{Equals: `"Puzzle"`}},
 		},
@@ -392,7 +393,7 @@ func testSQLInsert(t *testing.T) {
 			},
 			Body: `
 INSERT INTO orders (product,price)
-VALUES ("Buch", 39.95);
+VALUES ("Buch", 38.00);
 `,
 		},
 		Checks: CheckList{
@@ -436,6 +437,36 @@ HUBBA BUBBA TRALLALA;
 		t.Fatalf("Unexpected error %s <%T>", err, err)
 	}
 	if test.Status != Error {
+		test.PrintReport(os.Stdout)
+		fmt.Println(test.Response.BodyStr)
+		t.Errorf("Got test status %s (want Pass)", test.Status)
+	}
+}
+
+func testSQLSingle(t *testing.T) {
+	test := &Test{
+		Name: "SQL Select",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Params: url.Values{
+				"DSN": []string{*mysqlDSN},
+			},
+			Body: `
+SELECT ROUND(AVG(price),2) AS avgprice FROM orders;
+`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+			&JSON{Element: "0.avgprice",
+				Condition: Condition{Equals: `"22.20"`}},
+		},
+	}
+
+	if err := test.Run(); err != nil {
+		t.Fatalf("Unexpected error %s <%T>", err, err)
+	}
+	if test.Status != Pass {
 		test.PrintReport(os.Stdout)
 		fmt.Println(test.Response.BodyStr)
 		t.Errorf("Got test status %s (want Pass)", test.Status)
