@@ -254,7 +254,8 @@ func (t *Test) executeSQL() error {
 
 	switch t.Request.Method {
 	case "GET":
-		t.Response.BodyStr, err = sqlQuery(db, t.Request.Body)
+		accept := t.Request.Header.Get("Accept")
+		t.Response.BodyStr, err = sqlQuery(db, t.Request.Body, accept)
 		if err != nil {
 			return err
 		}
@@ -316,11 +317,57 @@ func sqlExecute(db *sql.DB, query string) (string, error) {
 	return string(body), nil
 }
 
+func sqlQuery(db *sql.DB, query string, accept string) (string, error) {
+	rows, err := db.Query(query)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	columns, err := rows.Columns()
+	if err != nil {
+		return "", err
+	}
+
+	var recorder recordWriter
+	switch accept {
+	case "text/plain":
+		recorder = newPlaintextRecorder()
+	case "application/json":
+		fallthrough
+	default:
+		recorder = newJsonRecorder(columns)
+	}
+
+	values := make([]string, len(columns))
+	ptrs := make([]interface{}, len(columns))
+	for i := range values {
+		ptrs[i] = &values[i]
+	}
+	for rows.Next() {
+		err = rows.Scan(ptrs...)
+		if err != nil {
+			return "", err
+		}
+		recorder.WriteRecord(values)
+	}
+	err = rows.Err() // get any error encountered during iteration
+	body, _ := recorder.Close()
+	if err != nil {
+		return body, err
+	}
+
+	return body, nil
+}
+
+// ----------------------------------------------------------------------------
+// Query record recorders
+
 type recordWriter interface {
-	WriteRecord([]string) error
+	WriteRecord([]string)
 	Close() (string, error)
 }
 
+// jsonRecorder produces a JSON output from the queried databse rows.
 type jsonRecorder struct {
 	cols  []string
 	buf   *bytes.Buffer
@@ -329,7 +376,8 @@ type jsonRecorder struct {
 	err   error
 }
 
-func newJsonRecorder(buf *bytes.Buffer, cols []string) *jsonRecorder {
+func newJsonRecorder(cols []string) *jsonRecorder {
+	buf := &bytes.Buffer{}
 	buf.WriteString("[\n  ")
 	return &jsonRecorder{
 		cols:  cols,
@@ -339,13 +387,6 @@ func newJsonRecorder(buf *bytes.Buffer, cols []string) *jsonRecorder {
 	}
 }
 
-func (jr *jsonRecorder) Close() (string, error) {
-	_, err := jr.buf.WriteString("\n]")
-	if err != nil {
-		jr.err = err
-	}
-	return jr.buf.String(), jr.err
-}
 func (jr *jsonRecorder) WriteRecord(values []string) {
 	if jr.err != nil {
 		return
@@ -373,37 +414,40 @@ func (jr *jsonRecorder) WriteRecord(values []string) {
 	}
 }
 
-func sqlQuery(db *sql.DB, query string) (string, error) {
-	rows, err := db.Query(query)
+func (jr *jsonRecorder) Close() (string, error) {
+	_, err := jr.buf.WriteString("\n]")
 	if err != nil {
-		return "", err
+		jr.err = err
 	}
-	defer rows.Close()
-	columns, err := rows.Columns()
-	if err != nil {
-		return "", err
-	}
+	return jr.buf.String(), jr.err
+}
 
-	buf := &bytes.Buffer{}
-	recorder := newJsonRecorder(buf, columns)
+// plaintextRecorder produces plaintext from the queried rows
+type plaintextRecorder struct {
+	buf   *bytes.Buffer
+	first bool
+}
 
-	values := make([]string, len(columns))
-	ptrs := make([]interface{}, len(columns))
-	for i := range values {
-		ptrs[i] = &values[i]
+func newPlaintextRecorder() *plaintextRecorder {
+	return &plaintextRecorder{
+		buf:   &bytes.Buffer{},
+		first: true,
 	}
-	for rows.Next() {
-		err = rows.Scan(ptrs...)
-		if err != nil {
-			return "", err
-		}
-		recorder.WriteRecord(values)
-	}
-	err = rows.Err() // get any error encountered during iteration
-	body, _ := recorder.Close()
-	if err != nil {
-		return body, err
-	}
+}
 
-	return body, nil
+func (ptr *plaintextRecorder) WriteRecord(values []string) {
+	if ptr.first {
+		ptr.first = false
+	} else {
+		ptr.buf.WriteRune('\n')
+	}
+	sep := ""
+	for _, v := range values {
+		fmt.Fprintf(ptr.buf, "%s%s", sep, v)
+		sep = " "
+	}
+}
+
+func (ptr *plaintextRecorder) Close() (string, error) {
+	return ptr.buf.String(), nil
 }

@@ -7,6 +7,7 @@ package ht
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -268,6 +269,8 @@ func TestSQLPseudorequest(t *testing.T) {
 	t.Run("Insert", testSQLInsert)
 	t.Run("BadQuery", testSQLBadQuery)
 	t.Run("Single", testSQLSingle)
+	t.Run("PlaintextSingle", testSQLSinglePlaintext)
+	t.Run("PlaintextMulti", testSQLMultiPlaintext)
 }
 
 func testSQLCreate(t *testing.T) {
@@ -417,7 +420,7 @@ VALUES ("Buch", 38.00);
 
 func testSQLBadQuery(t *testing.T) {
 	test := &Test{
-		Name: "SQL Select",
+		Name: "SQL Bad Query",
 		Request: Request{
 			Method: "GET",
 			URL:    "sql://mysql",
@@ -460,6 +463,70 @@ SELECT ROUND(AVG(price),2) AS avgprice FROM orders;
 			&StatusCode{Expect: 200},
 			&JSON{Element: "0.avgprice",
 				Condition: Condition{Equals: `"22.20"`}},
+		},
+	}
+
+	if err := test.Run(); err != nil {
+		t.Fatalf("Unexpected error %s <%T>", err, err)
+	}
+	if test.Status != Pass {
+		test.PrintReport(os.Stdout)
+		fmt.Println(test.Response.BodyStr)
+		t.Errorf("Got test status %s (want Pass)", test.Status)
+	}
+}
+
+func testSQLSinglePlaintext(t *testing.T) {
+	test := &Test{
+		Name: "SQL Single Plaintext",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Params: url.Values{
+				"DSN": []string{*mysqlDSN},
+			},
+			Header: http.Header{
+				"Accept": []string{"text/plain"},
+			},
+			Body: `
+SELECT MIN(price) AS minprice, ROUND(AVG(price),2) AS avgprice FROM orders;
+`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+			&Body{Equals: `9.70 22.20`},
+		},
+	}
+
+	if err := test.Run(); err != nil {
+		t.Fatalf("Unexpected error %s <%T>", err, err)
+	}
+	if test.Status != Pass {
+		test.PrintReport(os.Stdout)
+		fmt.Println(test.Response.BodyStr)
+		t.Errorf("Got test status %s (want Pass)", test.Status)
+	}
+}
+
+func testSQLMultiPlaintext(t *testing.T) {
+	test := &Test{
+		Name: "SQL Multiple Plaintext",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Params: url.Values{
+				"DSN": []string{*mysqlDSN},
+			},
+			Header: http.Header{
+				"Accept": []string{"text/plain"},
+			},
+			Body: `
+SELECT id, price FROM orders WHERE price > 20;
+`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+			&Body{Equals: "2 24.00\n4 38.00"},
 		},
 	}
 
