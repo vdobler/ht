@@ -127,7 +127,7 @@ type JSON struct {
 	// Element. Useful when JSON contains embedded, quoted JSON as
 	// a string and checking via Condition is not practical.
 	// (It seems this nested JSON is common nowadays. I'm getting old.)
-	Embedded *JSON
+	Embedded *JSON `json:",omitempty"`
 
 	// Sep is the separator in Element when checking the Condition.
 	// A zero value is equivalent to "."
