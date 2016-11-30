@@ -47,8 +47,15 @@
 //        - The database driver is selected via URL.Host
 //        - The data source name is taken from Params["DSN"]
 //        - The SQL query is read from the Request.Body
-//        - For a GET Request.Method the SQL query is passed to sql.Query,
-//          for a POST method the SQL query is passed to sql.Execute.
+//        - For a POST method the SQL query is passed to sql.Execute
+//          and the response body is a JSON with LastInsertId and RowsAffected.
+//        - For a GET Request.Method the SQL query is passed to sql.Query
+//          and the resulting rows are returned as the response body.
+//          The format of the response body is determined by the Accept
+//          header:
+//             "application/json" (the default): a JSON array with the rows
+//                 as objects
+//             "text/csv": as a csv file
 //     The result if the query is returned in the Response.BodyStr
 //
 package ht
@@ -309,6 +316,63 @@ func sqlExecute(db *sql.DB, query string) (string, error) {
 	return string(body), nil
 }
 
+type recordWriter interface {
+	WriteRecord([]string) error
+	Close() (string, error)
+}
+
+type jsonRecorder struct {
+	cols  []string
+	buf   *bytes.Buffer
+	first bool
+	tmp   map[string]string
+	err   error
+}
+
+func newJsonRecorder(buf *bytes.Buffer, cols []string) *jsonRecorder {
+	buf.WriteString("[\n  ")
+	return &jsonRecorder{
+		cols:  cols,
+		buf:   buf,
+		first: true,
+		tmp:   make(map[string]string),
+	}
+}
+
+func (jr *jsonRecorder) Close() (string, error) {
+	_, err := jr.buf.WriteString("\n]")
+	if err != nil {
+		jr.err = err
+	}
+	return jr.buf.String(), jr.err
+}
+func (jr *jsonRecorder) WriteRecord(values []string) {
+	if jr.err != nil {
+		return
+	}
+	for i, col := range jr.cols {
+		jr.tmp[col] = values[i]
+	}
+	record, err := json.MarshalIndent(jr.tmp, "  ", "  ")
+	if err != nil {
+		jr.err = err
+		return
+	}
+	if jr.first {
+		jr.first = false
+	} else {
+		_, err = jr.buf.WriteString(",\n  ")
+		if err != nil {
+			jr.err = err
+			return
+		}
+	}
+	_, err = jr.buf.Write(record)
+	if err != nil {
+		jr.err = err
+	}
+}
+
 func sqlQuery(db *sql.DB, query string) (string, error) {
 	rows, err := db.Query(query)
 	if err != nil {
@@ -320,37 +384,26 @@ func sqlQuery(db *sql.DB, query string) (string, error) {
 		return "", err
 	}
 
-	buf := bytes.Buffer{}
-	buf.WriteString("[\n  ")
+	buf := &bytes.Buffer{}
+	recorder := newJsonRecorder(buf, columns)
 
 	values := make([]string, len(columns))
 	ptrs := make([]interface{}, len(columns))
 	for i := range values {
 		ptrs[i] = &values[i]
 	}
-	tmp := make(map[string]string)
-	sep := ""
 	for rows.Next() {
 		err = rows.Scan(ptrs...)
 		if err != nil {
 			return "", err
 		}
-		for i, col := range columns {
-			tmp[col] = values[i]
-		}
-		record, err := json.MarshalIndent(tmp, "  ", "  ")
-		if err != nil {
-			return buf.String(), err
-		}
-		buf.WriteString(sep)
-		buf.Write(record)
-		sep = ",\n  "
+		recorder.WriteRecord(values)
 	}
-	buf.WriteString("\n]")
 	err = rows.Err() // get any error encountered during iteration
+	body, _ := recorder.Close()
 	if err != nil {
-		return buf.String(), err
+		return body, err
 	}
 
-	return buf.String(), nil
+	return body, nil
 }
