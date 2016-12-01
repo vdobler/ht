@@ -5,6 +5,7 @@
 package ht
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"net/http"
@@ -256,31 +257,56 @@ func testBashError(t *testing.T) {
 // sql:// pseudo request
 
 // To test against a MySQL database:
-//    $ docker run -d -e MYSQL_USER=test -e MYSQL_PASSWORD=test -e MYSQL_DATABASE=test \
-//          -e MYSQL_ALLOW_EMPTY_PASSWORD=true -p 7799:3306 mysql:5.6
+//    docker run -d -e MYSQL_USER=test -e MYSQL_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_ALLOW_EMPTY_PASSWORD=true -p 7799:3306 mysql:5.6
 var mysqlDSN = flag.String("ht.mysql",
 	"test:test@tcp(127.0.0.1:7799)/test",
 	"MySQL data source name")
 
 func TestSQLPseudorequest(t *testing.T) {
-	t.Run("Create", testSQLCreate)
-	t.Run("Fill", testSQLFill)
-	t.Run("Select", testSQLSelect)
-	t.Run("Insert", testSQLInsert)
-	t.Run("BadQuery", testSQLBadQuery)
-	t.Run("Single", testSQLSingle)
-	t.Run("PlaintextSingle", testSQLSinglePlaintext)
-	t.Run("PlaintextMulti", testSQLMultiPlaintext)
+	db, err := sql.Open("mysql", *mysqlDSN)
+	if err != nil {
+		t.Skipf("Cannot open %q", *mysqlDSN)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Cannot connect %q", *mysqlDSN)
+	}
+	db.Exec("DROP TABLE orders;")
+
+	for _, test := range sqlTests {
+		t.Run(test.Name, func(t *testing.T) {
+			if err := test.Run(); err != nil {
+				t.Fatalf("Unexpected error %s <%T>", err, err)
+			}
+			if test.Status != Pass {
+				test.PrintReport(os.Stdout)
+				fmt.Println(test.Response.BodyStr)
+				t.Errorf("Got test status %s (want Pass)", test.Status)
+			}
+		})
+	}
+
+	for _, test := range sqlTestsErroring {
+		t.Run(test.Name, func(t *testing.T) {
+			if err := test.Run(); err != nil {
+				t.Fatalf("Unexpected error %s <%T>", err, err)
+			}
+			if test.Status != Error {
+				test.PrintReport(os.Stdout)
+				fmt.Println(test.Response.BodyStr)
+				t.Errorf("Got test status %s (want Error)", test.Status)
+			}
+		})
+	}
 }
 
-func testSQLCreate(t *testing.T) {
-	test := &Test{
-		Name: "SQL Create",
+var sqlTests = []*Test{
+	&Test{
+		Name: "Create",
 		Request: Request{
 			Method: "POST",
 			URL:    "sql://mysql",
-			Params: url.Values{
-				"DSN": []string{*mysqlDSN},
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
 			},
 			Body: `
 CREATE TABLE orders (
@@ -297,26 +323,15 @@ CREATE TABLE orders (
 			&JSON{Element: "RowsAffected.Value",
 				Condition: Condition{Equals: `0`}},
 		},
-	}
+	},
 
-	if err := test.Run(); err != nil {
-		t.Fatalf("Unexpected error %s <%T>", err, err)
-	}
-	if test.Status != Pass {
-		test.PrintReport(os.Stdout)
-		fmt.Println(test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
-	}
-}
-
-func testSQLFill(t *testing.T) {
-	test := &Test{
-		Name: "SQL Insert",
+	&Test{
+		Name: "Fill",
 		Request: Request{
 			Method: "POST",
 			URL:    "sql://mysql",
-			Params: url.Values{
-				"DSN": []string{*mysqlDSN},
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
 			},
 			Body: `
 INSERT INTO orders
@@ -335,26 +350,14 @@ VALUES
 			&JSON{Element: "RowsAffected.Value",
 				Condition: Condition{Equals: `3`}},
 		},
-	}
-
-	if err := test.Run(); err != nil {
-		t.Fatalf("Unexpected error %s <%T>", err, err)
-	}
-	if test.Status != Pass {
-		test.PrintReport(os.Stdout)
-		fmt.Println(test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
-	}
-}
-
-func testSQLSelect(t *testing.T) {
-	test := &Test{
-		Name: "SQL Select",
+	},
+	&Test{
+		Name: "Select",
 		Request: Request{
 			Method: "GET",
 			URL:    "sql://mysql",
-			Params: url.Values{
-				"DSN": []string{*mysqlDSN},
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
 			},
 			Body: `
 SELECT id AS orderID, product, price
@@ -373,26 +376,15 @@ ORDER BY price DESC;
 			&JSON{Element: "2.product",
 				Condition: Condition{Equals: `"Puzzle"`}},
 		},
-	}
+	},
 
-	if err := test.Run(); err != nil {
-		t.Fatalf("Unexpected error %s <%T>", err, err)
-	}
-	if test.Status != Pass {
-		test.PrintReport(os.Stdout)
-		fmt.Println(test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
-	}
-}
-
-func testSQLInsert(t *testing.T) {
-	test := &Test{
-		Name: "SQL Insert",
+	&Test{
+		Name: "Insert",
 		Request: Request{
 			Method: "POST",
 			URL:    "sql://mysql",
-			Params: url.Values{
-				"DSN": []string{*mysqlDSN},
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
 			},
 			Body: `
 INSERT INTO orders (product,price)
@@ -406,54 +398,15 @@ VALUES ("Buch", 38.00);
 			&JSON{Element: "RowsAffected.Value",
 				Condition: Condition{Equals: `1`}},
 		},
-	}
+	},
 
-	if err := test.Run(); err != nil {
-		t.Fatalf("Unexpected error %s <%T>", err, err)
-	}
-	if test.Status != Pass {
-		test.PrintReport(os.Stdout)
-		fmt.Println(test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
-	}
-}
-
-func testSQLBadQuery(t *testing.T) {
-	test := &Test{
-		Name: "SQL Bad Query",
+	&Test{
+		Name: "JSON",
 		Request: Request{
 			Method: "GET",
 			URL:    "sql://mysql",
-			Params: url.Values{
-				"DSN": []string{*mysqlDSN},
-			},
-			Body: `
-HUBBA BUBBA TRALLALA;
-`,
-		},
-		Checks: CheckList{
-			&StatusCode{Expect: 200},
-		},
-	}
-
-	if err := test.Run(); err != nil {
-		t.Fatalf("Unexpected error %s <%T>", err, err)
-	}
-	if test.Status != Error {
-		test.PrintReport(os.Stdout)
-		fmt.Println(test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
-	}
-}
-
-func testSQLSingle(t *testing.T) {
-	test := &Test{
-		Name: "SQL Select",
-		Request: Request{
-			Method: "GET",
-			URL:    "sql://mysql",
-			Params: url.Values{
-				"DSN": []string{*mysqlDSN},
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
 			},
 			Body: `
 SELECT ROUND(AVG(price),2) AS avgprice FROM orders;
@@ -464,29 +417,16 @@ SELECT ROUND(AVG(price),2) AS avgprice FROM orders;
 			&JSON{Element: "0.avgprice",
 				Condition: Condition{Equals: `"22.20"`}},
 		},
-	}
+	},
 
-	if err := test.Run(); err != nil {
-		t.Fatalf("Unexpected error %s <%T>", err, err)
-	}
-	if test.Status != Pass {
-		test.PrintReport(os.Stdout)
-		fmt.Println(test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
-	}
-}
-
-func testSQLSinglePlaintext(t *testing.T) {
-	test := &Test{
-		Name: "SQL Single Plaintext",
+	&Test{
+		Name: "Text",
 		Request: Request{
 			Method: "GET",
 			URL:    "sql://mysql",
-			Params: url.Values{
-				"DSN": []string{*mysqlDSN},
-			},
 			Header: http.Header{
-				"Accept": []string{"text/plain"},
+				"Data-Source-Name": []string{*mysqlDSN},
+				"Accept":           []string{"text/plain"},
 			},
 			Body: `
 SELECT MIN(price) AS minprice, ROUND(AVG(price),2) AS avgprice FROM orders;
@@ -494,31 +434,18 @@ SELECT MIN(price) AS minprice, ROUND(AVG(price),2) AS avgprice FROM orders;
 		},
 		Checks: CheckList{
 			&StatusCode{Expect: 200},
-			&Body{Equals: `9.70 22.20`},
+			&Body{Equals: "9.70\t22.20"},
 		},
-	}
+	},
 
-	if err := test.Run(); err != nil {
-		t.Fatalf("Unexpected error %s <%T>", err, err)
-	}
-	if test.Status != Pass {
-		test.PrintReport(os.Stdout)
-		fmt.Println(test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
-	}
-}
-
-func testSQLMultiPlaintext(t *testing.T) {
-	test := &Test{
-		Name: "SQL Multiple Plaintext",
+	&Test{
+		Name: "Text-Header",
 		Request: Request{
 			Method: "GET",
 			URL:    "sql://mysql",
-			Params: url.Values{
-				"DSN": []string{*mysqlDSN},
-			},
 			Header: http.Header{
-				"Accept": []string{"text/plain"},
+				"Data-Source-Name": []string{*mysqlDSN},
+				"Accept":           []string{"text/plain; header=present"},
 			},
 			Body: `
 SELECT id, price FROM orders WHERE price > 20;
@@ -526,16 +453,74 @@ SELECT id, price FROM orders WHERE price > 20;
 		},
 		Checks: CheckList{
 			&StatusCode{Expect: 200},
-			&Body{Equals: "2 24.00\n4 38.00"},
+			&Body{Equals: "id\tprice\n2\t24.00\n4\t38.00"},
 		},
-	}
+	},
 
-	if err := test.Run(); err != nil {
-		t.Fatalf("Unexpected error %s <%T>", err, err)
-	}
-	if test.Status != Pass {
-		test.PrintReport(os.Stdout)
-		fmt.Println(test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
-	}
+	&Test{
+		Name: "CSV",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
+				"Accept":           []string{"text/csv"},
+			},
+			Body: `
+SELECT id, price FROM orders WHERE price > 20;
+`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+			&Body{Equals: "2,24.00\n4,38.00\n"},
+		},
+	},
+
+	&Test{
+		Name: "CSV-Header",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Header: http.Header{
+				"Accept":           []string{"text/csv; header=present"},
+				"Data-Source-Name": []string{*mysqlDSN},
+			},
+			Body: `
+SELECT id, price FROM orders WHERE price > 20;
+`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+			&Body{Equals: "id,price\n2,24.00\n4,38.00\n"},
+		},
+	},
+}
+
+var sqlTestsErroring = []*Test{
+	&Test{
+		Name: "Missing-DSN",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Body:   `SELECT 1;`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+		},
+	},
+
+	&Test{
+		Name: "Bad-Query",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
+			},
+			Body: `HUBBA BUBBA TRALLALA;`,
+		},
+		Checks: CheckList{
+			&StatusCode{Expect: 200},
+		},
+	},
 }

@@ -13,49 +13,51 @@
 // "file" pseudo request
 //     This type of pseudo request can be used to read, write and delete a file
 //     on the filesystem:
-//        - The GET request method tries to read the file given by the URL.Path
+//        * The GET request method tries to read the file given by the URL.Path
 //          and returns the content as the response body.
-//        - The PUT requets method tries to store the Request.Body under the
+//        * The PUT requets method tries to store the Request.Body under the
 //          path given by URL.Path.
-//        - The DELETE request method tries to delete the file given by the
+//        * The DELETE request method tries to delete the file given by the
 //          URL.Path.
-//        - The returned HTTP status code is 200 except if any file operation
+//        * The returned HTTP status code is 200 except if any file operation
 //          fails in which the Test has status Error.
 //
 // "bash" pseudo request
 //     This type of pseudo request executes a bash script and captures its
 //     output as the response.
-//        - The script is providen in the Request.Body
-//        - The working directory is taken to be URL.Path
-//        - Environment is populated from the Request.Params
-//        - The Request.Method and the Request.Header are ignored.
-//        - The script execution is caneceld after Request.Timout (or the
+//        * The script is provided in the Request.Body
+//        * The working directory is taken to be URL.Path
+//        * Environment is populated from the Request.Params
+//        * The Request.Method and the Request.Header are ignored.
+//        * The script execution is canceled after Request.Timout (or the
 //          default timeout).
 //     The outcome is encoded as follows:
-//        - The combined output (stdout and stderr) of the script is returned
+//        * The combined output (stdout and stderr) of the script is returned
 //          as the Response.BodyStr.
-//        - The HTTP status code is
-//             200 if the script's exit code is 0.
-//             408 if the script was canceled due to timeout
-//             500 if the exit code is != 0.
-//        - The Response.Header["Exit-Status"] is used to return the exit
+//        * The HTTP status code is
+//             - 200 if the script's exit code is 0.
+//             - 408 if the script was canceled due to timeout
+//             - 500 if the exit code is != 0.
+//        * The Response.Header["Exit-Status"] is used to return the exit
 //          status in case of 200 and 500 (sucess and failure).
 //
 // "sql" pseudo request
 //     This type of pseudo request executes a database query (using package
 //     database/sql.
-//        - The database driver is selected via URL.Host
-//        - The data source name is taken from Params["DSN"]
-//        - The SQL query is read from the Request.Body
-//        - For a POST method the SQL query is passed to sql.Execute
+//        * The database driver is selected via URL.Host
+//        * The data source name is taken from Params["Data-Source-Name"]
+//        * The SQL query is read from the Request.Body
+//        * For a POST method the SQL query is passed to sql.Execute
 //          and the response body is a JSON with LastInsertId and RowsAffected.
-//        - For a GET Request.Method the SQL query is passed to sql.Query
+//        * For a GET Request.Method the SQL query is passed to sql.Query
 //          and the resulting rows are returned as the response body.
 //          The format of the response body is determined by the Accept
 //          header:
-//             "application/json" (the default): a JSON array with the rows
-//                 as objects
-//             "text/csv": as a csv file
+//             - "application/json":         a JSON array with the rows as objects
+//             - "text/csv; header=present": as a csv file with column headers
+//             - "text/csv":                 as a csv file withput header
+//             - "text/plain":               plain text file columns seperated by \t
+//             - "text/plain; fieldsep=X":   plain text file columns seperated by X
 //     The result if the query is returned in the Response.BodyStr
 //
 package ht
@@ -64,9 +66,11 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"os"
 	"os/exec"
@@ -224,9 +228,9 @@ func (t *Test) executeSQL() error {
 	if u.Host == "" {
 		return fmt.Errorf("ht: missing database driver name (host of URL) in sql pseudo query")
 	}
-	dsn := t.Request.Params.Get("DSN")
+	dsn := t.Request.Header.Get("Data-Source-Name")
 	if dsn == "" {
-		return fmt.Errorf("sql:// missing data source name (DSN parameter) in sql pseudo query")
+		return fmt.Errorf("sql:// missing Data-Source-Name in sql pseudo query")
 	}
 
 	db, err := sql.Open("mysql", dsn)
@@ -328,10 +332,30 @@ func sqlQuery(db *sql.DB, query string, accept string) (string, error) {
 		return "", err
 	}
 
+	if accept == "" {
+		accept = "application/json"
+	}
+	mediatype, params, err := mime.ParseMediaType(accept)
+	if err != nil {
+		return "", err
+	}
+	showHeader := false
+	switch params["header"] {
+	case "present", "true", "yes":
+		showHeader = true
+	}
+
 	var recorder recordWriter
-	switch accept {
+	switch mediatype {
 	case "text/plain":
-		recorder = newPlaintextRecorder()
+		sep := "\t"
+		if s, ok := params["fieldsep"]; ok {
+			sep = s
+		}
+
+		recorder = newPlaintextRecorder(sep, showHeader, columns)
+	case "text/csv":
+		recorder = newCSVRecorder(showHeader, columns)
 	case "application/json":
 		fallthrough
 	default:
@@ -367,7 +391,7 @@ type recordWriter interface {
 	Close() (string, error)
 }
 
-// jsonRecorder produces a JSON output from the queried databse rows.
+// jsonRecorder produces a JSON output from the queried database rows.
 type jsonRecorder struct {
 	cols  []string
 	buf   *bytes.Buffer
@@ -383,7 +407,7 @@ func newJsonRecorder(cols []string) *jsonRecorder {
 		cols:  cols,
 		buf:   buf,
 		first: true,
-		tmp:   make(map[string]string),
+		tmp:   make(map[string]string, len(cols)),
 	}
 }
 
@@ -422,17 +446,28 @@ func (jr *jsonRecorder) Close() (string, error) {
 	return jr.buf.String(), jr.err
 }
 
+// ----------------------------------------------------------------------------
+// Plaintext Record Writer
+
 // plaintextRecorder produces plaintext from the queried rows
 type plaintextRecorder struct {
 	buf   *bytes.Buffer
 	first bool
+	sep   string
+	cols  []string
 }
 
-func newPlaintextRecorder() *plaintextRecorder {
-	return &plaintextRecorder{
+func newPlaintextRecorder(sep string, header bool, cols []string) *plaintextRecorder {
+	ptr := &plaintextRecorder{
 		buf:   &bytes.Buffer{},
 		first: true,
+		sep:   sep,
+		cols:  cols,
 	}
+	if header && len(cols) > 0 {
+		ptr.WriteRecord(cols)
+	}
+	return ptr
 }
 
 func (ptr *plaintextRecorder) WriteRecord(values []string) {
@@ -444,10 +479,40 @@ func (ptr *plaintextRecorder) WriteRecord(values []string) {
 	sep := ""
 	for _, v := range values {
 		fmt.Fprintf(ptr.buf, "%s%s", sep, v)
-		sep = " "
+		sep = ptr.sep
 	}
 }
 
 func (ptr *plaintextRecorder) Close() (string, error) {
 	return ptr.buf.String(), nil
+}
+
+// ----------------------------------------------------------------------------
+// CVS Record Writer
+
+// csvRecorder produces a CSV output from the queried databse rows.
+type csvRecorder struct {
+	buf *bytes.Buffer
+	csv *csv.Writer
+}
+
+func newCSVRecorder(header bool, cols []string) *csvRecorder {
+	buf := &bytes.Buffer{}
+	csv := csv.NewWriter(buf)
+	if header {
+		csv.Write(cols)
+	}
+	return &csvRecorder{
+		buf: buf,
+		csv: csv,
+	}
+}
+
+func (cr *csvRecorder) WriteRecord(values []string) {
+	cr.csv.Write(values)
+}
+
+func (cr *csvRecorder) Close() (string, error) {
+	cr.csv.Flush()
+	return cr.buf.String(), cr.csv.Error()
 }
