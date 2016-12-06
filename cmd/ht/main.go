@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -135,7 +136,40 @@ func main() {
 	os.Exit(9)
 }
 
+// For any entry in args of the form <dirname>/... look for any *.suite file
+// below <dirname> and expand the arglist.
+func expandTrippleDots(args []string) []string {
+	expanded := []string{}
+
+	// walking the directory, capturing all *.suite falls while swallowing
+	// all errors.
+	walk := func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() && len(info.Name()) > 6 && strings.HasSuffix(path, ".suite") {
+			expanded = append(expanded, path)
+		}
+		return nil
+	}
+
+	for _, arg := range args {
+		if !strings.HasSuffix(arg, "/...") {
+			expanded = append(expanded, arg)
+			continue
+		}
+		arg := arg[:len(arg)-4] // strip /...
+		finfo, err := os.Stat(arg)
+		if err != nil || !finfo.IsDir() {
+			// Not a directory? Don't process and fail later.
+			expanded = append(expanded, arg)
+			continue
+		}
+		filepath.Walk(arg, walk)
+	}
+	return expanded
+}
+
 func loadSuites(args []string) []*suite.RawSuite {
+	args = expandTrippleDots(args)
+
 	var suites []*suite.RawSuite
 
 	// Handle -only and -skip flags.

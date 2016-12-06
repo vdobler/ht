@@ -38,6 +38,10 @@ The current variable assignment at the end of a suite carries over to the next
 suite. All suites (which keep cookies) share a common jar if cookies are
 loaded via -cookie flag; otherwise each suite has its own cookiejar.
 
+As a convenience exec recognises the /... syntax of the go tool to load all
+*.ssuite files below dir: 'ht exec dir/...' is just syntactical suggar for
+'ht exec $(find dir -type f -name \*.suite | sort)'.
+
 The exit code is 3 if bogus tests or checks are found, 2 if test errors
 are present, 1 if only check failures occurred and 0 if everything passed,
 nothing was executed or everything was skipped. Note that the status of
