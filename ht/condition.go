@@ -7,7 +7,9 @@ package ht
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
+	"unicode"
 )
 
 // Condition is a conjunction of tests against a string. Note that Contains and
@@ -41,6 +43,13 @@ type Condition struct {
 	// Min and Max are the minimum and maximum length the string may
 	// have. Two zero values disables this test.
 	Min, Max int `json:",omitempty"`
+
+	// GreaterThan and LessThan are lower and upper bound on the numerical
+	// value of the string: The string is trimmed from spaces as well as
+	// from single and double quotes before parsed as a float64. If the
+	// string is not float value these conditions fail.
+	// Nil disables these conditions.
+	GreaterThan, LessThan *float64 `json:",omitempty"`
 
 	re *regexp.Regexp
 }
@@ -120,6 +129,26 @@ func (c Condition) Fulfilled(s string) error {
 	if c.Max > 0 {
 		if len(s) > c.Max {
 			return fmt.Errorf("Too long, was %d", len(s))
+		}
+	}
+
+	if c.GreaterThan != nil || c.LessThan != nil {
+		// Trim and parse s.
+		trim := func(r rune) bool {
+			return unicode.IsSpace(r) || r == '"' || r == '\''
+		}
+		t := strings.TrimFunc(s, trim)
+		numericVal, err := strconv.ParseFloat(t, 64)
+		if err != nil {
+			return err
+		}
+
+		// Apply conditions.
+		if c.GreaterThan != nil && numericVal <= *c.GreaterThan {
+			return fmt.Errorf("not greater than %g, was %g", *c.GreaterThan, numericVal)
+		}
+		if c.LessThan != nil && numericVal >= *c.LessThan {
+			return fmt.Errorf("not less than %g, was %g", *c.LessThan, numericVal)
 		}
 	}
 

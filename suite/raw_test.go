@@ -219,6 +219,7 @@ func TestChecklist(t *testing.T) {
                 {Check: "UTF8Encoded"}
             ]
         }
+        {Check: "Body", GreaterThan: 12.3}
     ]
     VarEx: {
         NAME: {Extractor: "JSONExtractor", Element: "foo.1"}
@@ -233,7 +234,7 @@ func TestChecklist(t *testing.T) {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	if len(test.Checks) != 4 {
+	if len(test.Checks) != 5 {
 		t.Fatalf("Got %d checks, want 4", len(test.Checks))
 	}
 
@@ -299,9 +300,9 @@ func TestChecklist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	want := `[{"Check":"StatusCode","Expect":404}, {"Check":"Body","Contains":"foobar"}, {"Check":"UTF8Encoded"}, {"Check":"None","Of":[{"Check":"StatusCode","Expect":303},{"Check":"Body","Contains":"helloworld"},{"Check":"UTF8Encoded"}]}]`
+	want := `[{"Check":"StatusCode","Expect":404}, {"Check":"Body","Contains":"foobar"}, {"Check":"UTF8Encoded"}, {"Check":"None","Of":[{"Check":"StatusCode","Expect":303},{"Check":"Body","Contains":"helloworld"},{"Check":"UTF8Encoded"}]}, {"Check":"Body","GreaterThan":12.3}]`
 	if string(enc) != want {
-		t.Errorf("got  %s\nwat %s", enc, want)
+		t.Errorf("got  %s\nwant %s", enc, want)
 	}
 
 	//

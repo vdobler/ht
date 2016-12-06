@@ -9,7 +9,10 @@ import (
 	"testing"
 )
 
-var fullfilledTests = []struct {
+var float12_3 float64 = 12.3
+var float456 float64 = 456
+
+var conditionTests = []struct {
 	s string
 	c Condition
 	w string
@@ -61,10 +64,19 @@ var fullfilledTests = []struct {
 	{"foobar", Condition{Min: 20}, `Too short, was 6`},
 	{"foobar", Condition{Max: 30}, ``},
 	{"foobar", Condition{Max: 3}, `Too long, was 6`},
+	// GreaterThan and LessThan
+	{"3", Condition{LessThan: &float12_3}, ``},
+	{"3", Condition{GreaterThan: &float12_3}, `not greater than 12.3, was 3`},
+	{" \t3\n\r", Condition{LessThan: &float12_3}, ``},
+	{"'3'", Condition{GreaterThan: &float12_3}, `not greater than 12.3, was 3`},
+	{"800", Condition{LessThan: &float456}, `not less than 456, was 800`},
+	{"'-8.8e1'", Condition{LessThan: &float456}, ``},
+	{"XYZ", Condition{LessThan: &float456}, `strconv.ParseFloat: parsing "XYZ": invalid syntax`},
+	{"200", Condition{GreaterThan: &float12_3, LessThan: &float456}, ``},
 }
 
-func TestFullfilled(t *testing.T) {
-	for i, tc := range fullfilledTests {
+func TestCondition(t *testing.T) {
+	for i, tc := range conditionTests {
 		if tc.c.Regexp != "" {
 			tc.c.re = regexp.MustCompile(tc.c.Regexp)
 		}
