@@ -16,6 +16,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -753,5 +754,44 @@ func TestFileSchema(t *testing.T) {
 			t.Errorf("%d. %s: got %s, want %s. (Error=%v)",
 				i, test.Name, got, want, test.Error)
 		}
+	}
+}
+
+func TestCurlCall(t *testing.T) {
+	theSame := func(a, b string) bool {
+		// Forgive me, it has been a loooong day...
+		as, bs := strings.Split(a, " "), strings.Split(b, " ")
+		sort.Strings(as)
+		sort.Strings(bs)
+		a, b = strings.Join(as, " "), strings.Join(bs, " ")
+		return a == b
+	}
+
+	test := &Test{
+		Name: "Simple",
+		Request: Request{
+			Method: "POST",
+			URL:    "http://localhost:808/foo?bar=1",
+			Params: url.Values{
+				"abc": []string{"12", "34"},
+			},
+			Cookies: []Cookie{
+				Cookie{Name: "session", Value: "deadbeef"},
+			},
+			Header: http.Header{
+				"X-Custom-A": []string{"go", "fast"},
+			},
+			BasicAuthUser: "root",
+			BasicAuthPass: "secret",
+			Body:          "raw-body-data",
+		},
+	}
+
+	test.Run()
+	got := test.CurlCall()
+	want := `curl -X POST -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8' -H 'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36' -H 'Authorization: Basic cm9vdDpzZWNyZXQ=' -H 'Cookie: session=deadbeef' --data-binary 'raw-body-data' 'http://localhost:808/foo?bar=1&abc=12&abc=34'`
+
+	if !theSame(got, want) {
+		t.Errorf("Got : %s\nWant: %s", got, want)
 	}
 }

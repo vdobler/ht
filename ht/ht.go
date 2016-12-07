@@ -1157,3 +1157,66 @@ func newReplacer(vars map[string]string) *strings.Replacer {
 	}
 	return strings.NewReplacer(oldnew...)
 }
+
+// ----------------------------------------------------------------------------
+// Generating curl calls
+
+func escapeForBash(s string) string {
+	// The easy case: single quotes preserve everything in bash
+	// but single quotes may not appear (not even escaped) within
+	// single quoted strings so concatenate:
+	//     foo'bar  -->  'foo'"'"'bar'
+	// This is not the most efficient or readable quotation, but
+	// it is easy to implement and should work reliable.
+	parts := strings.Split(s, "'")
+	for i, p := range parts {
+		parts[i] = "'" + p + "'"
+	}
+	return strings.Join(parts, `"'"`)
+}
+
+func (t *Test) CurlCall() string {
+	call := "curl"
+
+	// Method
+	call += fmt.Sprintf(" -X %s", t.Request.Request.Method)
+
+	// HTTP header
+	for header, vals := range t.Request.Request.Header {
+		ch := http.CanonicalHeaderKey(header)
+		if ch == "Cookie" {
+			continue // Cookies are handled below.
+		}
+		for _, v := range vals {
+			if v == "" {
+				call += fmt.Sprintf(" -H %s;", ch)
+			} else {
+				line := fmt.Sprintf("%s: %s", ch, v)
+				call += fmt.Sprintf(" -H %s", escapeForBash(line))
+			}
+		}
+	}
+
+	// Cookies
+	nvp := []string{}
+	for _, cookie := range t.Request.Cookies {
+		nvp = append(nvp, fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
+	}
+	for _, cookie := range t.Jar.Cookies(t.Request.Request.URL) {
+		nvp = append(nvp, fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
+	}
+	line := fmt.Sprintf("Cookie: %s", strings.Join(nvp, "; "))
+	call += fmt.Sprintf(" -H %s", escapeForBash(line))
+
+	// The Body
+	if t.Request.Request.Method == "POST" || t.Request.Request.Method == "PUT" {
+		if t.Request.SentBody != "" {
+			call += fmt.Sprintf(" --data-binary %s", escapeForBash(t.Request.SentBody))
+		}
+	}
+
+	// URL
+	call += fmt.Sprintf(" %s", escapeForBash(t.Request.Request.URL.String()))
+
+	return call
+}
