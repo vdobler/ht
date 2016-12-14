@@ -172,6 +172,9 @@ func (j *Jar) Cookies(u *url.URL) (cookies []*http.Cookie) {
 
 // cookies is like Cookies but takes the current time as a parameter.
 func (j *Jar) cookies(u *url.URL, now time.Time) (cookies []*http.Cookie) {
+	if j == nil {
+		return cookies
+	}
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return cookies
 	}
@@ -523,6 +526,9 @@ func (j *Jar) domainAndType(host, domain string) (string, bool, error) {
 // ETLDsPlus1 appends all effective top level domains + 1 or the IP address
 // for which cookies are stored to dst and returns the extended slice.
 func (j *Jar) ETLDsPlus1(dst []string) []string {
+	if j == nil {
+		return nil
+	}
 	now := time.Now()
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -543,6 +549,9 @@ func (j *Jar) ETLDsPlus1(dst []string) []string {
 // returns the extended slice. The result set may be empty even if the eTLD+1
 // was reported by ETLDsPlus1, e.g. because cookies have expired.
 func (j *Jar) Entries(eTLDplus1 string, dst []Entry) []Entry {
+	if j == nil {
+		return nil
+	}
 	now := time.Now()
 	return j.listEntries(eTLDplus1, dst, now)
 }
