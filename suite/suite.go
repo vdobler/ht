@@ -126,12 +126,11 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 
 // A Executor is responsible for executing the given test during the
 // Iterate'ion of a Suite. It should return nil if execution should continue
-// and Err{Abort,Skip}Execution to stop further iteration.
+// and ErrAbortExecution to stop further iteration.
 type Executor func(test *ht.Test) error
 
 var (
 	ErrAbortExecution = errors.New("Abort Execution")
-	ErrSkipExecution  = errors.New("Skip further Tests")
 )
 
 // Iterate the suite through the given executor.
@@ -140,7 +139,6 @@ func (suite *Suite) Iterate(executor Executor) {
 	now = now.Add(-time.Duration(now.Nanosecond()))
 	suite.Started = now
 
-	var exstat error
 	overall := ht.NotRun
 	errors := ht.ErrorList{}
 
@@ -158,17 +156,9 @@ func (suite *Suite) Iterate(executor Executor) {
 		test.Jar = suite.Jar
 		test.Log = suite.Log
 
-		if exstat == ErrSkipExecution {
-			test.Status = ht.Skipped
-		}
-
-		newexstat := executor(test)
+		exstat := executor(test)
 		if test.Status == ht.Pass {
 			suite.updateVariables(test)
-		}
-
-		if exstat != ErrSkipExecution {
-			exstat = newexstat
 		}
 
 		suite.Tests = append(suite.Tests, test)

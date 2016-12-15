@@ -563,33 +563,59 @@ func (rs *RawSuite) Validate(global map[string]string) error {
 }
 
 // Execute the raw suite rs and capture the outcome in a Suite.
+//
+// Tests are executed linearely, first the Setup, then the Main and finaly
+// the Teardown test.  Any Failure or error during setup will skip further
+// setup and main test (but allteardown will be executed). The following
+// table shows two runs with possible outcomes.
+//
+//      Test Type     Run1     Run2
+//    ------------------------------------------
+//      Setup-1       Pass     Pass
+//      Setup-2       Fail     Pass
+//      Setup-3       Skip     Pass
+//      Main-1        Skip     Fail
+//      Main-2        Skip     Pass
+//      Teardown-1    Pass     Pass
+//      Teardown-2    Fail     Error
+//      Teardown-3    Pass     Pass
 func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
 	suite := NewFromRaw(rs, global, jar, logger)
 	N := len(rs.tests)
 	setup, main, teardown := len(rs.Setup), len(rs.Main), len(rs.Teardown)
 	i := 0
+	isSetup := func() bool { return i <= setup }
+	isMain := func() bool { return i > setup && i <= setup+main }
+	isSetupOrMain := func() bool { return i <= setup+main }
+	setupfailures := false
+
 	executor := func(test *ht.Test) error {
 		i++
-		if i <= setup {
+		if isSetup() {
 			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i)
-		} else if i > N-teardown {
-			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main)
-		} else {
+		} else if isMain() {
 			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup)
+		} else {
+			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main)
 		}
 
-		if test.Status == ht.Bogus || test.Status == ht.Skipped {
-			return nil
-		}
-
-		if !rs.tests[i-1].IsEnabled() {
+		switch {
+		case test.Status == ht.Skipped:
+			fallthrough
+		case !rs.tests[i-1].IsEnabled():
+			fallthrough
+		case setupfailures && isSetupOrMain():
 			test.Status = ht.Skipped
 			return nil
 		}
-		test.Execution.Verbosity = rs.Verbosity
-		test.Run()
-		if test.Status > ht.Pass && i <= setup {
-			return ErrSkipExecution
+
+		if test.Status != ht.Bogus {
+			// Run only non-bogus tests.
+			test.Execution.Verbosity = rs.Verbosity
+			test.Run()
+		}
+		if test.Status > ht.Pass && isSetup() {
+			setupfailures = true
 		}
 		return nil
 	}
