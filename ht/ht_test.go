@@ -757,6 +757,15 @@ func TestFileSchema(t *testing.T) {
 	}
 }
 
+var testCurlCalls = []struct {
+	paramsAs string
+	want     string
+}{
+	{"URL", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unkown' -H 'Cookie: session=deadbeef' 'http://localhost:808/foo?bar=1&abc=12&abc=34'`},
+	{"body", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unkown' -H 'Cookie: session=deadbeef' -d 'abc=12' -d 'abc=34' 'http://localhost:808/foo?bar=1'`},
+	{"multipart", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unkown' -H 'Cookie: session=deadbeef' -F 'abc=12' -F 'abc=34' 'http://localhost:808/foo?bar=1'`},
+}
+
 func TestCurlCall(t *testing.T) {
 	theSame := func(a, b string) bool {
 		// Forgive me, it has been a loooong day...
@@ -764,7 +773,25 @@ func TestCurlCall(t *testing.T) {
 		sort.Strings(as)
 		sort.Strings(bs)
 		a, b = strings.Join(as, " "), strings.Join(bs, " ")
-		return a == b
+		same := a == b
+		if !same {
+			am, bm := make(map[string]bool, len(as)), make(map[string]bool, len(bs))
+			for _, p := range as {
+				am[p] = true
+			}
+			for _, p := range bs {
+				if !am[p] {
+					t.Logf("Missing in a: %s", p)
+				}
+				bm[p] = true
+			}
+			for _, p := range as {
+				if !bm[p] {
+					t.Logf("Missing in b: %s", p)
+				}
+			}
+		}
+		return same
 	}
 
 	test := &Test{
@@ -774,24 +801,60 @@ func TestCurlCall(t *testing.T) {
 			URL:    "http://localhost:808/foo?bar=1",
 			Params: url.Values{
 				"abc": []string{"12", "34"},
+				// "file": []string{"@file:testdata/somefile.txt"},
 			},
 			Cookies: []Cookie{
 				Cookie{Name: "session", Value: "deadbeef"},
 			},
 			Header: http.Header{
+				"Accept":     []string{"*/*"},
+				"User-Agent": []string{"unkown"},
 				"X-Custom-A": []string{"go", "fast"},
 			},
 			BasicAuthUser: "root",
 			BasicAuthPass: "secret",
-			Body:          "raw-body-data",
 		},
 	}
 
-	test.Run()
-	got := test.CurlCall()
-	want := `curl -X POST -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8' -H 'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36' -H 'Authorization: Basic cm9vdDpzZWNyZXQ=' -H 'Cookie: session=deadbeef' --data-binary 'raw-body-data' 'http://localhost:808/foo?bar=1&abc=12&abc=34'`
+	for i, tc := range testCurlCalls {
+		test.Request.ParamsAs = tc.paramsAs
+		test.Run()
+		got := test.CurlCall()
+		if !theSame(got, tc.want) {
+			t.Errorf("%d. %s\nGot : %s\nWant: %s",
+				i, tc.paramsAs, got, tc.want)
+		}
+	}
+}
 
-	if !theSame(got, want) {
-		t.Errorf("Got : %s\nWant: %s", got, want)
+var testCurlCallsBody = []struct {
+	body string
+	want string
+}{
+	{"simple text", "curl -X POST --data-binary 'simple text' 'http://localhost'"},
+	{"\x12\x17ABC\"XYZ'abc", `tmp=$(mktemp)
+printf "\x12\x17ABC\x22XYZ\x27abc" > $tmp
+curl -X POST --data-binary "@$tmp" 'http://localhost'`},
+	{"@file:testdata/somefile.txt", "curl -X POST --data-binary '@testdata/somefile.txt' 'http://localhost'"},
+}
+
+func TestCurlCallBody(t *testing.T) {
+	test := &Test{
+		Name: "Simple",
+		Request: Request{
+			Method: "POST",
+			URL:    "http://localhost",
+			Body:   "",
+		},
+	}
+
+	for i, tc := range testCurlCallsBody {
+		test.Request.Body = tc.body
+		test.Run()
+		got := test.CurlCall()
+		if got != tc.want {
+			t.Errorf("%d. %q\nGot : %s\nWant: %s",
+				i, tc.body, got, tc.want)
+		}
 	}
 }

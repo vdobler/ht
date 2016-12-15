@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/vdobler/ht/cookiejar"
 )
@@ -1175,14 +1176,61 @@ func escapeForBash(s string) string {
 	return strings.Join(parts, `"'"`)
 }
 
+func nontrivialData(s string) bool {
+	for _, r := range s {
+		if r < ' ' || r == 127 {
+			return true
+		}
+
+	}
+	return false
+}
+
+func stripAtFile(s string) string {
+	if strings.HasPrefix(s, "@file:") {
+		return strings.Replace(s, "file:", "", 1)
+	}
+	if strings.HasPrefix(s, "@vfile:") {
+		return strings.Replace(s, "vfile:", "", 1)
+	}
+	return s
+}
+
 func (t *Test) CurlCall() string {
 	call := "curl"
+
+	nontrivial := nontrivialData(t.Request.Body)
+	if nontrivial {
+		// We have a request body which will be hard or impossible
+		// to escape to be copy/pasted to a bash command line
+		// prompt. Hack:
+		//     tmp=$(mktemp)
+		//     printf "\x12\x19\x00" > $tmp
+		//     curl --data-binary "@$tmp"
+		call = "tmp=$(mktemp)\n"
+		buf := &bytes.Buffer{}
+		p := make([]byte, 4)
+		for _, r := range t.Request.SentBody {
+			if r >= ' ' && r <= '~' &&
+				!(r == '"' || r == '\'' || r == '\\') {
+				buf.WriteRune(r)
+			} else {
+				buf.WriteString(`\x`)
+				n := utf8.EncodeRune(p, r)
+				for _, b := range p[:n] {
+					fmt.Fprintf(buf, "%02x", b)
+				}
+			}
+		}
+		call += `printf "` + buf.String() + `" > $tmp`
+		call += "\ncurl"
+	}
 
 	// Method
 	call += fmt.Sprintf(" -X %s", t.Request.Request.Method)
 
 	// HTTP header
-	for header, vals := range t.Request.Request.Header {
+	for header, vals := range t.Request.Header {
 		ch := http.CanonicalHeaderKey(header)
 		if ch == "Cookie" {
 			continue // Cookies are handled below.
@@ -1197,6 +1245,13 @@ func (t *Test) CurlCall() string {
 		}
 	}
 
+	// BasicAuth
+	if t.Request.BasicAuthUser != "" {
+		arg := fmt.Sprintf("%s:%s", t.Request.BasicAuthUser, t.Request.BasicAuthPass)
+		call += fmt.Sprintf(" -u %s", escapeForBash(arg))
+
+	}
+
 	// Cookies
 	nvp := []string{}
 	for _, cookie := range t.Request.Cookies {
@@ -1205,18 +1260,45 @@ func (t *Test) CurlCall() string {
 	for _, cookie := range t.Jar.Cookies(t.Request.Request.URL) {
 		nvp = append(nvp, fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
 	}
-	line := fmt.Sprintf("Cookie: %s", strings.Join(nvp, "; "))
-	call += fmt.Sprintf(" -H %s", escapeForBash(line))
+	if len(nvp) > 0 {
+		line := fmt.Sprintf("Cookie: %s", strings.Join(nvp, "; "))
+		call += fmt.Sprintf(" -H %s", escapeForBash(line))
+	}
+
+	// Parameters and URL
+	theURL := t.Request.URL
+	pType := "-d"
+	switch t.Request.ParamsAs {
+	case "multipart":
+		pType = "-F"
+		fallthrough
+	case "body":
+		for name, params := range t.Request.Params {
+			for _, p := range params {
+				// BUG: @vfile will link to the unreplace file.
+				arg := fmt.Sprintf("%s=%s", name, stripAtFile(p))
+				call += fmt.Sprintf(" %s %s", pType, escapeForBash(arg))
+			}
+		}
+	case "URL":
+		fallthrough
+	default:
+		theURL = t.Request.Request.URL.String() // contains the parameters
+	}
 
 	// The Body
-	if t.Request.Request.Method == "POST" || t.Request.Request.Method == "PUT" {
-		if t.Request.SentBody != "" {
-			call += fmt.Sprintf(" --data-binary %s", escapeForBash(t.Request.SentBody))
+	if t.Request.Body != "" &&
+		(t.Request.Request.Method == "POST" || t.Request.Request.Method == "PUT") {
+		if nontrivial {
+			call += ` --data-binary "@$tmp"`
+		} else {
+			arg := escapeForBash(stripAtFile(t.Request.Body))
+			call += fmt.Sprintf(" --data-binary %s", arg)
 		}
 	}
 
 	// URL
-	call += fmt.Sprintf(" %s", escapeForBash(t.Request.Request.URL.String()))
+	call += fmt.Sprintf(" %s", escapeForBash(theURL))
 
 	return call
 }
