@@ -88,6 +88,20 @@ var htmlTestTmpl = `{{define "TEST"}}
           {{end}}
         </div>
       {{end}}{{end}}
+      <div>
+        <div class="toggle">
+          <input type="checkbox" value="selected"
+                 id="curl-{{.Reporting.SeqNo}}" class="toggle-input">
+          <label for="curl-{{.Reporting.SeqNo}}" class="toggle-label"><h3>Curl Call</h3></label>
+          <div class="toggle-content">
+            <div>
+<pre>
+{{.CurlCall}}
+</pre>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
