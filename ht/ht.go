@@ -1226,8 +1226,27 @@ func (t *Test) CurlCall() string {
 		call += "\ncurl"
 	}
 
+	// We need the parsed URL which may be unavailable.
+	var reqURL *url.URL
+	if t.Request.Request != nil {
+		reqURL = t.Request.Request.URL
+	} else {
+		var err error
+		reqURL, err = url.Parse(t.Request.URL)
+		if err != nil {
+			// Fake one.
+			reqURL = &url.URL{
+				Scheme: "http",
+				Host:   "this.should",
+				Path:   "not/happen",
+			}
+		}
+	}
+
 	// Method
-	call += fmt.Sprintf(" -X %s", t.Request.Request.Method)
+	if t.Request.Method != "" {
+		call += fmt.Sprintf(" -X %s", t.Request.Method)
+	}
 
 	// HTTP header
 	for header, vals := range t.Request.Header {
@@ -1257,7 +1276,7 @@ func (t *Test) CurlCall() string {
 	for _, cookie := range t.Request.Cookies {
 		nvp = append(nvp, fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
 	}
-	for _, cookie := range t.Jar.Cookies(t.Request.Request.URL) {
+	for _, cookie := range t.Jar.Cookies(reqURL) {
 		nvp = append(nvp, fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
 	}
 	if len(nvp) > 0 {
@@ -1283,12 +1302,12 @@ func (t *Test) CurlCall() string {
 	case "URL":
 		fallthrough
 	default:
-		theURL = t.Request.Request.URL.String() // contains the parameters
+		theURL = reqURL.String() // contains the parameters
 	}
 
 	// The Body
 	if t.Request.Body != "" &&
-		(t.Request.Request.Method == "POST" || t.Request.Request.Method == "PUT") {
+		(t.Request.Method == "POST" || t.Request.Method == "PUT") {
 		if nontrivial {
 			call += ` --data-binary "@$tmp"`
 		} else {
