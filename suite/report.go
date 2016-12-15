@@ -130,10 +130,14 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
       {{end}}
       {{if .Response.BodyErr}}Error reading body: {{.Response.BodyErr.Error}}
       {{else}}
+        {{if .Response.BodyStr}}
 <pre class="responseBodySummary">
 {{Summary .Response.BodyStr}}
 </pre>
         <a href="{{.Reporting.SeqNo}}.ResponseBody.{{.Reporting.Extension}}" target="_blank">Response Body</a>
+        {{else}}
+          &#x2014; &#x2003; no body &#x2003; &#x2014;
+        {{end}}
       {{end}}
     </div>
   </div>
