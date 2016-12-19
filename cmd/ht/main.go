@@ -93,6 +93,31 @@ Run  ht help <command> to display the usage of <command>.
 Tests IDs have the following format <suite>.<test> with <suite> and
 <test> the sequential numbers of the suite and the test inside the suite.
 <test> maybe a single number like "3" or a range like "3-7".
+
+Several commands accept archive files which combine everything into one
+large file, The following example demonstartes using this feature:
+
+    $ cat archive
+    # some.suite
+    {
+        Name: "Some Suite"
+        Main: [ {File: sometest.ht}, {File: other.ht} ]
+    }
+
+    # sometest.ht
+    {
+        Request: { URL: "http://localhost/foo" }
+        Checks: [ {Check: "StatusCode", Expect: 200} ]
+    }
+
+    # other.ht
+    {
+        Request: { URL: "http://localhost/foo" }
+        Checks: [ {Check: "StatusCode", Expect: 505} ]
+    }
+
+    $ ht exec some.suite@archive
+
 `, formatedCmdList)
 }
 
@@ -178,7 +203,22 @@ func loadSuites(args []string) []*suite.RawSuite {
 	// Input and setup suites from command line arguments.
 	exit := false
 	for _, arg := range args {
-		s, err := suite.LoadRawSuite(arg, nil)
+		// Process arguments of the form <name>@<archive>.
+		var fs suite.FileSystem = nil
+		if i := strings.Index(arg, "@"); i != -1 {
+			blob, err := ioutil.ReadFile(arg[i+1:])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
+				os.Exit(9)
+			}
+			fs, err = suite.NewFileSystem(string(blob))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
+				os.Exit(9)
+			}
+			arg = arg[:i]
+		}
+		s, err := suite.LoadRawSuite(arg, fs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot read suite %q: %s\n", arg, err)
 			exit = true

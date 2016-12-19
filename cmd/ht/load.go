@@ -43,6 +43,7 @@ func init() {
 	cmdLoad.Flag.DurationVar(&rampDuration, "ramp", 5*time.Second,
 		"ramp duration to reach desired request rate")
 	addOutputFlag(cmdLoad.Flag)
+	addVarsFlags(cmdLoad.Flag)
 }
 
 func runLoad(cmd *Command, args []string) {
@@ -50,10 +51,26 @@ func runLoad(cmd *Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
 		os.Exit(9)
 	}
+	arg := args[0]
 
-	raw, err := suite.LoadRawLoadtest(args[0], nil)
+	// Process arguments of the form <name>@<archive>.
+	var fs suite.FileSystem = nil
+	if i := strings.Index(arg, "@"); i != -1 {
+		blob, err := ioutil.ReadFile(arg[i+1:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
+			os.Exit(9)
+		}
+		fs, err = suite.NewFileSystem(string(blob))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
+			os.Exit(9)
+		}
+		arg = arg[:i]
+	}
+	raw, err := suite.LoadRawLoadtest(arg, fs)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", args[0], err)
+		fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg, err)
 		os.Exit(9)
 	}
 
@@ -75,7 +92,7 @@ func runLoad(cmd *Command, args []string) {
 	if err != nil {
 		log.Panic(err)
 	}
-	failures.Name = "Failures of throughput test " + args[0]
+	failures.Name = "Failures of throughput test " + arg
 
 	saveLoadtestData(data, failures)
 	printStatistics(scenarios, data)

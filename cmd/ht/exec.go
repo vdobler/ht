@@ -46,7 +46,12 @@ The exit code is 3 if bogus tests or checks are found, 2 if test errors
 are present, 1 if only check failures occurred and 0 if everything passed,
 nothing was executed or everything was skipped. Note that the status of
 Teardown test are ignored while determining the exit code.
-	`,
+
+A suite and the used tests may be given as an archive file like this:
+<entrypoint>@<archivefile>. Here <entrypoint> is the formal suite filename
+in the filesytem file <archivefile>. Archivefiles are collection of HJSON
+objects as described in the main help (run '$ ht help').
+`,
 }
 
 var carryVars bool
