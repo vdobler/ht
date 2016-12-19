@@ -507,6 +507,9 @@ func DataPrint(data []bender.TestData, out io.Writer) {
 
 // DataToCSV prints data as a CVS table to out after sorting data by Started.
 func DataToCSV(data []bender.TestData, out io.Writer) error {
+	if len(data) == 0 {
+		return nil
+	}
 	sort.Sort(bender.ByStarted(data))
 	rateWindow := time.Second
 	if fullDuration := data[len(data)-1].Started.Sub(data[0].Started); fullDuration < 5*time.Second {
