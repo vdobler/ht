@@ -62,6 +62,13 @@ var typeDoc = map[string]string{
 		"\t// have. Two zero values disables this test.\n" +
 		"\tMin, Max int \n" +
 		"\n" +
+		"\t// GreaterThan and LessThan are lower and upper bound on the numerical\n" +
+		"\t// value of the string: The string is trimmed from spaces as well as\n" +
+		"\t// from single and double quotes before parsed as a float64. If the\n" +
+		"\t// string is not float value these conditions fail.\n" +
+		"\t// Nil disables these conditions.\n" +
+		"\tGreaterThan, LessThan *float64 \n" +
+		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
 		"    Condition is a conjunction of tests against a string. Note that Contains and\n" +
@@ -278,7 +285,7 @@ var typeDoc = map[string]string{
 		"    the following excpetions:\n" +
 		"\n" +
 		"    - undefined or null is treated as an error\n" +
-		"    - Objects and Arrays are treated as errors. The error message is reporteds\n" +
+		"    - Objects and Arrays are treated as errors. The error message is reported\n" +
 		"      in the field 'errmsg' of the object or the index 0 of the array.\n" +
 		"    - Strings, Numbers and Bools are treated as properly extracted values\n" +
 		"      which are returned.\n" +
@@ -305,7 +312,7 @@ var typeDoc = map[string]string{
 		"\t// Element. Useful when JSON contains embedded, quoted JSON as\n" +
 		"\t// a string and checking via Condition is not practical.\n" +
 		"\t// (It seems this nested JSON is common nowadays. I'm getting old.)\n" +
-		"\tEmbedded *JSON\n" +
+		"\tEmbedded *JSON \n" +
 		"\n" +
 		"\t// Sep is the separator in Element when checking the Condition.\n" +
 		"\t// A zero value is equivalent to \".\"\n" +
