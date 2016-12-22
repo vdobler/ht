@@ -478,7 +478,7 @@ func (t *Test) Run() error {
 		t.Status, t.Error = Bogus, err
 		return err
 	}
-	t.prepareRequest()
+	err = t.prepareRequest()
 	if err != nil {
 		t.Status, t.Error = Bogus, err
 		return err
