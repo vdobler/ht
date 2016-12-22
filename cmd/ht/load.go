@@ -92,9 +92,11 @@ func runLoad(cmd *Command, args []string) {
 	if err != nil {
 		log.Panic(err)
 	}
-	failures.Name = "Failures of throughput test " + arg
 
-	saveLoadtestData(data, failures)
+	if failures != nil {
+		failures.Name = "Failures of throughput test " + arg
+		saveLoadtestData(data, failures)
+	}
 	printStatistics(scenarios, data)
 	interpretLTerrors(lterr)
 }
