@@ -281,6 +281,19 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 // and an error indicating if the throughput test reached the targeted rate and
 // distribution.
 func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration) ([]bender.TestData, *Suite, error) {
+	// Execute Teardown code on any case.
+	defer func() {
+		for i := range scenarios {
+			if len(scenarios[i].RawSuite.Teardown) == 0 {
+				continue
+			}
+			fmt.Printf("Running Teardown of scenario %d %q\n",
+				i+1, scenarios[i].Name)
+			(&scenarios[i]).teardown()
+		}
+	}()
+
+	// Execute Setup code.
 	for i := range scenarios {
 		// Setup must be called for all scenarios!
 		fmt.Printf("Scenario %d %q: Running setup\n",
@@ -325,15 +338,6 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 	time.Sleep(50 * time.Millisecond)
 
 	err = analyseOutcome(data, pools)
-
-	for i := range scenarios {
-		if len(scenarios[i].RawSuite.Teardown) == 0 {
-			continue
-		}
-		fmt.Printf("Running Teardown of scenario %d %q\n",
-			i+1, scenarios[i].Name)
-		(&scenarios[i]).teardown()
-	}
 
 	return data, makeFailureSuite(failures), err
 }
