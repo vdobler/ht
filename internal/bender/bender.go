@@ -18,7 +18,6 @@ limitations under the License.
 package bender
 
 import (
-	"math"
 	"sync"
 	"time"
 
@@ -101,25 +100,22 @@ func LoadTestThroughput(intervals IntervalGenerator, requests chan Test, recorde
 
 		var wg sync.WaitGroup
 		var overage int64
-		overageStart := time.Now().UnixNano()
+		t0 := time.Now().UnixNano()
 		for request := range requests {
-			wait := intervals(overageStart)
-			adjust := int64(math.Min(float64(wait), float64(overage)))
-			wait -= adjust
-			overage -= adjust
-			// recorder <- Event{Typ: WaitEvent, Wait: wait, Overage: overage}
-			time.Sleep(time.Duration(wait))
+			now := time.Now().UnixNano()
+			overage += now - t0
+			wait := intervals(now) - overage
+			if wait >= 0 {
+				time.Sleep(time.Duration(wait))
+				overage = 0
+			} else {
+				overage = -wait
+			}
+			t0 = time.Now().UnixNano()
 
 			wg.Add(1)
 			go func(test Test, overage int64) {
 				defer wg.Done()
-				/*
-					recorder <- Event{
-						Typ:   StartRequestEvent,
-						Start: time.Now().UnixNano(),
-						Test:  test.Test,
-					}
-				*/
 				reqStart := time.Now().UnixNano()
 				test.Test.Run()
 				test.Done <- true
@@ -133,8 +129,6 @@ func LoadTestThroughput(intervals IntervalGenerator, requests chan Test, recorde
 				}
 			}(request, overage)
 
-			overage += time.Now().UnixNano() - overageStart - wait
-			overageStart = time.Now().UnixNano()
 		}
 		wg.Wait()
 		recorder <- Event{
