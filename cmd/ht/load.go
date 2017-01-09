@@ -291,6 +291,17 @@ library(ggplot2)
 d <- read.csv("throughput.csv")
 d$Status <- factor(d$Status, levels <- c("NotRun", "Skipped", "Pass", "Fail", "Error", "Bogus"))
 
+shift <- function(x, lag) {
+    n <- length(x)
+    xnew <- rep(NA, n)
+    xnew[(lag+1):n] <- x[1:(n-lag)]
+    return(xnew)
+}
+
+d$Delta <- c(d$Elapsed[2:length(d$Elapsed)] - d$Elapsed[1:length(d$Elapsed)-1], NA)
+p <- ggplot(d, aes(x=Elapsed, y=Delta)) + geom_point(size=2)
+ggsave("delta.png", plot=p, width=10, height=8, dpi=100)
+
 myColors <- c("#999999", "#ffff00", "#339900", "#660000", "#ff0000", "#ff3399")
 names(myColors) <- levels(d$Status)
 colScale <- scale_colour_manual(name = "status",values = myColors)
