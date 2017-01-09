@@ -39,9 +39,9 @@ func ExponentialIntervalGenerator(rate float64) IntervalGenerator {
 func RampedExponentialIntervalGenerator(rate float64, ramp time.Duration) IntervalGenerator {
 	rate = rate / float64(time.Second)
 	framp := float64(ramp)
-	start := time.Now()
-	return func(_ int64) int64 {
-		elapsed := float64(time.Since(start))
+	start := time.Now().UnixNano()
+	return func(now int64) int64 {
+		elapsed := float64(now - start)
 		factor := elapsed / framp
 		if factor > 1 {
 			factor = 1
