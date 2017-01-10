@@ -87,7 +87,6 @@ func LoadFile(filename string) (*File, error) {
 	var soup interface{}
 	err = hjson.Unmarshal(data, &soup)
 	if err != nil {
-		// TODO: better error message here
 		return nil, fmt.Errorf("file %s not valid hjson: %s", filename, err)
 	}
 
@@ -127,7 +126,6 @@ func (f *File) decodeLaxTo(x interface{}) error {
 	var soup interface{}
 	err := hjson.Unmarshal([]byte(f.Data), &soup)
 	if err != nil {
-		// TODO: linenr.
 		return fmt.Errorf("file %s is not valid hjson: %s", f.Name, err)
 	}
 	m, ok := soup.(map[string]interface{})
@@ -148,7 +146,6 @@ func (f *File) decodeStrictTo(x interface{}, drop []string) error {
 	var soup interface{}
 	err := hjson.Unmarshal([]byte(f.Data), &soup)
 	if err != nil {
-		// TODO: linenr.
 		return fmt.Errorf("file %s is not valid hjson: %s", f.Name, err)
 	}
 	m, ok := soup.(map[string]interface{})
