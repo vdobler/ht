@@ -203,9 +203,15 @@ func (p *pool) newThread(stop chan bool) {
 			}
 			// BUG/TDOD: make a copy of p.jar per thread.
 			suite := NewFromRaw(p.Scenario.RawSuite, thglobals, p.jar, p.Log)
+
 			nSetup, nMain := len(p.Scenario.RawSuite.Setup), len(p.Scenario.RawSuite.Main)
 			suite.tests = suite.tests[nSetup : nSetup+nMain]
 			suite.Iterate(executor)
+			if p.Scenario.Log != nil {
+				fmt.Printf("Scenario %d %q: Finished repetition %d of thread %d\n",
+					p.No+1, p.Scenario.Name, repetition, thread)
+			}
+
 			repetition += 1
 		}
 		p.wg.Done()
@@ -214,7 +220,7 @@ func (p *pool) newThread(stop chan bool) {
 
 func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, stop chan bool) ([]*pool, error) {
 	// Choosing a scenario to contribute to the total set of request is done
-	// by looking up a (thead) pool with the desired probability: Pool indixec
+	// by looking up a (thread) pool with the desired probability: Pool indices
 	// are distributed in 100 selectors.
 	selector := make([]int, 100)
 
@@ -516,10 +522,14 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 	}
 	sort.Sort(bender.ByStarted(data))
 	rateWindow := time.Second
-	if fullDuration := data[len(data)-1].Started.Sub(data[0].Started); fullDuration < 5*time.Second {
+	if fullDuration := data[len(data)-1].Started.Sub(data[0].Started); fullDuration <= 5*time.Second {
 		rateWindow = 500 * time.Millisecond
-	} else if fullDuration > 30*time.Second {
+	} else if fullDuration <= 20*time.Second {
 		rateWindow = 2 * time.Second
+	} else if fullDuration <= 60*time.Second {
+		rateWindow = 3 * time.Second
+	} else {
+		rateWindow = 5 * time.Second
 	}
 	writer := csv.NewWriter(out)
 	defer writer.Flush()
@@ -599,6 +609,7 @@ func effectiveRate(i int, data []bender.TestData, window time.Duration) float64 
 		b++
 	}
 	n := float64(b-a+1) / float64(window/time.Second)
+	fmt.Println("Events in window", window, b-a+1)
 
 	if a == 0 || b == len(data)-1 {
 		// Window is capped. Compensate n for to narrow window.
