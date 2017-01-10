@@ -34,6 +34,7 @@ type Suite struct {
 	FinalVariables map[string]string // The final set of variables.
 	Jar            *cookiejar.Jar    // The cookie jar used
 	Log            *log.Logger       // The logger used.
+	Verbosity      int
 
 	scope map[string]string
 	tests []*RawTest
@@ -106,6 +107,7 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 		FinalVariables: make(map[string]string),
 		Jar:            jar,
 		Log:            logger,
+		Verbosity:      rs.Verbosity,
 		tests:          rs.tests,
 	}
 
@@ -194,18 +196,21 @@ func (suite *Suite) updateVariables(test *ht.Test) {
 	}
 
 	for varname, value := range test.Extract() {
-		if old, ok := suite.scope[varname]; ok {
-			if value != old {
-				suite.Log.Printf("Updating variable %q to %q\n",
-					varname, value)
+		if suite.Verbosity >= 2 {
+			if old, ok := suite.scope[varname]; ok {
+				if value != old {
+					suite.Log.Printf("Updating variable %q to %q\n",
+						varname, value)
+				} else {
+					suite.Log.Printf("Keeping  variable %q as %q\n",
+						varname, value)
+				}
 			} else {
-				suite.Log.Printf("Keeping  variable %q as %q\n",
+				suite.Log.Printf("Setting  variable %q to %q\n",
 					varname, value)
 			}
-		} else {
-			suite.Log.Printf("Setting  variable %q to %q\n",
-				varname, value)
 		}
+
 		suite.scope[varname] = value
 	}
 }
