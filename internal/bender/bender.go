@@ -105,6 +105,7 @@ func LoadTestThroughput(intervals IntervalGenerator, requests chan Test, recorde
 			now := time.Now().UnixNano()
 			overage += now - t0
 			wait := intervals(now) - overage
+			// fmt.Println("WaitIntervall", (wait+overage)/1000, "  Overage", overage/1000, "[mus]")
 			if wait >= 0 {
 				time.Sleep(time.Duration(wait))
 				overage = 0
