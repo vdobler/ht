@@ -320,6 +320,15 @@ p <- p + geom_point(size=3) + xlab("Elapsed [ms]")  + ylab("Request Duration [ms
 p <- p + colScale
 ggsave("status.png", plot=p, width=10, height=8, dpi=100)
 
+p <- ggplot(d, aes(x=Elapsed, y=ConcTot, colour=Status)) + colScale
+p <- p + geom_point(size=3) + xlab("Elapsed [ms]") + ylab("Total Concurrency")
+ggsave("conctot.png", plot=p, width=10, height=8, dpi=100)
+
+p <- ggplot(d, aes(x=Elapsed, y=ConcOwn, colour=Status)) + colScale
+p <- p + facet_grid(Test ~ ., scales="free_y")
+p <- p + geom_point(size=3) + xlab("Elapsed [ms]")
+ggsave("concown.png", plot=p, width=10, height=8, dpi=100)
+
 p <- ggplot(d, aes(x=ReqDuration, fill=Status))
 p <- p + geom_histogram(binwidth=3)
 p <- p + facet_grid(Test ~ ., scales="free_y")

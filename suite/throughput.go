@@ -544,6 +544,8 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 		"TestDuration",
 		"Wait",
 		"Overage",
+		"ConcTot",
+		"ConcOwn",
 		"ID",
 		"Suite",
 		"Test",
@@ -574,6 +576,9 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 		r = append(r, fmt.Sprintf("%.3f", dToMs(d.TestDuration)))
 		r = append(r, fmt.Sprintf("%.1f", dToMs(d.Wait)))
 		r = append(r, fmt.Sprintf("%.1f", dToMs(d.Overage)))
+		concTot, concOwn := concurrencyLevel(i, data)
+		r = append(r, fmt.Sprintf("%d", concTot))
+		r = append(r, fmt.Sprintf("%d", concOwn))
 
 		part := strings.SplitN(d.ID, IDSep, 3)
 		r = append(r, part...)
@@ -608,9 +613,7 @@ func effectiveRate(i int, data []bender.TestData, window time.Duration) float64 
 	for b < len(data)-1 && data[b].Started.Sub(t0) < window/2 {
 		b++
 	}
-	n := float64(b-a+1) / float64(window/time.Second)
-	fmt.Println("Events in window", window, b-a+1)
-
+	n := float64(time.Second) * float64(b-a+1) / float64(window)
 	if a == 0 || b == len(data)-1 {
 		// Window is capped. Compensate n for to narrow window.
 		effectiveWindow := data[b].Started.Sub(data[a].Started)
@@ -621,4 +624,30 @@ func effectiveRate(i int, data []bender.TestData, window time.Duration) float64 
 	}
 
 	return float64(n)
+}
+
+// concurrencyLevel computes how many request in total and of the same Test
+// are inflight when the i'th request started.
+func concurrencyLevel(i int, data []bender.TestData) (int, int) {
+	total, own := 1, 1
+
+	t0 := data[i].Started
+	part := strings.SplitN(data[i].ID, IDSep, 3)
+	test := part[2]
+	i--
+
+	for ; i >= 0; i-- {
+		end := data[i].Started.Add(data[i].ReqDuration)
+		if end.Before(t0) {
+			continue
+		}
+		total++
+		part := strings.SplitN(data[i].ID, IDSep, 3)
+		if test == part[2] {
+			own++
+		}
+
+	}
+
+	return total, own
 }
