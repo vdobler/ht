@@ -298,8 +298,12 @@ shift <- function(x, lag) {
     return(xnew)
 }
 
+p <- ggplot(d, aes(x=Elapsed, y=Rate))
+p <- p + geom_point(size=3) + geom_smooth()
+ggsave("rate.png", plot=p, width=10, height=8, dpi=100)
+
 d$Delta <- c(d$Elapsed[2:length(d$Elapsed)] - d$Elapsed[1:length(d$Elapsed)-1], NA)
-p <- ggplot(d, aes(x=Elapsed, y=Delta)) + geom_point(size=2)
+p <- ggplot(d, aes(x=Elapsed, y=Delta)) + geom_point(size=2) + xlab("Elapsed [ms]")
 ggsave("delta.png", plot=p, width=10, height=8, dpi=100)
 
 myColors <- c("#999999", "#ffff00", "#339900", "#660000", "#ff0000", "#ff3399")
@@ -308,11 +312,11 @@ colScale <- scale_colour_manual(name = "status",values = myColors)
 fillScale <- scale_fill_manual(name = "status",values = myColors)
 
 p <- ggplot(d, aes(x=Elapsed, y=ReqDuration, colour=Test))
-p <- p + geom_point(size=3)
+p <- p + geom_point(size=3) + xlab("Elapsed [ms]") + ylab("Request Duration [ms]")
 ggsave("scatter.png", plot=p, width=10, height=8, dpi=100)
 
 p <- ggplot(d, aes(x=Elapsed, y=ReqDuration, colour=Status))
-p <- p + geom_point(size=3)
+p <- p + geom_point(size=3) + xlab("Elapsed [ms]")  + ylab("Request Duration [ms]")
 p <- p + colScale
 ggsave("status.png", plot=p, width=10, height=8, dpi=100)
 
@@ -322,9 +326,6 @@ p <- p + facet_grid(Test ~ ., scales="free_y")
 p <- p + fillScale
 ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
 
-p <- ggplot(d, aes(x=Elapsed, y=Rate))
-p <- p + geom_point(size=3) + geom_smooth()
-ggsave("rate.png", plot=p, width=10, height=8, dpi=100)
 
 `
 	ioutil.WriteFile(outputDir+"/throughput.R", []byte(script), 0666)
