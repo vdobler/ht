@@ -6,7 +6,8 @@
 //
 // Load tests in the form of a throuhghput-test can be made through the
 // Throughput function. This function will try to create a certain
-// throughput load, i.e. a certain average number of request per second.
+// throughput load, i.e. a certain average number of request per second
+// also known as query per second (QPS).
 // The intervalls between request follow an exponential distribution
 // which mimics the load generated from real-world, uncorrelated users.
 //
@@ -151,7 +152,7 @@ func (p *pool) newThread(stop chan bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.MaxThreads > 0 && p.Threads >= p.MaxThreads {
-		if p.Scenario.Log != nil {
+		if p.Scenario.Log != nil && p.Scenario.Verbosity >= 1 {
 			p.Scenario.Log.Printf("No extra thread started (%d already running)\n", p.Threads)
 		}
 		p.Misses++
@@ -201,14 +202,13 @@ func (p *pool) newThread(stop chan bool) {
 
 				return nil
 			}
-			// BUG/TDOD: make a copy of p.jar per thread.
-			suite := NewFromRaw(p.Scenario.RawSuite, thglobals, p.jar, p.Log)
+			suite := NewFromRaw(p.Scenario.RawSuite, thglobals, nil, p.Log)
 
 			nSetup, nMain := len(p.Scenario.RawSuite.Setup), len(p.Scenario.RawSuite.Main)
 			suite.tests = suite.tests[nSetup : nSetup+nMain]
 			suite.Iterate(executor)
-			if p.Scenario.Log != nil {
-				fmt.Printf("Scenario %d %q: Finished repetition %d of thread %d\n",
+			if p.Scenario.Log != nil && p.Scenario.Verbosity >= 1 {
+				p.Scenario.Log.Printf("Scenario %d %q: Finished repetition %d of thread %d\n",
 					p.No+1, p.Scenario.Name, repetition, thread)
 			}
 
@@ -281,8 +281,31 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 	return pools, nil
 }
 
-// Throughput runs a throughput load test with an average rate of request/seconds
-// for the given duration. The request are generated from the given scenarios.
+// Throughput runs a throughput load test with request taken from the given
+// scenarios.
+// During the ramp the rquest rate is linearely increased until it reaches
+// the desired rate of requests/second (QPS). This rate is kept for the
+// rest of the loadtest i.e. for duration-ramp.
+//
+// Setup and Teardown tests in the scenarios are executed once for each
+// scenario before and after starting the loadtest. Note that loadtesting
+// differs from suite execution here: Cookies set during Setup are _not_
+// propagated to the Main tests (but Setup and Teardown share a cookie jar).
+//
+// The actual load is  generated from the Main tests. A scenario can be
+// executed multiple times in parallel threads.  After full execution of all
+// Main tests each thread starts over and re-executes the Main tests again
+// by generating a new Suite.
+//
+// Setup tests may populate the set of variables used for the Main (and of
+// course Teardown) test. Additionaly the two variables THREAD and REPETITION
+// are set for each round of Main tests. The distinction between thread and
+// repetition looks strange given that each repetition is isolated and
+// independent from the thread it occors, but it is not: Repetitions are
+// unbound and an endurance test running for 8 hours might repeate the Main
+// test severla thousend times but maybe just using 15 threads which allows
+// to prepare the system under test e.g. with 15 numbered user-accounts.
+//
 // It returns a summary of all request, all failed tests collected into a Suite
 // and an error indicating if the throughput test reached the targeted rate and
 // distribution.
@@ -311,7 +334,7 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 		}
 	}
 
-	fmt.Printf("Starting Throughput test for %s at average of %.1f requests/second\n", duration, rate)
+	fmt.Printf("Starting Throughput test for %s (ramp %s) at average of %.1f requests/second \n", duration, ramp, rate)
 	recorder := make(chan bender.Event)
 	data := make([]bender.TestData, 0, 1000)
 	dataRecorder := bender.NewDataRecorder(&data)
