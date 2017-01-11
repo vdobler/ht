@@ -78,11 +78,12 @@ func runLoad(cmd *Command, args []string) {
 	scenarios := raw.ToScenario(variablesFlag)
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 512)
 	defer bufferedStdout.Flush()
+	logger := log.New(bufferedStdout, "", 0)
 
 	for i, scen := range scenarios {
-		fmt.Printf("%d. %d%% %q (max %d threads)\n",
-			i+1, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads)
-		logger := log.New(bufferedStdout, fmt.Sprintf("Scenario %d %q: ", i+1, scen.Name), 0)
+		fmt.Printf("%d. %d%% %q (max %d threads, verbosity %d)\n",
+			i+1, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads,
+			scen.Verbosity)
 		scenarios[i].Log = logger
 	}
 

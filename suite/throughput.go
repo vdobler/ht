@@ -152,14 +152,15 @@ func (p *pool) newThread(stop chan bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.MaxThreads > 0 && p.Threads >= p.MaxThreads {
-		if p.Scenario.Log != nil && p.Scenario.Verbosity >= 1 {
-			p.Scenario.Log.Printf("No extra thread started (%d already running)\n", p.Threads)
+		if p.Scenario.Log != nil && p.Scenario.Verbosity >= 2 {
+			p.Scenario.Log.Printf("Scenario %d %q: No extra thread started (%d already running)\n",
+				p.No+1, p.Scenario.Name, p.Threads)
 		}
 		p.Misses++
 		return
 	}
 	p.Threads++
-	if p.Scenario.Log != nil {
+	if p.Scenario.Log != nil && p.Scenario.Verbosity >= 1 {
 		fmt.Printf("Scenario %d %q: Starting new thread %d\n",
 			p.No+1, p.Scenario.Name, p.Threads)
 	}
@@ -316,7 +317,7 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 			if len(scenarios[i].RawSuite.Teardown) == 0 {
 				continue
 			}
-			fmt.Printf("Running Teardown of scenario %d %q\n",
+			fmt.Printf("Scenario %d %q: Running Teardown\n",
 				i+1, scenarios[i].Name)
 			(&scenarios[i]).teardown()
 		}
@@ -438,7 +439,7 @@ func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
 
 	cnt := make(map[int]int)
 	repPerThread := make(map[int]map[int]int)
-	repMax := make(map[int]int)
+	fullExecution := make(map[int]int) // number of full rounds
 	for _, d := range data {
 		parts := strings.SplitN(d.ID, IDSep, 3)
 		nums := strings.Split(parts[0], "/")
@@ -455,9 +456,7 @@ func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
 		}
 		reps[t] = r
 		repPerThread[sn] = reps
-		if max := repMax[sn]; r > max {
-			repMax[sn] = r
-		}
+		fullExecution[sn] = fullExecution[sn] + r - 1
 	}
 
 	// Check scenario percentages
@@ -486,10 +485,10 @@ func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
 	// Check each scenario is repeated at least three times which mean it was
 	// executed fully at least twice.
 	for i, p := range pools {
-		if repMax[i] < 3 {
+		if fullExecution[i] < 3 {
 			errors = append(errors,
 				fmt.Errorf("scenario %d %q fully executed only %d times",
-					i+1, p.Scenario.Name, repMax[i]-1))
+					i+1, p.Scenario.Name, fullExecution[i]))
 		}
 	}
 
