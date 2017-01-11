@@ -243,6 +243,12 @@ func (p durationSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func quantile(x []time.Duration, p float64) time.Duration {
 	N := float64(len(x))
+	if N == 0 {
+		return 0
+	} else if N == 1 {
+		return x[0]
+	}
+
 	if p < 2.0/(3.0*(N+1.0/3.0)) {
 		return x[0]
 	}
