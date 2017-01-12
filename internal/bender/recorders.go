@@ -26,12 +26,13 @@ import (
 
 type Recorder func(Event)
 
-func Record(c chan Event, recorders ...Recorder) {
+func Record(c chan Event, done chan bool, recorders ...Recorder) {
 	for e := range c {
 		for _, recorder := range recorders {
 			recorder(e)
 		}
 	}
+	close(done)
 }
 
 func logMessage(l *log.Logger, e Event) {
