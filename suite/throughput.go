@@ -33,11 +33,13 @@
 package suite
 
 import (
+	"bufio"
 	"encoding/csv"
 	"fmt"
 	"io"
 	"log"
 	"math/rand"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -69,15 +71,13 @@ type Scenario struct {
 	// is made but no checks are performed on the response.
 	OmitChecks bool
 
-	// The logger to use for tests of this scenario.
-	Log *log.Logger
-
 	globals map[string]string
 	jar     *cookiejar.Jar
 }
 
-func (sc *Scenario) setup() *Suite {
-	suite := NewFromRaw(sc.RawSuite, sc.globals, sc.jar, sc.Log)
+// setup runs the Setup tests of sc.
+func (sc *Scenario) setup(logger *log.Logger) *Suite {
+	suite := NewFromRaw(sc.RawSuite, sc.globals, sc.jar, logger)
 	// Cap tests to setup-tests.
 	suite.tests = suite.tests[:len(sc.RawSuite.Setup)]
 	i := 0
@@ -104,8 +104,9 @@ func (sc *Scenario) setup() *Suite {
 	return suite
 }
 
-func (sc *Scenario) teardown() *Suite {
-	suite := NewFromRaw(sc.RawSuite, sc.globals, sc.jar, sc.Log)
+// teardown runs the Teardown tests of sc.
+func (sc *Scenario) teardown(logger *log.Logger) *Suite {
+	suite := NewFromRaw(sc.RawSuite, sc.globals, sc.jar, logger)
 	// Cap tests to setup-tests.
 	suite.tests = suite.tests[len(suite.tests)-len(sc.RawSuite.Teardown):]
 	i := 0
@@ -129,9 +130,10 @@ func (sc *Scenario) teardown() *Suite {
 	return suite
 }
 
+// A pool is kinda thread pool for the given scenario.
 type pool struct {
 	Scenario
-	No      int
+	No      int // Sequence number of the scenario
 	Chan    chan bender.Test
 	wg      *sync.WaitGroup
 	mu      *sync.Mutex
@@ -148,20 +150,20 @@ var IDSep = "\u2237"
 
 // newThread starts a new thread/goroutine which iterates tests in the pool's
 // scenario.
-func (p *pool) newThread(stop chan bool) {
+func (p *pool) newThread(stop chan bool, logger *log.Logger) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.MaxThreads > 0 && p.Threads >= p.MaxThreads {
-		if p.Scenario.Log != nil && p.Scenario.Verbosity >= 2 {
-			p.Scenario.Log.Printf("Scenario %d %q: No extra thread started (%d already running)\n",
+		if p.Scenario.Verbosity >= 2 {
+			logger.Printf("Scenario %d %q: No extra thread started (%d already running)\n",
 				p.No+1, p.Scenario.Name, p.Threads)
 		}
 		p.Misses++
 		return
 	}
 	p.Threads++
-	if p.Scenario.Log != nil && p.Scenario.Verbosity >= 1 {
-		fmt.Printf("Scenario %d %q: Starting new thread %d\n",
+	if p.Scenario.Verbosity >= 1 {
+		logger.Printf("Scenario %d %q: Starting new thread %d\n",
 			p.No+1, p.Scenario.Name, p.Threads)
 	}
 	p.wg.Add(1)
@@ -177,6 +179,15 @@ func (p *pool) newThread(stop chan bool) {
 		repetition := 1
 		done := false
 		for !done {
+			select {
+			case <-stop:
+				done = true
+				break
+			default:
+			}
+			if done {
+				break
+			}
 			thglobals["REPETITION"] = strconv.Itoa(repetition)
 			executed := make(chan bool)
 
@@ -184,7 +195,7 @@ func (p *pool) newThread(stop chan bool) {
 			executor := func(test *ht.Test) error {
 				t++
 				test.Name = fmt.Sprintf("%d/%d/%d/%d%s%s%s%s",
-					p.No, thread, repetition, t, IDSep,
+					p.No+1, thread, repetition, t, IDSep,
 					p.Scenario.Name, IDSep, test.Name)
 
 				test.Reporting.SeqNo = test.Name
@@ -203,23 +214,32 @@ func (p *pool) newThread(stop chan bool) {
 
 				return nil
 			}
-			suite := NewFromRaw(p.Scenario.RawSuite, thglobals, nil, p.Log)
+			suite := NewFromRaw(p.Scenario.RawSuite, thglobals, nil, logger)
 
 			nSetup, nMain := len(p.Scenario.RawSuite.Setup), len(p.Scenario.RawSuite.Main)
 			suite.tests = suite.tests[nSetup : nSetup+nMain]
 			suite.Iterate(executor)
-			if p.Scenario.Log != nil && p.Scenario.Verbosity >= 1 {
-				p.Scenario.Log.Printf("Scenario %d %q: Finished repetition %d of thread %d\n",
-					p.No+1, p.Scenario.Name, repetition, thread)
+			if p.Scenario.Verbosity >= 2 {
+				logger.Printf("Scenario %d %q: Finished repetition %d of thread %d: %s\n",
+					p.No+1, p.Scenario.Name, repetition, thread, suite.Status)
 			}
 
 			repetition += 1
+		}
+		if p.Scenario.Verbosity >= 1 {
+			logger.Printf("Scenario %d %q: Done with thread %d",
+				p.No+1, p.Scenario.Name, thread)
 		}
 		p.wg.Done()
 	}(p.Threads)
 }
 
-func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, stop chan bool) ([]*pool, error) {
+// makeRequests is responsible for generating a stream of request and providing
+// these requests on the requests channel until the stop channel is closed.
+// The request are drawn randoemly from the given scenarios (while each suite
+// the scenario consists of executes linearely on each thread).
+// The thread pool of the scenarios is returned for cleanup purpose.
+func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, stop chan bool, logger *log.Logger) ([]*pool, error) {
 	// Choosing a scenario to contribute to the total set of request is done
 	// by looking up a (thread) pool with the desired probability: Pool indices
 	// are distributed in 100 selectors.
@@ -227,26 +247,26 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 
 	// Set up a pool for each scenario and start an initial thread per pool.
 	pools := make([]*pool, len(scenarios))
-	j := 0
+	cummulatedPercentage := 0
 	for i, s := range scenarios {
 		pool := pool{
 			Scenario: s,
-			No:       i + 1,
-			Chan:     make(chan bender.Test),
+			No:       i,
+			Chan:     make(chan bender.Test, 2),
 			wg:       &sync.WaitGroup{},
 			mu:       &sync.Mutex{},
 		}
 		pools[i] = &pool
-		pools[i].newThread(stop)
+		pools[i].newThread(stop, logger)
 		for k := 0; k < s.Percentage; k++ {
-			if j+k > 99 {
+			if cummulatedPercentage+k > 99 {
 				return nil, fmt.Errorf("suite: sum of Percentage greater than 100%%")
 			}
-			selector[j+k] = i
+			selector[cummulatedPercentage+k] = i
 		}
-		j += s.Percentage
+		cummulatedPercentage += s.Percentage
 	}
-	if j <= 99 {
+	if cummulatedPercentage <= 99 {
 		return nil, fmt.Errorf("suite: sum of Percentage less than 100%%")
 	}
 
@@ -255,30 +275,31 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 		// Select a pool (i.e. a scenario) and take a request from
 		// this pool. If pool cannot deliver: Start a new thread in
 		// this pool. Repeat until stop signaled.
+		counter := 0
 		for {
 			rn := rand.Intn(100)
 			pool := pools[selector[rn]]
 			var test bender.Test
 			select {
 			case <-stop:
+				logger.Println("Request generation stopped.")
 				return
 			case test = <-pool.Chan:
+				counter++
+				requests <- test
 			default:
-				pool.newThread(stop)
+				pool.newThread(stop, logger)
 				time.Sleep(gracetime)
-				continue
 			}
-
-			requests <- test
-
 		}
 	}()
 
 	// Pre-start second thread, just to be ready
 	for i := range scenarios {
-		pools[i].newThread(stop)
+		pools[i].newThread(stop, logger)
 	}
 
+	logger.Println("Request generation started.")
 	return pools, nil
 }
 
@@ -311,46 +332,53 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 // and an error indicating if the throughput test reached the targeted rate and
 // distribution.
 func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration) ([]bender.TestData, *Suite, error) {
+
+	bufferedStdout := bufio.NewWriterSize(os.Stdout, 1)
+	logger := log.New(bufferedStdout, "", 256)
+
 	// Execute Teardown code on any case.
 	defer func() {
 		for i := range scenarios {
 			if len(scenarios[i].RawSuite.Teardown) == 0 {
 				continue
 			}
-			fmt.Printf("Scenario %d %q: Running Teardown\n",
+			logger.Printf("Scenario %d %q: Running Teardown\n",
 				i+1, scenarios[i].Name)
-			(&scenarios[i]).teardown()
+			(&scenarios[i]).teardown(logger)
 		}
 	}()
 
 	// Execute Setup code.
 	for i := range scenarios {
 		// Setup must be called for all scenarios!
-		fmt.Printf("Scenario %d %q: Running setup\n",
+		logger.Printf("Scenario %d %q: Running setup\n",
 			i+1, scenarios[i].Name)
-		ss := (&scenarios[i]).setup()
+		ss := (&scenarios[i]).setup(logger)
 		if ss.Error != nil {
 			return nil, ss, fmt.Errorf("Setup of scenario %d %q failed: %s",
 				i+1, scenarios[i].Name, ss.Error)
 		}
 	}
 
-	fmt.Printf("Starting Throughput test for %s (ramp %s) at average of %.1f requests/second \n", duration, ramp, rate)
+	logger.Printf("Starting Throughput test for %s (ramp %s) at average of %.1f requests/second \n", duration, ramp, rate)
+	bufferedStdout.Flush()
+
 	recorder := make(chan bender.Event)
 	data := make([]bender.TestData, 0, 1000)
 	dataRecorder := bender.NewDataRecorder(&data)
 	failures := make([]*ht.Test, 0, 1000)
 	failureRecorder := bender.NewFailureRecorder(&failures)
-	go bender.Record(recorder, dataRecorder, failureRecorder)
+	recordingDone := make(chan bool)
+	go bender.Record(recorder, recordingDone, dataRecorder, failureRecorder)
 
-	request := make(chan bender.Test, len(scenarios))
+	request := make(chan bender.Test, 2*len(scenarios))
 	stop := make(chan bool)
 	intervals := bender.ExponentialIntervalGenerator(rate)
 	if ramp > 0 {
 		intervals = bender.RampedExponentialIntervalGenerator(rate, ramp)
 	}
 
-	pools, err := makeRequest(scenarios, rate, request, stop)
+	pools, err := makeRequest(scenarios, rate, request, stop, logger)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -358,15 +386,29 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 	bender.LoadTestThroughput(intervals, request, recorder)
 	time.Sleep(duration)
 	close(stop)
-	fmt.Println("Finished Throughput test.")
+	logger.Println("Finished Throughput test.")
 	for _, p := range pools {
-		fmt.Printf("Scenario %d %q: Draining pool with %d threads\n",
-			p.No, p.Scenario.Name, p.Threads)
+		logger.Printf("Scenario %d %q: Draining pool with %d threads\n",
+			p.No+1, p.Scenario.Name, p.Threads)
+		go func(p *pool) {
+			for {
+				t, ok := <-p.Chan
+				if ok {
+					t.Done <- true
+				} else {
+					break
+				}
+			}
+		}(p)
 		p.wg.Wait()
 	}
 	close(request)
+	<-recordingDone // Explicit syncronisation of test output recording.
+	for _, p := range pools {
+		close(p.Chan)
+	}
 	time.Sleep(50 * time.Millisecond)
-
+	bufferedStdout.Flush()
 	err = analyseOutcome(data, pools)
 
 	return data, makeFailureSuite(failures), err
@@ -450,6 +492,7 @@ func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
 		// Record repetitions
 		t, _ := strconv.Atoi(nums[1])
 		r, _ := strconv.Atoi(nums[2])
+
 		reps := repPerThread[sn]
 		if len(reps) == 0 {
 			reps = make(map[int]int)
@@ -462,7 +505,7 @@ func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
 	// Check scenario percentages
 	for i, p := range pools {
 		actual := cnt[i]
-		fmt.Printf("Scenario %d %q: %d request = %.1f%% (target %d%%), %d threads created, %d thread misses, repetitions",
+		fmt.Printf("Scenario %d %q: %d requests = %.1f%% (target %d%%), %d threads created, %d thread misses, repetitions",
 			i+1, p.Scenario.Name,
 			actual, float64(100*actual)/float64(N),
 			p.Scenario.Percentage,

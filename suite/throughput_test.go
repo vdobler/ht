@@ -63,6 +63,7 @@ var tpSuiteSlow = `
         { File: "testC.ht" }
         { File: "testD.ht" }
     ]
+    Verbosity: 1
 }
 
 # testA.ht
@@ -120,6 +121,7 @@ var tpSuiteFast = `
     Variables: {
         DYNAMICVAL: "bar999"
     }
+    Verbosity: 0
 }
 
 # testX.ht
@@ -155,6 +157,7 @@ var tpSuiteSlooow = `
         { File: "testH.ht" }
         { File: "testI.ht" }
     ]
+    Verbosity: 2
 }
 
 # testG.ht
@@ -201,8 +204,6 @@ func TestThroughput(t *testing.T) {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	logger := log.New(os.Stdout, "", 0)
-
 	globals := map[string]string{
 		"URL": ts.URL,
 	}
@@ -211,7 +212,6 @@ func TestThroughput(t *testing.T) {
 			Name:       "Fast",
 			RawSuite:   fast,
 			Percentage: 40,
-			Log:        logger,
 			MaxThreads: 10,
 			globals:    globals,
 		},
@@ -353,11 +353,6 @@ func TestThroughput2(t *testing.T) {
 	for i, scen := range scenarios {
 		fmt.Printf("%d. %d%% %q (max %d threads)\n",
 			i+1, scen.Percentage, scen.Name, scen.MaxThreads)
-		if i > -10 {
-			logger := log.New(os.Stdout,
-				fmt.Sprintf("Scenario %d %q ", i+1, scen.Name), 0)
-			scenarios[i].Log = logger
-		}
 	}
 
 	data, _, err := Throughput(scenarios, 100, 4*time.Second, 0)
@@ -367,7 +362,7 @@ func TestThroughput2(t *testing.T) {
 
 	fmt.Println("Recorded ", len(data), "points")
 
-	file, err := os.Create("testdata/throughput.csv")
+	file, err := os.Create("testdata/throughput2.csv")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -377,7 +372,7 @@ func TestThroughput2(t *testing.T) {
 
 	script := `
 library(ggplot2)
-d <- read.csv("throughput.csv")
+d <- read.csv("throughput2.csv")
 d$Status <- factor(d$Status, levels <- c("NotRun", "Skipped", "Pass", "Fail", "Error", "Bogus"))
 
 myColors <- c("#999999", "#ffff00", "#339900", "#660000", "#ff0000", "#ff3399")
@@ -413,5 +408,5 @@ p <- p + facet_grid(Test ~ ., scales="free_y")
 p <- p + fillScale
 ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
 `
-	ioutil.WriteFile("testdata/throughput.R", []byte(script), 0666)
+	ioutil.WriteFile("testdata/throughput2.R", []byte(script), 0666)
 }
