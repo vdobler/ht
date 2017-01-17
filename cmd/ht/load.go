@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vdobler/ht/hist"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/bender"
 	"github.com/vdobler/ht/suite"
@@ -104,6 +105,8 @@ func runLoad(cmd *Command, args []string) {
 }
 
 func printStatistics(scenarios []suite.Scenario, data []bender.TestData) {
+	histograms := []hist.Histogram{}
+
 	// Per testfile
 	pert := make(map[string][]bender.TestData)
 	for _, d := range data {
@@ -118,7 +121,7 @@ func printStatistics(scenarios []suite.Scenario, data []bender.TestData) {
 		st := statsFor(fd)
 		h := fmt.Sprintf("Testfile %q:", file)
 		printStat(h, st)
-
+		histograms = append(histograms, hist.Histogram{Name: file, Data: st.data})
 	}
 
 	// Per scenario
@@ -139,6 +142,8 @@ func printStatistics(scenarios []suite.Scenario, data []bender.TestData) {
 	// All requests
 	st := statsFor(data)
 	printStat("All request:", st)
+	histograms = append(histograms, hist.Histogram{Name: "All requests:", Data: st.data})
+	hist.PrintLogHistograms(os.Stdout, histograms)
 
 	/*
 		// Per (scenario/test)
@@ -193,12 +198,13 @@ type sdata struct {
 	min, mean, max, median  time.Duration
 	q25, q75, q90, q95, q99 time.Duration
 	bad, good               int
+	data                    []uint32 // in musec
 }
 
 func statsFor(data []bender.TestData) sdata {
 	sd := sdata{
 		n:    len(data),
-		min:  99 * time.Hour,
+		min:  999 * time.Hour,
 		mean: time.Duration(0),
 		max:  time.Duration(0),
 	}
@@ -207,6 +213,7 @@ func statsFor(data []bender.TestData) sdata {
 	}
 
 	x := make([]time.Duration, len(data))
+	musec := make([]uint32, len(data))
 	sum := time.Duration(0)
 	for i, d := range data {
 		if d.Status == ht.Fail {
@@ -218,6 +225,11 @@ func statsFor(data []bender.TestData) sdata {
 		}
 		x[i] = d.ReqDuration
 		sum += d.ReqDuration
+		if d.ReqDuration/1000000 <= math.MaxUint32 {
+			musec[i] = uint32(d.ReqDuration / 1000000)
+		} else {
+			musec[i] = math.MaxUint32
+		}
 	}
 	sd.bad = sd.fail + sd.erred + sd.bogus
 	sd.good = sd.n - sd.bad
@@ -230,6 +242,7 @@ func statsFor(data []bender.TestData) sdata {
 	sd.q25, sd.median = quantile(x, 0.25), quantile(x, 0.5)
 	sd.q75, sd.q90 = quantile(x, 0.75), quantile(x, 0.90)
 	sd.q95, sd.q99 = quantile(x, 0.95), quantile(x, 0.99)
+	sd.data = musec
 	return sd
 }
 
