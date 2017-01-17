@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -98,13 +99,13 @@ func runLoad(cmd *Command, args []string) {
 
 	if failures != nil {
 		failures.Name = "Failures of throughput test " + arg
-		saveLoadtestData(data, failures)
 	}
-	printStatistics(scenarios, data)
+	saveLoadtestData(data, failures, scenarios)
+
 	interpretLTerrors(lterr)
 }
 
-func printStatistics(scenarios []suite.Scenario, data []bender.TestData) {
+func printStatistics(out io.Writer, scenarios []suite.Scenario, data []bender.TestData) {
 	histograms := []hist.Histogram{}
 
 	// Per testfile
@@ -120,7 +121,8 @@ func printStatistics(scenarios []suite.Scenario, data []bender.TestData) {
 	for file, fd := range pert {
 		st := statsFor(fd)
 		h := fmt.Sprintf("Testfile %q:", file)
-		printStat(h, st)
+		printStat(out, h, st)
+		printStat(os.Stdout, h, st)
 		histograms = append(histograms, hist.Histogram{Name: file, Data: st.data})
 	}
 
@@ -136,13 +138,16 @@ func printStatistics(scenarios []suite.Scenario, data []bender.TestData) {
 
 		st := statsFor(fd)
 		h := fmt.Sprintf("Scenario %d %q:", i+1, s.Name)
-		printStat(h, st)
+		printStat(out, h, st)
+		printStat(os.Stdout, h, st)
 	}
 
 	// All requests
 	st := statsFor(data)
-	printStat("All request:", st)
+	printStat(out, "All request:", st)
+	printStat(os.Stdout, "All request:", st)
 	histograms = append(histograms, hist.Histogram{Name: "All requests:", Data: st.data})
+	hist.PrintLogHistograms(out, histograms)
 	hist.PrintLogHistograms(os.Stdout, histograms)
 
 	/*
@@ -171,15 +176,15 @@ func printStatistics(scenarios []suite.Scenario, data []bender.TestData) {
 
 }
 
-func printStat(headline string, st sdata) {
-	fmt.Printf("%s Status:   Total=%d  Pass=%d (%.1f%%), Fail=%d (%.1f%%), Error=%d (%.1f%%), Bogus=%d (%.1f%%)\n",
+func printStat(out io.Writer, headline string, st sdata) {
+	fmt.Fprintf(out, "%s Status:   Total=%d  Pass=%d (%.1f%%), Fail=%d (%.1f%%), Error=%d (%.1f%%), Bogus=%d (%.1f%%)\n",
 		headline, st.n,
 		st.good, 100*float64(st.good)/float64(st.n),
 		st.fail, 100*float64(st.fail)/float64(st.n),
 		st.erred, 100*float64(st.erred)/float64(st.n),
 		st.bogus, 100*float64(st.bogus)/float64(st.n),
 	)
-	fmt.Printf("%s Duration: 0%%=%.1fms, 25%%=%.1fms, 50%%=%.1fms, 75%%=%.1fms, 90%%=%.1fms, 95%%=%.1fms, 99%%=%.1fms, 100%%=%.1fms\n",
+	fmt.Fprintf(out, "%s Duration: 0%%=%.1fms, 25%%=%.1fms, 50%%=%.1fms, 75%%=%.1fms, 90%%=%.1fms, 95%%=%.1fms, 99%%=%.1fms, 100%%=%.1fms\n",
 		headline,
 		float64(st.min/1000)/1000,
 		float64(st.q25/1000)/1000,
@@ -294,10 +299,12 @@ func interpretLTerrors(lterr error) {
 	os.Exit(1)
 }
 
-func saveLoadtestData(data []bender.TestData, failures *suite.Suite) {
-	err := suite.HTMLReport(outputDir, failures)
-	if err != nil {
-		log.Panic(err)
+func saveLoadtestData(data []bender.TestData, failures *suite.Suite, scenarios []suite.Scenario) {
+	if failures != nil {
+		err := suite.HTMLReport(outputDir, failures)
+		if err != nil {
+			log.Panic(err)
+		}
 	}
 
 	file, err := os.Create(outputDir + "/throughput.csv")
@@ -360,4 +367,10 @@ ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
 `
 	ioutil.WriteFile(outputDir+"/throughput.R", []byte(script), 0666)
 
+	file2, err := os.Create(outputDir + "/result.txt")
+	if err != nil {
+		log.Panic(err)
+	}
+	defer file2.Close()
+	printStatistics(file2, scenarios, data)
 }
