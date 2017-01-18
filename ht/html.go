@@ -403,9 +403,11 @@ func textContentRec(n *html.Node, raw bool) string {
 // in the HTTP header.
 type Links struct {
 	// Which links to test; a space separated list of tag tag names:
-	//     'a',   'link',  'img',  'script', 'video', 'audio', 'source'
+	//     'a',   'link',  'img',  'script', 'video', 'audio' or 'source'
 	// E.g. use "a img" to check the href attribute of all a-tags and
 	// the src attribute of all img-tags.
+	// The special value '-none-' can be used and is ignored: It will not
+	// check any links.
 	Which string
 
 	// Head triggers HEAD requests instead of GET requests.
@@ -621,10 +623,14 @@ var linkURLattr = map[string]struct {
 // Prepare implements Check's Prepare method.
 func (c *Links) Prepare() (err error) {
 	c.tags = nil
-	for _, tag := range strings.Split(c.Which, " ") {
+	which := strings.TrimSpace(c.Which)
+	if which == "" {
+		return fmt.Errorf("Missing value for Which")
+	}
+	for _, tag := range strings.Split(which, " ") {
 		tag = strings.TrimSpace(tag)
 		switch tag {
-		case "": // ignored
+		case "", "-none-": // ignored
 		case "a", "img", "link", "script", "video", "audio", "source", "iframe":
 			c.tags = append(c.tags, tag)
 		default:
@@ -633,9 +639,6 @@ func (c *Links) Prepare() (err error) {
 		}
 	}
 
-	if len(c.tags) == 0 {
-		return fmt.Errorf("Bad or missing value for Which: %q", c.Which)
-	}
 	sort.Strings(c.tags) // Move a (if present) to front.
 	return nil
 }

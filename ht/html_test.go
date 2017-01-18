@@ -309,6 +309,35 @@ func TestHTMLLinkFiltering(t *testing.T) {
 	}
 }
 
+func TestHTMLLinksNone(t *testing.T) {
+	body := `<!doctype html>
+<html><body>
+  <a href="/C/abc"></a>
+  <a href="/C/123/not"></a>
+</body></html>`
+	baseURL, err := url.Parse("http://www.example.org/")
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	test := &Test{
+		Request: Request{
+			Request: &http.Request{URL: baseURL},
+		},
+		Response: Response{BodyStr: body},
+	}
+
+	check := Links{Which: "-none-"}
+	err = check.Prepare()
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+	err = check.Execute(test)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+}
+
 func testHTMLLinks(t *testing.T, urls []string, max time.Duration) (called []string, err error) {
 	ts1 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
 	defer ts1.Close()
@@ -341,7 +370,7 @@ func testHTMLLinks(t *testing.T, urls []string, max time.Duration) (called []str
 		Execution: Execution{Verbosity: 1},
 	}
 
-	check := Links{Which: "a img link script", Concurrency: 2, MaxTime: max}
+	check := Links{Which: "a img link script -none-", Concurrency: 2, MaxTime: max}
 	err = check.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
