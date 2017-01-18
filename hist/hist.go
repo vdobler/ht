@@ -13,6 +13,9 @@ type Histogram struct {
 }
 
 func (h Histogram) MinMax() (uint32, uint32) {
+	if len(h.Data) == 0 {
+		return 1, 1
+	}
 	min, max := h.Data[0], h.Data[0]
 	for _, d := range h.Data {
 		if d < min {
@@ -102,7 +105,7 @@ func PrintLogHistograms(out io.Writer, hists []Histogram) {
 
 	for _, hist := range hists {
 		cnt := make([]int, bins)
-		maxcnt := 0
+		maxcnt := 1
 		// Count
 		for _, t := range hist.Data {
 			bin := int((math.Log(float64(t)) - logmin) / delta)
