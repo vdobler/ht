@@ -81,12 +81,20 @@ func RTHistogram(title string, data map[string][]int, dodge bool, filename strin
 	file.Close()
 
 	args := []string{filename + ".R"}
-	cmd := exec.Command("/usr/bin/Rscript", args...)
+	cmd := exec.Command(rScriptPath, args...)
 	err = cmd.Run()
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+const rScriptPath = `/usr/bin/Rscript`
+
+// IsRScriptInstalled returns true if Rscript is available
+func IsRScriptInstalled() bool {
+	fi, err := os.Stat(rScriptPath)
+	return !os.IsNotExist(err) && fi.Size() > 0
 }
 
 func optimumBinBiwdth(min, max, fewest, most int) int {

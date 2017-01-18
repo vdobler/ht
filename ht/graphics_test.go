@@ -12,6 +12,10 @@ import (
 )
 
 func TestRTHistogram(t *testing.T) {
+	if !IsRScriptInstalled() {
+		t.Skipf("Skipping because %q is not installed", rScriptPath)
+	}
+
 	fast := []int{10, 12, 13, 14, 10, 20, 15, 17, 37, 12, 13, 15, 16, 19, 11, 14, 17, 28}
 	slow := []int{34, 35, 30, 37, 38, 19, 42, 43, 41, 34, 36,
 		38, 33, 32, 32, 44, 43, 45, 45, 49}
@@ -30,6 +34,9 @@ func TestRTHistogram(t *testing.T) {
 func TestResponseTimeHistogram(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping response time histogram in short mode.")
+	}
+	if !IsRScriptInstalled() {
+		t.Skipf("Skipping because %q is not installed", rScriptPath)
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(echoHandler))
