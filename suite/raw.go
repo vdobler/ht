@@ -749,7 +749,7 @@ func LoadRawLoadtest(filename string, fs FileSystem) (*RawLoadTest, error) {
 			filename := path.Join(dir, s.File)
 			rs, err := LoadRawSuite(filename, fs)
 			if err != nil {
-				return nil, fmt.Errorf("unable to load suite %s (%d. scenraio): %s",
+				return nil, fmt.Errorf("unable to load suite %s (%d. scenario): %s",
 					filename, i+1, err)
 			}
 			rlt.Scenarios[i].rawSuite = rs
