@@ -89,6 +89,11 @@ func runLoad(cmd *Command, args []string) {
 	prepareHT()
 	data, failures, lterr := suite.Throughput(scenarios, queryPerSecond, testDuration, rampDuration)
 
+	if len(data) == 0 && failures == nil && lterr != nil {
+		fmt.Fprintf(os.Stderr, "Bad test setup: %s\n", lterr)
+		os.Exit(8)
+	}
+
 	if outputDir == "" {
 		outputDir = time.Now().Format("2006-01-02_15h04m05s")
 	}
