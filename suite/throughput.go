@@ -332,9 +332,16 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 // and an error indicating if the throughput test reached the targeted rate and
 // distribution.
 func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration) ([]bender.TestData, *Suite, error) {
-
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 1)
 	logger := log.New(bufferedStdout, "", 256)
+
+	sum := 0
+	for i := range scenarios {
+		sum += scenarios[i].Percentage
+	}
+	if sum != 100 {
+		return nil, nil, fmt.Errorf("Sum of Percentage = %d%% (must be 100)", sum)
+	}
 
 	// Execute Teardown code on any case.
 	defer func() {
