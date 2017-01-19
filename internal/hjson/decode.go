@@ -424,7 +424,7 @@ func (p *hjsonParser) rootValue() (interface{}, error) {
 	}
 
 	// assume we have a root object without braces
-	res, err := p.checkTrailing(p.readObject(true));
+	res, err := p.checkTrailing(p.readObject(true))
 	if err == nil {
 		return res, nil
 	}

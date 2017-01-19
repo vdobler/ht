@@ -208,21 +208,21 @@ func TestThroughput(t *testing.T) {
 		"URL": ts.URL,
 	}
 	scenarios := []Scenario{
-		Scenario{
+		{
 			Name:       "Fast",
 			RawSuite:   fast,
 			Percentage: 40,
 			MaxThreads: 10,
 			globals:    globals,
 		},
-		Scenario{
+		{
 			Name:       "Slow",
 			RawSuite:   slow,
 			Percentage: 40,
 			MaxThreads: 12,
 			globals:    globals,
 		},
-		Scenario{
+		{
 			Name:       "Slooow",
 			RawSuite:   slooow,
 			Percentage: 20,
