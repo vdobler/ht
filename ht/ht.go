@@ -25,6 +25,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -192,6 +193,9 @@ type Execution struct {
 // Test is a single logical test which does one HTTP request and checks
 // a number of Checks on the received Response.
 type Test struct {
+	// mu protects all fields below from having a concurrent map access or
+	// triggering a race condition when running tests in parallel.
+	mu          sync.Mutex
 	Name        string
 	Description string `json:",omitempty"`
 
@@ -459,6 +463,9 @@ func (t *Test) AsJSON() ([]byte, error) {
 // request, problems reading the body or any failing checks do not trigger a
 // non-nil return value.
 func (t *Test) Run() error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	t.Started = time.Now()
 	defer func() { t.FullDuration = time.Since(t.Started) }()
 
@@ -602,7 +609,7 @@ func (t *Test) prepareRequest() error {
 		return err
 	}
 
-	// Prepare the HTTP header. TODO: Deep Coppy??
+	// Prepare the HTTP header. TODO: Deep Copy??
 	for h, v := range t.Request.Header {
 		rv := make([]string, len(v))
 		for i := range v {
@@ -672,7 +679,7 @@ func (t *Test) prepareRequest() error {
 // If a sepcial Content-Type header is needed (e.g. because of a multipart
 // body) it is returned.
 func (t *Test) newRequest() (contentType string, err error) {
-	// Set efaults for the request method and the parameter transmission type.
+	// Set defaults for the request method and the parameter transmission type.
 	if t.Request.Method == "" {
 		t.Request.Method = "GET"
 	}
