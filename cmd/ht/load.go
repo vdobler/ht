@@ -308,7 +308,7 @@ func saveLoadtestData(data []bender.TestData, failures *suite.Suite, scenarios [
 	if failures != nil {
 		err := suite.HTMLReport(outputDir, failures)
 		if err != nil {
-			log.Panic(err)
+			log.Panicg(err)
 		}
 	}
 
@@ -324,6 +324,11 @@ library(ggplot2)
 d <- read.csv("throughput.csv")
 d$Status <- factor(d$Status, levels <- c("NotRun", "Skipped", "Pass", "Fail", "Error", "Bogus"))
 
+myColors <- c("#999999", "#ffff00", "#339900", "#660000", "#ff0000", "#ff3399")
+names(myColors) <- levels(d$Status)
+colScale <- scale_colour_manual(name = "status",values = myColors)
+fillScale <- scale_fill_manual(name = "status",values = myColors)
+
 shift <- function(x, lag) {
     n <- length(x)
     xnew <- rep(NA, n)
@@ -333,20 +338,27 @@ shift <- function(x, lag) {
 
 p <- ggplot(d, aes(x=Elapsed, y=Rate))
 p <- p + geom_point(size=3) + geom_smooth()
+p <- p + xlab("Elapsed [ms]") + ylab("Requests/Second (QPS)")
 ggsave("rate.png", plot=p, width=10, height=8, dpi=100)
 
 d$Delta <- c(d$Elapsed[2:length(d$Elapsed)] - d$Elapsed[1:length(d$Elapsed)-1], NA)
 p <- ggplot(d, aes(x=Elapsed, y=Delta)) + geom_point(size=2) + xlab("Elapsed [ms]")
 ggsave("delta.png", plot=p, width=10, height=8, dpi=100)
 
-myColors <- c("#999999", "#ffff00", "#339900", "#660000", "#ff0000", "#ff3399")
-names(myColors) <- levels(d$Status)
-colScale <- scale_colour_manual(name = "status",values = myColors)
-fillScale <- scale_fill_manual(name = "status",values = myColors)
-
 p <- ggplot(d, aes(x=Elapsed, y=ReqDuration, colour=Test))
 p <- p + geom_point(size=3) + xlab("Elapsed [ms]") + ylab("Request Duration [ms]")
 ggsave("scatter.png", plot=p, width=10, height=8, dpi=100)
+
+p <- ggplot(d, aes(x=Test, y=ReqDuration))
+p <- p + geom_boxplot() + ylab("Request Duration [ms]")
+p <- p + theme(axis.text.x = element_text(angle = -30, hjust = 0))
+ggsave("boxplot.png", plot=p, width=10, height=8, dpi=100)
+
+p <- ggplot(d, aes(x=Test, y=ReqDuration)) + scale_y_log10()
+p <- p + annotation_logticks(sides = "l")
+p <- p + geom_boxplot() + ylab("Request Duration [ms]")
+p <- p + theme(axis.text.x = element_text(angle = -30, hjust = 0))
+ggsave("logboxplot.png", plot=p, width=10, height=8, dpi=100)
 
 p <- ggplot(d, aes(x=Elapsed, y=ReqDuration, colour=Status))
 p <- p + geom_point(size=3) + xlab("Elapsed [ms]")  + ylab("Request Duration [ms]")
@@ -360,11 +372,13 @@ ggsave("conctot.png", plot=p, width=10, height=8, dpi=100)
 p <- ggplot(d, aes(x=Elapsed, y=ConcOwn, colour=Status)) + colScale
 p <- p + facet_grid(Test ~ ., scales="free_y")
 p <- p + geom_point(size=3) + xlab("Elapsed [ms]")
+p <- p + theme(strip.text.y = element_text(angle=0))
 ggsave("concown.png", plot=p, width=10, height=8, dpi=100)
 
 p <- ggplot(d, aes(x=ReqDuration, fill=Status))
-p <- p + geom_histogram(binwidth=3)
+p <- p + geom_histogram(binwidth=3) + xlab("Request Duration [ms]")
 p <- p + facet_grid(Test ~ ., scales="free_y")
+p <- p + theme(strip.text.y = element_text(angle=0))
 p <- p + fillScale
 ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
 
