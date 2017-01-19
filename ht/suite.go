@@ -42,7 +42,9 @@ func (s *Collection) ExecuteConcurrent(maxConcurrent int, jar *cookiejar.Jar) er
 	}
 	for _, test := range s.Tests {
 		if jar != nil {
+			test.mu.Lock()
 			test.Jar = jar
+			test.mu.Unlock()
 		}
 		c <- test
 	}
