@@ -99,7 +99,9 @@ func PrintLogHistograms(out io.Writer, hists []Histogram) {
 	if n := len(legend); n > labelLength {
 		labelLength = n
 	}
-
+	if min < 1 {
+		min = 1 // otherwise sparkline degenerates due to log
+	}
 	logmin := math.Log(float64(min))
 	delta := (math.Log(float64(max)) - logmin) / bins
 

@@ -58,7 +58,7 @@ func TestPrintHistograms(t *testing.T) {
 	h3 := Histogram{
 		Name: "Hist C",
 		Data: []uint32{90, 80, 90, 75, 85, 90, 100, 150, 90, 140, 85, 250, 230, 240, 230,
-			240, 230, 75, 90},
+			240, 230, 75, 90, 0},
 	}
 
 	h4 := Histogram{
