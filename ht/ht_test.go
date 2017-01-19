@@ -647,7 +647,7 @@ func TestFileSchema(t *testing.T) {
 	u := "file://" + wd + "/testdata/fileprotocol"
 
 	tests := []*Test{
-		&Test{
+		{
 			Name: "PUT Pass",
 			Request: Request{
 				URL:  u,
@@ -659,7 +659,7 @@ func TestFileSchema(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "PUT Error",
 			Request: Request{
 				URL:  u + "/iouer/cxxs/dlkfj",
@@ -671,7 +671,7 @@ func TestFileSchema(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "GET Pass",
 			Request: Request{
 				URL: u,
@@ -682,7 +682,7 @@ func TestFileSchema(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "GET Fail",
 			Request: Request{
 				URL: u,
@@ -693,7 +693,7 @@ func TestFileSchema(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "GET Error",
 			Request: Request{
 				URL: u + "/slkdj/cxmvn",
@@ -703,7 +703,7 @@ func TestFileSchema(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "GET Error",
 			Request: Request{
 				URL: "file://remote.host/some/path",
@@ -713,7 +713,7 @@ func TestFileSchema(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "DELETE Pass",
 			Request: Request{
 				URL: u,
@@ -724,7 +724,7 @@ func TestFileSchema(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "DELETE Error",
 			Request: Request{
 				URL: u + "/sdjdfh/oieru",
@@ -804,7 +804,7 @@ func TestCurlCall(t *testing.T) {
 				// "file": []string{"@file:testdata/somefile.txt"},
 			},
 			Cookies: []Cookie{
-				Cookie{Name: "session", Value: "deadbeef"},
+				{Name: "session", Value: "deadbeef"},
 			},
 			Header: http.Header{
 				"Accept":     []string{"*/*"},
