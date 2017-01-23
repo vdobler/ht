@@ -4,6 +4,11 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  Load-/Throughput testing has no stop condition except the desired
+   duration: Stuff like abort once too many error occur is missing.
+
+*  Load-/Throughput testing should save data during test run, not afterwards.
+
 *  If FollowRedirects==false and a redirect response is received, then
    the body is not readable (as it got closed by the Client before stopping
    the redirections).  Fixing this would require the use of a raw
@@ -23,12 +28,6 @@ Open Issues
    Replacing transparent with a fixed or user-setable checkboard could work.
    But a fixed one is inflexible and user-defined ones are awfull.
 
-*  Parameters may be files with the "@file:/path/to/file" syntax.
-   Unfortunately relative path names are relative to the current working
-   directory of the ht command and not relative to the test file.
-   This is dead ugly and probably wrong.  Probably the best solution would
-   be to use the cwd of ht if the test was not loaded from JSON and the
-   directory of the test JSON otherwise.
 
 
 Resolved TODOs
@@ -57,3 +56,11 @@ Resolved TODOs
 
 *  Fingerprinting transparent images: Effect of problem is reduced due to
    mor bits representing the histogram.
+
+*  Parameters may be files with the "@file:/path/to/file" syntax.
+   Unfortunately relative path names are relative to the current working
+   directory of the ht command and not relative to the test file.
+   This is dead ugly and probably wrong.  Probably the best solution would
+   be to use the cwd of ht if the test was not loaded from JSON and the
+   directory of the test JSON otherwise.
+   --> The new variable handling and the TEST_DIR mechnism solve this.
