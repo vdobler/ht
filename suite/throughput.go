@@ -377,32 +377,12 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 
 	recorder := make(chan bender.Event)
 	data := make([]TestData, 0, 1000)
-	dataRecorder := newDataRecorder(&data)
 	collectedTests := make([]*ht.Test, 0, 1000)
-	testRecorder := newTestRecorder(&collectedTests, collectFrom)
 	csvWriter := csv.NewWriter(csvout)
 	defer csvWriter.Flush()
-	header := []string{
-		"Started",
-		"Elapsed",
-		"Status",
-		"ReqDuration",
-		"TestDuration",
-		"Wait",
-		"Overage",
-		"ID",
-		"Suite",
-		"Test",
-		"SuiteNo",
-		"ThreadNo",
-		"Repetition",
-		"TestNo",
-		"Error",
-	}
-	err := csvWriter.Write(header)
-	csvRecorder := newCSVRecorder(csvWriter)
 	recordingDone := make(chan bool)
-	go bender.Record(recorder, recordingDone, dataRecorder, testRecorder, csvRecorder)
+	go bender.Record(recorder, recordingDone,
+		newRecorder(&data, &collectedTests, collectFrom, csvWriter))
 
 	request := make(chan bender.Test, 2*len(scenarios))
 	stop := make(chan bool)
@@ -766,7 +746,7 @@ func concurrencyLevel(i int, data []TestData) (int, int) {
 }
 
 // ----------------------------------------------------------------------------
-// Recorders
+// Recorder
 
 type TestData struct {
 	Started      time.Time
@@ -785,11 +765,35 @@ func (s ByStarted) Len() int           { return len(s) }
 func (s ByStarted) Less(i, j int) bool { return s[i].Started.Before(s[j].Started) }
 func (s ByStarted) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
-func newDataRecorder(data *[]TestData) bender.Recorder {
+func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Writer) bender.Recorder {
+	cnt := 0
+	start := time.Now()
+	r := make([]string, 0, 14)
+	header := []string{
+		"Started",
+		"Elapsed",
+		"Status",
+		"ReqDuration",
+		"TestDuration",
+		"Wait",
+		"Overage",
+		"ID",
+		"Suite",
+		"Test",
+		"SuiteNo",
+		"ThreadNo",
+		"Repetition",
+		"TestNo",
+		"Error",
+	}
+	w.Write(header) // TODO: handle error; also below
+
 	return func(e bender.Event) {
 		if e.Typ != bender.EndRequestEvent {
 			return
 		}
+
+		// Data Recorder
 		d := TestData{
 			Started:      e.Test.Started,
 			Status:       e.Test.Status,
@@ -801,30 +805,14 @@ func newDataRecorder(data *[]TestData) bender.Recorder {
 			Overage:      time.Duration(e.Overage),
 		}
 		*data = append(*data, d)
-	}
-}
 
-func newTestRecorder(data *[]*ht.Test, from ht.Status) bender.Recorder {
-	return func(e bender.Event) {
-		if e.Typ != bender.EndRequestEvent {
-			return
-		}
-		if e.Test.Status < from {
-			return
-		}
-		*data = append(*data, e.Test)
-	}
-}
-
-func newCSVRecorder(w *csv.Writer) bender.Recorder {
-	cnt := 0
-	start := time.Now()
-	return func(e bender.Event) {
-		if e.Typ != bender.EndRequestEvent {
-			return
+		// Test Recorder
+		if e.Test.Status >= from {
+			*tests = append(*tests, e.Test)
 		}
 
-		r := make([]string, 0, 14)
+		// CSV Recording
+		r = r[:0]
 		r = append(r, e.Test.Started.Format("2006-01-02T15:04:05.99999Z07:00"))
 		r = append(r, fmt.Sprintf("%.3f", dToMs(e.Test.Started.Sub(start))))
 		r = append(r, e.Test.Status.String())
