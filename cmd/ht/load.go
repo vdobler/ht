@@ -27,16 +27,20 @@ import (
 var cmdLoad = &Command{
 	RunArgs:     runLoad,
 	Usage:       "load [options] <loadtest>",
-	Description: "run suites in a load test",
+	Description: "perform a load/throughput test",
 	Flag:        flag.NewFlagSet("load", flag.ContinueOnError),
 	Help: `
-Execute a throughput test with the given suite.
+Execute a throughput test.
+The length of the throuput test can be set with the 'duration' command line
+flag. The desired target rate of requests/seconds (QPS) is set with the
+'rate' command line flag.
 	`,
 }
 
 var queryPerSecond float64
 var testDuration time.Duration
 var rampDuration time.Duration
+var collectFrom string
 
 func init() {
 	cmdLoad.Flag.Float64Var(&queryPerSecond, "rate", 20,
@@ -45,8 +49,20 @@ func init() {
 		"duration of throughput test")
 	cmdLoad.Flag.DurationVar(&rampDuration, "ramp", 5*time.Second,
 		"ramp duration to reach desired request rate")
+	cmdLoad.Flag.StringVar(&collectFrom, "collect", "FAIL",
+		"collect Test with status at least `limit`")
 	addOutputFlag(cmdLoad.Flag)
 	addVarsFlags(cmdLoad.Flag)
+}
+
+func parseStatus(s string) (ht.Status, error) {
+	q := strings.TrimSpace(strings.ToLower(s))
+	for n, t := range []string{"notrun", "skipped", "pass", "fail", "error", "bogus"} {
+		if t == q {
+			return ht.Status(n), nil
+		}
+	}
+	return 0, fmt.Errorf("unknown status %q", s)
 }
 
 func runLoad(cmd *Command, args []string) {
@@ -54,6 +70,12 @@ func runLoad(cmd *Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
 		os.Exit(9)
 	}
+	collectStatus, err := parseStatus(collectFrom)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(9)
+	}
+
 	arg := args[0]
 
 	// Process arguments of the form <name>@<archive>.
@@ -87,7 +109,7 @@ func runLoad(cmd *Command, args []string) {
 	}
 
 	prepareHT()
-	data, failures, lterr := suite.Throughput(scenarios, queryPerSecond, testDuration, rampDuration)
+	data, failures, lterr := suite.Throughput(scenarios, queryPerSecond, testDuration, rampDuration, collectStatus)
 
 	if len(data) == 0 && failures == nil && lterr != nil {
 		fmt.Fprintf(os.Stderr, "Bad test setup: %s\n", lterr)
@@ -308,7 +330,7 @@ func saveLoadtestData(data []bender.TestData, failures *suite.Suite, scenarios [
 	if failures != nil {
 		err := suite.HTMLReport(outputDir, failures)
 		if err != nil {
-			log.Panicg(err)
+			log.Panic(err)
 		}
 	}
 
