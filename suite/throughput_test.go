@@ -16,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/vdobler/ht/ht"
 )
 
 func waitHandler(w http.ResponseWriter, r *http.Request) {
@@ -231,14 +233,13 @@ func TestThroughput(t *testing.T) {
 		},
 	}
 
-	data, failures, err := Throughput(scenarios, 50, 10*time.Second, 3*time.Second)
+	data, failures, err := Throughput(scenarios, 50, 10*time.Second, 3*time.Second, ht.NotRun)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
-	if testing.Verbose() && false {
+	if testing.Verbose() {
 		fmt.Println("")
-		fmt.Println("   FAILURES")
-		fmt.Println("=================")
+		fmt.Println("## ", failures.Name)
 		failures.PrintReport(os.Stdout)
 		err = HTMLReport("./testdata", failures)
 		if err != nil {
@@ -355,7 +356,7 @@ func TestThroughput2(t *testing.T) {
 			i+1, scen.Percentage, scen.Name, scen.MaxThreads)
 	}
 
-	data, _, err := Throughput(scenarios, 100, 4*time.Second, 0)
+	data, _, err := Throughput(scenarios, 100, 4*time.Second, 0, ht.Bogus)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}

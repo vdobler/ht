@@ -194,6 +194,8 @@ func (p *pool) newThread(stop chan bool, logger *log.Logger) {
 			t := 0
 			executor := func(test *ht.Test) error {
 				t++
+
+				// TODO: Put this stuff into SeqNo only??
 				test.Name = fmt.Sprintf("%d/%d/%d/%d%s%s%s%s",
 					p.No+1, thread, repetition, t, IDSep,
 					p.Scenario.Name, IDSep, test.Name)
@@ -327,11 +329,13 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 // unbound and an endurance test running for 8 hours might repeate the Main
 // test severla thousend times but maybe just using 15 threads which allows
 // to prepare the system under test e.g. with 15 numbered user-accounts.
+// It will aggregate all executed Test with a Status higher (bader) or equal
+// to collectFrom.
 //
-// It returns a summary of all request, all failed tests collected into a Suite
-// and an error indicating if the throughput test reached the targeted rate and
-// distribution.
-func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration) ([]bender.TestData, *Suite, error) {
+// It returns a summary of all request, the aggregated tests and an error
+// indicating if the throughput test reached the targeted rate and the desired
+// distribution between scenarios.
+func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration, collectFrom ht.Status) ([]bender.TestData, *Suite, error) {
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 1)
 	logger := log.New(bufferedStdout, "", 256)
 
@@ -373,8 +377,8 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 	recorder := make(chan bender.Event)
 	data := make([]bender.TestData, 0, 1000)
 	dataRecorder := bender.NewDataRecorder(&data)
-	failures := make([]*ht.Test, 0, 1000)
-	failureRecorder := bender.NewFailureRecorder(&failures)
+	collectedTests := make([]*ht.Test, 0, 1000)
+	failureRecorder := bender.NewTestRecorder(&collectedTests, collectFrom)
 	recordingDone := make(chan bool)
 	go bender.Record(recorder, recordingDone, dataRecorder, failureRecorder)
 
@@ -418,17 +422,25 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 	bufferedStdout.Flush()
 	err = analyseOutcome(data, pools)
 
-	return data, makeFailureSuite(failures), err
+	return data, makeCollectedSuite(collectedTests, collectFrom), err
 }
 
-func makeFailureSuite(failures []*ht.Test) *Suite {
+func makeCollectedSuite(tests []*ht.Test, from ht.Status) *Suite {
 	suite := Suite{
-		Name:  "Throughput Failures",
-		Tests: failures,
+		Name:  fmt.Sprintf("Throughput Test with Status >= %s", from),
+		Tests: tests,
 	}
 	for i := range suite.Tests {
+		parts := strings.Split(suite.Tests[i].Reporting.SeqNo, IDSep)
+		nums := strings.Split(parts[0], "/")
+		scen, _ := strconv.Atoi(nums[0])
+		thrd, _ := strconv.Atoi(nums[1])
+		rept, _ := strconv.Atoi(nums[2])
+		test, _ := strconv.Atoi(nums[3])
+
 		suite.Tests[i].Name = suite.Tests[i].Reporting.SeqNo
-		suite.Tests[i].Reporting.SeqNo = fmt.Sprintf("Failure-%03d", i)
+		suite.Tests[i].Reporting.SeqNo = fmt.Sprintf("Scen%02d-Thread%02d-Rep%02d-Test%02d",
+			scen, thrd, rept, test)
 	}
 
 	return &suite

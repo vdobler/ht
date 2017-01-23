@@ -92,12 +92,12 @@ func NewDataRecorder(data *[]TestData) Recorder {
 	}
 }
 
-func NewFailureRecorder(data *[]*ht.Test) Recorder {
+func NewTestRecorder(data *[]*ht.Test, from ht.Status) Recorder {
 	return func(e Event) {
 		if e.Typ != EndRequestEvent {
 			return
 		}
-		if e.Test.Status <= ht.Pass {
+		if e.Test.Status < from {
 			return
 		}
 		*data = append(*data, e.Test)
