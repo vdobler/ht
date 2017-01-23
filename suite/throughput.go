@@ -335,10 +335,11 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 // It returns a summary of all request, the aggregated tests and an error
 // indicating if the throughput test reached the targeted rate and the desired
 // distribution between scenarios.
-func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration, collectFrom ht.Status) ([]bender.TestData, *Suite, error) {
+func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration, collectFrom ht.Status, csvout io.Writer) ([]TestData, *Suite, error) {
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 1)
 	logger := log.New(bufferedStdout, "", 256)
 
+	// Make sure all request come from some scenario.
 	sum := 0
 	for i := range scenarios {
 		sum += scenarios[i].Percentage
@@ -375,12 +376,33 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 	bufferedStdout.Flush()
 
 	recorder := make(chan bender.Event)
-	data := make([]bender.TestData, 0, 1000)
-	dataRecorder := bender.NewDataRecorder(&data)
+	data := make([]TestData, 0, 1000)
+	dataRecorder := newDataRecorder(&data)
 	collectedTests := make([]*ht.Test, 0, 1000)
-	failureRecorder := bender.NewTestRecorder(&collectedTests, collectFrom)
+	testRecorder := newTestRecorder(&collectedTests, collectFrom)
+	csvWriter := csv.NewWriter(csvout)
+	defer csvWriter.Flush()
+	header := []string{
+		"Started",
+		"Elapsed",
+		"Status",
+		"ReqDuration",
+		"TestDuration",
+		"Wait",
+		"Overage",
+		"ID",
+		"Suite",
+		"Test",
+		"SuiteNo",
+		"ThreadNo",
+		"Repetition",
+		"TestNo",
+		"Error",
+	}
+	err := csvWriter.Write(header)
+	csvRecorder := newCSVRecorder(csvWriter)
 	recordingDone := make(chan bool)
-	go bender.Record(recorder, recordingDone, dataRecorder, failureRecorder)
+	go bender.Record(recorder, recordingDone, dataRecorder, testRecorder, csvRecorder)
 
 	request := make(chan bender.Test, 2*len(scenarios))
 	stop := make(chan bool)
@@ -446,7 +468,7 @@ func makeCollectedSuite(tests []*ht.Test, from ht.Status) *Suite {
 	return &suite
 }
 
-func analyseOutcome(data []bender.TestData, pools []*pool) error {
+func analyseOutcome(data []TestData, pools []*pool) error {
 	errors := ht.ErrorList{}
 
 	N := len(data)
@@ -476,7 +498,7 @@ func analyseOutcome(data []bender.TestData, pools []*pool) error {
 	return nil
 }
 
-func analyseMisses(data []bender.TestData, pools []*pool) error {
+func analyseMisses(data []TestData, pools []*pool) error {
 	errors := ht.ErrorList{}
 	N := len(data)
 	for i, p := range pools {
@@ -494,7 +516,7 @@ func analyseMisses(data []bender.TestData, pools []*pool) error {
 	return nil
 }
 
-func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
+func analyseDistribution(data []TestData, pools []*pool) ht.ErrorList {
 	errors := ht.ErrorList{}
 	N := len(data)
 
@@ -561,7 +583,7 @@ func analyseDistribution(data []bender.TestData, pools []*pool) ht.ErrorList {
 	return nil
 }
 
-func analyseOverage(data []bender.TestData) error {
+func analyseOverage(data []TestData) error {
 	N := len(data)
 	s := time.Duration(0)
 	for _, v := range data[N/2 : N] {
@@ -579,7 +601,7 @@ func analyseOverage(data []bender.TestData) error {
 func dToMs(d time.Duration) float64 { return float64(d/1000) / 1000 }
 
 // DataPrint prints data to out in human readable tabular format.
-func DataPrint(data []bender.TestData, out io.Writer) {
+func DataPrint(data []TestData, out io.Writer) {
 	timeLayout := "2006-01-02T15:04:05.999"
 
 	fmt.Fprintln(out, "Started                  Status   Duration        Health  S/T/R/N ID                 Error")
@@ -599,12 +621,19 @@ func DataPrint(data []bender.TestData, out io.Writer) {
 
 }
 
+// TODO: handle errors
+func splitID(id string) ([]string, []string) {
+	part := strings.SplitN(id, IDSep, 3)
+	nums := strings.SplitN(part[0], "/", 4)
+	return part, nums
+}
+
 // DataToCSV prints data as a CVS table to out after sorting data by Started.
-func DataToCSV(data []bender.TestData, out io.Writer) error {
+func DataToCSV(data []TestData, out io.Writer) error {
 	if len(data) == 0 {
 		return nil
 	}
-	sort.Sort(bender.ByStarted(data))
+	sort.Sort(ByStarted(data))
 	rateWindow := time.Second
 	if fullDuration := data[len(data)-1].Started.Sub(data[0].Started); fullDuration <= 5*time.Second {
 		rateWindow = 500 * time.Millisecond
@@ -649,7 +678,7 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 
 	first := data[0].Started
 
-	r := make([]string, 0, 16)
+	r := make([]string, 0, 19)
 	for i, d := range data {
 		r = append(r, fmt.Sprintf("%d", i))
 		r = append(r, d.Started.Format("2006-01-02T15:04:05.99999Z07:00"))
@@ -664,10 +693,10 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 		r = append(r, fmt.Sprintf("%d", concTot))
 		r = append(r, fmt.Sprintf("%d", concOwn))
 
-		part := strings.SplitN(d.ID, IDSep, 3)
+		part, nums := splitID(d.ID)
 		r = append(r, part...)
-		nums := strings.SplitN(part[0], "/", 4)
 		r = append(r, nums...)
+
 		if d.Error != nil {
 			r = append(r, d.Error.Error())
 		} else {
@@ -688,7 +717,7 @@ func DataToCSV(data []bender.TestData, out io.Writer) error {
 
 // effectiveRate returns the number of request in data in a window
 // around sample i.
-func effectiveRate(i int, data []bender.TestData, window time.Duration) float64 {
+func effectiveRate(i int, data []TestData, window time.Duration) float64 {
 	t0 := data[i].Started
 	a, b := i, i
 	for a > 0 && t0.Sub(data[a].Started) < window/2 {
@@ -712,7 +741,7 @@ func effectiveRate(i int, data []bender.TestData, window time.Duration) float64 
 
 // concurrencyLevel computes how many request in total and of the same Test
 // are inflight when the i'th request started.
-func concurrencyLevel(i int, data []bender.TestData) (int, int) {
+func concurrencyLevel(i int, data []TestData) (int, int) {
 	total, own := 1, 1
 
 	t0 := data[i].Started
@@ -734,4 +763,89 @@ func concurrencyLevel(i int, data []bender.TestData) (int, int) {
 	}
 
 	return total, own
+}
+
+// ----------------------------------------------------------------------------
+// Recorders
+
+type TestData struct {
+	Started      time.Time
+	Status       ht.Status
+	ReqDuration  time.Duration
+	TestDuration time.Duration
+	ID           string
+	Error        error
+	Wait         time.Duration
+	Overage      time.Duration
+}
+
+type ByStarted []TestData
+
+func (s ByStarted) Len() int           { return len(s) }
+func (s ByStarted) Less(i, j int) bool { return s[i].Started.Before(s[j].Started) }
+func (s ByStarted) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+func newDataRecorder(data *[]TestData) bender.Recorder {
+	return func(e bender.Event) {
+		if e.Typ != bender.EndRequestEvent {
+			return
+		}
+		d := TestData{
+			Started:      e.Test.Started,
+			Status:       e.Test.Status,
+			ReqDuration:  time.Duration(e.Test.Response.Duration),
+			TestDuration: time.Duration(e.Test.Duration),
+			ID:           e.Test.Reporting.SeqNo,
+			Error:        e.Test.Error,
+			Wait:         time.Duration(e.Wait),
+			Overage:      time.Duration(e.Overage),
+		}
+		*data = append(*data, d)
+	}
+}
+
+func newTestRecorder(data *[]*ht.Test, from ht.Status) bender.Recorder {
+	return func(e bender.Event) {
+		if e.Typ != bender.EndRequestEvent {
+			return
+		}
+		if e.Test.Status < from {
+			return
+		}
+		*data = append(*data, e.Test)
+	}
+}
+
+func newCSVRecorder(w *csv.Writer) bender.Recorder {
+	cnt := 0
+	start := time.Now()
+	return func(e bender.Event) {
+		if e.Typ != bender.EndRequestEvent {
+			return
+		}
+
+		r := make([]string, 0, 14)
+		r = append(r, e.Test.Started.Format("2006-01-02T15:04:05.99999Z07:00"))
+		r = append(r, fmt.Sprintf("%.3f", dToMs(e.Test.Started.Sub(start))))
+		r = append(r, e.Test.Status.String())
+		r = append(r, fmt.Sprintf("%.3f", dToMs(e.Test.Response.Duration)))
+		r = append(r, fmt.Sprintf("%.3f", dToMs(e.Test.Duration)))
+		r = append(r, fmt.Sprintf("%.1f", dToMs(time.Duration(e.Wait))))
+		r = append(r, fmt.Sprintf("%.1f", dToMs(time.Duration(e.Overage))))
+		part, nums := splitID(e.Test.Reporting.SeqNo)
+		r = append(r, part...)
+		r = append(r, nums...)
+
+		if e.Test.Error != nil {
+			r = append(r, e.Test.Error.Error())
+		} else {
+			r = append(r, "")
+		}
+
+		w.Write(r)
+		if cnt%5 == 0 {
+			w.Flush()
+		}
+		cnt++
+	}
 }

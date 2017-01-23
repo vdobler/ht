@@ -233,7 +233,13 @@ func TestThroughput(t *testing.T) {
 		},
 	}
 
-	data, failures, err := Throughput(scenarios, 50, 10*time.Second, 3*time.Second, ht.NotRun)
+	livefile, err := os.Create("testdata/live.csv")
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	defer livefile.Close()
+
+	data, failures, err := Throughput(scenarios, 50, 10*time.Second, 3*time.Second, ht.NotRun, livefile)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
@@ -356,7 +362,7 @@ func TestThroughput2(t *testing.T) {
 			i+1, scen.Percentage, scen.Name, scen.MaxThreads)
 	}
 
-	data, _, err := Throughput(scenarios, 100, 4*time.Second, 0, ht.Bogus)
+	data, _, err := Throughput(scenarios, 100, 4*time.Second, 0, ht.Bogus, ioutil.Discard)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}

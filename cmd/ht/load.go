@@ -13,13 +13,13 @@ import (
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/vdobler/ht/ht"
-	"github.com/vdobler/ht/internal/bender"
 	"github.com/vdobler/ht/internal/hist"
 	"github.com/vdobler/ht/suite"
 )
@@ -99,6 +99,7 @@ func runLoad(cmd *Command, args []string) {
 		os.Exit(9)
 	}
 
+	// Prepare scenarios, output folder and the live data log.
 	scenarios := raw.ToScenario(variablesFlag)
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 512)
 	defer bufferedStdout.Flush()
@@ -107,21 +108,26 @@ func runLoad(cmd *Command, args []string) {
 			i+1, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads,
 			scen.Verbosity)
 	}
-
-	prepareHT()
-	data, failures, lterr := suite.Throughput(scenarios, queryPerSecond, testDuration, rampDuration, collectStatus)
-
-	if len(data) == 0 && failures == nil && lterr != nil {
-		fmt.Fprintf(os.Stderr, "Bad test setup: %s\n", lterr)
-		os.Exit(8)
-	}
-
 	if outputDir == "" {
 		outputDir = time.Now().Format("2006-01-02_15h04m05s")
 	}
 	err = os.MkdirAll(outputDir, 0766)
 	if err != nil {
 		log.Panic(err)
+	}
+	livefile, err := os.Create(filepath.Join(outputDir, "live.csv"))
+	if err != nil {
+		log.Panic(err)
+	}
+	defer livefile.Close()
+
+	// Action here.
+	prepareHT()
+	data, failures, lterr := suite.Throughput(scenarios, queryPerSecond, testDuration, rampDuration, collectStatus, livefile)
+
+	if len(data) == 0 && failures == nil && lterr != nil {
+		fmt.Fprintf(os.Stderr, "Bad test setup: %s\n", lterr)
+		os.Exit(8)
 	}
 
 	if failures != nil {
@@ -132,11 +138,11 @@ func runLoad(cmd *Command, args []string) {
 	interpretLTerrors(lterr)
 }
 
-func printStatistics(out io.Writer, scenarios []suite.Scenario, data []bender.TestData) {
+func printStatistics(out io.Writer, scenarios []suite.Scenario, data []suite.TestData) {
 	histograms := []hist.Histogram{}
 
 	// Per testfile
-	pert := make(map[string][]bender.TestData)
+	pert := make(map[string][]suite.TestData)
 	for _, d := range data {
 		parts := strings.Split(d.ID, suite.IDSep)
 		nums := strings.Split(parts[0], "/")
@@ -155,7 +161,7 @@ func printStatistics(out io.Writer, scenarios []suite.Scenario, data []bender.Te
 
 	// Per scenario
 	for i, s := range scenarios {
-		fd := make([]bender.TestData, 0, 200)
+		fd := make([]suite.TestData, 0, 200)
 		pat := fmt.Sprintf("%d/", i+1)
 		for _, d := range data {
 			if strings.HasPrefix(d.ID, pat) {
@@ -233,7 +239,7 @@ type sdata struct {
 	data                    []uint32 // in musec
 }
 
-func statsFor(data []bender.TestData) sdata {
+func statsFor(data []suite.TestData) sdata {
 	sd := sdata{
 		n:    len(data),
 		min:  999 * time.Hour,
@@ -326,7 +332,7 @@ func interpretLTerrors(lterr error) {
 	os.Exit(1)
 }
 
-func saveLoadtestData(data []bender.TestData, failures *suite.Suite, scenarios []suite.Scenario) {
+func saveLoadtestData(data []suite.TestData, failures *suite.Suite, scenarios []suite.Scenario) {
 	if failures != nil {
 		err := suite.HTMLReport(outputDir, failures)
 		if err != nil {

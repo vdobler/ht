@@ -17,12 +17,7 @@ limitations under the License.
 
 package bender
 
-import (
-	"log"
-	"time"
-
-	"github.com/vdobler/ht/ht"
-)
+import "log"
 
 type Recorder func(Event)
 
@@ -53,53 +48,5 @@ func logMessage(l *log.Logger, e Event) {
 func NewLoggingRecorder(l *log.Logger) Recorder {
 	return func(e Event) {
 		logMessage(l, e)
-	}
-}
-
-type TestData struct {
-	Started      time.Time
-	Status       ht.Status
-	ReqDuration  time.Duration
-	TestDuration time.Duration
-	ID           string
-	Error        error
-	Wait         time.Duration
-	Overage      time.Duration
-}
-
-type ByStarted []TestData
-
-func (s ByStarted) Len() int           { return len(s) }
-func (s ByStarted) Less(i, j int) bool { return s[i].Started.Before(s[j].Started) }
-func (s ByStarted) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
-func NewDataRecorder(data *[]TestData) Recorder {
-	return func(e Event) {
-		if e.Typ != EndRequestEvent {
-			return
-		}
-		d := TestData{
-			Started:      e.Test.Started,
-			Status:       e.Test.Status,
-			ReqDuration:  time.Duration(e.Test.Response.Duration),
-			TestDuration: time.Duration(e.Test.Duration),
-			ID:           e.Test.Reporting.SeqNo,
-			Error:        e.Test.Error,
-			Wait:         time.Duration(e.Wait),
-			Overage:      time.Duration(e.Overage),
-		}
-		*data = append(*data, d)
-	}
-}
-
-func NewTestRecorder(data *[]*ht.Test, from ht.Status) Recorder {
-	return func(e Event) {
-		if e.Typ != EndRequestEvent {
-			return
-		}
-		if e.Test.Status < from {
-			return
-		}
-		*data = append(*data, e.Test)
 	}
 }
