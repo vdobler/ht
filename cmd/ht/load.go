@@ -18,9 +18,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vdobler/ht/hist"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/bender"
+	"github.com/vdobler/ht/internal/hist"
 	"github.com/vdobler/ht/suite"
 )
 
