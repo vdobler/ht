@@ -123,7 +123,13 @@ func runLoad(cmd *Command, args []string) {
 
 	// Action here.
 	prepareHT()
-	data, failures, lterr := suite.Throughput(scenarios, queryPerSecond, testDuration, rampDuration, collectStatus, livefile)
+	opts := suite.ThroughputOptions{
+		Rate:        queryPerSecond,
+		Duration:    testDuration,
+		Ramp:        rampDuration,
+		CollectFrom: collectStatus,
+	}
+	data, failures, lterr := suite.Throughput(scenarios, opts, livefile)
 
 	if len(data) == 0 && failures == nil && lterr != nil {
 		fmt.Fprintf(os.Stderr, "Bad test setup: %s\n", lterr)

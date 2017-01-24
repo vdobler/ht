@@ -305,6 +305,24 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 	return pools, nil
 }
 
+// ThroughputOptions collects options which controll execution of a throughput
+// load test.
+type ThroughputOptions struct {
+	// Rate is the target rate of request per second (QPS).
+	Rate float64
+
+	// Duration of the whole throughput test.
+	Duration time.Duration
+
+	// Ramp duration during which the actual rate (QPS) is linearily
+	// increased to the target rate.
+	Ramp time.Duration
+
+	// CollectFrom limit collection of tests to those test with a
+	// status equal or bader.
+	CollectFrom ht.Status
+}
+
 // Throughput runs a throughput load test with request taken from the given
 // scenarios.
 // During the ramp the rquest rate is linearely increased until it reaches
@@ -335,7 +353,7 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 // It returns a summary of all request, the aggregated tests and an error
 // indicating if the throughput test reached the targeted rate and the desired
 // distribution between scenarios.
-func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration, collectFrom ht.Status, csvout io.Writer) ([]TestData, *Suite, error) {
+func Throughput(scenarios []Scenario, opts ThroughputOptions, csvout io.Writer) ([]TestData, *Suite, error) {
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 1)
 	logger := log.New(bufferedStdout, "", 256)
 
@@ -372,7 +390,8 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 		}
 	}
 
-	logger.Printf("Starting Throughput test for %s (ramp %s) at average of %.1f requests/second \n", duration, ramp, rate)
+	logger.Printf("Starting Throughput test for %s (ramp %s) at average of %.1f requests/second \n",
+		opts.Duration, opts.Ramp, opts.Rate)
 	bufferedStdout.Flush()
 
 	recorder := make(chan bender.Event)
@@ -382,22 +401,22 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 	defer csvWriter.Flush()
 	recordingDone := make(chan bool)
 	go bender.Record(recorder, recordingDone,
-		newRecorder(&data, &collectedTests, collectFrom, csvWriter))
+		newRecorder(&data, &collectedTests, opts.CollectFrom, csvWriter))
 
 	request := make(chan bender.Test, 2*len(scenarios))
 	stop := make(chan bool)
-	intervals := bender.ExponentialIntervalGenerator(rate)
-	if ramp > 0 {
-		intervals = bender.RampedExponentialIntervalGenerator(rate, ramp)
+	intervals := bender.ExponentialIntervalGenerator(opts.Rate)
+	if opts.Ramp > 0 {
+		intervals = bender.RampedExponentialIntervalGenerator(opts.Rate, opts.Ramp)
 	}
 
-	pools, err := makeRequest(scenarios, rate, request, stop, logger)
+	pools, err := makeRequest(scenarios, opts.Rate, request, stop, logger)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	bender.LoadTestThroughput(intervals, request, recorder)
-	time.Sleep(duration)
+	time.Sleep(opts.Duration)
 	close(stop)
 	logger.Println("Finished Throughput test.")
 	for _, p := range pools {
@@ -426,7 +445,7 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 	bufferedStdout.Flush()
 	err = analyseOutcome(data, pools)
 
-	return data, makeCollectedSuite(collectedTests, collectFrom), err
+	return data, makeCollectedSuite(collectedTests, opts.CollectFrom), err
 }
 
 func makeCollectedSuite(tests []*ht.Test, from ht.Status) *Suite {
