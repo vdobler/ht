@@ -26,8 +26,6 @@ func logger() *log.Logger {
 
 // Variables in outer scopes dominate those in inner scopes.
 func TestVariableDominance(t *testing.T) {
-	counter = 1
-
 	txt := `
 # dominace.suite
 {
@@ -78,8 +76,6 @@ func TestVariableDominance(t *testing.T) {
 
 // Variables are handed down from scope to scope. Replacement works.
 func TestVariableHanddown(t *testing.T) {
-	counter = 1
-
 	txt := `
 # handdown.suite
 {
