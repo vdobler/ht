@@ -129,7 +129,7 @@ func TestVariableHanddown(t *testing.T) {
 // and RANDOM.
 func TestAutomaticVariables(t *testing.T) {
 	ht.Random.Seed(1234)
-	counter = 1
+	lastCnt := <-GetCounter // next value from GetCounter is lastCnt+1
 
 	txt := `
 # automatic.suite
@@ -173,19 +173,19 @@ func TestAutomaticVariables(t *testing.T) {
 	}
 	s := rs.Execute(globals, nil, logger())
 
-	want1 := "SuiteCount=1 SuiteRand=131682 "
-	want1 += "CallCount=2 CallRand=858315 "
-	want1 += "TestCount=2 TestRand=858315 " // Same as Call{Count,Rand}
-	want1 += "COUNTER=2 RANDOM=858315"      // Same as Call{Count,Rand}
+	want1 := fmt.Sprintf("SuiteCount=%d SuiteRand=131682 ", lastCnt+1)
+	want1 += fmt.Sprintf("CallCount=%d CallRand=858315 ", lastCnt+2)
+	want1 += fmt.Sprintf("TestCount=%d TestRand=858315 ", lastCnt+2) // Same as Call{Count,Rand}
+	want1 += fmt.Sprintf("COUNTER=%d RANDOM=858315", lastCnt+2)      // Same as Call{Count,Rand}
 	if wrong := matchVars(s.Tests[0].Variables, want1); wrong != "" {
 		s.PrintReport(os.Stdout)
 		t.Errorf("First invocation. Got %s", wrong)
 	}
 
-	want2 := "SuiteCount=1 SuiteRand=131682 " // Same as in first invocation
-	want2 += "CallCount=3 CallRand=817389 "
-	want2 += "TestCount=3 TestRand=817389 " // Same as Call{Count,Rand}
-	want2 += "COUNTER=3 RANDOM=817389"      // Same as Call{Count,Rand}
+	want2 := fmt.Sprintf("SuiteCount=%d SuiteRand=131682 ", lastCnt+1) // Same as in first invocation
+	want2 += fmt.Sprintf("CallCount=%d CallRand=817389 ", lastCnt+3)
+	want2 += fmt.Sprintf("TestCount=%d TestRand=817389 ", lastCnt+3) // Same as Call{Count,Rand}
+	want2 += fmt.Sprintf("COUNTER=%d RANDOM=817389", lastCnt+3)      // Same as Call{Count,Rand}
 	if wrong := matchVars(s.Tests[1].Variables, want2); wrong != "" {
 		s.PrintReport(os.Stdout)
 		t.Errorf("Second invocation. Got %s", wrong)
@@ -196,7 +196,6 @@ func TestAutomaticVariables(t *testing.T) {
 // RANDOM (and counter are not special).
 func TestVariableExtraction(t *testing.T) {
 	rand.Seed(1234)
-	counter = 1
 
 	txt := `
 # extraction.suite

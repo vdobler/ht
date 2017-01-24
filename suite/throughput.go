@@ -401,8 +401,10 @@ func Throughput(scenarios []Scenario, rate float64, duration, ramp time.Duration
 	close(stop)
 	logger.Println("Finished Throughput test.")
 	for _, p := range pools {
+		p.mu.Lock()
 		logger.Printf("Scenario %d %q: Draining pool with %d threads\n",
 			p.No+1, p.Scenario.Name, p.Threads)
+		p.mu.Unlock()
 		go func(p *pool) {
 			for {
 				t, ok := <-p.Chan
