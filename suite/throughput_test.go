@@ -239,7 +239,14 @@ func TestThroughput(t *testing.T) {
 	}
 	defer livefile.Close()
 
-	data, failures, err := Throughput(scenarios, 50, 10*time.Second, 3*time.Second, ht.NotRun, livefile)
+	opts := ThroughputOptions{
+		Rate:         50,
+		Duration:     10 * time.Second,
+		Ramp:         3 * time.Second,
+		CollectFrom:  ht.NotRun,
+		MaxErrorRate: 0, // disabled
+	}
+	data, failures, err := Throughput(scenarios, opts, livefile)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
@@ -362,7 +369,14 @@ func TestThroughput2(t *testing.T) {
 			i+1, scen.Percentage, scen.Name, scen.MaxThreads)
 	}
 
-	data, _, err := Throughput(scenarios, 100, 4*time.Second, 0, ht.Bogus, ioutil.Discard)
+	opts := ThroughputOptions{
+		Rate:         100,
+		Duration:     4 * time.Second,
+		Ramp:         0 * time.Second,
+		CollectFrom:  ht.Bogus,
+		MaxErrorRate: 2, // de facto disabled
+	}
+	data, _, err := Throughput(scenarios, opts, ioutil.Discard)
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
@@ -416,4 +430,23 @@ p <- p + fillScale
 ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
 `
 	ioutil.WriteFile("testdata/throughput2.R", []byte(script), 0666)
+}
+
+// ----------------------------------------------------------------------------
+// StatusRing
+
+func TestStatusRing(t *testing.T) {
+	sr := NewStatusRing(10, 0.2)
+
+	for i := 0; i < 99; i++ {
+		k := i%3 + 2 // this is 2 3 4
+		sr.Store(ht.Status(k))
+	}
+
+	cnt := make([]int, int(ht.Bogus)+1)
+	bad := sr.Status(cnt)
+	if !bad || fmt.Sprintln(cnt) != "[0 0 3 3 4 0]\n" {
+		t.Errorf("Got bad=%t, cnt=%v", bad, cnt)
+	}
+
 }

@@ -318,6 +318,11 @@ type ThroughputOptions struct {
 	// increased to the target rate.
 	Ramp time.Duration
 
+	// MaxErrorRate is the maximal tolerable error rate over the last
+	// 50 request. If the error rate exceeds this limit the throughput
+	// test finishes early. Values <= 0 disable aborting on errors.
+	MaxErrorRate float64
+
 	// CollectFrom limit collection of tests to those test with a
 	// status equal or bader.
 	CollectFrom ht.Status
@@ -325,7 +330,7 @@ type ThroughputOptions struct {
 
 // Throughput runs a throughput load test with request taken from the given
 // scenarios.
-// During the ramp the rquest rate is linearely increased until it reaches
+// During the ramp the request rate is linearely increased until it reaches
 // the desired rate of requests/second (QPS). This rate is kept for the
 // rest of the loadtest i.e. for duration-ramp.
 //
@@ -348,7 +353,7 @@ type ThroughputOptions struct {
 // test severla thousend times but maybe just using 15 threads which allows
 // to prepare the system under test e.g. with 15 numbered user-accounts.
 // It will aggregate all executed Test with a Status higher (bader) or equal
-// to collectFrom.
+// to CollectFrom.
 //
 // It returns a summary of all request, the aggregated tests and an error
 // indicating if the throughput test reached the targeted rate and the desired
@@ -398,10 +403,15 @@ func Throughput(scenarios []Scenario, opts ThroughputOptions, csvout io.Writer) 
 	data := make([]TestData, 0, 1000)
 	collectedTests := make([]*ht.Test, 0, 1000)
 	csvWriter := csv.NewWriter(csvout)
+	maxer := 2.0 // more than 100% --> ignore errors
+	if opts.MaxErrorRate > 0 {
+		maxer = opts.MaxErrorRate
+	}
+	statusRing := NewStatusRing(50, maxer)
 	defer csvWriter.Flush()
 	recordingDone := make(chan bool)
 	go bender.Record(recorder, recordingDone,
-		newRecorder(&data, &collectedTests, opts.CollectFrom, csvWriter))
+		newRecorder(&data, &collectedTests, opts.CollectFrom, csvWriter, statusRing))
 
 	request := make(chan bender.Test, 2*len(scenarios))
 	stop := make(chan bool)
@@ -416,7 +426,27 @@ func Throughput(scenarios []Scenario, opts ThroughputOptions, csvout io.Writer) 
 	}
 
 	bender.LoadTestThroughput(intervals, request, recorder)
-	time.Sleep(opts.Duration)
+	started, loopCnt := time.Now(), 0
+	elapsed := time.Duration(0)
+	statusCounts := make([]int, int(ht.Bogus)+1)
+	for elapsed < opts.Duration {
+		elapsed = time.Since(started)
+		elins := ((elapsed + 500 + time.Millisecond) / time.Second) * time.Second
+		if loopCnt%10 == 0 {
+			logger.Printf("Throughput test running for %s (%d%% completed)",
+				elins, 100*elapsed/opts.Duration)
+		}
+		if bad := statusRing.Status(statusCounts); bad {
+			logger.Printf("Throughput test aborted after %s (%d%% completed): Too many errors",
+				elins, 100*elapsed/opts.Duration)
+			for s, n := range statusCounts {
+				logger.Printf("  Status %-7s: %d", ht.Status(s), n)
+			}
+			break
+		}
+		loopCnt++
+		time.Sleep(1 * time.Second)
+	}
 	close(stop)
 	logger.Println("Finished Throughput test.")
 	for _, p := range pools {
@@ -786,7 +816,7 @@ func (s ByStarted) Len() int           { return len(s) }
 func (s ByStarted) Less(i, j int) bool { return s[i].Started.Before(s[j].Started) }
 func (s ByStarted) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
-func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Writer) bender.Recorder {
+func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Writer, sr *StatusRing) bender.Recorder {
 	cnt := 0
 	start := time.Now()
 	r := make([]string, 0, 14)
@@ -856,5 +886,64 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 			w.Flush()
 		}
 		cnt++
+
+		// StatusRing
+		sr.Store(e.Test.Status)
 	}
+}
+
+// ----------------------------------------------------------------------------
+// Ring of Status
+
+type StatusRing struct {
+	mu     *sync.Mutex
+	values []ht.Status
+	next   int
+	cnt    []int
+	limit  float64
+	full   bool
+	bad    bool // true once limit is exceeded
+}
+
+func NewStatusRing(n int, limit float64) *StatusRing {
+	sr := StatusRing{
+		mu:     &sync.Mutex{},
+		values: make([]ht.Status, n),
+		cnt:    make([]int, int(ht.Bogus)+1),
+		limit:  limit,
+	}
+	sr.cnt[int(ht.NotRun)] = n
+	return &sr
+}
+
+func (sr *StatusRing) Store(v ht.Status) {
+	sr.mu.Lock()
+	old := int(sr.values[sr.next])
+	vv := int(v)
+
+	sr.cnt[old]--
+	sr.cnt[vv]++
+	sr.values[sr.next] = v
+	sr.next++
+	if sr.next >= len(sr.values) {
+		sr.full = true
+		sr.next = 0
+	}
+
+	if sr.full && !sr.bad {
+		if float64(sr.cnt[int(ht.Error)])/float64(len(sr.values)) > sr.limit {
+			sr.bad = true
+		}
+	}
+
+	sr.mu.Unlock()
+}
+
+// Status fills out with current counts and returns if limit was execed.
+func (sr *StatusRing) Status(out []int) bool {
+	sr.mu.Lock()
+	copy(out, sr.cnt)
+	b := sr.bad
+	sr.mu.Unlock()
+	return b
 }
