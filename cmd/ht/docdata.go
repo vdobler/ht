@@ -410,9 +410,11 @@ var typeDoc = map[string]string{
 		"    Latency provides checks against percentils of the response time latency.",
 	"links": "type Links struct {\n" +
 		"\t// Which links to test; a space separated list of tag tag names:\n" +
-		"\t//     'a',   'link',  'img',  'script', 'video', 'audio', 'source'\n" +
+		"\t//     'a',   'link',  'img',  'script', 'video', 'audio' or 'source'\n" +
 		"\t// E.g. use \"a img\" to check the href attribute of all a-tags and\n" +
 		"\t// the src attribute of all img-tags.\n" +
+		"\t// The special value '-none-' can be used and is ignored: It will not\n" +
+		"\t// check any links.\n" +
 		"\tWhich string\n" +
 		"\n" +
 		"\t// Head triggers HEAD requests instead of GET requests.\n" +
