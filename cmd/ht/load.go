@@ -41,6 +41,7 @@ var queryPerSecond float64
 var testDuration time.Duration
 var rampDuration time.Duration
 var collectFrom string
+var maxErrorRate float64
 
 func init() {
 	cmdLoad.Flag.Float64Var(&queryPerSecond, "rate", 20,
@@ -51,6 +52,8 @@ func init() {
 		"ramp duration to reach desired request rate")
 	cmdLoad.Flag.StringVar(&collectFrom, "collect", "FAIL",
 		"collect Test with status at least `limit`")
+	cmdLoad.Flag.Float64Var(&maxErrorRate, "errors", 0.9,
+		"abort load test if error rate exceeds `rate`")
 	addOutputFlag(cmdLoad.Flag)
 	addVarsFlags(cmdLoad.Flag)
 }
@@ -104,7 +107,7 @@ func runLoad(cmd *Command, args []string) {
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 512)
 	defer bufferedStdout.Flush()
 	for i, scen := range scenarios {
-		fmt.Printf("%d. %d%% %q (max %d threads, verbosity %d)\n",
+		fmt.Printf("%d. %3d%% %q (max %d threads, verbosity %d)\n",
 			i+1, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads,
 			scen.Verbosity)
 	}
@@ -124,10 +127,11 @@ func runLoad(cmd *Command, args []string) {
 	// Action here.
 	prepareHT()
 	opts := suite.ThroughputOptions{
-		Rate:        queryPerSecond,
-		Duration:    testDuration,
-		Ramp:        rampDuration,
-		CollectFrom: collectStatus,
+		Rate:         queryPerSecond,
+		Duration:     testDuration,
+		Ramp:         rampDuration,
+		CollectFrom:  collectStatus,
+		MaxErrorRate: maxErrorRate,
 	}
 	data, failures, lterr := suite.Throughput(scenarios, opts, livefile)
 
