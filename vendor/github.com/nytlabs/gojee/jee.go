@@ -663,7 +663,7 @@ var unaryFuncs = map[string]func(interface{}) (interface{}, error){
 			return nil, nil
 		}
 
-		for k, _ := range m {
+		for k := range m {
 			keyList = append(keyList, k)
 		}
 
@@ -872,7 +872,7 @@ func getKeyValues(t *TokenTree, input BMsg) (interface{}, error) {
 		case K_START:
 			switch c := sub.Value.(type) {
 			case string:
-				for j, _ := range output {
+				for j := range output {
 					outputMap, ok := output[j].(map[string]interface{})
 					if !ok {
 						return nil, errors.New("could not assert to map")
@@ -881,7 +881,7 @@ func getKeyValues(t *TokenTree, input BMsg) (interface{}, error) {
 					output[j] = outputMap[c]
 				}
 			case float64:
-				for j, _ := range output {
+				for j := range output {
 					outputSlice, ok := output[j].([]interface{})
 					if !ok {
 						return nil, errors.New("could not assert to slice")
@@ -896,7 +896,7 @@ func getKeyValues(t *TokenTree, input BMsg) (interface{}, error) {
 			default:
 				accessed = true
 				var newOutput []interface{}
-				for j, _ := range output {
+				for j := range output {
 					arr, ok := output[j].([]interface{})
 					if !ok {
 						return nil, errors.New("could not assert to slice")
@@ -908,7 +908,7 @@ func getKeyValues(t *TokenTree, input BMsg) (interface{}, error) {
 				output = newOutput
 			}
 		case KEY:
-			for j, _ := range output {
+			for j := range output {
 				outputMap, ok := output[j].(map[string]interface{})
 				if !ok {
 					errors.New("could not assert to map")
