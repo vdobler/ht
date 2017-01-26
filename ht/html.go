@@ -426,11 +426,11 @@ type Links struct {
 
 	// FailMixedContent will report a failure for any mixed content, i.e.
 	// resources retrieved via http for a https HTML page.
-	FailMixedContent bool
+	FailMixedContent bool `json:",omitempty"`
 
 	// MaxTime is the maximum duration allowed to retrieve all the linked
 	// resources. A zero value means unlimited time allowed.
-	MaxTime time.Duration
+	MaxTime time.Duration `json:",omitempty"`
 
 	tags []string
 }
