@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -1286,6 +1287,7 @@ func TestNotification(t *testing.T) {
 		t.Fatalf("unexpected error %#v", err)
 	}
 
+	nowMu := &sync.Mutex{}
 	now := tNow
 
 	go func() {
@@ -1297,7 +1299,9 @@ func TestNotification(t *testing.T) {
 			}
 			all := []Entry{}
 			for _, etld := range jar.ETLDsPlus1(nil) {
+				nowMu.Lock()
 				all = jar.listEntries(etld, all, now)
+				nowMu.Unlock()
 			}
 			state <- record{n, all}
 		}
@@ -1307,7 +1311,9 @@ func TestNotification(t *testing.T) {
 	// recordState records the total content of the jar and
 	// advances now by 1 second.
 	recordState := func() {
+		nowMu.Lock()
 		now = now.Add(500 * time.Millisecond)
+		nowMu.Unlock()
 		select {
 		case s, ok := <-state:
 			if !ok {
@@ -1317,7 +1323,10 @@ func TestNotification(t *testing.T) {
 		case <-time.After(900 * time.Millisecond):
 			t.Fatalf("no notification received")
 		}
+		nowMu.Lock()
 		now = now.Add(500 * time.Millisecond)
+		nowMu.Unlock()
+
 	}
 
 	// Set cookies.
