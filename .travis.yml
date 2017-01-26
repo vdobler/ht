@@ -1,0 +1,29 @@
+language: go
+
+go:
+  - 1.7.4
+  - 1.8rc2
+  - tip
+os:
+  - linux
+  - osx
+
+matrix:
+  allow_failures:
+    - go: tip
+  fast_finish: true
+
+install:
+  - go get -t ./...
+  - go get github.com/golang/lint/golint
+  - go get github.com/gordonklaus/ineffassign
+
+script:
+  - diff <(echo -n) <(gofmt -s -d .)
+  - ineffassign .
+  - go vet ./...
+  - go test -race -count=4 $(go list ./... | grep -v vendor)
+
+after_script:
+  - golint ./...
+  - go test -run=🤐 -bench=. -count=1 -benchmem ./...
