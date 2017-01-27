@@ -158,8 +158,8 @@ func TestFancySuite(t *testing.T) {
 }
 
 func TestRawSuiteExecute(t *testing.T) {
-	which := "./testdata/suite.suite"
-	which = "../showcase/showcase.suite"
+	// which := "./testdata/suite.suite"
+	which := "../showcase/showcase.suite"
 	// which = "./testdata/fancy.suite"
 	raw, err := LoadRawSuite(which, nil)
 	if err != nil {

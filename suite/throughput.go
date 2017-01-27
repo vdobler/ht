@@ -665,15 +665,13 @@ func DataToCSV(data []TestData, out io.Writer) error {
 		return nil
 	}
 	sort.Sort(ByStarted(data))
-	rateWindow := time.Second
+	rateWindow := 5 * time.Second
 	if fullDuration := data[len(data)-1].Started.Sub(data[0].Started); fullDuration <= 5*time.Second {
 		rateWindow = 500 * time.Millisecond
 	} else if fullDuration <= 20*time.Second {
 		rateWindow = 2 * time.Second
 	} else if fullDuration <= 60*time.Second {
 		rateWindow = 3 * time.Second
-	} else {
-		rateWindow = 5 * time.Second
 	}
 	writer := csv.NewWriter(out)
 	defer writer.Flush()

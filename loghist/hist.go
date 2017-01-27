@@ -150,12 +150,11 @@ func (h *Hist) Quantiles(p []float64) []int {
 			}
 		}
 		a, b := h.cover(bucket)
-		f := -1.0
 		if psum[bucket] == 2 { // sentinel value
 			v[i] = a - 1
 		} else {
 			xa, xb := psum[bucket-1], psum[bucket]
-			f = (x - xa) / (xb - xa)
+			f := (x - xa) / (xb - xa)
 			v[i] = a + int(float64(b-a)*f)
 		}
 	}
