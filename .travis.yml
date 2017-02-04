@@ -26,6 +26,5 @@ script:
   - go test -race -count=4 $(go list ./... | grep -v /vendor/)
 
 after_script:
-  - golint ./...
-  - go list ./... | grep -v /vendor/ | xargs -n 1 golint
+  - golint $(go list ./... | grep -v /vendor/)
   - go test -run=🤐 -bench=. -count=1 -benchmem $(go list ./... | grep -v /vendor/)
