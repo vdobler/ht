@@ -4,8 +4,14 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  Analysation of the load test data is currently done before saving.
+   It would be much nicer if a new subcommand like `ht analyse <live.csv>`
+   which would sort/enrich live.csv to what throughput.csv is now and
+   calculate statistics (and do a nonzero exit depending on the outcome).
+
 *  Load-/Throughput testing has no stop condition except the desired
    duration: Stuff like abort once too many error occur is missing.
+   --> Done for errors. Failures still missing
 
 *  Load-/Throughput testing should save data during test run, not afterwards.
 
