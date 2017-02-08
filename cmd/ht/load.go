@@ -148,25 +148,47 @@ func runLoad(cmd *Command, args []string) {
 	interpretLTerrors(lterr)
 }
 
-func printStatistics(out io.Writer, scenarios []suite.Scenario, data []suite.TestData) {
-	adata := []asciistat.Data{}
+func printStatistics(w io.Writer, scenarios []suite.Scenario, data []suite.TestData) {
+	out := io.MultiWriter(w, os.Stdout)
+	perFileData := []asciistat.Data{}
+	perTestData := []asciistat.Data{}
 
-	// Per testfile
-	pert := make(map[string][]suite.TestData)
+	// Per testfile and per test
+	perFile := make(map[string][]suite.TestData)
+	perTest := make(map[string][]suite.TestData)
 	for _, d := range data {
 		parts := strings.Split(d.ID, suite.IDSep)
 		nums := strings.Split(parts[0], "/")
 		s, _ := strconv.Atoi(nums[0])
 		t, _ := strconv.Atoi(nums[3])
-		name := scenarios[s-1].RawSuite.RawTests()[t-1].File.Name
-		pert[name] = append(pert[name], d)
+		filename := scenarios[s-1].RawSuite.RawTests()[t-1].File.Name
+		perFile[filename] = append(perFile[filename], d)
+		testname := parts[2]
+		perTest[testname] = append(perTest[testname], d)
 	}
-	for file, fd := range pert {
-		st := statsFor(fd)
+
+	sortedNames := []string{}
+	for file := range perFile {
+		sortedNames = append(sortedNames, file)
+	}
+	sort.Strings(sortedNames)
+	for _, file := range sortedNames {
+		st := statsFor(perFile[file])
 		h := fmt.Sprintf("Testfile %q:", file)
 		printStat(out, h, st)
-		printStat(os.Stdout, h, st)
-		adata = append(adata, asciistat.Data{Name: file, Values: st.data})
+		perFileData = append(perFileData, asciistat.Data{Name: file, Values: st.data})
+	}
+
+	sortedNames = sortedNames[:0]
+	for file := range perTest {
+		sortedNames = append(sortedNames, file)
+	}
+	sort.Strings(sortedNames)
+	for _, test := range sortedNames {
+		st := statsFor(perTest[test])
+		h := fmt.Sprintf("Test %q:", test)
+		printStat(out, h, st)
+		perTestData = append(perTestData, asciistat.Data{Name: test, Values: st.data})
 	}
 
 	// Per scenario
@@ -182,18 +204,17 @@ func printStatistics(out io.Writer, scenarios []suite.Scenario, data []suite.Tes
 		st := statsFor(fd)
 		h := fmt.Sprintf("Scenario %d %q:", i+1, s.Name)
 		printStat(out, h, st)
-		printStat(os.Stdout, h, st)
 	}
 
 	// All requests
 	st := statsFor(data)
 	printStat(out, "All request:", st)
-	printStat(os.Stdout, "All request:", st)
-	adata = append(adata, asciistat.Data{Name: "All requests", Values: st.data})
-	asciistat.Plot(out, adata, "ms", false, 150)
-	asciistat.Plot(out, adata, "ms", true, 150)
-	asciistat.Plot(os.Stdout, adata, "ms", false, 120)
-	asciistat.Plot(os.Stdout, adata, "ms", true, 120)
+	perFileData = append(perFileData, asciistat.Data{Name: "All requests", Values: st.data})
+	perTestData = append(perTestData, asciistat.Data{Name: "All requests", Values: st.data})
+	asciistat.Plot(out, perFileData, "ms", false, 120)
+	asciistat.Plot(out, perFileData, "ms", true, 120)
+	asciistat.Plot(out, perTestData, "ms", false, 120)
+	asciistat.Plot(out, perTestData, "ms", true, 120)
 
 	/*
 		// Per (scenario/test)
