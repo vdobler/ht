@@ -75,7 +75,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		nextSessionID++
 		session = fmt.Sprintf("%d", nextSessionID)
 		activeSessions[session] = session
-	} else if session, ok := activeSessions[session]; ok {
+	} else if _, ok := activeSessions[session]; ok {
 		nextSessionID++
 		session = fmt.Sprintf("%d", nextSessionID)
 		activeSessions[session] = session

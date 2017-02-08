@@ -278,7 +278,7 @@ func plotLin(w io.Writer, measurements []Data, unit string, width, labelLen int,
 	n := int(math.Log10(step))
 	ord := int(math.Pow10(n))
 	step /= float64(ord)
-	delta := 1
+	var delta int
 	if step <= 1.2 {
 		delta = ord
 	} else if step <= 2.4 {
