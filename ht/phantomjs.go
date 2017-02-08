@@ -822,33 +822,17 @@ func calibratePhantomjsOverhead() {
 	os.Remove(name)
 }
 
-// isPhantomJSInstalled has three states: 0 not checked, 1 not available,
-// 2 available
-var isPhantomJSInstalled int
+var havePhantomJSOnce sync.Once // fills bool below once
+var havePhantomJS bool = false
 
-// IsPhantomJSInstalled returns true if PhantomJS has been installed. It caches
-// the result.
-func IsPhantomJSInstalled() bool {
-	if isPhantomJSInstalled > 0 {
-		return isPhantomJSInstalled == 2
-	}
-	if PhantomJSExecutable != "phantomjs" {
-		return true
-	}
-
-	paths := strings.Split(os.Getenv("PATH"), string(os.PathListSeparator))
-	isPhantomJSInstalled = 1
-	for _, path := range paths {
-		p := fmt.Sprintf("%s%s%s", path, string(os.PathSeparator), PhantomJSExecutable)
-		if fileExists(p) {
-			isPhantomJSInstalled = 2
-			break
+func WorkingPhantomJS() bool {
+	havePhantomJSOnce.Do(func() {
+		cmd := exec.Command(PhantomJSExecutable, "--version")
+		output, err := cmd.CombinedOutput()
+		if err == nil && bytes.HasPrefix(output, []byte("2.")) {
+			havePhantomJS = true
 		}
-	}
-	return isPhantomJSInstalled == 2
-}
 
-func fileExists(path string) bool {
-	fi, err := os.Stat(path)
-	return !os.IsNotExist(err) && fi.Size() > 0
+	})
+	return havePhantomJS
 }

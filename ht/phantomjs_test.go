@@ -325,7 +325,7 @@ var passingScreenshotTests = []*Test{
 }
 
 func TestScreenshotPass(t *testing.T) {
-	if !IsPhantomJSInstalled() {
+	if !WorkingPhantomJS() {
 		t.Skip("PhantomJS is not installed")
 	}
 
@@ -410,7 +410,7 @@ var failingScreenshotTests = []*Test{
 }
 
 func TestScreenshotFail(t *testing.T) {
-	if !IsPhantomJSInstalled() {
+	if !WorkingPhantomJS() {
 		t.Skip("PhantomJS is not installed")
 	}
 
@@ -492,7 +492,7 @@ var passingRenderedHTMLTests = []*Test{
 }
 
 func TestRenderedHTMLPassing(t *testing.T) {
-	if !IsPhantomJSInstalled() {
+	if !WorkingPhantomJS() {
 		t.Skip("PhantomJS is not installed")
 	}
 
@@ -545,7 +545,7 @@ var passingRenderingTimeTests = []*Test{
 }
 
 func TestRenderingTime(t *testing.T) {
-	if !IsPhantomJSInstalled() {
+	if !WorkingPhantomJS() {
 		t.Skip("PhantomJS is not installed")
 	}
 
@@ -595,7 +595,7 @@ var passingRenderingTimeTests2 = []*Test{
 }
 
 func TestRenderingTime2(t *testing.T) {
-	if !IsPhantomJSInstalled() {
+	if !WorkingPhantomJS() {
 		t.Skip("PhantomJS is not installed")
 	}
 
@@ -689,7 +689,7 @@ func animationHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestFancyScreenshotPass(t *testing.T) {
-	if !IsPhantomJSInstalled() {
+	if !WorkingPhantomJS() {
 		t.Skip("PhantomJS is not installed")
 	}
 
@@ -723,7 +723,7 @@ func TestFancyScreenshotPass(t *testing.T) {
 }
 
 func TestFancyScreenshotFail(t *testing.T) {
-	if !IsPhantomJSInstalled() {
+	if !WorkingPhantomJS() {
 		t.Skip("PhantomJS is not installed")
 	}
 
