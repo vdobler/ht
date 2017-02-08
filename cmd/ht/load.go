@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/ht"
-	"github.com/vdobler/ht/internal/hist"
+	"github.com/vdobler/ht/internal/asciistat"
 	"github.com/vdobler/ht/suite"
 )
 
@@ -149,7 +149,7 @@ func runLoad(cmd *Command, args []string) {
 }
 
 func printStatistics(out io.Writer, scenarios []suite.Scenario, data []suite.TestData) {
-	histograms := []hist.Histogram{}
+	adata := []asciistat.Data{}
 
 	// Per testfile
 	pert := make(map[string][]suite.TestData)
@@ -166,7 +166,7 @@ func printStatistics(out io.Writer, scenarios []suite.Scenario, data []suite.Tes
 		h := fmt.Sprintf("Testfile %q:", file)
 		printStat(out, h, st)
 		printStat(os.Stdout, h, st)
-		histograms = append(histograms, hist.Histogram{Name: file, Data: st.data})
+		adata = append(adata, asciistat.Data{Name: file, Values: st.data})
 	}
 
 	// Per scenario
@@ -189,9 +189,11 @@ func printStatistics(out io.Writer, scenarios []suite.Scenario, data []suite.Tes
 	st := statsFor(data)
 	printStat(out, "All request:", st)
 	printStat(os.Stdout, "All request:", st)
-	histograms = append(histograms, hist.Histogram{Name: "All requests:", Data: st.data})
-	hist.PrintLogHistograms(out, histograms)
-	hist.PrintLogHistograms(os.Stdout, histograms)
+	adata = append(adata, asciistat.Data{Name: "All requests", Values: st.data})
+	asciistat.Plot(out, adata, "ms", false, 150)
+	asciistat.Plot(out, adata, "ms", true, 150)
+	asciistat.Plot(os.Stdout, adata, "ms", false, 120)
+	asciistat.Plot(os.Stdout, adata, "ms", true, 120)
 
 	/*
 		// Per (scenario/test)
@@ -246,7 +248,7 @@ type sdata struct {
 	min, mean, max, median  time.Duration
 	q25, q75, q90, q95, q99 time.Duration
 	bad, good               int
-	data                    []uint32 // in musec
+	data                    []int // in msec
 }
 
 func statsFor(data []suite.TestData) sdata {
@@ -261,7 +263,7 @@ func statsFor(data []suite.TestData) sdata {
 	}
 
 	x := make([]time.Duration, len(data))
-	musec := make([]uint32, len(data))
+	msec := make([]int, len(data))
 	sum := time.Duration(0)
 	for i, d := range data {
 		if d.Status == ht.Fail {
@@ -273,10 +275,9 @@ func statsFor(data []suite.TestData) sdata {
 		}
 		x[i] = d.ReqDuration
 		sum += d.ReqDuration
-		if d.ReqDuration/1000000 <= math.MaxUint32 {
-			musec[i] = uint32(d.ReqDuration / 1000000)
-		} else {
-			musec[i] = math.MaxUint32
+		msec[i] = int(d.ReqDuration / 1e6)
+		if msec[i] == 0 {
+			msec[i] = 1
 		}
 	}
 	sd.bad = sd.fail + sd.erred + sd.bogus
@@ -290,7 +291,7 @@ func statsFor(data []suite.TestData) sdata {
 	sd.q25, sd.median = quantile(x, 0.25), quantile(x, 0.5)
 	sd.q75, sd.q90 = quantile(x, 0.75), quantile(x, 0.90)
 	sd.q95, sd.q99 = quantile(x, 0.95), quantile(x, 0.99)
-	sd.data = musec
+	sd.data = msec
 	return sd
 }
 
