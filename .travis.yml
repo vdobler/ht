@@ -1,0 +1,30 @@
+language: go
+
+go:
+  - 1.7.4
+  - 1.8rc3
+  - tip
+os:
+  - linux
+  - osx
+
+matrix:
+  allow_failures:
+    - go: tip
+  fast_finish: true
+
+install:
+  - go get -t ./...
+  - go get github.com/golang/lint/golint
+  - go get github.com/gordonklaus/ineffassign
+
+script:
+  # todo exclude vendors from diff or format them and commit
+  #- diff <(echo -n) <(gofmt -s -d .)
+  - go list -f '{{.Dir}}' ./... | grep -v /vendor/ | xargs -n 1 ineffassign
+  - go vet $(go list ./... | grep -v /vendor/)
+  - go test -race -count=4 $(go list ./... | grep -v /vendor/)
+
+after_script:
+  - golint $(go list ./... | grep -v /vendor/)
+  - go test -run=🤐 -bench=. -count=1 -benchmem $(go list ./... | grep -v /vendor/)

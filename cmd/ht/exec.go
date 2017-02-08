@@ -268,7 +268,9 @@ func saveOverallReport(dirname string, outcome []*suite.Suite) error {
 	}
 
 	file := dirname + "/_Report_.html"
-	err = ioutil.WriteFile(file, buf.Bytes(), 0666)
+	if err := ioutil.WriteFile(file, buf.Bytes(), 0666); err != nil {
+		log.Panicf("Failed to write file: %q with error %s", file, err)
+	}
 	cwd, err := os.Getwd()
 	if err == nil {
 		reportURL := "file://" + path.Join(cwd, file)
