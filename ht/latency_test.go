@@ -115,35 +115,38 @@ func TestLatency(t *testing.T) {
 	}
 
 	for _, conc := range concLevels {
-		test := Test{
-			Name: "Prime-Handler",
-			Request: Request{
-				Method: "GET",
-				URL:    ts.URL + "/",
-				Params: url.Values{
-					"n": []string{"100000"},
-				},
-				Timeout: 100 * time.Millisecond,
-			},
-			Checks: []Check{
-				StatusCode{200},
-				&Latency{
-					N:          200 * conc,
-					Concurrent: conc,
-					Limits:     "50% ≤ 35ms; 75% ≤ 45ms; 0.995 ≤ 55ms",
-					// DumpTo:     "foo.xxx",
-				},
-			},
-			Execution: Execution{Verbosity: 0},
-		}
-		if *verboseTest {
-			test.Execution.Verbosity = 1
-		}
-		test.Run()
+		t.Run(fmt.Sprintf("conc=%d", conc),
+			func(t *testing.T) {
+				test := Test{
+					Name: "Prime-Handler",
+					Request: Request{
+						Method: "GET",
+						URL:    ts.URL + "/",
+						Params: url.Values{
+							"n": []string{"100000"},
+						},
+						Timeout: 100 * time.Millisecond,
+					},
+					Checks: []Check{
+						StatusCode{200},
+						&Latency{
+							N:          200 * conc,
+							Concurrent: conc,
+							Limits:     "50% ≤ 35ms; 75% ≤ 45ms; 0.995 ≤ 55ms",
+							// DumpTo:     "foo.xxx",
+						},
+					},
+					Execution: Execution{Verbosity: 0},
+				}
+				if *verboseTest {
+					test.Execution.Verbosity = 1
+				}
+				test.Run()
 
-		if *verboseTest {
-			test.PrintReport(os.Stdout)
-		}
+				if *verboseTest {
+					test.PrintReport(os.Stdout)
+				}
+			})
 	}
 }
 
@@ -162,49 +165,53 @@ func TestSessionLatency(t *testing.T) {
 
 	for _, kind := range []string{"indiv", "shared"} {
 		for _, conc := range concLevels {
-			sessionMu.Lock()
-			activeSessions = make(map[string]string)
-			sessionMu.Unlock()
-			jar, _ := cookiejar.New(nil)
+			t.Run(fmt.Sprintf("kind=%s,conc=%d", kind, conc),
+				func(t *testing.T) {
+					sessionMu.Lock()
+					activeSessions = make(map[string]string)
+					sessionMu.Unlock()
+					jar, _ := cookiejar.New(nil)
 
-			medianLimit := "5ms"
-			if kind == "indiv" {
-				medianLimit = fmt.Sprintf("%dms", (conc-1)*2+5)
-			}
+					medianLimit := "5ms"
+					if kind == "indiv" {
+						medianLimit = fmt.Sprintf("%dms", (conc-1)*2+5)
+					}
 
-			test := Test{
-				Name: kind,
-				Request: Request{
-					URL:     ts.URL + "/",
-					Timeout: 500 * time.Millisecond,
-				},
-				Checks: []Check{
-					StatusCode{200},
-					&Latency{
-						N:          200 * conc,
-						Concurrent: conc,
-						Limits:     "50% ≤ " + medianLimit,
-						// DumpTo:             "sessionlatency",
-						IndividualSessions: kind == "indiv",
-					},
-				},
-				Execution: Execution{Verbosity: 0},
-				Jar:       jar,
-			}
-			if *verboseTest {
-				test.Execution.Verbosity = 1
-			}
+					test := Test{
+						Name: kind,
+						Request: Request{
+							URL:     ts.URL + "/",
+							Timeout: 500 * time.Millisecond,
+						},
+						Checks: []Check{
+							StatusCode{200},
+							&Latency{
+								N:          200 * conc,
+								Concurrent: conc,
+								Limits:     "50% ≤ " + medianLimit,
+								// DumpTo:             "sessionlatency",
+								IndividualSessions: kind == "indiv",
+							},
+						},
+						Execution: Execution{Verbosity: 0},
+						Jar:       jar,
+					}
+					if *verboseTest {
+						test.Execution.Verbosity = 1
+					}
 
-			test.Run()
+					test.Run()
 
-			// shared tests pass, indiv fail
-			if kind == "shared" && test.Status != Pass {
-				test.PrintReport(os.Stdout)
-				t.Errorf("Unexpected failure for shared sessions")
-			} else if kind == "indiv" && test.Status != Fail {
-				test.PrintReport(os.Stdout)
-				t.Errorf("Missing failure for indiv sessions")
-			}
+					// shared tests pass, indiv fail
+					if kind == "shared" && test.Status != Pass {
+						test.PrintReport(os.Stdout)
+						t.Errorf("Unexpected failure for shared sessions")
+					} else if kind == "indiv" && test.Status != Fail {
+						test.PrintReport(os.Stdout)
+						t.Errorf("Missing failure for indiv sessions")
+					}
+				})
 		}
+
 	}
 }
