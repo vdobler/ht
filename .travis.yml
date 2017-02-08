@@ -1,12 +1,13 @@
 language: go
 
 go:
-  - 1.7.4
+  # - 1.7.4
   - 1.8rc3
-  - tip
+  # - tip
+
 os:
   - linux
-  - osx
+  # - osx
 
 matrix:
   allow_failures:
@@ -17,6 +18,7 @@ install:
   - go get -t ./...
   - go get github.com/golang/lint/golint
   - go get github.com/gordonklaus/ineffassign
+  - phantomjs --version
 
 script:
   # todo exclude vendors from diff or format them and commit
