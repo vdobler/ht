@@ -68,19 +68,7 @@ func parseStatus(s string) (ht.Status, error) {
 	return 0, fmt.Errorf("unknown status %q", s)
 }
 
-func runLoad(cmd *Command, args []string) {
-	if len(args) != 1 {
-		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
-		os.Exit(9)
-	}
-	collectStatus, err := parseStatus(collectFrom)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(9)
-	}
-
-	arg := args[0]
-
+func readRawLoadtest(arg string) *suite.RawLoadTest {
 	// Process arguments of the form <name>@<archive>.
 	var fs suite.FileSystem = nil
 	if i := strings.Index(arg, "@"); i != -1 {
@@ -101,6 +89,22 @@ func runLoad(cmd *Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg, err)
 		os.Exit(9)
 	}
+
+	return raw
+}
+
+func runLoad(cmd *Command, args []string) {
+	if len(args) != 1 {
+		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
+		os.Exit(9)
+	}
+	collectStatus, err := parseStatus(collectFrom)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(9)
+	}
+
+	raw := readRawLoadtest(args[0])
 
 	// Prepare scenarios, output folder and the live data log.
 	scenarios := raw.ToScenario(variablesFlag)
@@ -141,7 +145,7 @@ func runLoad(cmd *Command, args []string) {
 	}
 
 	if failures != nil {
-		failures.Name = "Failures of throughput test " + arg
+		failures.Name = "Failures of throughput test " + args[0]
 	}
 	saveLoadtestData(data, failures, scenarios)
 
