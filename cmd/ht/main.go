@@ -68,6 +68,7 @@ func init() {
 		cmdFingerprint,
 		cmdReconstruct,
 		cmdLoad,
+		cmdStat,
 	}
 }
 

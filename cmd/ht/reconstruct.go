@@ -41,7 +41,7 @@ var (
 
 func runReconstruct(cmd *Command, args []string) {
 	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "Missing arguments to fingerprint")
+		fmt.Fprintln(os.Stderr, "Missing arguments to reconstruct")
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
 		os.Exit(9)
 	}

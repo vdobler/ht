@@ -58,16 +58,6 @@ func init() {
 	addVarsFlags(cmdLoad.Flag)
 }
 
-func parseStatus(s string) (ht.Status, error) {
-	q := strings.TrimSpace(strings.ToLower(s))
-	for n, t := range []string{"notrun", "skipped", "pass", "fail", "error", "bogus"} {
-		if t == q {
-			return ht.Status(n), nil
-		}
-	}
-	return 0, fmt.Errorf("unknown status %q", s)
-}
-
 func readRawLoadtest(arg string) *suite.RawLoadTest {
 	// Process arguments of the form <name>@<archive>.
 	var fs suite.FileSystem = nil
@@ -98,9 +88,9 @@ func runLoad(cmd *Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
 		os.Exit(9)
 	}
-	collectStatus, err := parseStatus(collectFrom)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+	collectStatus := ht.StatusFromString(collectFrom)
+	if collectStatus < 0 {
+		fmt.Fprintf(os.Stderr, "Unkown status %q.", collectFrom)
 		os.Exit(9)
 	}
 
@@ -118,7 +108,7 @@ func runLoad(cmd *Command, args []string) {
 	if outputDir == "" {
 		outputDir = time.Now().Format("2006-01-02_15h04m05s")
 	}
-	err = os.MkdirAll(outputDir, 0766)
+	err := os.MkdirAll(outputDir, 0766)
 	if err != nil {
 		log.Panic(err)
 	}

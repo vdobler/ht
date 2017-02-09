@@ -35,6 +35,7 @@ package suite
 import (
 	"bufio"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -629,6 +630,7 @@ func analyseOverage(data []TestData) error {
 	return nil
 }
 
+// Convert a duration d (in ns) to millisecond with microsecond precission.
 func dToMs(d time.Duration) float64 { return float64(d/1000) / 1000 }
 
 // DataPrint prints data to out in human readable tabular format.
@@ -826,13 +828,7 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 		"TestDuration",
 		"Wait",
 		"Overage",
-		"ID",
-		"Suite",
-		"Test",
-		"SuiteNo",
-		"ThreadNo",
-		"Repetition",
-		"TestNo",
+		"SeqNo",
 		"Error",
 	}
 	w.Write(header) // TODO: handle error; also below
@@ -861,24 +857,7 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 		}
 
 		// CSV Recording
-		r = r[:0]
-		r = append(r, e.Test.Started.Format("2006-01-02T15:04:05.99999Z07:00"))
-		r = append(r, fmt.Sprintf("%.3f", dToMs(e.Test.Started.Sub(start))))
-		r = append(r, e.Test.Status.String())
-		r = append(r, fmt.Sprintf("%.3f", dToMs(e.Test.Response.Duration)))
-		r = append(r, fmt.Sprintf("%.3f", dToMs(e.Test.Duration)))
-		r = append(r, fmt.Sprintf("%.1f", dToMs(time.Duration(e.Wait))))
-		r = append(r, fmt.Sprintf("%.1f", dToMs(time.Duration(e.Overage))))
-		part, nums := splitID(e.Test.Reporting.SeqNo)
-		r = append(r, part...)
-		r = append(r, nums...)
-
-		if e.Test.Error != nil {
-			r = append(r, e.Test.Error.Error())
-		} else {
-			r = append(r, "")
-		}
-
+		r = data2csvline(d, start, r)
 		w.Write(r)
 		if cnt%5 == 0 {
 			w.Flush()
@@ -888,6 +867,95 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 		// StatusRing
 		sr.Store(e.Test.Status)
 	}
+}
+
+func ReadLiveCSV(r io.Reader) ([]TestData, error) {
+	csvreader := csv.NewReader(r)
+
+	all, err := csvreader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	all = all[1:] // strip header
+	data := make([]TestData, 0, len(all))
+	for i, line := range all {
+		d, err := csvline2Data(line)
+		if err != nil {
+			return data, fmt.Errorf("line %d: %s", i+2, err)
+		}
+		data = append(data, d)
+	}
+
+	return data, nil
+}
+
+// must be kept in sync with csvline2Data
+func data2csvline(data TestData, start time.Time, r []string) []string {
+	r = r[:0]
+	r = append(r, data.Started.Format("2006-01-02T15:04:05.99999Z07:00"))
+	r = append(r, fmt.Sprintf("%.3f", dToMs(data.Started.Sub(start))))
+	r = append(r, data.Status.String())
+	r = append(r, fmt.Sprintf("%.3f", dToMs(data.ReqDuration)))
+	r = append(r, fmt.Sprintf("%.3f", dToMs(data.TestDuration)))
+	r = append(r, fmt.Sprintf("%.1f", dToMs(time.Duration(data.Wait))))
+	r = append(r, fmt.Sprintf("%.1f", dToMs(time.Duration(data.Overage))))
+	r = append(r, data.ID)
+	if data.Error != nil {
+		r = append(r, data.Error.Error())
+	} else {
+		r = append(r, "")
+	}
+
+	return r
+}
+
+// must be in sync with data2csvline
+func csvline2Data(line []string) (TestData, error) {
+	data := TestData{}
+	var err error
+	var f float64
+	data.Started, err = time.Parse("2006-01-02T15:04:05.99999Z07:00", line[0])
+	if err != nil {
+		return data, err
+	}
+
+	data.Status = ht.StatusFromString(line[2])
+	if data.Status < 0 {
+		return data, fmt.Errorf("unkown status %q", line[2])
+	}
+
+	f, err = strconv.ParseFloat(line[3], 64)
+	if err != nil {
+		return data, err
+	}
+	data.ReqDuration = time.Duration(f * 1e6)
+
+	f, err = strconv.ParseFloat(line[4], 64)
+	if err != nil {
+		return data, err
+	}
+	data.TestDuration = time.Duration(f * 1e6)
+
+	f, err = strconv.ParseFloat(line[5], 64)
+	if err != nil {
+		return data, err
+	}
+	data.Wait = time.Duration(f * 1e6)
+
+	f, err = strconv.ParseFloat(line[6], 64)
+	if err != nil {
+		return data, err
+	}
+	data.Overage = time.Duration(f * 1e6)
+
+	data.ID = line[7]
+
+	if line[8] != "" {
+		data.Error = errors.New(line[8])
+	}
+
+	return data, nil
 }
 
 // ----------------------------------------------------------------------------
