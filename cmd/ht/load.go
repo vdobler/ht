@@ -8,19 +8,16 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/vdobler/ht/ht"
-	"github.com/vdobler/ht/internal/asciistat"
 	"github.com/vdobler/ht/suite"
 )
 
@@ -140,121 +137,6 @@ func runLoad(cmd *Command, args []string) {
 	saveLoadtestData(data, failures, scenarios)
 
 	interpretLTerrors(lterr)
-}
-
-func printStatistics(w io.Writer, scenarios []suite.Scenario, data []suite.TestData) {
-	out := io.MultiWriter(w, os.Stdout)
-	perFileData := []asciistat.Data{}
-	perTestData := []asciistat.Data{}
-
-	// Per testfile and per test
-	perFile := make(map[string][]suite.TestData)
-	perTest := make(map[string][]suite.TestData)
-	for _, d := range data {
-		parts := strings.Split(d.ID, suite.IDSep)
-		nums := strings.Split(parts[0], "/")
-		s, _ := strconv.Atoi(nums[0])
-		t, _ := strconv.Atoi(nums[3])
-		filename := scenarios[s-1].RawSuite.RawTests()[t-1].File.Name
-		perFile[filename] = append(perFile[filename], d)
-		testname := parts[2]
-		perTest[testname] = append(perTest[testname], d)
-	}
-
-	sortedNames := []string{}
-	for file := range perFile {
-		sortedNames = append(sortedNames, file)
-	}
-	sort.Strings(sortedNames)
-	for _, file := range sortedNames {
-		st := statsFor(perFile[file])
-		h := fmt.Sprintf("Testfile %q:", file)
-		printStat(out, h, st)
-		perFileData = append(perFileData, asciistat.Data{Name: file, Values: st.data})
-	}
-
-	sortedNames = sortedNames[:0]
-	for file := range perTest {
-		sortedNames = append(sortedNames, file)
-	}
-	sort.Strings(sortedNames)
-	for _, test := range sortedNames {
-		st := statsFor(perTest[test])
-		h := fmt.Sprintf("Test %q:", test)
-		printStat(out, h, st)
-		perTestData = append(perTestData, asciistat.Data{Name: test, Values: st.data})
-	}
-
-	// Per scenario
-	for i, s := range scenarios {
-		fd := make([]suite.TestData, 0, 200)
-		pat := fmt.Sprintf("%d/", i+1)
-		for _, d := range data {
-			if strings.HasPrefix(d.ID, pat) {
-				fd = append(fd, d)
-			}
-		}
-
-		st := statsFor(fd)
-		h := fmt.Sprintf("Scenario %d %q:", i+1, s.Name)
-		printStat(out, h, st)
-	}
-
-	// All requests
-	st := statsFor(data)
-	printStat(out, "All request:", st)
-	perFileData = append(perFileData, asciistat.Data{Name: "All requests", Values: st.data})
-	perTestData = append(perTestData, asciistat.Data{Name: "All requests", Values: st.data})
-	asciistat.Plot(out, perFileData, "ms", false, 120)
-	asciistat.Plot(out, perFileData, "ms", true, 120)
-	asciistat.Plot(out, perTestData, "ms", false, 120)
-	asciistat.Plot(out, perTestData, "ms", true, 120)
-
-	/*
-		// Per (scenario/test)
-		for i, s := range scenarios {
-			for j, t := range s.RawSuite.RawTests() {
-				fd := make([]bender.TestData, 0, 200)
-				ppat := fmt.Sprintf("%d/", i+1)
-				spat := fmt.Sprintf("/%d%s", j+1, suite.IDSep)
-				for _, d := range data {
-					// fmt.Printf("ID = %s   %s  %s\n", d.ID, ppat, spat)
-					if strings.HasPrefix(d.ID, ppat) &&
-						strings.Contains(d.ID, spat) {
-						fd = append(fd, d)
-					}
-				}
-				st := statsFor(fd)
-				fmt.Printf("Scenario %d %q, Test %d %q:\n",
-					i+1, s.Name,
-					j+1, t.File.Name,
-				)
-				printStat(st)
-			}
-		}
-	*/
-
-}
-
-func printStat(out io.Writer, headline string, st sdata) {
-	fmt.Fprintf(out, "%s Status:   Total=%d  Pass=%d (%.1f%%), Fail=%d (%.1f%%), Error=%d (%.1f%%), Bogus=%d (%.1f%%)\n",
-		headline, st.n,
-		st.good, 100*float64(st.good)/float64(st.n),
-		st.fail, 100*float64(st.fail)/float64(st.n),
-		st.erred, 100*float64(st.erred)/float64(st.n),
-		st.bogus, 100*float64(st.bogus)/float64(st.n),
-	)
-	fmt.Fprintf(out, "%s Duration: 0%%=%.1fms, 25%%=%.1fms, 50%%=%.1fms, 75%%=%.1fms, 90%%=%.1fms, 95%%=%.1fms, 99%%=%.1fms, 100%%=%.1fms\n",
-		headline,
-		float64(st.min/1000)/1000,
-		float64(st.q25/1000)/1000,
-		float64(st.median/1000)/1000,
-		float64(st.q75/1000)/1000,
-		float64(st.q90/1000)/1000,
-		float64(st.q95/1000)/1000,
-		float64(st.q99/1000)/1000,
-		float64(st.max/1000)/1000,
-	)
 }
 
 type sdata struct {
@@ -440,10 +322,4 @@ ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
 `
 	ioutil.WriteFile(outputDir+"/throughput.R", []byte(script), 0666)
 
-	file2, err := os.Create(outputDir + "/result.txt")
-	if err != nil {
-		log.Panic(err)
-	}
-	defer file2.Close()
-	printStatistics(file2, scenarios, data)
 }
