@@ -858,3 +858,24 @@ func TestCurlCallBody(t *testing.T) {
 		}
 	}
 }
+
+func TestStatusFromString(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want Status
+	}{
+		{"NotRun", NotRun},
+		{"skipped", Skipped},
+		{"PASS", Pass},
+		{" fail ", Fail},
+		{"Error", Error},
+		{"bogus", Bogus},
+		{"foobar", Status(-1)},
+	} {
+		if got := StatusFromString(tc.in); got != tc.want {
+			t.Errorf("StatusFromString(%q)=%d, want %d",
+				tc.in, got, tc.want)
+		}
+	}
+
+}

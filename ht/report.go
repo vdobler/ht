@@ -31,6 +31,19 @@ func (s Status) String() string {
 	return []string{"NotRun", "Skipped", "Pass", "Fail", "Error", "Bogus"}[int(s)]
 }
 
+//                 01234567        01234567        01234567
+//                         01234567        01234567        01234567
+const statusnames = "notrun  skipped pass    fail    error   bogus"
+
+func StatusFromString(s string) Status {
+	s = strings.TrimSpace(strings.ToLower(s))
+	i := strings.Index(statusnames, s)
+	if i < 0 {
+		return Status(-1)
+	}
+	return Status(i / 8)
+}
+
 // MarshalText implements encoding.TextMarshaler.
 func (s Status) MarshalText() ([]byte, error) {
 	if s < 0 || s > Bogus {
