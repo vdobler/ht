@@ -8,7 +8,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+
+	"github.com/vdobler/ht/ht"
 )
 
 var cmdDoc = &Command{
@@ -18,17 +21,27 @@ var cmdDoc = &Command{
 	Flag:        flag.NewFlagSet("doc", flag.ContinueOnError),
 	Help: `
 Doc displays detail information of types used in for writing tests.
-Only the most relevant type documentation is available.
+Only the most relevant type documentation is available. The doc
+subcommand outputs the list of checks and extractors if called with
+argument 'checks' or 'extractors'.
 `,
 }
 
 func runDoc(cmd *Command, args []string) {
 	if len(args) != 1 {
-		fmt.Fprintf(os.Stderr, "Usage: ht doc <type>")
+		fmt.Fprintln(os.Stderr, "Wrong number of arguments.")
+		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
 		os.Exit(9)
 	}
 
 	typ := strings.ToLower(args[0])
+
+	// Special case of list of checks/extractors.
+	if typ == "check" || typ == "checks" ||
+		typ == "extractor" || typ == "extractors" {
+		disaplayChecksOrExtractors(typ)
+	}
+
 	doc, ok := typeDoc[typ]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "No information available for type %q\n", typ)
@@ -38,5 +51,21 @@ func runDoc(cmd *Command, args []string) {
 
 	fmt.Println(doc)
 
+	os.Exit(0)
+}
+
+func disaplayChecksOrExtractors(which string) {
+	names := []string{}
+	if which[0] == 'c' {
+		for name := range ht.CheckRegistry {
+			names = append(names, name)
+		}
+	} else {
+		for name := range ht.ExtractorRegistry {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	fmt.Println(strings.Join(names, "\n"))
 	os.Exit(0)
 }

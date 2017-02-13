@@ -8,10 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
-	"sort"
-
-	"github.com/vdobler/ht/ht"
 )
 
 var cmdHelp = &Command{
@@ -39,11 +35,11 @@ func runHelp(cmd *Command, args []string) {
 	}
 
 	arg := args[0]
-	if arg == "check" || arg == "checks" {
-		displayChecks()
-	}
-	if arg == "extractor" || arg == "extractors" {
-		displayExtractors()
+
+	// Special case of list of checks/extractors.
+	if arg == "check" || arg == "checks" ||
+		arg == "extractor" || arg == "extractors" {
+		disaplayChecksOrExtractors(arg)
 	}
 
 	for _, cmd := range commands {
@@ -62,61 +58,4 @@ Flags:
 	fmt.Fprintf(os.Stderr, "Unknown help topic %#q.  Run 'ht help'.\n", arg)
 	os.Exit(9) // failed at 'go help cmd'
 
-}
-
-func displayChecks() {
-	checkNames := []string{}
-	for name := range ht.CheckRegistry {
-		checkNames = append(checkNames, name)
-	}
-	sort.Strings(checkNames)
-	for _, name := range checkNames {
-		fmt.Printf("%s := {\n", name)
-		typ := ht.CheckRegistry[name]
-		displayTypeAsPseudoJSON(typ)
-		fmt.Printf("}\n\n")
-	}
-	fmt.Printf("Condition := {\n")
-	displayTypeAsPseudoJSON(reflect.TypeOf(ht.Condition{}))
-	fmt.Printf("}\n\n")
-	os.Exit(0)
-}
-
-func displayExtractors() {
-	exNames := []string{}
-	for name := range ht.ExtractorRegistry {
-		exNames = append(exNames, name)
-	}
-	sort.Strings(exNames)
-	for _, name := range exNames {
-		fmt.Printf("%s := {\n", name)
-		typ := ht.ExtractorRegistry[name]
-		displayTypeAsPseudoJSON(typ)
-		fmt.Printf("}\n\n")
-	}
-	os.Exit(0)
-}
-
-func displayTypeAsPseudoJSON(typ reflect.Type) {
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-	for f := 0; f < typ.NumField(); f++ {
-		field := typ.Field(f)
-		c := field.Name[0]
-		if c < 'A' || c > 'Z' {
-			continue
-		}
-		fmt.Printf("    %s: ", field.Name)
-		switch field.Type.Kind() {
-		case reflect.Slice:
-			e := field.Type.Elem()
-			fmt.Printf("[ %s... ],\n", e.Name())
-		case reflect.Map:
-			fmt.Printf("{ ... },\n")
-		default:
-			fmt.Printf("%s,\n", field.Type.Name())
-		}
-
-	}
 }
