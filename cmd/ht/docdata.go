@@ -433,11 +433,11 @@ var typeDoc = map[string]string{
 		"\n" +
 		"\t// FailMixedContent will report a failure for any mixed content, i.e.\n" +
 		"\t// resources retrieved via http for a https HTML page.\n" +
-		"\tFailMixedContent bool\n" +
+		"\tFailMixedContent bool \n" +
 		"\n" +
 		"\t// MaxTime is the maximum duration allowed to retrieve all the linked\n" +
 		"\t// resources. A zero value means unlimited time allowed.\n" +
-		"\tMaxTime time.Duration\n" +
+		"\tMaxTime time.Duration \n" +
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
