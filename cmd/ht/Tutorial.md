@@ -45,16 +45,20 @@ Note that acronyms will be in all caps, e.g. "URL"
  * `Checks` is an array if checks to perform on the received response.
 
 
-### HJSON actually (and some magic)
+### HJSON actually
 
-The files are not JSON but HJSON: Commas are optional before linebreaks,
-quotation marks are optional and comments work:
+The files are not JSON but human json (hjson)[http://hjson.org): Commas are
+optional before linebreaks, quotation marks are optional, comments work and
+multiline strings are avialable:
 
     {
         // This is a line comment
         Name:    Some descriptive name, but no fancy characters please
         Request: { ... }
         Checks:  [ ... ]
+        Multiline: '''This is a
+                      multiline
+                      string.'''
     }
 
 
