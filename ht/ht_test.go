@@ -761,9 +761,9 @@ var testCurlCalls = []struct {
 	paramsAs string
 	want     string
 }{
-	{"URL", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unkown' -H 'Cookie: session=deadbeef' 'http://localhost:808/foo?bar=1&abc=12&abc=34'`},
-	{"body", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unkown' -H 'Cookie: session=deadbeef' -d 'abc=12' -d 'abc=34' 'http://localhost:808/foo?bar=1'`},
-	{"multipart", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unkown' -H 'Cookie: session=deadbeef' -F 'abc=12' -F 'abc=34' 'http://localhost:808/foo?bar=1'`},
+	{"URL", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unknown' -H 'Cookie: session=deadbeef' 'http://localhost:808/foo?bar=1&abc=12&abc=34'`},
+	{"body", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unknown' -H 'Cookie: session=deadbeef' -d 'abc=12' -d 'abc=34' 'http://localhost:808/foo?bar=1'`},
+	{"multipart", `curl -X POST -u 'root:secret' -H 'X-Custom-A: go' -H 'X-Custom-A: fast' -H 'Accept: */*' -H 'User-Agent: unknown' -H 'Cookie: session=deadbeef' -F 'abc=12' -F 'abc=34' 'http://localhost:808/foo?bar=1'`},
 }
 
 func TestCurlCall(t *testing.T) {
