@@ -4,6 +4,24 @@
 
 // Package populate provides function to populate Go values from
 // an untyped interface{} soup.
+//
+// Arbitary JSON documents can be unmarshaled into an interface{}
+// via encoding/json.Unmarshal. Hjson (human JSON) allows only this
+// type of unmarshalling. Both produce a (slightly different) soup
+// of interface{}, []interface{} and map[string]interface{}.
+//
+// Package populate takes such a soup and populates a Go object
+// from this soup doing sensible type conversions where appropriate:
+//   - Fundamental types (the various ints, bools, strings, floats)
+//     work as expected.
+//   - Maps work as expected.
+//   - Slices work as expected with one syntactical suggar: You can
+//     populate a []T from a single instance of T, the resulting slice
+//     has length 1 and contains just this T.
+//   - time.Durations can be populated from ints or floats (containing
+//     the duration in nanoseconds) or from strings like "2.5s" or "45ms"
+//     i.e. strings parsable by time.ParseDuration.
+//
 package populate
 
 import (
@@ -13,6 +31,8 @@ import (
 	"time"
 )
 
+// Populator is the interface a type can implement to provide a custom
+// deserialisation.
 type Populator interface {
 	Populate(src interface{}) error
 }
