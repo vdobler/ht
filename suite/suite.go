@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package suite allows to read tests and collections of tests (suites) from
+// disk and execute them in a controled way or run throughput load test from
+// these test/suites.
+//
 package suite
 
 import (
@@ -132,6 +136,7 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 type Executor func(test *ht.Test) error
 
 var (
+	// ErrAbortExecution indicates that suite iteration should stop.
 	ErrAbortExecution = errors.New("Abort Execution")
 )
 

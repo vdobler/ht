@@ -107,16 +107,15 @@ func tryParseNumber(text []byte, stopAtNext bool) (interface{}, error) {
 				return int64(0), err
 			}
 			return i64, nil
-		} else {
-			ui64, err := strconv.ParseUint(s, 10, 64)
-			if err != nil {
-				return int64(0), err
-			}
-			if ui64 <= math.MaxInt64 {
-				return int64(ui64), nil
-			}
-			return ui64, nil
 		}
+		ui64, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return int64(0), err
+		}
+		if ui64 <= math.MaxInt64 {
+			return int64(ui64), nil
+		}
+		return ui64, nil
 	}
 
 	number, err := strconv.ParseFloat(s, 64)

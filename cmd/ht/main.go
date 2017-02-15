@@ -205,7 +205,7 @@ func loadSuites(args []string) []*suite.RawSuite {
 	exit := false
 	for _, arg := range args {
 		// Process arguments of the form <name>@<archive>.
-		var fs suite.FileSystem = nil
+		var fs suite.FileSystem
 		if i := strings.Index(arg, "@"); i != -1 {
 			blob, err := ioutil.ReadFile(arg[i+1:])
 			if err != nil {

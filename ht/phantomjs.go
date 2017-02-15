@@ -825,6 +825,7 @@ func calibratePhantomjsOverhead() {
 var havePhantomJSOnce sync.Once // fills bool below once
 var havePhantomJS bool = false
 
+// WorkingPhantomJS reports if a suitable PhantomJS is available.
 func WorkingPhantomJS() bool {
 	havePhantomJSOnce.Do(func() {
 		cmd := exec.Command(PhantomJSExecutable, "--version")

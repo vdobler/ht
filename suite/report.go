@@ -317,6 +317,7 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 </html>
 `
 
+// Templates used to generate default and short text output and HTML page.
 var (
 	SuiteTmpl      *template.Template
 	ShortSuiteTmpl *template.Template

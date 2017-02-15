@@ -799,6 +799,8 @@ func concurrencyLevel(i int, data []TestData) (int, int) {
 // ----------------------------------------------------------------------------
 // Recorder
 
+// TestData collects main information about a single Test executed during
+// a throughput test.
 type TestData struct {
 	Started      time.Time
 	Status       ht.Status
@@ -810,6 +812,7 @@ type TestData struct {
 	Overage      time.Duration
 }
 
+// ByStarted sorts []TestData by the Started field.
 type ByStarted []TestData
 
 func (s ByStarted) Len() int           { return len(s) }
@@ -869,6 +872,8 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 	}
 }
 
+// ReadLiveCSV unmarshals the csv generated during a throughput test back
+// to TestData.
 func ReadLiveCSV(r io.Reader) ([]TestData, error) {
 	csvreader := csv.NewReader(r)
 
@@ -961,6 +966,7 @@ func csvline2Data(line []string) (TestData, error) {
 // ----------------------------------------------------------------------------
 // Ring of Status
 
+// A StatusRing is a ring buffer for ht.Status value counts.
 type StatusRing struct {
 	mu     *sync.Mutex
 	values []ht.Status
@@ -971,6 +977,7 @@ type StatusRing struct {
 	bad    bool // true once limit is exceeded
 }
 
+// NewStatusRing returns a StatusRing of size n and the given error limit.
 func NewStatusRing(n int, limit float64) *StatusRing {
 	sr := StatusRing{
 		mu:     &sync.Mutex{},
@@ -982,6 +989,7 @@ func NewStatusRing(n int, limit float64) *StatusRing {
 	return &sr
 }
 
+// Store v in the ring buffer sr.
 func (sr *StatusRing) Store(v ht.Status) {
 	sr.mu.Lock()
 	old := int(sr.values[sr.next])
@@ -1005,7 +1013,9 @@ func (sr *StatusRing) Store(v ht.Status) {
 	sr.mu.Unlock()
 }
 
-// Status fills out with current counts and returns if limit was execed.
+// Status fills out with current counts and returns whether the error limit
+// is execed. After execution out[0] contains the number of ht.NotRun
+// values stored, out[1] the number of ht.Skipped values and so on.
 func (sr *StatusRing) Status(out []int) bool {
 	sr.mu.Lock()
 	copy(out, sr.cnt)

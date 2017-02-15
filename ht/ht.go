@@ -1196,6 +1196,8 @@ func stripAtFile(s string) string {
 	return s
 }
 
+// Curl call tries to create a command line (for bash) curl call which produces
+// the same HTTP request as t.
 func (t *Test) CurlCall() string {
 	call := "curl"
 

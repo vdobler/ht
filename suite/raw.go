@@ -428,7 +428,7 @@ func (rs *RawSuite) RawTests() []*RawTest {
 	return rs.tests
 }
 
-// AddRawTest adds ts to the tests in rs.
+// AddRawTests adds ts to the tests in rs.
 func (rs *RawSuite) AddRawTests(ts ...*RawTest) {
 	rs.tests = append(rs.tests, ts...)
 }
@@ -647,6 +647,7 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 // A empty FileSystem accesses the real OS file system.
 type FileSystem map[string]*File
 
+// Load the file with the given name from fs.
 func (fs FileSystem) Load(name string) (*File, error) {
 	if len(fs) == 0 {
 		return LoadFile(name)
