@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package suite allows to read tests and collections of tests (suites) from
-// disk and execute them in a controled way or run throughput load test from
+// disk and execute them in a controlled way or run throughput load test from
 // these test/suites.
 //
 package suite

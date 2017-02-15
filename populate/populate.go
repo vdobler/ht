@@ -5,7 +5,7 @@
 // Package populate provides function to populate Go values from
 // an untyped interface{} soup.
 //
-// Arbitary JSON documents can be unmarshaled into an interface{}
+// Arbitrary JSON documents can be unmarshaled into an interface{}
 // via encoding/json.Unmarshal. Hjson (human JSON) allows only this
 // type of unmarshalling. Both produce a (slightly different) soup
 // of interface{}, []interface{} and map[string]interface{}.

@@ -341,7 +341,7 @@ func (e CookieExtractor) Extract(t *Test) (string, error) {
 // ----------------------------------------------------------------------------
 // JSExtractor
 
-// JSExtractor extracts arbitary stuff via custom JavaScript code.
+// JSExtractor extracts arbitrary stuff via custom JavaScript code.
 //
 // The current Test is present in the JavaScript VM via binding the name
 // "Test" at top-level to the current Test being checked.
