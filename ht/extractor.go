@@ -341,13 +341,13 @@ func (e CookieExtractor) Extract(t *Test) (string, error) {
 // ----------------------------------------------------------------------------
 // JSExtractor
 
-// JSExtractor extracts arbirtary stuff via custom JavaScript code.
+// JSExtractor extracts arbitary stuff via custom JavaScript code.
 //
 // The current Test is present in the JavaScript VM via binding the name
 // "Test" at top-level to the current Test being checked.
 //
 // The Script is evaluated and the final expression is the value
-// extracted with the following excpetions:
+// extracted with the following exceptions:
 //  - undefined or null is treated as an error
 //  - Objects and Arrays are treated as errors. The error message is reported
 //    in the field 'errmsg' of the object or the index 0 of the array.

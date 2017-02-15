@@ -36,7 +36,7 @@ func init() {
 var PhantomJSExecutable = "phantomjs"
 
 // DefaultGeometry is the default screen size, viewport and zoom used in
-// browser based test if no geometry is explicitely set.
+// browser based test if no geometry is explicitly set.
 // Its value represents a unscrolled (+0+=), desktop browser (1280x720)
 // at 100% zoom.
 var DefaultGeometry = "1280x720+0+0*100"
@@ -64,12 +64,12 @@ type Browser struct {
 	// It defaults to DefaultGeometry if unset.
 	Geometry string `json:",omitempty"`
 
-	// WaitUntilVisible selects elements in the DOM by theri CSS selector
-	// which must be visible before rendering the screenshot.
+	// WaitUntilVisible selects (via CSS selectors) those elements in the
+	// DOM which must be visible before rendering the screenshot.
 	WaitUntilVisible []string `json:",omitempty"`
 
-	// WaitUntilInvisible selects elements in the DOM by theri CSS selector
-	// which must be invisible before rendering the screenshot.
+	// WaitUntilInvisible selects (via CSS selectors) those elements in the
+	// DOM which must be invisible before rendering the screenshot.
 	WaitUntilInvisible []string `json:",omitempty"`
 
 	// Script is JavaScript code to be evaluated after page loading but
@@ -129,7 +129,7 @@ var phantomjsTemplate = `
  *    passed in as a callback
  *  - onReady what to do when testFx condition is fulfilled,
  *    passed in as a callback
- *  - onTimeout waht to do on timeout
+ *  - onTimeout what to do on timeout
  */
 "use strict";
 function waitFor(testFx, onReady, onTimeout) {
@@ -234,7 +234,7 @@ phantom.addCookie({
 });
 `
 
-// write a PhantomJS script to file which renderes the response in t, waits
+// write a PhantomJS script to file which renders the response in t, waits
 // for (in)visible elements as defined in b, and executes ready or timeout
 // accordingly.
 // So ready and timeout should contain the actual PhantomJS commands to
@@ -432,7 +432,7 @@ func (s *Screenshot) Execute(t *Test) error {
 		"console.log('PASS'); "+
 		"phantom.exit(0);",
 		actual)
-	// Generate screenshot even when timeout to faciliate debugging.
+	// Generate screenshot even when timeout to facilitate debugging.
 	timeoutCode := fmt.Sprintf("page.render(%q); "+
 		"console.log('FAIL timeout waiting'); "+
 		"phantom.exit(1);",
@@ -585,7 +585,7 @@ func (t *Test) allCookies() []cookiejar.Entry {
 type RenderedHTML struct {
 	Browser
 
-	// Checks to perform on the renderd HTML.
+	// Checks to perform on the rendered HTML.
 	// Sensible checks are those operating on the response body.
 	Checks CheckList
 

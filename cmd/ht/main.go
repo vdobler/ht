@@ -96,7 +96,7 @@ Tests IDs have the following format <suite>.<test> with <suite> and
 <test> maybe a single number like "3" or a range like "3-7".
 
 Several commands accept archive files which combine everything into one
-large file, The following example demonstartes using this feature:
+large file, The following example demonstrates using this feature:
 
     $ cat archive
     # some.suite

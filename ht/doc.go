@@ -110,7 +110,7 @@
 // Normaly tests are not run individually but grouped into suites.
 // Such suite may share a common cookie jar (and a common logger)
 // and may contain setup and teardown actions. Any action on a Suite
-// normaly requires its setup tests to pass, afterwards the main tests
+// normally requires its setup tests to pass, afterwards the main tests
 // are executed and finally the teardown tests are run (but no errors or
 // failures are reported for teardown tests).
 //

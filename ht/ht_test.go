@@ -808,7 +808,7 @@ func TestCurlCall(t *testing.T) {
 			},
 			Header: http.Header{
 				"Accept":     []string{"*/*"},
-				"User-Agent": []string{"unkown"},
+				"User-Agent": []string{"unknown"},
 				"X-Custom-A": []string{"go", "fast"},
 			},
 			BasicAuthUser: "root",

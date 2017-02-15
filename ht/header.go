@@ -78,7 +78,7 @@ func (c ContentType) Execute(t *Test) error {
 	}
 	if len(ct) > 1 {
 		// This is technically not a failure, but if someone sends
-		// mutliple Content-Type headers something is a bit odd.
+		// multiple Content-Type headers something is a bit odd.
 		return fmt.Errorf("received %d Content-Type headers", len(ct))
 	}
 	parts := strings.Split(ct[0], ";")

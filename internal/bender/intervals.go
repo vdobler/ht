@@ -48,7 +48,7 @@ func RampedExponentialIntervalGenerator(rate float64, ramp time.Duration) Interv
 		} else if factor < 0.05 {
 			// Do not let effective rate drop below 5% of the
 			// final targe rate: Otherwise the tests does not
-			// really start as basicaly no request are generated.
+			// really start as basically no request are generated.
 			factor = 0.05
 		}
 		return int64(rand.ExpFloat64() / (factor * rate))

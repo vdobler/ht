@@ -8,7 +8,7 @@
 // Throughput function. This function will try to create a certain
 // throughput load, i.e. a certain average number of request per second
 // also known as query per second (QPS).
-// The intervalls between request follow an exponential distribution
+// The intervals between request follow an exponential distribution
 // which mimics the load generated from real-world, uncorrelated users.
 //
 // The requests are generated from different Scenarios which contribute
@@ -306,7 +306,7 @@ func makeRequest(scenarios []Scenario, rate float64, requests chan bender.Test, 
 	return pools, nil
 }
 
-// ThroughputOptions collects options which controll execution of a throughput
+// ThroughputOptions collects options which control execution of a throughput
 // load test.
 type ThroughputOptions struct {
 	// Rate is the target rate of request per second (QPS).
@@ -346,7 +346,7 @@ type ThroughputOptions struct {
 // by generating a new Suite.
 //
 // Setup tests may populate the set of variables used for the Main (and of
-// course Teardown) test. Additionaly the two variables THREAD and REPETITION
+// course Teardown) test. Additionally the two variables THREAD and REPETITION
 // are set for each round of Main tests. The distinction between thread and
 // repetition looks strange given that each repetition is isolated and
 // independent from the thread it occors, but it is not: Repetitions are
@@ -922,7 +922,7 @@ func csvline2Data(line []string) (TestData, error) {
 
 	data.Status = ht.StatusFromString(line[2])
 	if data.Status < 0 {
-		return data, fmt.Errorf("unkown status %q", line[2])
+		return data, fmt.Errorf("unknown status %q", line[2])
 	}
 
 	f, err = strconv.ParseFloat(line[3], 64)

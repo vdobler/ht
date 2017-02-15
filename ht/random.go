@@ -13,7 +13,7 @@ import (
 	"sync"
 )
 
-// Random is the source for all randmoness used in ht.
+// Random is the source for all randomness used in ht.
 var Random *rand.Rand
 var randMux sync.Mutex
 
@@ -74,7 +74,7 @@ var randomFuncs = []randomFunc{
 		// Random email address
 		//     RANDOM EMAIL [<domain>]
 		// produces a random email address with the given <domain>
-		// <domain> defautls to gmail.com
+		// <domain> defaults to gmail.com
 		name: "EMAIL",
 		re:   regexp.MustCompile(`^([-a-z.]+)?$`),
 		args: []string{"gmail.com"},

@@ -87,7 +87,7 @@ func runLoad(cmd *Command, args []string) {
 	}
 	collectStatus := ht.StatusFromString(collectFrom)
 	if collectStatus < 0 {
-		fmt.Fprintf(os.Stderr, "Unkown status %q.", collectFrom)
+		fmt.Fprintf(os.Stderr, "Unknown status %q.", collectFrom)
 		os.Exit(9)
 	}
 

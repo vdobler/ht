@@ -561,7 +561,7 @@ func (rs *RawSuite) Validate(global map[string]string) error {
 
 // Execute the raw suite rs and capture the outcome in a Suite.
 //
-// Tests are executed linearely, first the Setup, then the Main and finaly
+// Tests are executed linearely, first the Setup, then the Main and finally
 // the Teardown test.  Any Failure or error during setup will skip further
 // setup and main test (but allteardown will be executed). The following
 // table shows two runs with possible outcomes.
@@ -703,7 +703,7 @@ func NewFileSystem(txt string) (FileSystem, error) {
 type RawScenario struct {
 	Name       string            // Name of this Scenario
 	File       string            // File is the RawSuite to use as scenario
-	Percentage int               // Percantage this scenario contributes to the load test.
+	Percentage int               // Percentage this scenario contributes to the load test.
 	MaxThreads int               // MaxThreads to use for this scenario. 0 means unlimited.
 	Variables  map[string]string // Variables used.
 	OmitChecks bool              // OmitChecks in the tests.

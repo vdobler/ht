@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// validhtml.go contains checks to slighty validate a HTML document.
+// validhtml.go contains checks to slightly validate a HTML document.
 
 package ht
 
@@ -40,7 +40,7 @@ func init() {
 //    know how browser handle this.
 type ValidHTML struct {
 	// Ignore is a space separated list of issues to ignore.
-	// You normaly won't skip detection of these issues as all issues
+	// You normally won't skip detection of these issues as all issues
 	// are fundamental flaws which are easy to fix.
 	Ignore string `json:",omitempty"`
 }

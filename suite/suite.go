@@ -30,7 +30,7 @@ type Suite struct {
 
 	Tests []*ht.Test // The Tests to execute
 
-	Variables      map[string]string // The initial variable assignemnt
+	Variables      map[string]string // The initial variable assignment
 	FinalVariables map[string]string // The final set of variables.
 	Jar            *cookiejar.Jar    // The cookie jar used
 	Log            *log.Logger       // The logger used.

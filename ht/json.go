@@ -123,7 +123,7 @@ type JSON struct {
 	// string values.
 	Condition
 
-	// Embeded is a JSON check applied to the value selected by
+	// Embedded is a JSON check applied to the value selected by
 	// Element. Useful when JSON contains embedded, quoted JSON as
 	// a string and checking via Condition is not practical.
 	// (It seems this nested JSON is common nowadays. I'm getting old.)
