@@ -261,6 +261,9 @@ type latencyResult struct {
 
 // https://en.wikipedia.org/wiki/Quantile formula R-8
 func quantile(x []int, p float64) float64 {
+	if len(x) == 0 {
+		return 0
+	}
 	N := float64(len(x))
 	if p < 2.0/(3.0*(N+1.0/3.0)) {
 		return float64(x[0])
