@@ -98,16 +98,18 @@ func (c *JSONExpr) Execute(t *Test) error {
 // JSON allow to check a single string, number, boolean or null element in
 // a JSON document against a Condition.
 //
-// Elements of the JSON document are selected by an element selector.
+// Leaf elements of the JSON document are selected by an element selector.
 // In the JSON document
 //     { "foo": 5, "bar": [ 1, "qux", 3 ], "waz": true, "nil": null }
-// the follwing element selector are present and have the shown values:
+// the following element selector are present and have the shown values:
 //     foo       5
 //     bar.0     1
 //     bar.1     "qux"
 //     bar.2     3
 //     waz       true
 //     nil       null
+// Note that the array bar as a whole cannot be selected.
+// TODO: overcome this issue.
 type JSON struct {
 	// Element in the flattened JSON map to apply the Condition to.
 	// E.g.  "foo.2" in "{foo: [4,5,6,7]}" would be 6.
@@ -172,7 +174,7 @@ func (c *JSON) Execute(t *Test) error {
 
 	val, ok := flat[c.Element]
 	if !ok {
-		return fmt.Errorf("element %s not found", c.Element)
+		return fmt.Errorf("no leaf element %s found", c.Element)
 	}
 	sval := "null"
 	if val != nil {

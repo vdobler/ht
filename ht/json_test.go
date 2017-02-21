@@ -43,11 +43,11 @@ var jsonConditionTests = []TC{
 	{jr, &JSON{Element: "bar.2"}, nil},
 	{jr, &JSON{Element: "bar#1", Sep: "#", Condition: Condition{Equals: "2"}}, nil},
 	{jr, &JSON{Element: "foo", Condition: Condition{Equals: "bar"}}, someError},
-	{jr, &JSON{Element: "bar.3"}, fmt.Errorf("element bar.3 not found")},
+	{jr, &JSON{Element: "bar.3"}, fmt.Errorf("no leaf element bar.3 found")},
 	{jr, &JSON{Element: "bar.3", Condition: Condition{Equals: "2"}}, someError},
 	{jr, &JSON{Element: "foo.wuz", Condition: Condition{Equals: "bar"}}, someError},
 	{jr, &JSON{Element: "qux", Condition: Condition{Equals: "bar"}},
-		fmt.Errorf("element qux not found")},
+		fmt.Errorf("no leaf element qux found")},
 
 	{ar, &JSON{Element: "0", Condition: Condition{Equals: `"jo nesbo"`}}, nil},
 	{ar, &JSON{Element: "1.4", Condition: Condition{Contains: `jo nesbo`}}, nil},
