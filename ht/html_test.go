@@ -172,7 +172,9 @@ func TestW3CValidatorHTML(t *testing.T) {
 
 }
 
+// this handler needs at least 5 ms for each response.
 func htmlLinksHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	status := 200
 	if strings.Index(r.URL.Path, "/404/") != -1 {
 		status = 404
@@ -180,7 +182,11 @@ func htmlLinksHandler(w http.ResponseWriter, r *http.Request) {
 		status = 302
 	}
 	linksHandlerCalls <- r.Host + r.URL.String()
-	time.Sleep(2 * time.Microsecond)
+	if sleep := 10*time.Millisecond - time.Since(start); sleep > 0 {
+		time.Sleep(sleep)
+	} else {
+		fmt.Println("Something is slooow here.", sleep)
+	}
 	http.Error(w, "Link Handler", status)
 }
 
@@ -338,7 +344,7 @@ func TestHTMLLinksNone(t *testing.T) {
 	}
 }
 
-func testHTMLLinks(t *testing.T, urls []string, max time.Duration) (called []string, err error) {
+func testHTMLLinks(t *testing.T, urls []string, max time.Duration, conc int) (called []string, err error) {
 	ts1 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
 	defer ts1.Close()
 	ts2 := httptest.NewServer(http.HandlerFunc(htmlLinksHandler))
@@ -354,10 +360,13 @@ func testHTMLLinks(t *testing.T, urls []string, max time.Duration) (called []str
 <body>
   <a href="%s">Link4</a>
   <img src="%s">
-  <a href="%s#nav">Link5</a>
-  <a href="%s">LinkWAZ</a>
-</body>
-</html>`, urls[0], urls[1], ts1.URL+urls[2], ts1.URL+urls[3], ts1.URL+urls[4], ts2.URL+urls[5])
+`, urls[0], urls[1], ts1.URL+urls[2], ts1.URL+urls[3])
+	for i := 4; i+1 < len(urls); i += 2 {
+		body += fmt.Sprintf(
+			`<a href="%s#nav">Link%d</a><a href="%s">Link%d</a> `,
+			ts1.URL+urls[i], i, ts2.URL+urls[i+1], i+1)
+	}
+	body += "</body></html>"
 
 	baseURL, err := url.Parse(ts1.URL)
 	if err != nil {
@@ -370,13 +379,13 @@ func testHTMLLinks(t *testing.T, urls []string, max time.Duration) (called []str
 		Execution: Execution{Verbosity: 1},
 	}
 
-	check := Links{Which: "a img link script -none-", Concurrency: 2, MaxTime: max}
+	check := Links{Which: "a img link script -none-", Concurrency: conc, MaxTime: max}
 	err = check.Prepare()
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
 
-	linksHandlerCalls = make(chan string, 10)
+	linksHandlerCalls = make(chan string, 100)
 	err = check.Execute(test)
 	close(linksHandlerCalls)
 
@@ -387,32 +396,13 @@ func testHTMLLinks(t *testing.T, urls []string, max time.Duration) (called []str
 	return called, err
 }
 
-func TestHTMLLinksOkay(t *testing.T) {
+func TestHTMLLinksTiming(t *testing.T) {
 	urls := []string{
 		"/impressum.html",
 		"/js/jquery.js",
 		"/foo",
 		"/supertoll/bild.gif",
-		"/foo",
-		"/waz",
-	}
-	called, err := testHTMLLinks(t, urls, 20*time.Millisecond)
-	if err != nil {
-		t.Errorf("Unexpected error: %#v %s", err, err)
-	}
-	if len(called) != 5 {
-		t.Errorf("Unexpected error: %v", called)
-	}
-}
-
-func TestHTMLLinksTooSlow(t *testing.T) {
-	// 20 URLs each at least 2musec at 2 concurrent request take at least 10 musec.
-	urls := []string{
-		"/impressum.html",
-		"/js/jquery.js",
-		"/foo",
-		"/supertoll/bild.gif",
-		"/foo",
+		"/fooother",
 		"/waz",
 		"/foo/bar",
 		"/waz/bar",
@@ -420,11 +410,40 @@ func TestHTMLLinksTooSlow(t *testing.T) {
 		"/waz/123",
 		"/foo/123/bar",
 		"/waz/123/bar",
+		"/13", "/14", "/15", "/16", "/17", "/18", "/19", "/20",
 	}
-	_, err := testHTMLLinks(t, urls, 10*time.Microsecond)
-	if err == nil {
-		t.Fatalf("Missing error")
+	ms := time.Millisecond
+	for _, tc := range []struct {
+		urls    []string
+		conc    int
+		allowed time.Duration
+		okay    bool
+	}{
+		{urls[:6], 1, 59 * ms, false}, // 6 links * 10ms / 1 >= 60ms
+		{urls[:6], 6, 59 * ms, true},  // 6 links * 10ms / 6 >= 10ms
+		{urls[:], 1, 199 * ms, false}, // 20 links * 10ms / 1 >= 200ms
+		{urls[:], 5, 199 * ms, true},  // 20 links * 10ms / 5 >= 40ms
+		{urls[:], 1, 400 * ms, true},  // 20 links * 10ms / 1 >= 200ms
+	} {
+		t.Run(fmt.Sprintf("%d@%d", len(tc.urls), tc.conc),
+			func(t *testing.T) {
+				called, err := testHTMLLinks(t, tc.urls, tc.allowed, tc.conc)
+				if tc.okay {
+					if err != nil {
+						t.Errorf("Unexpected error: %s", err)
+					}
+					if len(called) != len(tc.urls) {
+						t.Errorf("Called urls: %v", called)
+					}
+				} else {
+					if err == nil {
+						t.Errorf("missing error")
+					}
+				}
+
+			})
 	}
+
 }
 
 func TestHTMLLinksBroken(t *testing.T) {
@@ -436,7 +455,7 @@ func TestHTMLLinksBroken(t *testing.T) {
 		"/404/foo",
 		"/404/waz",
 	}
-	called, err := testHTMLLinks(t, urls, 20*time.Millisecond)
+	called, err := testHTMLLinks(t, urls, 20*time.Millisecond, 2)
 	if err == nil {
 		t.Fatalf("Missing error: %#v", err)
 	}
