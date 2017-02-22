@@ -43,11 +43,11 @@ var jsonConditionTests = []TC{
 	{jr, &JSON{Element: "bar.2"}, nil},
 	{jr, &JSON{Element: "bar#1", Sep: "#", Condition: Condition{Equals: "2"}}, nil},
 	{jr, &JSON{Element: "foo", Condition: Condition{Equals: "bar"}}, someError},
-	{jr, &JSON{Element: "bar.3"}, fmt.Errorf("no leaf element bar.3 found")},
+	{jr, &JSON{Element: "bar.5"}, fmt.Errorf("no index 5 in array bar of len 3")},
 	{jr, &JSON{Element: "bar.3", Condition: Condition{Equals: "2"}}, someError},
 	{jr, &JSON{Element: "foo.wuz", Condition: Condition{Equals: "bar"}}, someError},
 	{jr, &JSON{Element: "qux", Condition: Condition{Equals: "bar"}},
-		fmt.Errorf("no leaf element qux found")},
+		fmt.Errorf("element qux not found")},
 
 	{ar, &JSON{Element: "0", Condition: Condition{Equals: `"jo nesbo"`}}, nil},
 	{ar, &JSON{Element: "1.4", Condition: Condition{Contains: `jo nesbo`}}, nil},
@@ -82,4 +82,89 @@ func TestJSONCondition(t *testing.T) {
 	for i, tc := range jsonConditionTests {
 		runTest(t, i, tc)
 	}
+}
+
+var findJSONelementTests = []struct {
+	doc  string
+	elem string
+	want string
+	err  string
+}{
+	// Primitive types
+	{`123`, "", `123`, ""},
+	{`123`, ".", `123`, ""},
+	{`-123.456`, "", `-123.456`, ""},
+	{`-123.456`, ".", `-123.456`, ""},
+	{`"abc"`, "", `"abc"`, ""},
+	{`"abc"`, ".", `"abc"`, ""},
+	{`null`, "", `null`, ""},
+	{`null`, ".", `null`, ""},
+	{`true`, "", `true`, ""},
+	{`true`, ".", `true`, ""},
+	{`false`, "", `false`, ""},
+	{`false`, ".", `false`, ""},
+	{`123`, "X", `123`, "element X not found"},
+
+	// Whole (non-primitive) documents
+	{`[3, 1 , 4, 1  ]`, "", `[3, 1 , 4, 1  ]`, ""},
+	{`[3, 1 , 4, 1  ]`, ".", `[3, 1 , 4, 1  ]`, ""},
+	{`{"A" : 123 , "B": "foo"} `, "", `{"A" : 123 , "B": "foo"} `, ""},
+	{`{"A" : 123 , "B": "foo"} `, ".", `{"A" : 123 , "B": "foo"} `, ""},
+
+	// Arrays
+	{`[3, 1, 4, 1]`, "2", `4`, ""},
+	{`[3, 1, "foo", 1]`, "2", `"foo"`, ""},
+	{`[3, 1, 4, 1]`, "7", ``, "no index 7 in array  of len 4"},
+	{`[3, 1, 4, 1]`, "-7", ``, "no index -7 in array  of len 4"},
+	{`[3, 1, 4, 1]`, "foo", ``, "foo is not a valid index"},
+	{`[3, 1, 4, 1]`, "2e0", ``, "2e0 is not a valid index"},
+	{`{"A":{"B":[1,2,3]}}`, "A.B.5", ``, "no index 5 in array A.B of len 3"},
+
+	// Objects
+	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "A", `123`, ""},
+	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "B", `"foo"`, ""},
+	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "C", `true`, ""},
+	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "D", `null`, ""},
+	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "E", ``, "element E not found"},
+
+	// Nested stuff
+	{`{"A": [0, 1, {"B": true, "C": 2.72}, 3]}`, "A.2.C", `2.72`, ""},
+	{`{"A": [0, 1, {"B": true, "C": 2.72}, 3]}`, ".A...2.C..", `2.72`, ""},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c.d", `77`, ""},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c", `{"d":77}`, ""},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b", `{"c":{"d":77}}`, ""},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c.d.X", ``, "element a.b.c.d.X not found"},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c.X", ``, "element a.b.c.X not found"},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.X", ``, "element a.b.X not found"},
+
+	// Ill-formed JSON
+	{`{"A":[{"B":flop}]}`, "", `{"A":[{"B":flop}]}`, ""},
+	{`{"A":[{"B":flop}]}`, ".", `{"A":[{"B":flop}]}`, ""},
+	{`{"A":[{"B":flop}]}`, "A.0.B", ``, "invalid character 'l' in literal false (expecting 'a')"},
+	{`{"A":[{"B":3..1..4}]}`, "A.0.B", ``, "invalid character '.' after decimal point in numeric literal"},
+}
+
+func TestFindJSONElement(t *testing.T) {
+	for i, tc := range findJSONelementTests {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			raw, err := findJSONelement([]byte(tc.doc), tc.elem, ".")
+			if err != nil {
+				if eg := err.Error(); eg != tc.err {
+					t.Errorf("%d: %s from %s: got error %q, want %q",
+						i, tc.elem, tc.doc, eg, tc.err)
+				}
+			} else {
+				if tc.err != "" {
+					t.Errorf("%d: %s from %s: got nil error, want %q",
+						i, tc.elem, tc.doc, tc.err)
+				} else {
+					if got := string(raw); got != tc.want {
+						t.Errorf("%d: %s from %s: got %q, want %q",
+							i, tc.elem, tc.doc, got, tc.want)
+					}
+				}
+			}
+		})
+	}
+
 }

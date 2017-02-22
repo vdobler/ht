@@ -7,12 +7,13 @@
 package ht
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/nytlabs/gojee"
-	"github.com/nytlabs/gojsonexplode"
 )
 
 func init() {
@@ -95,24 +96,34 @@ func (c *JSONExpr) Execute(t *Test) error {
 // ----------------------------------------------------------------------------
 // JSON
 
-// JSON allow to check a single string, number, boolean or null element in
-// a JSON document against a Condition.
+// JSON allow to check an element in a JSON document against a Condition.
 //
-// Leaf elements of the JSON document are selected by an element selector.
+// The element of the JSON document is selected by its "path". Example:
 // In the JSON document
-//     { "foo": 5, "bar": [ 1, "qux", 3 ], "waz": true, "nil": null }
-// the following element selector are present and have the shown values:
+//     {
+//       "foo": 5,
+//       "bar": [ 1, "qux" ,3 ],
+//       "waz": true,
+//       "maa": { "muh": 3.141, "mee": 0 },
+//       "nil": null
+//     }
+// the following table shows several element paths and their value:
 //     foo       5
+//     bar       [ 1, "qux" ,3 ]
 //     bar.0     1
 //     bar.1     "qux"
 //     bar.2     3
 //     waz       true
+//     maa       { "muh": 3.141, "mee": 0 }
+//     maa.muh   3.141
+//     maa.mee   0
 //     nil       null
-// Note that the array bar as a whole cannot be selected.
-// TODO: overcome this issue.
+// Note that the value for "bar" is the raw string and contains the original
+// white space characters as present in the original JSON document.
 type JSON struct {
 	// Element in the flattened JSON map to apply the Condition to.
 	// E.g.  "foo.2" in "{foo: [4,5,6,7]}" would be 6.
+	// The whole JSON can be selected by Sep, typically ".".
 	// An empty value result in just a check for 'wellformedness' of
 	// the JSON.
 	Element string
@@ -120,9 +131,8 @@ type JSON struct {
 	// Condition to apply to the value selected by Element.
 	// If Condition is the zero value then only the existence of
 	// a JSON element selected by Element is checked.
-	// Note that Condition is checked against the actual value in the
-	// flattened JSON map which will contain the quotation marks for
-	// string values.
+	// Note that Condition is checked against the actual raw value of
+	// the JSON document and will contain quotation marks for strings.
 	Condition
 
 	// Embedded is a JSON check applied to the value selected by
@@ -148,41 +158,77 @@ func (c *JSON) Prepare() error {
 	return nil
 }
 
+func findJSONelement(data []byte, element, sep string) ([]byte, error) {
+	path := strings.Split(element, sep)
+	for e, elem := range path {
+		if elem == "" {
+			continue
+		}
+		data = bytes.TrimSpace(data)
+		if len(data) == 0 {
+			return nil, nil
+		}
+		switch data[0] {
+		case '[':
+			v := []json.RawMessage{}
+			err := json.Unmarshal(data, &v)
+			if err != nil {
+				return nil, err
+			}
+			i, err := strconv.Atoi(elem)
+			if err != nil {
+				return nil, fmt.Errorf("%s is not a valid index", elem)
+			}
+			if i < 0 || i >= len(v) {
+				return nil, fmt.Errorf("no index %d in array %s of len %d",
+					i, strings.Join(path[:e], sep), len(v))
+			}
+			data = []byte(v[i])
+		case '{':
+			v := map[string]json.RawMessage{}
+			err := json.Unmarshal(data, &v)
+			if err != nil {
+				return nil, err
+			}
+			raw, ok := v[elem]
+			if !ok {
+				return nil, fmt.Errorf("element %s not found",
+					strings.Join(path[:e+1], sep))
+			}
+			data = []byte(raw)
+		default:
+			return nil, fmt.Errorf("element %s not found",
+				strings.Join(path[:e+1], sep))
+		}
+	}
+	return data, nil
+}
+
 // Execute implements Check's Execute method.
 func (c *JSON) Execute(t *Test) error {
 	if t.Response.BodyErr != nil {
 		return ErrBadBody
 	}
-	sep := "."
+
+	sep := "." // The default value for Sep.
 	if c.Sep != "" {
 		sep = c.Sep
 	}
 
-	out, err := gojsonexplode.Explodejson([]byte(t.Response.BodyStr), sep)
+	raw, err := findJSONelement([]byte(t.Response.BodyStr), c.Element, sep)
 	if err != nil {
-		return fmt.Errorf("unable to explode JSON: %s", err.Error())
+		return err
 	}
 
-	var flat map[string]*json.RawMessage
-	err = json.Unmarshal(out, &flat)
+	// Check for wellformed JSON.
+	var v interface{}
+	err = json.Unmarshal(raw, &v)
 	if err != nil {
-		return fmt.Errorf("unable to parse exploded JSON: %s", err.Error())
-	}
-	if c.Element == "" && c.Embedded == nil {
-		return nil // JSON was welformed, no further checks.
-	}
-
-	val, ok := flat[c.Element]
-	if !ok {
-		return fmt.Errorf("no leaf element %s found", c.Element)
-	}
-	sval := "null"
-	if val != nil {
-		sval = string(*val)
+		return err
 	}
 
 	if c.Embedded != nil {
-		unquoted, err := strconv.Unquote(sval)
+		unquoted, err := strconv.Unquote(string(raw))
 		if err != nil {
 			return fmt.Errorf("element %s: %s", c.Element, err)
 		}
@@ -193,5 +239,5 @@ func (c *JSON) Execute(t *Test) error {
 		}
 	}
 
-	return c.Fulfilled(sval)
+	return c.Fulfilled(string(raw))
 }
