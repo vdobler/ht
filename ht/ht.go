@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"mime"
 	"mime/multipart"
@@ -234,7 +233,9 @@ type Test struct {
 	ExValues map[string]Extraction `json:",omitempty"`
 
 	// Log is the logger to use
-	Log *log.Logger
+	Log interface {
+		Printf(format string, a ...interface{})
+	}
 
 	client *http.Client
 }
