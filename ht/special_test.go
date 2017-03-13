@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // ----------------------------------------------------------------------------

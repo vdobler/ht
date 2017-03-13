@@ -9,55 +9,69 @@
 // checks. The schema of the Test.Request.URL determines the request type.
 // Normal HTTP request are made with the two schemas "http" and "https".
 // Additionaly the following types of pseudo request are available:
+//   * file://
+//       This type of pseudo request can be used to read, write and delete
+//       a file on the filesystem
+//   * bash://
+//       This type of pseudo request executes a bash script and captures its
+//       output as the response.
+//   * sql://
+//       This type of pseudo request executes a database query (using package
+//       database/sql.
 //
-// "file" pseudo request
-//     This type of pseudo request can be used to read, write and delete a file
-//     on the filesystem:
-//        * The GET request method tries to read the file given by the URL.Path
-//          and returns the content as the response body.
-//        * The PUT requets method tries to store the Request.Body under the
-//          path given by URL.Path.
-//        * The DELETE request method tries to delete the file given by the
-//          URL.Path.
-//        * The returned HTTP status code is 200 except if any file operation
-//          fails in which the Test has status Error.
 //
-// "bash" pseudo request
-//     This type of pseudo request executes a bash script and captures its
-//     output as the response.
-//        * The script is provided in the Request.Body
-//        * The working directory is taken to be URL.Path
-//        * Environment is populated from the Request.Params
-//        * The Request.Method and the Request.Header are ignored.
-//        * The script execution is canceled after Request.Timout (or the
-//          default timeout).
-//     The outcome is encoded as follows:
-//        * The combined output (stdout and stderr) of the script is returned
-//          as the Response.BodyStr.
-//        * The HTTP status code is
-//             - 200 if the script's exit code is 0.
-//             - 408 if the script was canceled due to timeout
-//             - 500 if the exit code is != 0.
-//        * The Response.Header["Exit-Status"] is used to return the exit
-//          status in case of 200 and 500 (sucess and failure).
+// File Pseudo-Requests
 //
-// "sql" pseudo request
-//     This type of pseudo request executes a database query (using package
-//     database/sql.
-//        * The database driver is selected via URL.Host
-//        * The data source name is taken from Header["Data-Source-Name"]
-//        * The SQL query is read from the Request.Body
-//        * For a POST method the SQL query is passed to sql.Execute
-//          and the response body is a JSON with LastInsertId and RowsAffected.
-//        * For a GET Request.Method the SQL query is passed to sql.Query
-//          and the resulting rows are returned as the response body.
-//          The format of the response body is determined by the Accept
-//          header:
-//             - "application/json":         a JSON array with the rows as objects
-//             - "text/csv; header=present": as a csv file with column headers
-//             - "text/csv":                 as a csv file withput header
-//             - "text/plain":               plain text file columns seperated by \t
-//             - "text/plain; fieldsep=X":   plain text file columns seperated by X
+// File pseudo-requests are initiated with a file:// URL, the following rules
+// determine the behaviour:
+//   * The GET request method tries to read the file given by the URL.Path
+//     and returns the content as the response body.
+//   * The PUT requets method tries to store the Request.Body under the
+//     path given by URL.Path.
+//   * The DELETE request method tries to delete the file given by the
+//     URL.Path.
+//   * The returned HTTP status code is 200 except if any file operation
+//     fails in which the Test has status Error.
+//
+//
+// Bash Pseudo-Requests
+//
+// A bash pseudo-request is initated with a bash:// URL, the following rules
+// apply:
+//    * The script is provided in the Request.Body
+//    * The working directory is taken to be URL.Path
+//    * Environment is populated from Request.Params
+//    * The Request.Method and the Request.Header are ignored.
+//    * The script execution is canceled after Request.Timout (or the
+//      default timeout).
+// The outcome is encoded as follows:
+//   * The combined output (stdout and stderr) of the script is returned
+//     as the response body (Response.BodyStr).
+//   * The HTTP status code is
+//        - 200 if the script's exit code is 0.
+//        - 408 if the script was canceled due to timeout
+//        - 500 if the exit code is != 0.
+//   * The Response.Header["Exit-Status"] is used to return the exit
+//     status in case of 200 and 500 (sucess and failure).
+//
+//
+// SQL Pseudo-Requests
+//
+// SQL pseudorequest are initiated via sql:// URLs and come in the two flavours
+// query to select rows and execute to execute other SQL stuff.
+//    * The database driver is selected via URL.Host
+//    * The data source name is taken from Header["Data-Source-Name"]
+//    * The SQL query/statements is read from the Request.Body
+//    * For a POST method the SQL query is passed to sql.Execute
+//      and the response body is a JSON with LastInsertId and RowsAffected.
+//    * For a GET method the SQL query is passed to sql.Query
+//      and the resulting rows are returned as the response body.
+//    * The format of the response body is determined by the Accept header:
+//         - "application/json":         a JSON array with the rows as objects
+//         - "text/csv; header=present": as a csv file with column headers
+//         - "text/csv":                 as a csv file withput header
+//         - "text/plain":               plain text file columns seperated by \t
+//         - "text/plain; fieldsep=X":   plain text file columns seperated by X
 //     The result if the query is returned in the Response.BodyStr
 //
 package ht
@@ -76,9 +90,10 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-
-	_ "github.com/go-sql-driver/mysql"
 )
+
+// ----------------------------------------------------------------------------
+// file:// pseudo-request
 
 func (t *Test) executeFile() error {
 	t.infof("%s %q", t.Request.Request.Method, t.Request.Request.URL.String())
@@ -139,6 +154,9 @@ func (t *Test) executeFile() error {
 
 	return nil
 }
+
+// ----------------------------------------------------------------------------
+// bash:// pseudo-request
 
 // executeBash executes a bash script:
 func (t *Test) executeBash() error {
