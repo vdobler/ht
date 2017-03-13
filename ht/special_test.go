@@ -290,10 +290,10 @@ func TestSQLPseudorequest(t *testing.T) {
 			if err := test.Run(); err != nil {
 				t.Fatalf("Unexpected error %s <%T>", err, err)
 			}
-			if test.Status != Error {
+			if got := test.Status.String(); got != test.Description {
 				test.PrintReport(os.Stdout)
 				fmt.Println(test.Response.BodyStr)
-				t.Errorf("Got test status %s (want Error)", test.Status)
+				t.Errorf("Got test status %s (want %s)", got, test.Description)
 			}
 		})
 	}
@@ -498,19 +498,8 @@ SELECT id, price FROM orders WHERE price > 20;
 
 var sqlTestsErroring = []*Test{
 	&Test{
-		Name: "Missing-DSN",
-		Request: Request{
-			Method: "GET",
-			URL:    "sql://mysql",
-			Body:   `SELECT 1;`,
-		},
-		Checks: CheckList{
-			&StatusCode{Expect: 200},
-		},
-	},
-
-	&Test{
-		Name: "Bad-Query",
+		Name:        "Bad-Query",
+		Description: "Error",
 		Request: Request{
 			Method: "GET",
 			URL:    "sql://mysql",
@@ -519,8 +508,53 @@ var sqlTestsErroring = []*Test{
 			},
 			Body: `HUBBA BUBBA TRALLALA;`,
 		},
-		Checks: CheckList{
-			&StatusCode{Expect: 200},
+	},
+
+	&Test{
+		Name:        "Missing-DSN",
+		Description: "Bogus",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Body:   `SELECT 1;`,
+		},
+	},
+
+	&Test{
+		Name:        "Unknown-DBDriver",
+		Description: "Bogus",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://trallala",
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
+			},
+			Body: `SELECT 1;`,
+		},
+	},
+
+	&Test{
+		Name:        "Missing-Query",
+		Description: "Bogus",
+		Request: Request{
+			Method: "GET",
+			URL:    "sql://mysql",
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
+			},
+		},
+	},
+
+	&Test{
+		Name:        "Bad-Method",
+		Description: "Bogus",
+		Request: Request{
+			Method: "PUT",
+			URL:    "sql://mysql",
+			Header: http.Header{
+				"Data-Source-Name": []string{*mysqlDSN},
+			},
+			Body: `SELECT 1;`,
 		},
 	},
 }

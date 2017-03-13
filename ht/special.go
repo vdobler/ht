@@ -45,7 +45,7 @@
 //     This type of pseudo request executes a database query (using package
 //     database/sql.
 //        * The database driver is selected via URL.Host
-//        * The data source name is taken from Params["Data-Source-Name"]
+//        * The data source name is taken from Header["Data-Source-Name"]
 //        * The SQL query is read from the Request.Body
 //        * For a POST method the SQL query is passed to sql.Execute
 //          and the response body is a JSON with LastInsertId and RowsAffected.
@@ -215,6 +215,16 @@ func (t *Test) executeBash() error {
 	return nil
 }
 
+type bogusSQLQuery string
+
+func (e bogusSQLQuery) Error() string { return string(e) }
+
+var (
+	errMissingDBDriver = bogusSQLQuery("ht: missing database driver name (host of URL) in sql pseudo query")
+	errMissingDSN      = bogusSQLQuery("sql:// missing Data-Source-Name in sql pseudo query")
+	errMissingSQL      = bogusSQLQuery("ht: missing query (request body) in sql pseudo query")
+)
+
 // executeSQL executes a SQL query:
 func (t *Test) executeSQL() error {
 	t.infof("SQL query in %q", t.Request.Request.URL.String())
@@ -226,20 +236,20 @@ func (t *Test) executeSQL() error {
 
 	u := t.Request.Request.URL
 	if u.Host == "" {
-		return fmt.Errorf("ht: missing database driver name (host of URL) in sql pseudo query")
+		return errMissingDBDriver
 	}
 	dsn := t.Request.Header.Get("Data-Source-Name")
 	if dsn == "" {
-		return fmt.Errorf("sql:// missing Data-Source-Name in sql pseudo query")
-	}
-
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return err
+		return errMissingDSN
 	}
 
 	if t.Request.Body == "" {
-		return fmt.Errorf("ht: missing query (reqquest body) in sql pseudo query")
+		return errMissingSQL
+	}
+
+	db, err := sql.Open(u.Host, dsn)
+	if err != nil {
+		return bogusSQLQuery(err.Error())
 	}
 
 	// Fake a http.Response
@@ -270,8 +280,8 @@ func (t *Test) executeSQL() error {
 		}
 
 	default:
-		// TODO: this should render the Test into state Bogus, not just Error.
-		return fmt.Errorf("ht: illegal method %s for sql pseuo query", t.Request.Method)
+		return bogusSQLQuery(fmt.Sprintf("ht: illegal method %s for sql pseuo query",
+			t.Request.Method))
 	}
 
 	return nil
