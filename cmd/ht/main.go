@@ -19,6 +19,8 @@ import (
 	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/populate"
 	"github.com/vdobler/ht/suite"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // A Command is one of the subcommands of ht.

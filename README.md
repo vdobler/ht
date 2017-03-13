@@ -280,3 +280,4 @@ Ht includes open source from the following sources:
 * Xmlpath. Copyright (c) 2013-2014 Canonical Inc. Licensed under the LGPLv3. See https://gopkg.in/xmlpath.v2
 * Hjson. Copyright (c) 2016 Christian Zangl. Licensed under the MIT License.
 * Sourcemap. Copyright (c) 2016 The github.com/go-sourcemap/sourcemap Contributors. Licensed under the BSD 2-clasue license.
+* Go-MySQL-Driver. Copyright 2013 The Go-MySQL-Driver Authors. Licensed under the Mozilla Public License Version 2.0
