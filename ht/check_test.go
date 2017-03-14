@@ -120,7 +120,7 @@ func runTest(t *testing.T, i int, tc TC) {
 	fakeTest := Test{Response: tc.r}
 	if err := tc.c.Prepare(); err != nil {
 		if tc.e != prepareError {
-			t.Errorf("%d. %s %v: unexpected error during Prepare %v",
+			t.Errorf("%d. %s %+v: unexpected error during Prepare %v",
 				i, NameOf(tc.c), tc.c, err)
 		}
 		return // expected error during prepare
@@ -130,10 +130,10 @@ func runTest(t *testing.T, i int, tc TC) {
 	case got == nil && tc.e == nil:
 		return
 	case got != nil && tc.e == nil:
-		t.Errorf("%d. %s %v: unexpected error %v",
+		t.Errorf("%d. %s %+v: unexpected error %v",
 			i, NameOf(tc.c), tc.c, got)
 	case got == nil && tc.e != nil:
-		t.Errorf("%d. %s %v: missing error, want %v",
+		t.Errorf("%d. %s %+v: missing error, want %v",
 			i, NameOf(tc.c), tc.c, tc.e)
 	case got != nil && tc.e != nil:
 		_, malformed := got.(MalformedCheck)
@@ -145,12 +145,12 @@ func runTest(t *testing.T, i int, tc TC) {
 		switch tc.e.(type) {
 		case MalformedCheck:
 			if !malformed {
-				t.Errorf("%d. %s %v:got \"%v\" of type %T, want MalformedCheck",
+				t.Errorf("%d. %s %+v:got \"%v\" of type %T, want MalformedCheck",
 					i, NameOf(tc.c), tc.c, got, got)
 			}
 		default:
 			if tc.e.Error() != got.Error() {
-				t.Errorf("%d. %s %v: got \"%v\" of type %T , want \"%v\" %T",
+				t.Errorf("%d. %s %+v:\n\tgot  %q  (of type %T)\n\twant %q  (of tyoe %T)",
 					i, NameOf(tc.c), tc.c, got, got, tc.e, tc.e)
 			}
 		}
