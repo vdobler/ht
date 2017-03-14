@@ -5,13 +5,14 @@
 package ht
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 )
 
 var jr = Response{BodyStr: `{"foo": 5, "bar": [1,2,3]}`}
 var ar = Response{BodyStr: `["jo nesbo",["jo nesbo","jo nesbo harry hole","jo nesbo sohn","jo nesbo koma","jo nesbo hörbuch","jo nesbo headhunter","jo nesbo pupspulver","jo nesbo leopard","jo nesbo schneemann","jo nesbo the son"],[{"nodes":[{"name":"Bücher","alias":"stripbooks"},{"name":"Trade-In","alias":"tradein-aps"},{"name":"Kindle-Shop","alias":"digital-text"}]},{}],[]]`}
-var jre = Response{BodyStr: `{"foo": 5, "bar": [1,"qux",3], "waz": true, "nil": null, "uuid": "ad09b43c-6538-11e6-8b77-86f30ca893d3"}`}
+var jre = Response{BodyStr: `{"foo": 5, "bar": [1,"qux",3], "waz": true, "nil": null, "uuid": "ad09b43c-6538-11e6-8b77-86f30ca893d3", "pi": 3.141}`}
 var jrx = Response{BodyStr: `{"foo": 5, "blub...`}
 var jrs = Response{BodyStr: `"foo"`}
 var jri = Response{BodyStr: `123`}
@@ -80,6 +81,39 @@ var jsonConditionTests = []TC{
 
 func TestJSONCondition(t *testing.T) {
 	for i, tc := range jsonConditionTests {
+		runTest(t, i, tc)
+	}
+}
+
+var jsonSchemaTests = []TC{
+	{jre, &JSON{Schema: `{"foo": 0, "bar": [0,"",0], "waz": false, pi: 0.0}`}, nil},
+	{jre, &JSON{Schema: `{"bar": [0,"",0], "foo": 0, pi: 0.0, "waz": false}`}, nil},
+	{jre, &JSON{Schema: `{"foo": 1.1}`}, nil}, //
+	{jre, &JSON{Schema: `{"foo": false}`}, errors.New(`element foo: got int, want bool`)},
+	{jre, &JSON{Schema: `{"foo": ""}`}, errors.New(`element foo: got int, want string`)},
+	{jre, &JSON{Schema: `{"bar": []}`}, nil},
+	{jre, &JSON{Schema: `{"bar": [0]}`}, nil},
+	{jre, &JSON{Schema: `{"bar": [0, ""]}`}, nil},
+	{jre, &JSON{Schema: `{"bar": [0, ""]}`}, nil},
+	{jre, &JSON{Schema: `{"bar": [0, 0]}`}, errors.New(`element bar.1: got string, want int`)},
+	{jre, &JSON{Schema: `{"bar": true}`}, errors.New(`element bar: got slice, want bool`)},
+	{jre, &JSON{Schema: `{"bar": {}}`}, errors.New(`element bar: got slice, want object`)},
+	{jre, &JSON{Schema: `{"ooops": 1.1}`}, errors.New(`element : missing child ooops`)},
+	{jre, &JSON{Schema: `{"bar": [0, "", 0.0, false]}`},
+		errors.New(`element bar: got only 3 array elements, need 4`)},
+
+	{jre, &JSON{Schema: `{"bar": [null, null, 0]}`}, nil},
+	{jre, &JSON{Schema: `{"nil": null}`}, nil},
+	{jre, &JSON{Schema: `{"nil": 0}`}, errors.New(`element nil: got null, want int`)},
+
+	{jrm, &JSON{Element: ".",
+		Embedded: &JSON{Schema: `{"foo": 0, "bar": [0,0,0]}`}}, nil},
+	{jrm, &JSON{Element: ".",
+		Embedded: &JSON{Schema: `{"foo": 0, "bar": true}`}}, someError},
+}
+
+func TestJSONSchema(t *testing.T) {
+	for i, tc := range jsonSchemaTests {
 		runTest(t, i, tc)
 	}
 }
