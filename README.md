@@ -275,7 +275,6 @@ Ht includes open source from the following sources:
 * Bender. Copyright 2014 Pinterest.com. Licensed under the Apache License, Version 2.0
 * Cascadia. Copyright (c) 2011 Andy Balholm. Licensed under the BSD 2-clasue license.
 * Gojee. Copyright (c) 2013 The New York Times Company. Licensed under the Apache License, Version 2.0
-* Gojsonexplode. Copyright (c) 2013 The New York Times Company. Licensed under the Apache License, Version 2.0
 * Otto. Copyright (c) 2012 Robert Krimen. Licensed under the MIT License.
 * Xmlpath. Copyright (c) 2013-2014 Canonical Inc. Licensed under the LGPLv3. See https://gopkg.in/xmlpath.v2
 * Hjson. Copyright (c) 2016 Christian Zangl. Licensed under the MIT License.
