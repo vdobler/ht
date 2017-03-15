@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/andybalholm/cascadia"
-	"github.com/nytlabs/gojsonexplode"
 	"github.com/robertkrimen/otto"
 	"github.com/vdobler/ht/populate"
 	"golang.org/x/net/html"
@@ -259,19 +258,22 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 // JSONExtractor
 
 // JSONExtractor extracts a value from a JSON response body.
-// It uses github.com/nytlabs/gojsonexplode to flatten the JSON file
-// for easier access.
-// Only the lowest level of elements may be accessed: In the JSON {"c":[1,2,3]}
-// "c" is not available, but c.2 is and equals 3. JSON null values are
-// extracted as the empty string i.e. null and "" are indistinguashable.
 //
-// Note that JSONExtractor behaves differently than the JSON check:
-// JSONExctractor strips quotes from strings if the string is not empty.
+// JSONExtractor works like the JSON check (i.e. elements are selected by their
+// path) with two differences:
+//   * null values are extracted as the empty string ""
+//   * strings are stripped of their quotes
+// Non-leaf elements can be extraced and will be returned verbatim. E.g. extarcting
+// element Foo from
+//     {"Foo": [ 1 , 2,3]  }
+// will extract the follwoing string with verbatim spaces in the array:
+//     "[ 1 , 2,3]"
+//
 type JSONExtractor struct {
-	// Element in the flattened JSON map to extract.
+	// Element path to extract.
 	Element string `json:",omitempty"`
 
-	// Sep is the separator in Path.
+	// Sep is the separator in the element path.
 	// A zero value is equivalent to "."
 	Sep string `json:",omitempty"`
 }
@@ -287,32 +289,18 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 		sep = e.Sep
 	}
 
-	out, err := gojsonexplode.Explodejson([]byte(t.Response.BodyStr), sep)
+	raw, err := findJSONelement([]byte(t.Response.BodyStr), e.Element, sep)
 	if err != nil {
-		return "", fmt.Errorf("unable to explode JSON: %s", err.Error())
+		return "", err
 	}
+	s := string(raw)
 
-	var flat map[string]*json.RawMessage
-	err = json.Unmarshal(out, &flat)
-	if err != nil {
-		return "", fmt.Errorf("unable to parse exploded JSON: %s", err.Error())
-	}
-
-	val, ok := flat[e.Element]
-	if !ok {
-		return "", ErrNotFound
-	}
-
-	// The element might be present but null like in {"a": null} in which
-	// case val==nil.
-	if val == nil {
-		// TODO: is this the most sensible outcome?  Or would
-		// "", ErrNotFound be better?
+	// Report null as empty string.
+	if s == "null" {
 		return "", nil
 	}
 
 	// Strip quotes from strings.
-	s := string(*val)
 	if strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) && len(s) >= 2 {
 		s = s[1 : len(s)-1]
 	}
