@@ -276,13 +276,13 @@ var typeDoc = map[string]string{
 		"\t//     @file:/path/to/script\n" +
 		"\tScript string \n" +
 		"}\n" +
-		"    JSExtractor extracts arbirtary stuff via custom JavaScript code.\n" +
+		"    JSExtractor extracts arbitrary stuff via custom JavaScript code.\n" +
 		"\n" +
 		"    The current Test is present in the JavaScript VM via binding the name \"Test\"\n" +
 		"    at top-level to the current Test being checked.\n" +
 		"\n" +
 		"    The Script is evaluated and the final expression is the value extracted with\n" +
-		"    the following excpetions:\n" +
+		"    the following exceptions:\n" +
 		"\n" +
 		"    - undefined or null is treated as an error\n" +
 		"    - Objects and Arrays are treated as errors. The error message is reported\n" +
@@ -296,6 +296,7 @@ var typeDoc = map[string]string{
 	"json": "type JSON struct {\n" +
 		"\t// Element in the flattened JSON map to apply the Condition to.\n" +
 		"\t// E.g.  \"foo.2\" in \"{foo: [4,5,6,7]}\" would be 6.\n" +
+		"\t// The whole JSON can be selected by Sep, typically \".\".\n" +
 		"\t// An empty value result in just a check for 'wellformedness' of\n" +
 		"\t// the JSON.\n" +
 		"\tElement string\n" +
@@ -303,12 +304,14 @@ var typeDoc = map[string]string{
 		"\t// Condition to apply to the value selected by Element.\n" +
 		"\t// If Condition is the zero value then only the existence of\n" +
 		"\t// a JSON element selected by Element is checked.\n" +
-		"\t// Note that Condition is checked against the actual value in the\n" +
-		"\t// flattened JSON map which will contain the quotation marks for\n" +
-		"\t// string values.\n" +
+		"\t// Note that Condition is checked against the actual raw value of\n" +
+		"\t// the JSON document and will contain quotation marks for strings.\n" +
 		"\tCondition\n" +
 		"\n" +
-		"\t// Embeded is a JSON check applied to the value selected by\n" +
+		"\t// Schema is the expected structure of the selected element.\n" +
+		"\tSchema string\n" +
+		"\n" +
+		"\t// Embedded is a JSON check applied to the value selected by\n" +
 		"\t// Element. Useful when JSON contains embedded, quoted JSON as\n" +
 		"\t// a string and checking via Condition is not practical.\n" +
 		"\t// (It seems this nested JSON is common nowadays. I'm getting old.)\n" +
@@ -317,23 +320,58 @@ var typeDoc = map[string]string{
 		"\t// Sep is the separator in Element when checking the Condition.\n" +
 		"\t// A zero value is equivalent to \".\"\n" +
 		"\tSep string \n" +
-		"}\n" +
-		"    JSON allow to check a single string, number, boolean or null element in a\n" +
-		"    JSON document against a Condition.\n" +
 		"\n" +
-		"    Elements of the JSON document are selected by an element selector. In the\n" +
+		"\t// Has unexported fields.\n" +
+		"}\n" +
+		"    JSON allow to check an element in a JSON document against a Condition and to\n" +
+		"    validate the structur of the document against a schema.\n" +
+		"\n" +
+		"    The element of the JSON document is selected by its \"path\". Example: In the\n" +
 		"    JSON document\n" +
 		"\n" +
-		"    { \"foo\": 5, \"bar\": [ 1, \"qux\", 3 ], \"waz\": true, \"nil\": null }\n" +
+		"    {\n" +
+		"      \"foo\": 5,\n" +
+		"      \"bar\": [ 1, \"qux\" ,3 ],\n" +
+		"      \"waz\": true,\n" +
+		"      \"maa\": { \"muh\": 3.141, \"mee\": 0 },\n" +
+		"      \"nil\": null\n" +
+		"    }\n" +
 		"\n" +
-		"    the follwing element selector are present and have the shown values:\n" +
+		"    the following table shows several element paths and their value:\n" +
 		"\n" +
 		"    foo       5\n" +
+		"    bar       [ 1, \"qux\" ,3 ]\n" +
 		"    bar.0     1\n" +
 		"    bar.1     \"qux\"\n" +
 		"    bar.2     3\n" +
 		"    waz       true\n" +
-		"    nil       null",
+		"    maa       { \"muh\": 3.141, \"mee\": 0 }\n" +
+		"    maa.muh   3.141\n" +
+		"    maa.mee   0\n" +
+		"    nil       null\n" +
+		"\n" +
+		"    Note that the value for \"bar\" is the raw string and contains the original\n" +
+		"    white space characters as present in the original JSON document.\n" +
+		"\n" +
+		"    A schema is an example JSON documeent with the same structure where each\n" +
+		"    leave element just determines the expected type. The JSON document from\n" +
+		"    above would conform to the schema:\n" +
+		"\n" +
+		"    {\n" +
+		"      \"foo\": 0, \"bar\": [0,\"\",1], \"waz\": false,\n" +
+		"      \"maa\": { \"muh\": 0.0, \"mee\": 0 },\n" +
+		"    }\n" +
+		"\n" +
+		"    Contrary to standard JSON this check allows to distinguish floats from ints\n" +
+		"    with the rule that an integer is a valid value for a float in a schema. So\n" +
+		"    any string in a schema forces a string value, any int in a schema forces an\n" +
+		"    integer value, any float in a schema forces either an int or a float. Null\n" +
+		"    values in schemas act as wildcards: any value (int, bool, float, string or\n" +
+		"    null) is valid. This is usefull if you want to skip validation of e.g. the\n" +
+		"    first two array elements.\n" +
+		"\n" +
+		"    It is typically not useful to combine schema validation with checking a\n" +
+		"    condition.",
 	"jsonexpr": "type JSONExpr struct {\n" +
 		"\t// Expression is a boolean gojee expression which must evaluate\n" +
 		"\t// to true for the check to pass.\n" +
@@ -540,7 +578,7 @@ var typeDoc = map[string]string{
 	"renderedhtml": "type RenderedHTML struct {\n" +
 		"\tBrowser\n" +
 		"\n" +
-		"\t// Checks to perform on the renderd HTML.\n" +
+		"\t// Checks to perform on the rendered HTML.\n" +
 		"\t// Sensible checks are those operating on the response body.\n" +
 		"\tChecks CheckList\n" +
 		"\n" +
@@ -858,7 +896,9 @@ var typeDoc = map[string]string{
 		"\tExValues map[string]Extraction \n" +
 		"\n" +
 		"\t// Log is the logger to use\n" +
-		"\tLog *log.Logger\n" +
+		"\tLog interface {\n" +
+		"\t\tPrintf(format string, a ...interface{})\n" +
+		"\t}\n" +
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
@@ -868,7 +908,7 @@ var typeDoc = map[string]string{
 		"    UTF8Encoded checks that the response body is valid UTF-8 without BOMs.",
 	"validhtml": "type ValidHTML struct {\n" +
 		"\t// Ignore is a space separated list of issues to ignore.\n" +
-		"\t// You normaly won't skip detection of these issues as all issues\n" +
+		"\t// You normally won't skip detection of these issues as all issues\n" +
 		"\t// are fundamental flaws which are easy to fix.\n" +
 		"\tIgnore string \n" +
 		"}\n" +
@@ -929,7 +969,7 @@ var typeDoc = map[string]string{
 	"rawscenario": "type RawScenario struct {\n" +
 		"\tName       string            // Name of this Scenario\n" +
 		"\tFile       string            // File is the RawSuite to use as scenario\n" +
-		"\tPercentage int               // Percantage this scenario contributes to the load test.\n" +
+		"\tPercentage int               // Percentage this scenario contributes to the load test.\n" +
 		"\tMaxThreads int               // MaxThreads to use for this scenario. 0 means unlimited.\n" +
 		"\tVariables  map[string]string // Variables used.\n" +
 		"\tOmitChecks bool              // OmitChecks in the tests.\n" +
