@@ -43,17 +43,22 @@ var (
 )
 
 // Transport is the http Transport used while making requests.
-// It is exposed to allow different Timeouts or laxer TLS settings.
+// It is exposed to allow different Timeouts, less idle connections
+// or laxer TLS settings.
 var Transport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
-	Dial: (&net.Dialer{
+	DialContext: (&net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
-	}).Dial,
+		DualStack: true,
+	}).DialContext,
+	MaxIdleConns:    100,
+	IdleConnTimeout: 90 * time.Second,
 	TLSClientConfig: &tls.Config{
 		InsecureSkipVerify: false,
 	},
-	TLSHandshakeTimeout: 10 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
 }
 
 func float64ToString(f float64) string {
