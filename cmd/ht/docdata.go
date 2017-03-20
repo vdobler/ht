@@ -69,6 +69,36 @@ var typeDoc = map[string]string{
 		"\t// Nil disables these conditions.\n" +
 		"\tGreaterThan, LessThan *float64 \n" +
 		"\n" +
+		"\t// Is checks whether the string under test matches one of a given\n" +
+		"\t// list of given types. Double quotes are trimmed from the string\n" +
+		"\t// before validation its type.\n" +
+		"\t//\n" +
+		"\t// The following types are available:\n" +
+		"\t//     Alpha          Alphanumeric  ASCII             Base64\n" +
+		"\t//     CIDR           CreditCard    DataURI           DialString\n" +
+		"\t//     DNSName        Email         FilePath          Float\n" +
+		"\t//     FullWidth      HalfWidth     Hexadecimal       Hexcolor\n" +
+		"\t//     Host           Int           IP                IPv4\n" +
+		"\t//     IPv6           ISBN10        ISBN13            ISO3166Alpha2\n" +
+		"\t//     ISO3166Alpha3  JSON          Latitude          Longitude\n" +
+		"\t//     LowerCase      MAC           MongoID           Multibyte\n" +
+		"\t//     Null           Numeric       Port              PrintableASCII\n" +
+		"\t//     RequestURI     RequestURL    RFC3339           RGBcolor\n" +
+		"\t//     Semver         SSN           UpperCase         URL\n" +
+		"\t//     UTFDigit       UTFLetter     UTFLetterNumeric  UTFNumeric\n" +
+		"\t//     UUID           UUIDv3        UUIDv4            UUIDv5\n" +
+		"\t//     VariableWidth\n" +
+		"\t// See github.com/asaskevich/govalidator for a detailed description.\n" +
+		"\t//\n" +
+		"\t// The string \"OR\" is ignored an can be used to increase the\n" +
+		"\t// readability of this condition in sutiation like\n" +
+		"\t//     Condition{Is: \"Hexcolor OR RGBColor OR MongoID\"}\n" +
+		"\tIs string\n" +
+		"\n" +
+		"\t// Time checks whether the string is a valid time if parsed\n" +
+		"\t// with Time as the layout string.\n" +
+		"\tTime string\n" +
+		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
 		"    Condition is a conjunction of tests against a string. Note that Contains and\n" +
@@ -367,7 +397,7 @@ var typeDoc = map[string]string{
 		"    any string in a schema forces a string value, any int in a schema forces an\n" +
 		"    integer value, any float in a schema forces either an int or a float. Null\n" +
 		"    values in schemas act as wildcards: any value (int, bool, float, string or\n" +
-		"    null) is valid. This is usefull if you want to skip validation of e.g. the\n" +
+		"    null) is valid. This is useful if you want to skip validation of e.g. the\n" +
 		"    first two array elements.\n" +
 		"\n" +
 		"    It is typically not useful to combine schema validation with checking a\n" +
@@ -395,21 +425,29 @@ var typeDoc = map[string]string{
 		"    $max(.bar) == 3              true\n" +
 		"    $has(.bar, 7)                false as bar has no 7",
 	"jsonextractor": "type JSONExtractor struct {\n" +
-		"\t// Element in the flattened JSON map to extract.\n" +
+		"\t// Element path to extract.\n" +
 		"\tElement string \n" +
 		"\n" +
-		"\t// Sep is the separator in Path.\n" +
+		"\t// Sep is the separator in the element path.\n" +
 		"\t// A zero value is equivalent to \".\"\n" +
 		"\tSep string \n" +
 		"}\n" +
-		"    JSONExtractor extracts a value from a JSON response body. It uses\n" +
-		"    github.com/nytlabs/gojsonexplode to flatten the JSON file for easier access.\n" +
-		"    Only the lowest level of elements may be accessed: In the JSON {\"c\":[1,2,3]}\n" +
-		"    \"c\" is not available, but c.2 is and equals 3. JSON null values are\n" +
-		"    extracted as the empty string i.e. null and \"\" are indistinguashable.\n" +
+		"    JSONExtractor extracts a value from a JSON response body.\n" +
 		"\n" +
-		"    Note that JSONExtractor behaves differently than the JSON check:\n" +
-		"    JSONExctractor strips quotes from strings if the string is not empty.",
+		"    JSONExtractor works like the JSON check (i.e. elements are selected by their\n" +
+		"    path) with two differences:\n" +
+		"\n" +
+		"    * null values are extracted as the empty string \"\"\n" +
+		"    * strings are stripped of their quotes\n" +
+		"\n" +
+		"    Non-leaf elements can be extraced and will be returned verbatim. E.g.\n" +
+		"    extarcting element Foo from\n" +
+		"\n" +
+		"    {\"Foo\": [ 1 , 2,3]  }\n" +
+		"\n" +
+		"    will extract the following string with verbatim spaces in the array:\n" +
+		"\n" +
+		"    \"[ 1 , 2,3]\"",
 	"latency": "type Latency struct {\n" +
 		"\t// N is the number if request to measure. It should be much larger\n" +
 		"\t// than Concurrent. Default is 50.\n" +
