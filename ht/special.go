@@ -8,7 +8,7 @@
 // HTTP1.1 request but generates output which can be checked via the existing
 // checks. The schema of the Test.Request.URL determines the request type.
 // Normal HTTP request are made with the two schemas "http" and "https".
-// Additionaly the following types of pseudo request are available:
+// Additionally the following types of pseudo request are available:
 //   * file://
 //       This type of pseudo request can be used to read, write and delete
 //       a file on the filesystem
@@ -52,7 +52,7 @@
 //        - 408 if the script was canceled due to timeout
 //        - 500 if the exit code is != 0.
 //   * The Response.Header["Exit-Status"] is used to return the exit
-//     status in case of 200 and 500 (sucess and failure).
+//     status in case of 200 and 500 (success and failure).
 //
 //
 // SQL Pseudo-Requests
@@ -70,8 +70,8 @@
 //         - "application/json":         a JSON array with the rows as objects
 //         - "text/csv; header=present": as a csv file with column headers
 //         - "text/csv":                 as a csv file withput header
-//         - "text/plain":               plain text file columns seperated by \t
-//         - "text/plain; fieldsep=X":   plain text file columns seperated by X
+//         - "text/plain":               plain text file columns separated by \t
+//         - "text/plain; fieldsep=X":   plain text file columns separated by X
 //     The result if the query is returned in the Response.BodyStr
 //
 package ht

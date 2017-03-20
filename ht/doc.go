@@ -56,7 +56,7 @@
 //     * ResponseTime    lower and higher bounds on the response time
 //     * Screenshot      render screen via PhantomJS and compare to reference
 //     * SetCookie       properties of received cookies
-//     * Sorted          sorted occurence of text on body
+//     * Sorted          sorted occurrence of text on body
 //     * StatusCode      the received HTTP status code
 //     * UTF8Encoded     that the HTTP body is UTF-8 encoded
 //     * ValidHTML       not obviousely malformed HTML
