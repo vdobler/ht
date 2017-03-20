@@ -136,7 +136,7 @@ func (c *JSONExpr) Execute(t *Test) error {
 // So any string in a schema forces a string value, any int in a schema forces
 // an integer value, any float in a schema forces either an int or a float.
 // Null values in schemas act as wildcards: any value (int, bool, float, string
-// or null) is valid. This is usefull if you want to skip validation of e.g.
+// or null) is valid. This is useful if you want to skip validation of e.g.
 // the first two array elements.
 //
 // It is typically not useful to combine schema validation with checking

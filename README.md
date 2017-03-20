@@ -281,3 +281,4 @@ Ht includes open source from the following sources:
 * Hjson. Copyright (c) 2016 Christian Zangl. Licensed under the MIT License.
 * Sourcemap. Copyright (c) 2016 The github.com/go-sourcemap/sourcemap Contributors. Licensed under the BSD 2-clasue license.
 * Go-MySQL-Driver. Copyright 2013 The Go-MySQL-Driver Authors. Licensed under the Mozilla Public License Version 2.0
+* Govalidator. Copyright (c) 2014 Alex Saskevich. Licensed under the MIT License.

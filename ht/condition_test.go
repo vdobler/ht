@@ -23,7 +23,9 @@ var conditionTests = []struct {
 	{"foobarX", Condition{Equals: "foobar"}, `Unequal, was "foobarX"`},
 	{"foobarXY", Condition{Equals: "foobar"}, `Unequal, was "foobarXY"`},
 	{"foobarXYZ", Condition{Equals: "foobar"}, `Unequal, was "foobarXYZ"`},
-	{"foobarbazwazturpot", Condition{Equals: "foobar"}, `Unequal, was "foobarbazwazturp"...`},
+	{"foobarbazwazturpot", Condition{Equals: "foobar"},
+		`Unequal, was "foobarbazwazturp"...`},
+
 	// Corner cases of Equals
 	{"A", Condition{Equals: "A"}, ``},
 	{"", Condition{Equals: "A"}, `Unequal, was ""`},
@@ -43,6 +45,7 @@ var conditionTests = []struct {
 	{"foobar", Condition{Prefix: "waz", Suffix: "bar"}, `Bad prefix, got "foo"`},
 	{"foobar", Condition{Prefix: "foo", Suffix: "waz"}, `Bad suffix, got "bar"`},
 	{"foobar", Condition{Prefix: "waz", Suffix: "waz"}, `Bad prefix, got "foo"`},
+
 	// Contains
 	{"foobarfoobar", Condition{Contains: "oo"}, ``},
 	{"foobarfoobar", Condition{Contains: "waz"}, `not found`},
@@ -53,26 +56,55 @@ var conditionTests = []struct {
 	{"foobarfoobar", Condition{Contains: "o", Count: 4}, ``},
 	{"foobarfoobar", Condition{Contains: "foo", Count: 1}, `found 2, want 1`},
 	{"foobarfoobar", Condition{Contains: "foo", Count: 3}, `found 2, want 3`},
+
 	// Regexp
 	{"foobarwu", Condition{Regexp: "[aeiou]."}, ``},
 	{"foobarwu", Condition{Regexp: "[aeiou].", Count: 2}, ``},
 	{"foobarwu", Condition{Regexp: "[aeiou].", Count: 3}, `found 2, want 3`},
 	{"foobarwu", Condition{Regexp: "[aeiou].", Count: -1}, `found forbidden`},
 	{"frtgbwu", Condition{Regexp: "[aeiou]."}, `not found`},
+
 	// Min and Max
 	{"foobar", Condition{Min: 2}, ``},
 	{"foobar", Condition{Min: 20}, `Too short, was 6`},
 	{"foobar", Condition{Max: 30}, ``},
 	{"foobar", Condition{Max: 3}, `Too long, was 6`},
+
 	// GreaterThan and LessThan
 	{"3", Condition{LessThan: &float12_3}, ``},
-	{"3", Condition{GreaterThan: &float12_3}, `not greater than 12.3, was 3`},
+	{"3", Condition{GreaterThan: &float12_3}, `Not greater than 12.3, was 3`},
 	{" \t3\n\r", Condition{LessThan: &float12_3}, ``},
-	{"'3'", Condition{GreaterThan: &float12_3}, `not greater than 12.3, was 3`},
-	{"800", Condition{LessThan: &float456}, `not less than 456, was 800`},
+	{"'3'", Condition{GreaterThan: &float12_3}, `Not greater than 12.3, was 3`},
+	{"800", Condition{LessThan: &float456}, `Not less than 456, was 800`},
 	{"'-8.8e1'", Condition{LessThan: &float456}, ``},
-	{"XYZ", Condition{LessThan: &float456}, `strconv.ParseFloat: parsing "XYZ": invalid syntax`},
+	{"XYZ", Condition{LessThan: &float456},
+		`strconv.ParseFloat: parsing "XYZ": invalid syntax`},
 	{"200", Condition{GreaterThan: &float12_3, LessThan: &float456}, ``},
+
+	// Is (type check)
+	{"name.name@domain.org", Condition{Is: "Email"}, ``},
+	{"CH", Condition{Is: "ISO3166Alpha2"}, ``},
+	{"XX", Condition{Is: "ISO3166Alpha2"}, `"XX" is not a ISO3166Alpha2`},
+	{"foo", Condition{Is: "lalalaXYZ"},
+		`malformed check: No such type check "lalalaXYZ"`},
+	{"127.0.0.1", Condition{Is: "IPv4"}, ``},
+	{"2001:db8::ff00:42:8329", Condition{Is: "IPv6"}, ``},
+	{"2001:db8::ff00:42:8329", Condition{Is: "IPv6 IPv4"}, ``},
+	{"2001:db8::ff00:42:8329", Condition{Is: "IPv4 IPv6"}, ``},
+	{"2001:db8::ff00:42:8329", Condition{Is: "IPv4 OR IPv6"}, ``},
+	{"127.0.0.1", Condition{Is: " IPv6   IPv4 "}, ``},
+	{"lalelu", Condition{Is: "IPv4 IPv6"}, `"lalelu" is not a IPv6`},
+	{"a4c400", Condition{Is: "Hexcolor"}, ``},
+	{"#a4c400", Condition{Is: "Hexcolor"}, ``},
+	{"green", Condition{Is: "Hexcolor"}, `"green" is not a Hexcolor`},
+	{`"a4c400"`, Condition{Is: "Hexcolor"}, ``},
+	{`"127.0.0.1"`, Condition{Is: "IPv4"}, ``},
+
+	// Time
+	{"2009-11-10 23:00:00", Condition{Time: "2006-01-02 15:04:05"}, ``},
+	{`"2009-11-10 23:00:00"`, Condition{Time: "2006-01-02 15:04:05"}, ``},
+	{"2009-NOV-10 11:00 pm", Condition{Time: "2006-01-02 15:04:05"},
+		`parsing time "2009-NOV-10 11:00 pm": month out of range`},
 }
 
 func TestCondition(t *testing.T) {

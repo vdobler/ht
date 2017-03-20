@@ -9,7 +9,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
+
+	"github.com/asaskevich/govalidator"
 )
 
 // Condition is a conjunction of tests against a string. Note that Contains and
@@ -51,7 +54,98 @@ type Condition struct {
 	// Nil disables these conditions.
 	GreaterThan, LessThan *float64 `json:",omitempty"`
 
+	// Is checks whether the string under test matches one of a given
+	// list of given types. Double quotes are trimmed from the string
+	// before validation its type.
+	//
+	// The following types are available:
+	//     Alpha          Alphanumeric  ASCII             Base64
+	//     CIDR           CreditCard    DataURI           DialString
+	//     DNSName        Email         FilePath          Float
+	//     FullWidth      HalfWidth     Hexadecimal       Hexcolor
+	//     Host           Int           IP                IPv4
+	//     IPv6           ISBN10        ISBN13            ISO3166Alpha2
+	//     ISO3166Alpha3  JSON          Latitude          Longitude
+	//     LowerCase      MAC           MongoID           Multibyte
+	//     Null           Numeric       Port              PrintableASCII
+	//     RequestURI     RequestURL    RFC3339           RGBcolor
+	//     Semver         SSN           UpperCase         URL
+	//     UTFDigit       UTFLetter     UTFLetterNumeric  UTFNumeric
+	//     UUID           UUIDv3        UUIDv4            UUIDv5
+	//     VariableWidth
+	// See github.com/asaskevich/govalidator for a detailed description.
+	//
+	// The string "OR" is ignored an can be used to increase the
+	// readability of this condition in sutiation like
+	//     Condition{Is: "Hexcolor OR RGBColor OR MongoID"}
+	Is string
+
+	// Time checks whether the string is a valid time if parsed
+	// with Time as the layout string.
+	Time string
+
 	re *regexp.Regexp
+}
+
+func isFilePath(s string) bool {
+	is, _ := govalidator.IsFilePath(s)
+	return is
+}
+
+var ValidationMap = map[string]func(string) bool{
+	"Alpha":            govalidator.IsAlpha,
+	"Alphanumeric":     govalidator.IsAlphanumeric,
+	"ASCII":            govalidator.IsASCII,
+	"Base64":           govalidator.IsBase64,
+	"CIDR":             govalidator.IsCIDR,
+	"CreditCard":       govalidator.IsCreditCard,
+	"DataURI":          govalidator.IsDataURI,
+	"DialString":       govalidator.IsDialString,
+	"DNSName":          govalidator.IsDNSName,
+	"Email":            govalidator.IsEmail,
+	"FilePath":         isFilePath,
+	"Float":            govalidator.IsFloat,
+	"FullWidth":        govalidator.IsFullWidth,
+	"HalfWidth":        govalidator.IsHalfWidth,
+	"Hexadecimal":      govalidator.IsHexadecimal,
+	"Hexcolor":         govalidator.IsHexcolor,
+	"Host":             govalidator.IsHost,
+	"Int":              govalidator.IsInt,
+	"IP":               govalidator.IsIP,
+	"IPv4":             govalidator.IsIPv4,
+	"IPv6":             govalidator.IsIPv6,
+	"ISBN10":           govalidator.IsISBN10,
+	"ISBN13":           govalidator.IsISBN13,
+	"ISO3166Alpha2":    govalidator.IsISO3166Alpha2,
+	"ISO3166Alpha3":    govalidator.IsISO3166Alpha3,
+	"JSON":             govalidator.IsJSON,
+	"Latitude":         govalidator.IsLatitude,
+	"Longitude":        govalidator.IsLongitude,
+	"LowerCase":        govalidator.IsLowerCase,
+	"MAC":              govalidator.IsMAC,
+	"MongoID":          govalidator.IsMongoID,
+	"Multibyte":        govalidator.IsMultibyte,
+	"Null":             govalidator.IsNull,
+	"Numeric":          govalidator.IsNumeric,
+	"Port":             govalidator.IsPort,
+	"PrintableASCII":   govalidator.IsPrintableASCII,
+	"RequestURI":       govalidator.IsRequestURI,
+	"RequestURL":       govalidator.IsRequestURL,
+	"RFC3339":          govalidator.IsRFC3339,
+	"RGBcolor":         govalidator.IsRGBcolor,
+	"Semver":           govalidator.IsSemver,
+	"SSN":              govalidator.IsSSN,
+	"UpperCase":        govalidator.IsUpperCase,
+	"URL":              govalidator.IsURL,
+	"UTFDigit":         govalidator.IsUTFDigit,
+	"UTFLetter":        govalidator.IsUTFLetter,
+	"UTFLetterNumeric": govalidator.IsUTFLetterNumeric,
+	"UTFNumeric":       govalidator.IsUTFNumeric,
+	"UUID":             govalidator.IsUUID,
+	"UUIDv3":           govalidator.IsUUIDv3,
+	"UUIDv4":           govalidator.IsUUIDv4,
+	"UUIDv5":           govalidator.IsUUIDv5,
+	"VariableWidth":    govalidator.IsVariableWidth,
 }
 
 // Fulfilled returns whether s matches all requirements of c.
@@ -145,10 +239,22 @@ func (c Condition) Fulfilled(s string) error {
 
 		// Apply conditions.
 		if c.GreaterThan != nil && numericVal <= *c.GreaterThan {
-			return fmt.Errorf("not greater than %g, was %g", *c.GreaterThan, numericVal)
+			return fmt.Errorf("Not greater than %g, was %g", *c.GreaterThan, numericVal)
 		}
 		if c.LessThan != nil && numericVal >= *c.LessThan {
-			return fmt.Errorf("not less than %g, was %g", *c.LessThan, numericVal)
+			return fmt.Errorf("Not less than %g, was %g", *c.LessThan, numericVal)
+		}
+	}
+
+	if c.Is != "" {
+		if err := c.checkIs(s); err != nil {
+			return err
+		}
+	}
+
+	if c.Time != "" {
+		if _, err := time.Parse(c.Time, dequoteString(s)); err != nil {
+			return err
 		}
 	}
 
@@ -171,4 +277,35 @@ func (c *Condition) Compile() (err error) {
 		}
 	}
 	return nil
+}
+
+// Dequote s:  "foobar"  -->  fobar
+func dequoteString(s string) string {
+	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		s = s[1 : len(s)-1]
+	}
+	return s
+}
+
+func (c *Condition) checkIs(s string) error {
+	s = dequoteString(s)
+	var err error
+	for _, typ := range strings.Split(c.Is, " ") {
+		ctyp := strings.TrimSpace(typ)
+		if ctyp == "" || ctyp == "OR" {
+			continue
+		}
+		validationFn, ok := ValidationMap[ctyp]
+		if !ok {
+			return MalformedCheck{
+				Err: fmt.Errorf("No such type check %q", typ),
+			}
+		}
+		if validationFn(s) {
+			return nil // s is of type typ
+		}
+		err = fmt.Errorf("%q is not a %s", s, typ)
+	}
+
+	return err
 }

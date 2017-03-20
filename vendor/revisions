@@ -4,3 +4,4 @@ github.com/robertkrimen/otto 6a77b7cbc37d0c39f7d5fa5766826e541df31fd5
 gopkg.in/xmlpath.v2 860cbeca3ebcc600db0b213c0e83ad6ce91f5739
 gopkg.in/sourcemap.v1 8cd1e2e0ddc78dcb4511bcb184d23171bed15c67
 github.com/go-sql-driver/mysql a0583e0143b1624142adab07e0e97fe106d99561
+github.com/asaskevich/govalidator 397c84d57feadd5cc210fd9a1c09895033d0893b
