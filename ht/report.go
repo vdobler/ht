@@ -35,6 +35,8 @@ func (s Status) String() string {
 //                         01234567        01234567        01234567
 const statusnames = "notrun  skipped pass    fail    error   bogus"
 
+// StatusFromString parse s into a Status. If s is not a valid Status
+// (i.e. one of NotRun, ..., Bogus) then -1 is returned.
 func StatusFromString(s string) Status {
 	s = strings.TrimSpace(strings.ToLower(s))
 	i := strings.Index(statusnames, s)
