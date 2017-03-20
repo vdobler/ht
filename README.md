@@ -5,6 +5,7 @@ HT: HTTP Testing Made Easy
 [![GoDoc](https://godoc.org/github.com/vdobler/ht?status.svg)](https://godoc.org/github.com/vdobler/ht)
 [![Build Status](https://travis-ci.org/vdobler/ht.svg?branch=master)](https://travis-ci.org/vdobler/ht)
 
+
 End-to-end testing of HTTP requests/responses is easy with Go.
 
 Writing and maintaining high level test is even easier with ht.
@@ -17,7 +18,7 @@ ht tries to achieve the following:
 * Make generating all common HTTP requests easy.
 * Provide high- and low-level checks on the received response.
 * Make measuring response times easy.
-* Provide a library/labraries (Go packages) to pragmatically generate requests
+* Provide a library (Go packages) to programmatically generate requests
   and test the responses.
 * Provide a standalone executable which reads requests/checks from disk and
   runs them.
@@ -50,10 +51,10 @@ If you want to run checks on rendered HTML pages you need a local installation
 of (PhantomJS)[http://phantomjs.org] in version >= 2.0.
 
 
-Nonemclature
+Nomenclature
 ------------
 
-The following terms are necessary to know wheter you use ht as a package
+The following terms are necessary to know whether you use ht as a package
 or as the executable.
 
 The main concept of `ht` is that of a **`Test`**: A `Test` makes one request and
@@ -66,13 +67,13 @@ a 201 Status Code?" or "Did we receive the response in less than 200ms?" or
 even complex stuff like "What happens to the request if we redo it with
 slight changes like different parameters or extra/dropped/modified headers?".
 
-Tests can be grouped into a **`Suite`**. A suite caputres the idea of a sequence
-of requests. Tests in a suite may share a common cookie jar so that simmulating
+Tests can be grouped into a **`Suite`**. A suite captures the idea of a sequence
+of requests. Tests in a suite may share a common cookie jar so that simulating
 a browser session becomes easy.
 
 A load test is a throughput test which uses a mixture of suites to generate
-a distrubution of requests: The load test is a set of `Szenario`s where
-each szenario (technically just a suite) contributes a certain percentage to
+a distribution of requests: The load test is a set of `Scenarios where
+each scenario (technically just a suite) contributes a certain percentage to
 the whole set of request.
 
 Tests have one of the following status:
@@ -234,7 +235,7 @@ in just a few files.  You might want to `$ go run showcase.go` to
 have a dummy server listening on localhost:8080 to run the tests
 against: `$ ht exec showcase.suite`
 
-The builting help to cmd/ht is useful too:
+The builtin help to cmd/ht is useful too:
 
     $ ht help checks       #  list short overview of available checks
     $ ht help extractors   #  list short overview of available extractors
@@ -273,7 +274,7 @@ Ht includes open source from the following sources:
 
 * Go Libraries. Copyright 2012 The Go Authors. Licensed under the BSD license (http://golang.org/LICENSE).
 * Bender. Copyright 2014 Pinterest.com. Licensed under the Apache License, Version 2.0
-* Cascadia. Copyright (c) 2011 Andy Balholm. Licensed under the BSD 2-clasue license.
+* Cascadia. Copyright (c) 2011 Andy Balholm. Licensed under the BSD 2-clause license.
 * Gojee. Copyright (c) 2013 The New York Times Company. Licensed under the Apache License, Version 2.0
 * Otto. Copyright (c) 2012 Robert Krimen. Licensed under the MIT License.
 * Xmlpath. Copyright (c) 2013-2014 Canonical Inc. Licensed under the LGPLv3. See https://gopkg.in/xmlpath.v2
