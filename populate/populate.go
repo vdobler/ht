@@ -293,10 +293,9 @@ func recFillWith(dst, src reflect.Value, elem string, strict bool) error {
 			err := p.Populate(src.Interface())
 			if err != nil {
 				return err
-			} else {
-				dst.Set(dstAddr.Elem())
-				return nil
 			}
+			dst.Set(dstAddr.Elem())
+			return nil
 		}
 	}
 
