@@ -29,7 +29,7 @@ func TestFilePseudorequest(t *testing.T) {
 	u := "file://" + wd + "/testdata/fileprotocol"
 
 	tests := []*Test{
-		&Test{
+		{
 			Name: "PUT-Pass",
 			Request: Request{
 				URL:  u,
@@ -41,7 +41,7 @@ func TestFilePseudorequest(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "PUT-Error",
 			Request: Request{
 				URL:  u + "/iouer/cxxs/dlkfj",
@@ -53,7 +53,7 @@ func TestFilePseudorequest(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "GET-Pass",
 			Request: Request{
 				URL: u,
@@ -64,7 +64,7 @@ func TestFilePseudorequest(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "GET-Fail",
 			Request: Request{
 				URL: u,
@@ -75,7 +75,7 @@ func TestFilePseudorequest(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "GET-Error",
 			Request: Request{
 				URL: u + "/slkdj/cxmvn",
@@ -85,7 +85,7 @@ func TestFilePseudorequest(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "GET-Error",
 			Request: Request{
 				URL: "file://remote.host/some/path",
@@ -95,7 +95,7 @@ func TestFilePseudorequest(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "DELETE-Pass",
 			Request: Request{
 				URL: u,
@@ -106,7 +106,7 @@ func TestFilePseudorequest(t *testing.T) {
 				&Header{Header: "Foo", Absent: true},
 			},
 		},
-		&Test{
+		{
 			Name: "DELETE-Error",
 			Request: Request{
 				URL: u + "/sdjdfh/oieru",
@@ -302,7 +302,7 @@ func TestSQLPseudorequest(t *testing.T) {
 }
 
 var sqlTests = []*Test{
-	&Test{
+	{
 		Name: "Create",
 		Request: Request{
 			Method: "POST",
@@ -327,7 +327,7 @@ CREATE TABLE orders (
 		},
 	},
 
-	&Test{
+	{
 		Name: "Fill",
 		Request: Request{
 			Method: "POST",
@@ -353,7 +353,7 @@ VALUES
 				Condition: Condition{Equals: `3`}},
 		},
 	},
-	&Test{
+	{
 		Name: "Select",
 		Request: Request{
 			Method: "GET",
@@ -380,7 +380,7 @@ ORDER BY price DESC;
 		},
 	},
 
-	&Test{
+	{
 		Name: "Insert",
 		Request: Request{
 			Method: "POST",
@@ -402,7 +402,7 @@ VALUES ("Buch", 38.00);
 		},
 	},
 
-	&Test{
+	{
 		Name: "JSON",
 		Request: Request{
 			Method: "GET",
@@ -421,7 +421,7 @@ SELECT ROUND(AVG(price),2) AS avgprice FROM orders;
 		},
 	},
 
-	&Test{
+	{
 		Name: "Text",
 		Request: Request{
 			Method: "GET",
@@ -440,7 +440,7 @@ SELECT MIN(price) AS minprice, ROUND(AVG(price),2) AS avgprice FROM orders;
 		},
 	},
 
-	&Test{
+	{
 		Name: "Text-Header",
 		Request: Request{
 			Method: "GET",
@@ -459,7 +459,7 @@ SELECT id, price FROM orders WHERE price > 20;
 		},
 	},
 
-	&Test{
+	{
 		Name: "CSV",
 		Request: Request{
 			Method: "GET",
@@ -478,7 +478,7 @@ SELECT id, price FROM orders WHERE price > 20;
 		},
 	},
 
-	&Test{
+	{
 		Name: "CSV-Header",
 		Request: Request{
 			Method: "GET",
@@ -499,7 +499,7 @@ SELECT id, price FROM orders WHERE price > 20;
 }
 
 var sqlTestsErroring = []*Test{
-	&Test{
+	{
 		Name:        "Bad-Query",
 		Description: "Error",
 		Request: Request{
@@ -512,7 +512,7 @@ var sqlTestsErroring = []*Test{
 		},
 	},
 
-	&Test{
+	{
 		Name:        "Missing-DSN",
 		Description: "Bogus",
 		Request: Request{
@@ -522,7 +522,7 @@ var sqlTestsErroring = []*Test{
 		},
 	},
 
-	&Test{
+	{
 		Name:        "Unknown-DBDriver",
 		Description: "Bogus",
 		Request: Request{
@@ -535,7 +535,7 @@ var sqlTestsErroring = []*Test{
 		},
 	},
 
-	&Test{
+	{
 		Name:        "Missing-Query",
 		Description: "Bogus",
 		Request: Request{
@@ -547,7 +547,7 @@ var sqlTestsErroring = []*Test{
 		},
 	},
 
-	&Test{
+	{
 		Name:        "Bad-Method",
 		Description: "Bogus",
 		Request: Request{

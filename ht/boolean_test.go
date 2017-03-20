@@ -66,7 +66,7 @@ func TestNone(t *testing.T) {
 	}{
 		{"foo", errCheck, false}, // foo fulfilled -> error after first, second skipped
 		{"bar", errCheck, true},  // bar fulfilled -> error after executing both
-		{"qux", nil, true},        // both false -> pass, both executed
+		{"qux", nil, true},       // both false -> pass, both executed
 	}
 
 	for i, at := range anytcs {
