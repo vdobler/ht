@@ -266,7 +266,7 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 // Non-leaf elements can be extraced and will be returned verbatim. E.g. extarcting
 // element Foo from
 //     {"Foo": [ 1 , 2,3]  }
-// will extract the follwoing string with verbatim spaces in the array:
+// will extract the following string with verbatim spaces in the array:
 //     "[ 1 , 2,3]"
 //
 type JSONExtractor struct {
