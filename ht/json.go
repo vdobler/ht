@@ -328,50 +328,64 @@ func compareStructure(element, sep string, actual, schema reflect.Value) error {
 				element, kind(actual), kind(schema))
 		}
 	case reflect.Slice:
-		if actual.Kind() != reflect.Slice {
-			return fmt.Errorf("element %s: got %s, want array",
-				element, kind(actual))
-		}
-		an, sn := actual.Len(), schema.Len()
-		if an < sn {
-			return fmt.Errorf("element %s: got only %d array elements, need %d",
-				element, an, sn)
-		}
-		for i := 0; i < sn; i++ {
-			elmt := fmt.Sprintf("%d", i)
-			if element != "" {
-				elmt = element + sep + elmt
-			}
-			err := compareStructure(elmt, sep, actual.Index(i), schema.Index(i))
-			if err != nil {
-				return err
-			}
-
+		if err := compareSlice(element, sep, actual, schema); err != nil {
+			return err
 		}
 	case reflect.Map:
-		if actual.Kind() != reflect.Map {
-			return fmt.Errorf("element %s: got %s, want object",
-				element, kind(actual))
-		}
-		// BUG: handle only string keys
-		for _, key := range schema.MapKeys() {
-			acv := actual.MapIndex(key)
-			if !acv.IsValid() {
-				return fmt.Errorf("element %s: missing child %s",
-					element, key.String())
-			}
-			elmt := key.String()
-			if element != "" {
-				elmt = element + sep + elmt
-			}
-			err := compareStructure(elmt, sep, acv, schema.MapIndex(key))
-			if err != nil {
-				return err
-			}
+		if err := compareMap(element, sep, actual, schema); err != nil {
+			return err
 		}
 	default:
 		return fmt.Errorf("ht: ooops: type of %s (%s) should not happen in unmarshaled JSON",
 			schema.Kind(), schema)
+	}
+	return nil
+}
+
+func compareSlice(element, sep string, actual, schema reflect.Value) error {
+	if actual.Kind() != reflect.Slice {
+		return fmt.Errorf("element %s: got %s, want array",
+			element, kind(actual))
+	}
+	an, sn := actual.Len(), schema.Len()
+	if an < sn {
+		return fmt.Errorf("element %s: got only %d array elements, need %d",
+			element, an, sn)
+	}
+	for i := 0; i < sn; i++ {
+		elmt := fmt.Sprintf("%d", i)
+		if element != "" {
+			elmt = element + sep + elmt
+		}
+		err := compareStructure(elmt, sep, actual.Index(i), schema.Index(i))
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func compareMap(element, sep string, actual, schema reflect.Value) error {
+	if actual.Kind() != reflect.Map {
+		return fmt.Errorf("element %s: got %s, want object",
+			element, kind(actual))
+	}
+	// BUG: handle only string keys
+	for _, key := range schema.MapKeys() {
+		acv := actual.MapIndex(key)
+		if !acv.IsValid() {
+			return fmt.Errorf("element %s: missing child %s",
+				element, key.String())
+		}
+		elmt := key.String()
+		if element != "" {
+			elmt = element + sep + elmt
+		}
+		err := compareStructure(elmt, sep, acv, schema.MapIndex(key))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
