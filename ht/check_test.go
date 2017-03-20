@@ -111,15 +111,15 @@ type TC struct {
 	e error
 }
 
-var someError = fmt.Errorf("any error")
-var prepareError = fmt.Errorf("prepare error")
+var errCheck = fmt.Errorf("any error during Execute of a check")
+var errDuringPrepare = fmt.Errorf("prepare error")
 
 const ms = 1e6
 
 func runTest(t *testing.T, i int, tc TC) {
 	fakeTest := Test{Response: tc.r}
 	if err := tc.c.Prepare(); err != nil {
-		if tc.e != prepareError {
+		if tc.e != errDuringPrepare {
 			t.Errorf("%d. %s %+v: unexpected error during Prepare %v",
 				i, NameOf(tc.c), tc.c, err)
 		}
@@ -137,7 +137,7 @@ func runTest(t *testing.T, i int, tc TC) {
 			i, NameOf(tc.c), tc.c, tc.e)
 	case got != nil && tc.e != nil:
 		_, malformed := got.(MalformedCheck)
-		if (tc.e == someError && !malformed) ||
+		if (tc.e == errCheck && !malformed) ||
 			(tc.e == ErrNotFound && got == ErrNotFound) ||
 			(tc.e == ErrFoundForbidden && got == ErrFoundForbidden) {
 			return

@@ -53,7 +53,7 @@ var htmlTagTests = []TC{
 	{hcr, &HTMLTag{Selector: "p.X", Count: 2}, nil},
 	{hcr, &HTMLTag{Selector: "#mt", Count: 1}, nil},
 	{hcr, &HTMLTag{Selector: "h2"}, ErrNotFound},
-	{hcr, &HTMLTag{Selector: "h1", Count: 2}, someError},
+	{hcr, &HTMLTag{Selector: "h1", Count: 2}, errCheck},
 	{hcr, &HTMLTag{Selector: "h1", Count: -1}, ErrFoundForbidden},
 	{hcr, &HTMLTag{Selector: "p.z"}, ErrNotFound},
 	{hcr, &HTMLTag{Selector: "#nil"}, ErrNotFound},
@@ -75,11 +75,11 @@ var htmlContainsTests = []TC{
 	{hcr, &HTMLContains{Selector: "span",
 		Text: []string{"World"}, Complete: true}, nil},
 	{hcr, &HTMLContains{Selector: "p.X",
-		Text: []string{"Hello World", "FooBar"}}, someError},
+		Text: []string{"Hello World", "FooBar"}}, errCheck},
 	{hcr, &HTMLContains{Selector: "p.X",
-		Text: []string{"Hello World"}, Complete: true}, someError},
+		Text: []string{"Hello World"}, Complete: true}, errCheck},
 	{hcr, &HTMLContains{Selector: "p.X",
-		Text: []string{"Hello World", "Thanks!", "ZZZ"}}, someError},
+		Text: []string{"Hello World", "Thanks!", "ZZZ"}}, errCheck},
 	{hcr, &HTMLContains{Selector: "div.WS p.em",
 		Text: []string{"Interwordemphasis"}}, nil},
 	{hcr, &HTMLContains{Selector: "div.WS p.strong",
@@ -93,11 +93,11 @@ var htmlContainsTests = []TC{
 	{hcr, &HTMLContains{Selector: "li",
 		Text: []string{"Waz", "Bar", "Foo"}}, nil},
 	{hcr, &HTMLContains{Selector: "li", InOrder: true,
-		Text: []string{"Waz", "Bar", "Foo"}}, someError},
+		Text: []string{"Waz", "Bar", "Foo"}}, errCheck},
 	{hcr, &HTMLContains{Selector: "li", Complete: true,
 		Text: []string{"One", "Waz", "Bar", "Foo", "Three", "Second"}}, nil},
 	{hcr, &HTMLContains{Selector: "li", Complete: true, InOrder: true,
-		Text: []string{"One", "Waz", "Bar", "Foo", "Three", "Second"}}, someError},
+		Text: []string{"One", "Waz", "Bar", "Foo", "Three", "Second"}}, errCheck},
 	{hcr, &HTMLContains{Selector: "li", Complete: true, InOrder: true,
 		Text: []string{"Foo", "Bar", "Waz", "One", "Second", "Three"}}, nil},
 	{hcr, &HTMLContains{Selector: "p",
@@ -163,7 +163,7 @@ func TestW3CValidatorHTML(t *testing.T) {
 			{Prefix: "& did not start a character reference"},
 		},
 	}
-	runTest(t, 1, TC{rr2, check2, someError})
+	runTest(t, 1, TC{rr2, check2, errCheck})
 
 	check3 := W3CValidHTML{
 		AllowedErrors: 3,

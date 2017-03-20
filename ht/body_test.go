@@ -22,13 +22,13 @@ var bodyTests = []TC{
 	{br, &Body{Contains: "foo bar", Count: 1}, nil},
 	{br, &Body{Contains: "sit"}, ErrNotFound},
 	{br, &Body{Contains: "bar", Count: -1}, ErrFoundForbidden},
-	{br, &Body{Contains: "bar", Count: 2}, someError}, // TODO: real error checking
+	{br, &Body{Contains: "bar", Count: 2}, errCheck}, // TODO: real error checking
 	{br, &Body{Prefix: "foo bar", Suffix: "foo foo 15\""}, nil},
 	{br, &Body{Min: 5, Max: 500}, nil},
-	{br, &Body{Min: 500}, someError},
-	{br, &Body{Max: 10}, someError},
+	{br, &Body{Min: 500}, errCheck},
+	{br, &Body{Max: 10}, errCheck},
 	{br, &Body{Equals: "foo bar baz foo foo 15\""}, nil},
-	{br, &Body{Equals: "foo bar baZ foo foo 15\""}, someError},
+	{br, &Body{Equals: "foo bar baZ foo foo 15\""}, errCheck},
 }
 
 func TestBody(t *testing.T) {
@@ -40,8 +40,8 @@ func TestBody(t *testing.T) {
 
 var utf8Tests = []TC{
 	{Response{BodyStr: "All fine!"}, UTF8Encoded{}, nil},
-	{Response{BodyStr: "BOMs \ufeff sucks!"}, UTF8Encoded{}, someError},
-	{Response{BodyStr: "Strange \xbd\xb2\x3d\xbc"}, UTF8Encoded{}, someError},
+	{Response{BodyStr: "BOMs \ufeff sucks!"}, UTF8Encoded{}, errCheck},
+	{Response{BodyStr: "Strange \xbd\xb2\x3d\xbc"}, UTF8Encoded{}, errCheck},
 }
 
 func TestUTF8Encoded(t *testing.T) {
@@ -61,13 +61,13 @@ var srbh = Response{
 var sortedTests = []TC{
 	{srb, &Sorted{Text: []string{"foo", "waz", "4"}}, nil},
 	{srb, &Sorted{Text: []string{"foo 1 b", "ar 2 w", "az"}}, nil},
-	{srb, &Sorted{Text: []string{"1", "2", "??", "3", "4"}}, someError},
+	{srb, &Sorted{Text: []string{"1", "2", "??", "3", "4"}}, errCheck},
 	{srb, &Sorted{Text: []string{"1", "2", "??", "3", "4"}, AllowedMisses: 1}, nil},
 	{srb, &Sorted{Text: []string{"1", "2", "??", "3", "XXX"}, AllowedMisses: 2}, nil},
-	{srb, &Sorted{Text: []string{"YYY", "2", "??", "3", "XXX"}, AllowedMisses: 2}, someError},
-	{srb, &Sorted{Text: []string{"xxx", "yyy", "2", "??"}, AllowedMisses: 2}, someError},
-	{srb, &Sorted{Text: []string{"xxx", "yyy", "zzz", "??"}, AllowedMisses: 4}, prepareError},
-	{srb, &Sorted{Text: []string{"1"}}, prepareError},
+	{srb, &Sorted{Text: []string{"YYY", "2", "??", "3", "XXX"}, AllowedMisses: 2}, errCheck},
+	{srb, &Sorted{Text: []string{"xxx", "yyy", "2", "??"}, AllowedMisses: 2}, errCheck},
+	{srb, &Sorted{Text: []string{"xxx", "yyy", "zzz", "??"}, AllowedMisses: 4}, errDuringPrepare},
+	{srb, &Sorted{Text: []string{"1"}}, errDuringPrepare},
 	{srbh, &Sorted{Text: []string{"Foo", "Bar", "Waz"}}, nil},
 	{srbh, &Sorted{Text: []string{"Interwordemphasis", "Some important things", "Waz", "Three"}}, nil},
 }

@@ -23,8 +23,8 @@ var jsonExpressionTests = []TC{
 	{jr, &JSONExpr{Expression: "(.foo == 5) && ($len(.bar)==3) && (.bar[1]==2)"}, nil},
 	{jr, &JSONExpr{Expression: "$max(.bar) == 3"}, nil},
 	{jr, &JSONExpr{Expression: "$has(.bar, 2)"}, nil},
-	{jr, &JSONExpr{Expression: "$has(.bar, 7)"}, someError},
-	{jr, &JSONExpr{Expression: ".foo == 3"}, someError},
+	{jr, &JSONExpr{Expression: "$has(.bar, 7)"}, errCheck},
+	{jr, &JSONExpr{Expression: ".foo == 3"}, errCheck},
 	{ar, &JSONExpr{Expression: "$len(.) > 3"}, nil},
 	{ar, &JSONExpr{Expression: "$len(.) == 4"}, nil},
 	{ar, &JSONExpr{Expression: ".[0] == \"jo nesbo\""}, nil},
@@ -43,10 +43,10 @@ var jsonConditionTests = []TC{
 	{jr, &JSON{Element: "bar.1", Condition: Condition{Equals: "2"}}, nil},
 	{jr, &JSON{Element: "bar.2"}, nil},
 	{jr, &JSON{Element: "bar#1", Sep: "#", Condition: Condition{Equals: "2"}}, nil},
-	{jr, &JSON{Element: "foo", Condition: Condition{Equals: "bar"}}, someError},
+	{jr, &JSON{Element: "foo", Condition: Condition{Equals: "bar"}}, errCheck},
 	{jr, &JSON{Element: "bar.5"}, fmt.Errorf("no index 5 in array bar of len 3")},
-	{jr, &JSON{Element: "bar.3", Condition: Condition{Equals: "2"}}, someError},
-	{jr, &JSON{Element: "foo.wuz", Condition: Condition{Equals: "bar"}}, someError},
+	{jr, &JSON{Element: "bar.3", Condition: Condition{Equals: "2"}}, errCheck},
+	{jr, &JSON{Element: "foo.wuz", Condition: Condition{Equals: "bar"}}, errCheck},
 	{jr, &JSON{Element: "qux", Condition: Condition{Equals: "bar"}},
 		fmt.Errorf("element qux not found")},
 
@@ -57,12 +57,12 @@ var jsonConditionTests = []TC{
 	{jre, &JSON{Element: "bar.1", Condition: Condition{Equals: `"qux"`}}, nil},
 	{jre, &JSON{Element: "waz", Condition: Condition{Equals: `true`}}, nil},
 	{jre, &JSON{Element: "nil", Condition: Condition{Equals: `null`}}, nil},
-	{jre, &JSON{Element: "nil", Condition: Condition{Prefix: `"`}}, someError},
+	{jre, &JSON{Element: "nil", Condition: Condition{Prefix: `"`}}, errCheck},
 	{jre, &JSON{Element: "uuid", Condition: Condition{
 		Regexp: `^"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"$`}}, nil},
 
 	{jre, &JSON{}, nil},
-	{jrx, &JSON{}, someError},
+	{jrx, &JSON{}, errCheck},
 
 	{jri, &JSON{Element: ".", Condition: Condition{Equals: "123"}}, nil},
 	{jrf, &JSON{Element: ".", Condition: Condition{Equals: "45.67"}}, nil},
@@ -76,7 +76,7 @@ var jsonConditionTests = []TC{
 		nil},
 	{jrm, &JSON{Element: ".",
 		Embedded: &JSON{Element: "bar.1", Condition: Condition{Equals: "XX"}}},
-		someError},
+		errCheck},
 }
 
 func TestJSONCondition(t *testing.T) {
@@ -109,7 +109,7 @@ var jsonSchemaTests = []TC{
 	{jrm, &JSON{Element: ".",
 		Embedded: &JSON{Schema: `{"foo": 0, "bar": [0,0,0]}`}}, nil},
 	{jrm, &JSON{Element: ".",
-		Embedded: &JSON{Schema: `{"foo": 0, "bar": true}`}}, someError},
+		Embedded: &JSON{Schema: `{"foo": 0, "bar": true}`}}, errCheck},
 }
 
 func TestJSONSchema(t *testing.T) {

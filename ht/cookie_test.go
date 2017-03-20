@@ -33,26 +33,26 @@ var cookieResp = Response{Response: &http.Response{
 var setCookieTests = []TC{
 	// Basic checks
 	{cookieResp, &SetCookie{Name: "a"}, nil},
-	{cookieResp, &SetCookie{Name: "x"}, someError},
+	{cookieResp, &SetCookie{Name: "x"}, errCheck},
 	{cookieResp, &SetCookie{Name: "a", Value: Condition{Equals: "1"}}, nil},
-	{cookieResp, &SetCookie{Name: "a", Value: Condition{Equals: "X"}}, someError},
+	{cookieResp, &SetCookie{Name: "a", Value: Condition{Equals: "X"}}, errCheck},
 	{cookieResp, &SetCookie{Name: "a", Path: Condition{Equals: "/some"}}, nil},
-	{cookieResp, &SetCookie{Name: "a", Path: Condition{Equals: "/XXX"}}, someError},
+	{cookieResp, &SetCookie{Name: "a", Path: Condition{Equals: "/XXX"}}, errCheck},
 	{cookieResp, &SetCookie{Name: "a", Domain: Condition{Suffix: ".org"}}, nil},
-	{cookieResp, &SetCookie{Name: "a", Domain: Condition{Suffix: "XXX"}}, someError},
+	{cookieResp, &SetCookie{Name: "a", Domain: Condition{Suffix: "XXX"}}, errCheck},
 	{cookieResp, &SetCookie{Name: "a", MinLifetime: 10 * time.Second}, nil},
-	{cookieResp, &SetCookie{Name: "a", MinLifetime: 30 * time.Second}, someError},
+	{cookieResp, &SetCookie{Name: "a", MinLifetime: 30 * time.Second}, errCheck},
 
 	// Different types of cookies
 	{cookieResp, &SetCookie{Name: "a", Type: "persistent secure exposed"}, nil},
-	{cookieResp, &SetCookie{Name: "a", Type: "session"}, someError},
-	{cookieResp, &SetCookie{Name: "a", Type: "unsafe"}, someError},
-	{cookieResp, &SetCookie{Name: "a", Type: "httpOnly"}, someError},
+	{cookieResp, &SetCookie{Name: "a", Type: "session"}, errCheck},
+	{cookieResp, &SetCookie{Name: "a", Type: "unsafe"}, errCheck},
+	{cookieResp, &SetCookie{Name: "a", Type: "httpOnly"}, errCheck},
 	{cookieResp, &SetCookie{Name: "b", Type: "session unsafe httpOnly"}, nil},
-	{cookieResp, &SetCookie{Name: "b", Type: "exposed"}, someError},
+	{cookieResp, &SetCookie{Name: "b", Type: "exposed"}, errCheck},
 
 	// Checking for absence
-	{cookieResp, &SetCookie{Name: "a", Absent: true}, someError},
+	{cookieResp, &SetCookie{Name: "a", Absent: true}, errCheck},
 	{cookieResp, &SetCookie{Name: "X", Absent: true}, nil},
 }
 
@@ -64,11 +64,11 @@ func TestSetCookie(t *testing.T) {
 
 var delCookieTests = []TC{
 	// Basic checks
-	{cookieResp, &DeleteCookie{Name: "a"}, someError},
-	{cookieResp, &DeleteCookie{Name: "b"}, someError},
+	{cookieResp, &DeleteCookie{Name: "a"}, errCheck},
+	{cookieResp, &DeleteCookie{Name: "b"}, errCheck},
 	{cookieResp, &DeleteCookie{Name: "d"}, nil},
 	{cookieResp, &DeleteCookie{Name: "e"}, nil},
-	{cookieResp, &DeleteCookie{Name: "e", Path: "/wrong"}, someError},
+	{cookieResp, &DeleteCookie{Name: "e", Path: "/wrong"}, errCheck},
 }
 
 func TestDeleteCookie(t *testing.T) {

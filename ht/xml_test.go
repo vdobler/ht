@@ -38,7 +38,7 @@ var xmlTests = []TC{
 	{xmlr, &XML{Path: "/library/book/isbn", Condition: Condition{Equals: "0836217462"}}, nil},
 	{xmlr, &XML{Path: "/library/book/character[2]/name", Condition: Condition{Equals: "Snoopy"}}, nil},
 	{xmlr, &XML{Path: "//book[author/@id='CMS']/title", Condition: Condition{Contains: "Dog"}}, nil},
-	{xmlr, &XML{Path: "/library/book/notthere", Condition: Condition{Contains: "a"}}, someError},
+	{xmlr, &XML{Path: "/library/book/notthere", Condition: Condition{Contains: "a"}}, errCheck},
 }
 
 func TestXML(t *testing.T) {

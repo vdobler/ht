@@ -824,7 +824,7 @@ func fileData(s string, variables map[string]string) (data string, basename stri
 }
 
 var (
-	redirectNofollow = errors.New("we do not follow redirects")
+	errRedirectNofollow = errors.New("we do not follow redirects")
 )
 
 // executeRequest performs the HTTP request defined in t which must have been
@@ -847,7 +847,7 @@ func (t *Test) executeRequest() error {
 	}
 
 	resp, err := t.client.Do(t.Request.Request)
-	if ue, ok := err.(*url.Error); ok && ue.Err == redirectNofollow &&
+	if ue, ok := err.(*url.Error); ok && ue.Err == errRedirectNofollow &&
 		!t.Request.FollowRedirects {
 		// Clear err if it is just our redirect non-following policy.
 		err = nil
@@ -1099,7 +1099,7 @@ func (p Execution) Skip() bool {
 }
 
 func dontFollowRedirects(*http.Request, []*http.Request) error {
-	return redirectNofollow
+	return errRedirectNofollow
 }
 
 // newReplacer produces a strings.Replacer which

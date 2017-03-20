@@ -37,7 +37,7 @@ func TestAnyOne(t *testing.T) {
 	}{
 		{"foo", nil, false},
 		{"bar", nil, true},
-		{"qux", someError, true},
+		{"qux", errCheck, true},
 	}
 
 	for i, at := range anytcs {
@@ -64,8 +64,8 @@ func TestNone(t *testing.T) {
 		err  error
 		both bool
 	}{
-		{"foo", someError, false}, // foo fulfilled -> error after first, second skipped
-		{"bar", someError, true},  // bar fulfilled -> error after executing both
+		{"foo", errCheck, false}, // foo fulfilled -> error after first, second skipped
+		{"bar", errCheck, true},  // bar fulfilled -> error after executing both
 		{"qux", nil, true},        // both false -> pass, both executed
 	}
 

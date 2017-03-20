@@ -35,13 +35,13 @@ var xmlct = Response{Response: &http.Response{
 var contentTypeTests = []TC{
 	{jsonct, &ContentType{Is: "application/json"}, nil},
 	{jsonct, &ContentType{Is: "json"}, nil},
-	{jsonct, &ContentType{Is: "text/html"}, someError},
-	{jsonct, &ContentType{Is: "application/json", Charset: "any"}, someError},
+	{jsonct, &ContentType{Is: "text/html"}, errCheck},
+	{jsonct, &ContentType{Is: "application/json", Charset: "any"}, errCheck},
 	{htmlct, &ContentType{Is: "text/html"}, nil},
 	{htmlct, &ContentType{Is: "text/html", Charset: "UTF-8"}, nil},
-	{htmlct, &ContentType{Is: "text/html", Charset: "iso-latin-1"}, someError},
+	{htmlct, &ContentType{Is: "text/html", Charset: "iso-latin-1"}, errCheck},
 
-	{Response{}, &ContentType{Is: "application/json"}, someError},
+	{Response{}, &ContentType{Is: "application/json"}, errCheck},
 }
 
 func TestContentType(t *testing.T) {
@@ -56,15 +56,15 @@ var redirectTests = []TC{
 	{jsonct, &Redirect{To: ".../foo/bar"}, nil},
 	{jsonct, &Redirect{To: "http://example.../bar"}, nil},
 	{jsonct, &Redirect{To: "http://example.org/foo/bar", StatusCode: 302}, nil},
-	{jsonct, &Redirect{To: "http://other.domain/waz"}, someError},
-	{jsonct, &Redirect{To: "http://example.org/foo/bar", StatusCode: 307}, someError},
-	{jsonct, &Redirect{To: "", StatusCode: 302}, prepareError},
+	{jsonct, &Redirect{To: "http://other.domain/waz"}, errCheck},
+	{jsonct, &Redirect{To: "http://example.org/foo/bar", StatusCode: 307}, errCheck},
+	{jsonct, &Redirect{To: "", StatusCode: 302}, errDuringPrepare},
 
-	{htmlct, &Redirect{To: "http://example.org/foo/bar"}, someError},
-	{htmlct, &Redirect{To: "http://example.org/"}, someError},
-	{Response{}, &Redirect{To: "http://example.org/"}, someError},
+	{htmlct, &Redirect{To: "http://example.org/foo/bar"}, errCheck},
+	{htmlct, &Redirect{To: "http://example.org/"}, errCheck},
+	{Response{}, &Redirect{To: "http://example.org/"}, errCheck},
 	// Missing Location
-	{htmlct, &Redirect{To: "http://example.org"}, someError},
+	{htmlct, &Redirect{To: "http://example.org"}, errCheck},
 }
 
 func TestRedirect(t *testing.T) {
@@ -115,8 +115,8 @@ func TestRedirectChain(t *testing.T) {
 		{resp, &RedirectChain{Via: []string{".../wiz"}}, nil},
 		{resp, &RedirectChain{Via: []string{".../foo", ".../wiz"}}, nil},
 
-		{resp, &RedirectChain{Via: []string{".../XXX"}}, someError},
-		{resp, &RedirectChain{Via: []string{".../foo", ".../bar"}}, someError},
+		{resp, &RedirectChain{Via: []string{".../XXX"}}, errCheck},
+		{resp, &RedirectChain{Via: []string{".../foo", ".../bar"}}, errCheck},
 	}
 
 	for i, tc := range rdChainTests {
