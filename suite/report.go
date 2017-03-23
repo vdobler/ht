@@ -18,7 +18,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-	"unicode/utf8"
 
 	"github.com/vdobler/ht/ht"
 	mimelist "github.com/vdobler/ht/mime"
@@ -531,29 +530,42 @@ func HTMLReport(dir string, s *Suite) error {
 // JUnit style output.
 // ----------------------------------------------------------------------------
 
-// JUnit4XML generates a JUnit 4 compatible XML result with each Check
+// JUnit4XML generates a JUnit 4 compatible XML result with each Test
 // reported as an individual testcase.
+// The following mapping is used from ht to JUnit
+//     Suite  -->  testsuite
+//     Test   -->  testcase
+//     Check  -->  assertion (reported only as number)
+//
 // NotRun checks are reported as Skipped and Bogus checks are counted as
 // Errored tests.
+//
+// Teardown tests are _not_ included in the JUnit XML output: A failed or
+// errored teardwon test is not a suite failure/error but this cannot be
+// modeled in the XML output (such test setup/teardwon code is not part
+// of the testsuite in JUnit). Tools like Teamcity would report a broken
+// build if any failed/errored teardown test was included in the JUnit XML
+// output. We do not omit the Setup Tests as these are supposed to pass.
 func (s *Suite) JUnit4XML() (string, error) {
 	// Local types used for XML encoding
 	type SysOut struct {
 		XMLName xml.Name `xml:"system-out"`
-		Data    string   `xml:",innerxml"`
+		Data    string   `xml:",cdata"`
 	}
 	type ErrorMsg struct {
 		Message string `xml:"message,attr"`
 		Typ     string `xml:"type,attr"`
 	}
 	type Testcase struct {
-		XMLName   xml.Name  `xml:"testcase"`
-		Name      string    `xml:"name,attr"`
-		Classname string    `xml:"classname,attr"`
-		Time      float64   `xml:"time,attr"`
-		Skipped   *struct{} `xml:"Skipped,omitempty"`
-		Error     *ErrorMsg `xml:"error,omitempty"`
-		Failure   *ErrorMsg `xml:"failure,omitempty"`
-		SystemOut string    `xml:"system-out,omitempty"`
+		XMLName    xml.Name  `xml:"testcase"`
+		Name       string    `xml:"name,attr"`
+		Classname  string    `xml:"classname,attr"`
+		Assertions int       `xml:"assertions,attr"`
+		Time       float64   `xml:"time,attr"`
+		Skipped    *struct{} `xml:"Skipped,omitempty"`
+		Error      *ErrorMsg `xml:"error,omitempty"`
+		Failure    *ErrorMsg `xml:"failure,omitempty"`
+		SystemOut  SysOut
 	}
 	type Property struct {
 		Name  string `xml:"name,attr"`
@@ -561,6 +573,7 @@ func (s *Suite) JUnit4XML() (string, error) {
 	}
 	type Testsuite struct {
 		XMLName xml.Name `xml:"testsuite"`
+		Name    string   `xml:"name,attr"`
 		Tests   int      `xml:"tests,attr"`
 		// Disabled   int        `xml:"disabled,attr"`
 		Errors     int        `xml:"errors,attr"`
@@ -576,57 +589,42 @@ func (s *Suite) JUnit4XML() (string, error) {
 	// Unwind all Checks to their own testcase.
 	skipped, passed, failed, errored := 0, 0, 0, 0
 	testcases := []Testcase{}
-	for _, test := range s.Tests {
-		if test.Status >= ht.Error {
-			// report all checks as errored but with special message
-			for _, cr := range test.CheckResults {
-				tc := Testcase{
-					Name:      cr.Name,
-					Classname: test.Name,
-					SystemOut: cr.JSON,
-				}
-				tc.Error = &ErrorMsg{
-					Message: test.Error.Error(),
-					Typ:     fmt.Sprintf("main test error, check not run"),
-				}
-				errored++
-				testcases = append(testcases, tc)
-			}
-
-		} else {
-			for _, cr := range test.CheckResults {
-				tc := Testcase{
-					Name:      cr.Name,
-					Classname: test.Name,
-					Time:      float64(cr.Duration) / 1e9,
-					SystemOut: cr.JSON,
-				}
-
-				switch cr.Status {
-				case ht.NotRun, ht.Skipped:
-					tc.Skipped = &struct{}{}
-					skipped++
-				case ht.Pass:
-					passed++
-				case ht.Fail:
-					tc.Failure = &ErrorMsg{
-						Message: cr.Error.Error(),
-						Typ:     fmt.Sprintf("%T", test.Error),
-					}
-					failed++
-				case ht.Error, ht.Bogus:
-					tc.Error = &ErrorMsg{
-						Message: test.Error.Error(),
-						Typ:     fmt.Sprintf("%T", test.Error),
-					}
-					errored++
-				default:
-					panic(cr.Status)
-				}
-
-				testcases = append(testcases, tc)
-			}
+	for testno, test := range s.Tests {
+		if testno >= s.noneTeardownTest {
+			break
 		}
+		buf := &bytes.Buffer{}
+		var sysout string
+		err := test.PrintReport(buf)
+		if err != nil {
+			sysout = err.Error()
+		} else {
+			sysout = buf.String()
+		}
+		tc := Testcase{
+			Name:       test.Name,
+			Classname:  s.Name,
+			Time:       float64(test.FullDuration) / 1e9,
+			Assertions: len(test.CheckResults),
+			SystemOut:  SysOut{Data: sysout},
+		}
+
+		switch test.Status {
+		case ht.NotRun, ht.Skipped:
+			tc.Skipped = &struct{}{}
+			skipped++
+		case ht.Pass:
+			passed++
+		case ht.Fail:
+			tc.Failure = &ErrorMsg{Message: test.Error.Error()}
+			failed++
+		case ht.Error, ht.Bogus:
+			errored++
+			tc.Error = &ErrorMsg{Message: test.Error.Error()}
+		default:
+			panic("Oooops")
+		}
+		testcases = append(testcases, tc)
 	}
 
 	// Generate a standard text report which becomes the standard-out of
@@ -637,11 +635,12 @@ func (s *Suite) JUnit4XML() (string, error) {
 	if err != nil {
 		sysout = err.Error()
 	} else {
-		sysout = xmlEscapeChars(buf.Bytes())
+		sysout = buf.String()
 	}
 
 	// Populate the Testsuite type for marshalling.
 	ts := Testsuite{
+		Name:      s.Name,
 		Tests:     skipped + passed + failed + errored,
 		Errors:    errored,
 		Failures:  failed,
@@ -649,7 +648,7 @@ func (s *Suite) JUnit4XML() (string, error) {
 		Time:      float64(s.Duration) / 1e9,
 		Timestamp: s.Started.Format("2006-01-02T15:04:05"),
 		Testcase:  testcases,
-		SystemOut: SysOut{Data: "\n" + sysout},
+		SystemOut: SysOut{Data: sysout},
 	}
 	for k, v := range s.Variables {
 		ts.Properties = append(ts.Properties, Property{Name: k, Value: v})
@@ -660,31 +659,4 @@ func (s *Suite) JUnit4XML() (string, error) {
 		return string(data), err
 	}
 	return xml.Header + string(data) + "\n", nil
-}
-
-// xmlEscapeChars escapes the reserved characters. TODO: \r ?
-func xmlEscapeChars(s []byte) string {
-	buf := &bytes.Buffer{}
-	for i := 0; i < len(s); {
-		rune, width := utf8.DecodeRune(s[i:])
-		i += width
-		switch rune {
-		case '<':
-			buf.WriteString("&lt;")
-		case '>':
-			buf.WriteString("&gt;")
-		case '&':
-			buf.WriteString("&amp;")
-		case '"':
-			buf.WriteString("&quot;")
-		case '\'':
-			buf.WriteString("&apos;")
-		case '\t':
-			buf.WriteString("&#x9;")
-		default:
-			// TODO: not every rune is allowed in XML
-			buf.WriteRune(rune)
-		}
-	}
-	return buf.String()
 }

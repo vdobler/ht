@@ -40,8 +40,9 @@ type Suite struct {
 	Log            *log.Logger       // The logger used.
 	Verbosity      int
 
-	scope map[string]string
-	tests []*RawTest
+	scope            map[string]string
+	tests            []*RawTest
+	noneTeardownTest int
 }
 
 func shouldRun(t int, rs *RawSuite, s *Suite) bool {
@@ -107,12 +108,13 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 
 		Tests: make([]*ht.Test, 0, len(rs.tests)),
 
-		Variables:      make(map[string]string),
-		FinalVariables: make(map[string]string),
-		Jar:            jar,
-		Log:            logger,
-		Verbosity:      rs.Verbosity,
-		tests:          rs.tests,
+		Variables:        make(map[string]string),
+		FinalVariables:   make(map[string]string),
+		Jar:              jar,
+		Log:              logger,
+		Verbosity:        rs.Verbosity,
+		tests:            rs.tests,
+		noneTeardownTest: len(rs.Setup) + len(rs.Main),
 	}
 
 	suite.scope = newScope(global, rs.Variables, true)
