@@ -4,6 +4,38 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  Suites and Tests have an ugly bidirectional coupling:
+     - A Suite is a collection of Tests. This okay, needed and sensible
+     - A Test carries the Reporting field that is filled by the
+       Suite to generate reports.
+   A more sensible structure would be:
+
+       type Suite struct {
+           Elements []struct{
+               Test *Test
+               Meta struct{ ... }
+           }
+       }
+   
+   So that a Suite contains a list of Elements which are basically just Tests
+   but we can record lots of meta data like sequence numbers, was it a Setup
+   or a Teardown test, which Scenario died it come from, sould it be
+   counted or reported during determination of overall status, etc. pp.
+   This meta-data could contain stuff only needed for report generation like
+   HTML id attributes.
+   On the other hand it would be nice if such meta data could be attached
+   to a Test, so that the test drags the meta data with it while being moved
+   around. Something like
+
+       type Test struct {
+           Meta map[string]interface{}
+       }
+   
+   Now Suites could stuff in test.Meta["suite.seqno"] = 1467 and a throughput
+   test could attach Meta["tpt.repetition"] = 12, a report could glue
+   Meta["uuid"] = "1234-5678-9876" to a test, etc.
+
+
 *  Load-/Throughput testing has no stop condition except the desired
    duration: Stuff like abort once too many error occur is missing.
    --> Done for errors. Failures still missing
