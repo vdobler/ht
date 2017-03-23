@@ -78,11 +78,11 @@ type Condition struct {
 	// The string "OR" is ignored an can be used to increase the
 	// readability of this condition in sutiation like
 	//     Condition{Is: "Hexcolor OR RGBColor OR MongoID"}
-	Is string
+	Is string `json:",omitempty"`
 
 	// Time checks whether the string is a valid time if parsed
 	// with Time as the layout string.
-	Time string
+	Time string `json:",omitempty"`
 
 	re *regexp.Regexp
 }
