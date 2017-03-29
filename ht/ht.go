@@ -224,11 +224,6 @@ type Test struct {
 	FullDuration time.Duration `json:"-"`
 	Tries        int           `json:"-"`
 	CheckResults []CheckResult `json:"-"` // The individual checks.
-	Reporting    struct {
-		SeqNo     string
-		Filename  string
-		Extension string
-	} `json:"-"`
 
 	// VarEx may be used to popultate variables from the response. TODO: Rename.
 	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
@@ -242,11 +237,57 @@ type Test struct {
 	}
 
 	client *http.Client
+
+	// metadata allows to attach additional data to a Test.
+	metadata map[string]interface{}
 }
 
 // Disable disables t by setting the maximum number of tries to -1.
 func (t *Test) Disable() {
 	t.Execution.Tries = -1
+}
+
+// SetMetadata attaches value to t under the given key.
+func (t *Test) SetMetadata(key string, value interface{}) {
+	if t.metadata == nil {
+		t.metadata = make(map[string]interface{})
+	}
+	t.metadata[key] = value
+}
+
+// GetMetadata returns the meta data from t associated with the given
+// key or nil if no such key has been assiciated.
+func (t *Test) GetMetadata(key string) interface{} {
+	if t.metadata == nil {
+		return nil
+	}
+	return t.metadata[key]
+}
+
+// GetStringMetadata returns the meta data associated with t for the
+// given key or the empty string if no data was associated. It panics if
+// the meta data for key is not a string.
+func (t *Test) GetStringMetadata(key string) string {
+	if t.metadata == nil {
+		return ""
+	}
+	if v, ok := t.metadata[key]; ok {
+		return v.(string)
+	}
+	return ""
+}
+
+// GetIntMetadata returns the meta data associated with t for the
+// given key or 0 if no data was associated. It panics if the meta
+// data for key is not an int.
+func (t *Test) GetIntMetadata(key string) int {
+	if t.metadata == nil {
+		return 0
+	}
+	if v, ok := t.metadata[key]; ok {
+		return v.(int)
+	}
+	return 0
 }
 
 // CheckResult captures the outcom of a single check inside a test.

@@ -132,7 +132,7 @@ func runQuick(cmd *Command, urls []string) {
 			},
 			Checks: makeChecks(u),
 		}
-		test.Reporting.SeqNo = fmt.Sprintf("Quick-%02d", i+1)
+		test.SetMetadata("SeqNo", fmt.Sprintf("Quick-%02d", i+1))
 		col.Tests = append(col.Tests, test)
 	}
 

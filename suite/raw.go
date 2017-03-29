@@ -589,11 +589,11 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 	executor := func(test *ht.Test) error {
 		i++
 		if isSetup() {
-			test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i)
+			test.SetMetadata("SeqNo", fmt.Sprintf("Setup-%02d", i))
 		} else if isMain() {
-			test.Reporting.SeqNo = fmt.Sprintf("Main-%02d", i-setup)
+			test.SetMetadata("SeqNo", fmt.Sprintf("Main-%02d", i-setup))
 		} else {
-			test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i-setup-main)
+			test.SetMetadata("SeqNo", fmt.Sprintf("Teardown-%02d", i-setup-main))
 		}
 
 		switch {

@@ -84,7 +84,7 @@ func (sc *Scenario) setup(logger *log.Logger) *Suite {
 	i := 0
 	executor := func(test *ht.Test) error {
 		i++
-		test.Reporting.SeqNo = fmt.Sprintf("Setup-%02d", i)
+		test.SetMetadata("SeqNo", fmt.Sprintf("Setup-%02d", i))
 		if test.Status == ht.Bogus || test.Status == ht.Skipped {
 			return nil
 		}
@@ -113,7 +113,7 @@ func (sc *Scenario) teardown(logger *log.Logger) *Suite {
 	i := 0
 	executor := func(test *ht.Test) error {
 		i++
-		test.Reporting.SeqNo = fmt.Sprintf("Teardown-%02d", i)
+		test.SetMetadata("SeqNo", fmt.Sprintf("Teardown-%02d", i))
 		if test.Status == ht.Bogus || test.Status == ht.Skipped {
 			return nil
 		}
@@ -196,12 +196,18 @@ func (p *pool) newThread(stop chan bool, logger *log.Logger) {
 			executor := func(test *ht.Test) error {
 				t++
 
-				// TODO: Put this stuff into SeqNo only??
-				test.Name = fmt.Sprintf("%d/%d/%d/%d%s%s%s%s",
-					p.No+1, thread, repetition, t, IDSep,
-					p.Scenario.Name, IDSep, test.Name)
+				test.Name = fmt.Sprintf("%d.%s%s%d.%s%sThread%d%sRep%d",
+					p.No+1, p.Scenario.Name, IDSep, t, test.Name, IDSep, thread, IDSep, repetition)
 
-				test.Reporting.SeqNo = test.Name
+				ti := TestIdentifier{
+					Scenario:     p.No + 1,
+					Thread:       thread,
+					Repetition:   repetition,
+					Test:         t,
+					ScenarioName: p.Scenario.Name,
+					TestName:     test.Name,
+				}
+				test.SetMetadata("Identifier", ti)
 
 				if !p.Scenario.RawSuite.tests[t-1].IsEnabled() {
 					test.Status = ht.Skipped
@@ -479,22 +485,36 @@ func Throughput(scenarios []Scenario, opts ThroughputOptions, csvout io.Writer) 
 	return data, makeCollectedSuite(collectedTests, opts.CollectFrom), err
 }
 
+type TestIdentifier struct {
+	Scenario     int
+	Thread       int
+	Repetition   int
+	Test         int
+	ScenarioName string
+	TestName     string
+}
+
+func (ti TestIdentifier) String() string {
+	return fmt.Sprintf("%d/%d/%d/%d%s%s%s%s",
+		ti.Scenario, ti.Thread, ti.Repetition, ti.Test, IDSep,
+		ti.ScenarioName, IDSep, ti.TestName)
+}
+
 func makeCollectedSuite(tests []*ht.Test, from ht.Status) *Suite {
 	suite := Suite{
 		Name:  fmt.Sprintf("Throughput Test with Status >= %s", from),
 		Tests: tests,
 	}
 	for i := range suite.Tests {
-		parts := strings.Split(suite.Tests[i].Reporting.SeqNo, IDSep)
-		nums := strings.Split(parts[0], "/")
-		scen, _ := strconv.Atoi(nums[0])
-		thrd, _ := strconv.Atoi(nums[1])
-		rept, _ := strconv.Atoi(nums[2])
-		test, _ := strconv.Atoi(nums[3])
+		ti := suite.Tests[i].GetMetadata("Identifier").(TestIdentifier)
+		scen := ti.Scenario
+		thrd := ti.Thread
+		rept := ti.Repetition
+		test := ti.Test
 
-		suite.Tests[i].Name = suite.Tests[i].Reporting.SeqNo
-		suite.Tests[i].Reporting.SeqNo = fmt.Sprintf("Scen%02d-Thread%02d-Rep%02d-Test%02d",
-			scen, thrd, rept, test)
+		suite.Tests[i].SetMetadata("SeqNo",
+			fmt.Sprintf("Scen%02d-Thread%02d-Rep%02d-Test%02d",
+				scen, thrd, rept, test))
 	}
 
 	return &suite
@@ -847,7 +867,7 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 			Status:       e.Test.Status,
 			ReqDuration:  time.Duration(e.Test.Response.Duration),
 			TestDuration: time.Duration(e.Test.Duration),
-			ID:           e.Test.Reporting.SeqNo,
+			ID:           e.Test.GetMetadata("Identifier").(TestIdentifier).String(),
 			Error:        e.Test.Error,
 			Wait:         time.Duration(e.Wait),
 			Overage:      time.Duration(e.Overage),
