@@ -176,9 +176,9 @@ func TestW3CValidatorHTML(t *testing.T) {
 func htmlLinksHandler(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	status := 200
-	if strings.Index(r.URL.Path, "/404/") != -1 {
+	if strings.Contains(r.URL.Path, "/404/") {
 		status = 404
-	} else if strings.Index(r.URL.Path, "/302/") != -1 {
+	} else if strings.Contains(r.URL.Path, "/302/") {
 		status = 302
 	}
 	linksHandlerCalls <- r.Host + r.URL.String()

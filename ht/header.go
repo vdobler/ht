@@ -84,7 +84,7 @@ func (c ContentType) Execute(t *Test) error {
 	parts := strings.Split(ct[0], ";")
 	got := strings.TrimSpace(parts[0])
 	want := c.Is
-	if strings.Index(want, "/") == -1 {
+	if !strings.Contains(want, "/") {
 		want = "/" + want
 	}
 	if !strings.HasSuffix(got, want) {

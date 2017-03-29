@@ -83,10 +83,7 @@ func RTHistogram(title string, data map[string][]int, dodge bool, filename strin
 	args := []string{filename + ".R"}
 	cmd := exec.Command(rScriptPath, args...)
 	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 const rScriptPath = `/usr/bin/Rscript`

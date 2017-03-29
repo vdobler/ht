@@ -157,7 +157,7 @@ func (f *Logfile) Prepare() error {
 			Auth: ams,
 		}
 		f.host = f.Remote.Host
-		if strings.Index(f.host, ":") == -1 {
+		if !strings.Contains(f.host, ":") {
 			f.host += ":22"
 		}
 

@@ -14,7 +14,7 @@ var identityTests = []TC{
 }
 
 func TestIdentity(t *testing.T) {
-	for i, tc := range imageTests {
+	for i, tc := range identityTests {
 		runTest(t, i, tc)
 	}
 }

@@ -246,7 +246,7 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 
 	submatches := re.FindStringSubmatch(t.Response.BodyStr)
 	if len(submatches) > e.Submatch {
-		return string(submatches[e.Submatch]), nil
+		return submatches[e.Submatch], nil
 	}
 	if len(submatches) == 0 {
 		return "", fmt.Errorf("no match found in %q", t.Response.BodyStr)

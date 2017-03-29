@@ -307,10 +307,10 @@ func (s *htmlState) checkEscaping(text string) {
 		return
 	}
 
-	if strings.Index(text, "<") != -1 {
+	if strings.Contains(text, "<") {
 		s.err(fmt.Errorf("unescaped '<'"))
 	}
-	if strings.Index(text, ">") != -1 {
+	if strings.Contains(text, ">") {
 		s.err(fmt.Errorf("unescaped '>'"))
 	}
 	for len(text) > 0 {
@@ -357,7 +357,7 @@ func (s *htmlState) checkURL(raw string) {
 	}
 
 	if strings.HasPrefix(raw, "mailto:") {
-		if strings.Index(raw, "@") == -1 {
+		if !strings.Contains(raw, "@") {
 			s.err(fmt.Errorf("not an email address"))
 		}
 		return
@@ -373,7 +373,7 @@ func (s *htmlState) checkURL(raw string) {
 		return
 	}
 
-	if strings.Index(raw, " ") != -1 {
+	if strings.Contains(raw, " ") {
 		s.err(fmt.Errorf("unencoded space in URL"))
 	}
 }

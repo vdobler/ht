@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"mime"
 	"mime/multipart"
 	"net"
@@ -21,7 +20,6 @@ import (
 	"net/textproto"
 	"net/url"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -59,14 +57,6 @@ var Transport = &http.Transport{
 	},
 	TLSHandshakeTimeout:   10 * time.Second,
 	ExpectContinueTimeout: 1 * time.Second,
-}
-
-func float64ToString(f float64) string {
-	t := math.Trunc(f)
-	if math.Abs(t-f) < 1e-6 {
-		return strconv.Itoa(int(t))
-	}
-	return fmt.Sprintf("%g", f)
 }
 
 // Request is a HTTP request.
@@ -616,7 +606,7 @@ func (t *Test) prepareRequest() error {
 	// Create the request.
 	contentType, err := t.newRequest()
 	if err != nil {
-		err := fmt.Errorf("failed preparing request: %s", err.Error())
+		err = fmt.Errorf("failed preparing request: %s", err.Error())
 		t.errorf("%s", err.Error())
 		return err
 	}
@@ -624,9 +614,7 @@ func (t *Test) prepareRequest() error {
 	// Prepare the HTTP header. TODO: Deep Coppy??
 	for h, v := range t.Request.Header {
 		rv := make([]string, len(v))
-		for i := range v {
-			rv[i] = v[i]
-		}
+		copy(rv, v)
 		t.Request.Request.Header[h] = rv
 
 	}
@@ -692,7 +680,7 @@ func (t *Test) prepareRequest() error {
 func (t *Test) newRequest() (contentType string, err error) {
 	// Set efaults for the request method and the parameter transmission type.
 	if t.Request.Method == "" {
-		t.Request.Method = "GET"
+		t.Request.Method = http.MethodGet
 	}
 	if t.Request.ParamsAs == "" {
 		t.Request.ParamsAs = "URL"
@@ -718,25 +706,25 @@ func (t *Test) newRequest() (contentType string, err error) {
 
 	if len(t.Request.Params) > 0 {
 		if t.Request.ParamsAs == "body" || t.Request.ParamsAs == "multipart" {
-			if t.Request.Method == "GET" || t.Request.Method == "HEAD" {
-				err := fmt.Errorf("%s does not allow body or multipart parameters", t.Request.Method)
+			if t.Request.Method == http.MethodGet || t.Request.Method == http.MethodHead {
+				err = fmt.Errorf("%s does not allow body or multipart parameters", t.Request.Method)
 				return "", err
 			}
 			if t.Request.Body != "" {
-				err := fmt.Errorf("body used with body/multipart parameters")
+				err = fmt.Errorf("body used with body/multipart parameters")
 				return "", err
 			}
 		}
 		switch t.Request.ParamsAs {
 		case "URL", "":
-			if strings.Index(rurl, "?") != -1 {
-				rurl += "&" + url.Values(urlValues).Encode()
+			if strings.Contains(rurl, "?") {
+				rurl += "&" + urlValues.Encode()
 			} else {
-				rurl += "?" + url.Values(urlValues).Encode()
+				rurl += "?" + urlValues.Encode()
 			}
 		case "body":
 			contentType = "application/x-www-form-urlencoded"
-			encoded := url.Values(urlValues).Encode()
+			encoded := urlValues.Encode()
 			t.Request.SentBody = encoded
 		case "multipart":
 			b, boundary, err := multipartBody(t.Request.Params, t.Variables)
@@ -750,7 +738,7 @@ func (t *Test) newRequest() (contentType string, err error) {
 			t.Request.SentBody = string(bb)
 			contentType = "multipart/form-data; boundary=" + boundary
 		default:
-			err := fmt.Errorf("unknown parameter method %q", t.Request.ParamsAs)
+			err = fmt.Errorf("unknown parameter method %q", t.Request.ParamsAs)
 			return "", err
 		}
 	}
@@ -1084,10 +1072,7 @@ func addFilePart(mpwriter *multipart.Writer, n, vv string, variables map[string]
 	}
 
 	_, err = io.WriteString(fw, data)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // -------------------------------------------------------------------------

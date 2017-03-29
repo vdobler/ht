@@ -111,25 +111,25 @@ func (c SetCookie) Execute(t *Test) error {
 }
 func (c *SetCookie) checkType(cookie *http.Cookie) error {
 	t := c.Type
-	if strings.Index(t, "session") != -1 {
+	if strings.Contains(t, "session") {
 		if cookie.MaxAge > 0 || !cookie.Expires.IsZero() {
 			return fmt.Errorf("persistent cookie")
 		}
-	} else if strings.Index(t, "persistent") != -1 {
+	} else if strings.Contains(t, "persistent") {
 		if cookie.MaxAge == 0 && cookie.Expires.IsZero() {
 			return fmt.Errorf("session cookie")
 		}
 	}
 
-	if strings.Index(t, "secure") != -1 && !cookie.Secure {
+	if strings.Contains(t, "secure") && !cookie.Secure {
 		return fmt.Errorf("not a secure cookie")
-	} else if strings.Index(t, "unsafe") != -1 && cookie.Secure {
+	} else if strings.Contains(t, "unsafe") && cookie.Secure {
 		return fmt.Errorf("secure cookie")
 	}
 
-	if strings.Index(t, "httponly") != -1 && !cookie.HttpOnly {
+	if strings.Contains(t, "httponly") && !cookie.HttpOnly {
 		return fmt.Errorf("not a http-only cookie")
-	} else if strings.Index(t, "exposed") != -1 && cookie.HttpOnly {
+	} else if strings.Contains(t, "exposed") && cookie.HttpOnly {
 		return fmt.Errorf("http-only cookie")
 	}
 
@@ -162,7 +162,7 @@ func (c *SetCookie) Prepare() error {
 	}
 
 	if c.MinLifetime > 0 {
-		if strings.Index(c.Type, "persistent") == -1 {
+		if !strings.Contains(c.Type, "persistent") {
 			c.Type += " persistent"
 		}
 	}

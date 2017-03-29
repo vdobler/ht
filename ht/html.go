@@ -322,7 +322,7 @@ func TextContent(n *html.Node, raw bool) string {
 func normalizeWhitespace(s string) string {
 	s = strings.TrimSpace(s)
 	s = strings.Replace(strings.Replace(s, "\n", " ", -1), "\t", " ", -1)
-	for strings.Index(s, "  ") != -1 {
+	for strings.Contains(s, "  ") {
 		// TODO: speedup
 		s = strings.Replace(s, "  ", " ", -1)
 	}
@@ -483,7 +483,7 @@ func (c *Links) Execute(t *Test) error {
 		return err
 	}
 	suite := &Collection{}
-	method := "GET"
+	method := http.MethodGet
 	if c.Head {
 		method = "HEAD"
 	}

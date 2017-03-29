@@ -583,7 +583,7 @@ func TestMerge(t *testing.T) {
 			c.Request.BasicAuthPass)
 	}
 
-	if c.Request.FollowRedirects != false || c.Request.Chunked != true {
+	if c.Request.FollowRedirects || !c.Request.Chunked {
 		t.Errorf("FollowRedirect=%t Chunked=%t",
 			c.Request.FollowRedirects, c.Request.Chunked)
 	}

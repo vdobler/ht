@@ -25,13 +25,6 @@ var htmlct = Response{Response: &http.Response{
 	},
 }}
 
-var xmlct = Response{Response: &http.Response{
-	StatusCode: 301,
-	Header: http.Header{
-		"Content-Type": []string{"application/xml; charset=UTF-8"},
-	},
-}}
-
 var contentTypeTests = []TC{
 	{jsonct, &ContentType{Is: "application/json"}, nil},
 	{jsonct, &ContentType{Is: "json"}, nil},

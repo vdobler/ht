@@ -332,7 +332,7 @@ func parseQantileLimit(s string) (float64, time.Duration, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	if strings.Index(parts[0], "%") != -1 {
+	if strings.Contains(parts[0], "%") {
 		quantile /= 100
 	}
 	if quantile < 0 || quantile > 1 {

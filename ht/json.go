@@ -57,11 +57,7 @@ func (c *JSONExpr) Prepare() (err error) {
 		return err
 	}
 	c.tt, err = jee.Parser(tokens)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // Execute implements Check's Execute method.

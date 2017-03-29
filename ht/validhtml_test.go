@@ -80,10 +80,6 @@ var okayHTML = `<!DOCTYPE html><html>
 </html>
 `
 
-var brokenHTMLResponse = Response{
-	BodyStr: brokenHTML,
-}
-
 func TestValidHTMLBroken(t *testing.T) {
 	test := &Test{
 		Response: Response{BodyStr: brokenHTML},

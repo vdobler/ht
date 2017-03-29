@@ -576,24 +576,6 @@ func TestRenderingTime(t *testing.T) {
 	}
 }
 
-var passingRenderingTimeTests2 = []*Test{
-	{
-		Name:    "Welcome Anonymous, rendered body",
-		Request: Request{URL: "/welcome"},
-		Checks: []Check{
-			&RenderingTime{Max: 80 * time.Millisecond},
-		},
-	},
-	{Request: Request{URL: "/login?user=Joe"}},
-	{
-		Name:    "Welcome Joe",
-		Request: Request{URL: "/welcome"},
-		Checks: []Check{
-			&RenderingTime{Max: 120 * time.Millisecond},
-		},
-	},
-}
-
 func TestRenderingTime2(t *testing.T) {
 	if !WorkingPhantomJS() {
 		t.Skip("PhantomJS is not installed")

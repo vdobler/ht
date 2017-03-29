@@ -187,9 +187,9 @@ func (c Condition) Fulfilled(s string) error {
 	}
 
 	if c.Contains != "" {
-		if c.Count == 0 && strings.Index(s, c.Contains) == -1 {
+		if c.Count == 0 && !strings.Contains(s, c.Contains) {
 			return ErrNotFound
-		} else if c.Count < 0 && strings.Index(s, c.Contains) != -1 {
+		} else if c.Count < 0 && strings.Contains(s, c.Contains) {
 			return ErrFoundForbidden
 		} else if c.Count > 0 {
 			if cnt := strings.Count(s, c.Contains); cnt != c.Count {

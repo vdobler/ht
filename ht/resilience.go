@@ -159,7 +159,7 @@ func (r Resilience) Execute(t *Test) error {
 
 		// Fiddle with parameters.
 		for _, pas := range r.paramsAs(t) {
-			if (method == "GET" || method == "HEAD" || method == "OPTIONS") && pas != "URL" {
+			if (method == http.MethodGet || method == http.MethodHead || method == http.MethodOptions) && pas != "URL" {
 				continue
 			}
 

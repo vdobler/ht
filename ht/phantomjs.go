@@ -12,6 +12,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -222,24 +223,12 @@ page.setContent(theContent, theURL);
 
 var phantomjsTmpl = template.Must(template.New("phantomscript").Parse(phantomjsTemplate))
 
-var addCookieScript = `
-phantom.addCookie({
-  'name'    : %q,
-  'value'   : %q,
-  'domain'  : %q,
-  'path'    : %q,
-  'httponly': %t,
-  'secure'  : %t,
-  'expires' : %q
-});
-`
-
 // write a PhantomJS script to file which renders the response in t, waits
 // for (in)visible elements as defined in b, and executes ready or timeout
 // accordingly.
 // So ready and timeout should contain the actual PhantomJS commands to
 // execute and must terminate PhantomJS.
-func (b Browser) writeScript(file *os.File, t *Test, ready, timeout string) error {
+func (b Browser) writeScript(file io.WriteCloser, t *Test, ready, timeout string) error {
 	data := phantomjsData{
 		Test:        t,
 		Timeout:     int(b.Timeout.Nanoseconds() / 1e6),
@@ -823,7 +812,7 @@ func calibratePhantomjsOverhead() {
 }
 
 var havePhantomJSOnce sync.Once // fills bool below once
-var havePhantomJS bool = false
+var havePhantomJS = false
 
 // WorkingPhantomJS reports if a suitable PhantomJS is available.
 func WorkingPhantomJS() bool {

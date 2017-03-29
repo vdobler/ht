@@ -111,7 +111,7 @@ func (t *Test) executeFile() error {
 	}
 
 	switch t.Request.Method {
-	case "GET":
+	case http.MethodGet:
 		file, err := os.Open(u.Path)
 		if err != nil {
 			return err
@@ -285,13 +285,13 @@ func (t *Test) executeSQL() error {
 	// TODO: set content type to JSON
 
 	switch t.Request.Method {
-	case "GET":
+	case http.MethodGet:
 		accept := t.Request.Header.Get("Accept")
 		t.Response.BodyStr, err = sqlQuery(db, t.Request.Body, accept)
 		if err != nil {
 			return err
 		}
-	case "POST":
+	case http.MethodPost:
 		t.Response.BodyStr, err = sqlExecute(db, t.Request.Body)
 		if err != nil {
 			return err
@@ -404,11 +404,7 @@ func sqlQuery(db *sql.DB, query string, accept string) (string, error) {
 	}
 	err = rows.Err() // get any error encountered during iteration
 	body, _ := recorder.Close()
-	if err != nil {
-		return body, err
-	}
-
-	return body, nil
+	return body, err
 }
 
 // ----------------------------------------------------------------------------
