@@ -13,12 +13,31 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/ht"
 )
+
+// Random is the source for all randomness used in package suite.
+var Random *rand.Rand
+var randMux sync.Mutex
+
+func init() {
+	Random = rand.New(rand.NewSource(34)) // Seed chosen truly random by Sabine.
+}
+
+// RandomIntn returns a random int in the rnage [0,n) read from Random.
+// It is safe for concurrent use.
+func RandomIntn(n int) int {
+	randMux.Lock()
+	r := Random.Intn(n)
+	randMux.Unlock()
+	return r
+}
 
 // A Suite is a collection of Tests which can be executed sequentily with the
 // result captured.
@@ -67,7 +86,7 @@ func newScope(outer, inner map[string]string, auto bool) map[string]string {
 	}
 	if auto {
 		scope["COUNTER"] = strconv.Itoa(<-GetCounter)
-		scope["RANDOM"] = strconv.Itoa(100000 + ht.RandomIntn(900000))
+		scope["RANDOM"] = strconv.Itoa(100000 + RandomIntn(900000))
 	}
 	replacer := varReplacer(scope)
 
