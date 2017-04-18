@@ -93,11 +93,11 @@ var typeDoc = map[string]string{
 		"\t// The string \"OR\" is ignored an can be used to increase the\n" +
 		"\t// readability of this condition in sutiation like\n" +
 		"\t//     Condition{Is: \"Hexcolor OR RGBColor OR MongoID\"}\n" +
-		"\tIs string\n" +
+		"\tIs string \n" +
 		"\n" +
 		"\t// Time checks whether the string is a valid time if parsed\n" +
 		"\t// with Time as the layout string.\n" +
-		"\tTime string\n" +
+		"\tTime string \n" +
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
@@ -383,7 +383,7 @@ var typeDoc = map[string]string{
 		"    Note that the value for \"bar\" is the raw string and contains the original\n" +
 		"    white space characters as present in the original JSON document.\n" +
 		"\n" +
-		"    A schema is an example JSON documeent with the same structure where each\n" +
+		"    A schema is an example JSON document with the same structure where each\n" +
 		"    leave element just determines the expected type. The JSON document from\n" +
 		"    above would conform to the schema:\n" +
 		"\n" +
