@@ -299,22 +299,6 @@ func makeRawTest(filename string, fs map[string]*File) (*RawTest, error) {
 	}, nil
 }
 
-func mergeVariables(global, local map[string]string) map[string]string {
-	varset := make(map[string]string)
-
-	// Globals can be used in local values.
-	replacer := varReplacer(global)
-	for k, v := range local {
-		varset[k] = replacer.Replace(v)
-	}
-	// Add globals (overwriting locals).
-	for k, v := range global {
-		varset[k] = v
-	}
-
-	return varset
-}
-
 // ToTest produces a ht.Test from a raw test rt.
 func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
 	bogus := &ht.Test{Status: ht.Bogus}
