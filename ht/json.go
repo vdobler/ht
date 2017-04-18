@@ -120,7 +120,7 @@ func (c *JSONExpr) Execute(t *Test) error {
 // Note that the value for "bar" is the raw string and contains the original
 // white space characters as present in the original JSON document.
 //
-// A schema is an example JSON documeent with the same structure where each
+// A schema is an example JSON document with the same structure where each
 // leave element just determines the expected type. The JSON document from
 // above would conform to the schema:
 //     {
