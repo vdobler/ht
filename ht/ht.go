@@ -226,7 +226,7 @@ type Test struct {
 	// ExValues contains the result of the extractions.
 	ExValues map[string]Extraction `json:",omitempty"`
 
-	// Log is the logger to use
+	// Log is the logger to use.
 	Log interface {
 		Printf(format string, a ...interface{})
 	}
@@ -239,7 +239,7 @@ func (t *Test) Disable() {
 	t.Execution.Tries = -1
 }
 
-// CheckResult captures the outcom of a single check inside a test.
+// CheckResult captures the outcome of a single check inside a test.
 type CheckResult struct {
 	Name     string        // Name of the check as registered.
 	JSON     string        // JSON serialization of check.
