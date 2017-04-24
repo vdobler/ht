@@ -1,0 +1,12 @@
+{
+    Name: "Pipe",
+    Description: "Intermediate server",
+    Request: {
+        Method: GET
+        URL:    "{{BASEURL}}/users/penny",
+    },
+    Checks: [
+        {Check: "StatusCode", Expect: 200},
+	{Check: "JSON", Element: "name", Contains: "Penny Hofstadter"}
+    ],
+}

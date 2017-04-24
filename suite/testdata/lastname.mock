@@ -1,0 +1,20 @@
+{
+    Name: "Mock for Lastname-Server"
+    Description: "POST userid=penny /rest/v7/lookup"
+
+    Method: POST
+    URL:    "http://localhost:9902/rest/v7/lookup"
+
+    ParseForm: true,
+    Checks: [
+        {Check: "ContentType", Is: "application/x-www-form-urlencoded"}
+    ]
+    
+    Response: {
+        StatusCode: 200
+        Header: {
+            "Content-Type": "text/csv"
+        }
+        Body: '''{{userid}},Hofstadter'''
+    }
+}

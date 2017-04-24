@@ -1,0 +1,17 @@
+{
+    Name: "Mock for Surname-Server"
+    Description: "GET /surenameservice"
+
+    Method: GET
+    URL:    "http://localhost:9901/surenameservice/{USERID}"
+
+    ParseForm: true,
+    Checks: [
+        {Check: "Header", Header: "X-Authorized", Equals: "{{AUTH}}"}
+    ]
+    
+    Response: {
+        StatusCode: 200
+        Body: '''{"status": "okay", "surename": "Penny", "userid": "{{USERID}}"}'''
+    }
+}

@@ -71,6 +71,7 @@ func init() {
 		cmdReconstruct,
 		cmdLoad,
 		cmdStat,
+		cmdMock,
 	}
 }
 

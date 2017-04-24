@@ -16,6 +16,7 @@ import (
 	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/hjson"
+	"github.com/vdobler/ht/mock"
 	"github.com/vdobler/ht/populate"
 )
 
@@ -197,10 +198,10 @@ func makeMixin(filename string, fs map[string]*File) (*Mixin, error) {
 // and its variables.
 type RawTest struct {
 	*File
-	Mixins    []*Mixin          // Mixins of this test.
-	Variables map[string]string // Variables are the defaults of the variables.
-
+	Mixins      []*Mixin          // Mixins of this test.
+	Variables   map[string]string // Variables are the defaults of the variables.
 	contextVars map[string]string
+	mocks       []*File
 	disabled    bool
 }
 
@@ -390,6 +391,7 @@ func (rt *RawTest) toTest(variables map[string]string) (*ht.Test, error) {
 type RawElement struct {
 	File      string
 	Variables map[string]string
+	Mocks     []string
 
 	Test map[string]interface{}
 }
@@ -465,6 +467,13 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 				return fmt.Errorf("File and Test must not both be empty in %d. %s", i+1, which)
 			}
 			rt.contextVars = elem.Variables
+			for _, mockname := range elem.Mocks {
+				mf, err := LoadFile(path.Join(dir, mockname))
+				if err != nil {
+					return fmt.Errorf("unable to load mock: %s", err)
+				}
+				rt.mocks = append(rt.mocks, mf)
+			}
 			rs.tests = append(rs.tests, rt)
 		}
 		return nil
@@ -764,4 +773,32 @@ func (raw *RawLoadTest) ToScenario(globals map[string]string) []Scenario {
 	}
 
 	return scenarios
+}
+
+// ----------------------------------------------------------------------------
+// Mocks
+
+func FileToMock(file *File, variables map[string]string) (*mock.Mock, error) {
+	replacer := varReplacer(variables)
+	data := replacer.Replace(file.Data)
+
+	var m = &mock.Mock{}
+
+	// TODO: this is a copy of suite.File.decodeStrictTo. Refactor.
+	var soup interface{}
+	err := hjson.Unmarshal([]byte(data), &soup)
+	if err != nil {
+		return nil, fmt.Errorf("file %s is not valid hjson: %s", file.Name, err)
+	}
+	s, ok := soup.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("file %s is not an object (got %T)", file.Name, soup)
+	}
+	err = populate.Strict(m, s)
+	if err != nil {
+		return nil, err // better error message here
+	}
+
+	return m, nil
+
 }

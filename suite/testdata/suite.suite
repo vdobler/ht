@@ -15,6 +15,7 @@
         {File: "a.ht"}
         {File: "b.ht", Variables: {"foo": "bar"}}
 	{File: "c/d.ht"}
+        {File: "a.ht", Mocks: ["m1.mock", "m2.mock"]}
     ],
     Teardown: [
        {File: "b.ht"}

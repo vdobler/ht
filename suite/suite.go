@@ -14,12 +14,15 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/mock"
 )
 
 // Random is the source for all randomness used in package suite.
@@ -56,8 +59,11 @@ type Suite struct {
 	Variables      map[string]string // The initial variable assignment
 	FinalVariables map[string]string // The final set of variables.
 	Jar            *cookiejar.Jar    // The cookie jar used
-	Log            *log.Logger       // The logger used.
-	Verbosity      int
+
+	Verbosity int
+	Log       interface {
+		Printf(format string, a ...interface{})
+	}
 
 	scope            map[string]string
 	tests            []*RawTest
@@ -161,6 +167,8 @@ var (
 	ErrAbortExecution = errors.New("Abort Execution")
 )
 
+var mockDelay = 50 * time.Millisecond
+
 // Iterate the suite through the given executor.
 func (suite *Suite) Iterate(executor Executor) {
 	now := time.Now()
@@ -184,7 +192,86 @@ func (suite *Suite) Iterate(executor Executor) {
 		test.Jar = suite.Jar
 		test.Log = suite.Log
 
+		// Mocks requested for this test: We expect each mock to be
+		// called exactly once (and this call should pass).
+		var stopMocks, monitoringDone chan bool
+		var monitor chan *ht.Test
+		var mockResult []*ht.Test
+		var expect []string
+		if len(rt.mocks) != 0 {
+			monitor = make(chan *ht.Test)
+			mocks := []*mock.Mock{}
+			for i, m := range rt.mocks {
+				mockScope := newScope(testScope, rt.Variables, false)
+				mockScope["MOCK_DIR"] = m.Dirname()
+				mockScope["MOCK_NAME"] = m.Basename()
+				if mk, err := FileToMock(m, mockScope); err != nil {
+					test.Status = ht.Bogus
+					test.Error = fmt.Errorf(
+						"Mock %d %q is malformed: %s",
+						i+1, m.Name, err)
+				} else {
+					mk.Monitor = monitor
+					mocks = append(mocks, mk)
+					expect = append(expect, mk.Name)
+				}
+			}
+			if len(mocks) > 0 {
+				// TODO handle 404s
+				stopMocks, err = mock.Serve(mocks, nil, suite.Log)
+				// TODO: handle error
+				monitoringDone = make(chan bool)
+				go func() {
+					for report := range monitor {
+						logMock(suite, report)
+						mockResult = append(mockResult, report)
+					}
+					close(monitoringDone)
+				}()
+				time.Sleep(mockDelay) // I'm clueless...
+			}
+		}
+
 		exstat := executor(test)
+		if stopMocks != nil {
+			stopMocks <- true
+			<-stopMocks
+		}
+		if monitor != nil {
+			close(monitor)
+		}
+		if monitoringDone != nil {
+			<-monitoringDone
+			// Analyse what we got.
+			actual := []string{}
+			for _, mt := range mockResult {
+				actual = append(actual, mt.Name)
+				// Propagete state of mock invocations to main test.
+				if mt.Status > test.Status {
+					test.Status = mt.Status
+					test.Error = mt.Error
+				}
+				// Augment check name with information about mock.
+				for i := range mt.CheckResults {
+					name := mt.CheckResults[i].Name
+					name = fmt.Sprintf("Request to mock %q: %s", mt.Name, name)
+					mt.CheckResults[i].Name = name
+				}
+				// Append check results of mock to main test checks.
+				test.CheckResults = append(test.CheckResults, mt.CheckResults...)
+			}
+
+			// Did we get exactly what we expected?
+			sort.Strings(expect)
+			sort.Strings(actual)
+			// Sorry for that.
+			want, got := strings.Join(expect, " ※ "), strings.Join(actual, " ※ ")
+			if got != want && test.Status == ht.Pass {
+				test.Status = ht.Fail
+				test.Error = fmt.Errorf("Expected mocks [%s] but actual mock invocations were [%s]",
+					want, got)
+			}
+		}
 		if test.Status == ht.Pass {
 			suite.updateVariables(test)
 		}
@@ -214,6 +301,33 @@ func (suite *Suite) Iterate(executor Executor) {
 	for n, v := range suite.scope {
 		suite.FinalVariables[n] = v
 	}
+}
+
+func logMock(suite *Suite, report *ht.Test) {
+	if suite.Verbosity <= 0 {
+		return
+	}
+	full := ""
+	if suite.Verbosity >= 3 {
+		full = "\n"
+		full += fmt.Sprintf("  Request\n    Header\n")
+		for k, v := range report.Request.Request.Header {
+			full += fmt.Sprintf("      %s: %s\n", k, v)
+		}
+		full += fmt.Sprintf("    Body\n")
+		full += fmt.Sprintf("      %s\n", report.Request.SentBody)
+		full += fmt.Sprintf("  Response\n    Header\n")
+		for k, v := range report.Response.Response.Header {
+			full += fmt.Sprintf("      %s: %s\n", k, v)
+		}
+		full += fmt.Sprintf("    Body\n")
+		full += fmt.Sprintf("      %s\n", report.Response.BodyStr)
+		full += fmt.Sprintf("========================================================\n")
+
+	}
+	suite.Log.Printf("Mock invoked %q: %s %s%s", report.Name,
+		report.Request.Method, report.Request.URL, full)
+
 }
 
 func (suite *Suite) updateVariables(test *ht.Test) {

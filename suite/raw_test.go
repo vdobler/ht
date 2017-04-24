@@ -142,7 +142,7 @@ func TestLoadRawSuite(t *testing.T) {
 	if testing.Verbose() {
 		pp("RawSuite", raw)
 	}
-	if len(raw.RawTests()) != 5 {
+	if len(raw.RawTests()) != 6 {
 		panic(len(raw.RawTests()))
 	}
 }

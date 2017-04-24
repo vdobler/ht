@@ -1,0 +1,11 @@
+{
+    Name: "Suite with Mocks"
+    Main: [
+        { File: "pipe.ht"}
+        { File: "pipe.ht", Mocks: [ "surename.mock", "lastname.mock" ]}
+        { File: "pipe.ht", Variables: {AUTH: "okay"}, Mocks: [ "surename.mock", "lastname.mock" ]}
+        { File: "pipe.ht", Variables: {AUTH: "okay"}, Mocks: [ "surename.mock", "lastname.mock", "surename.mock" ]}
+    ],
+
+    Verbosity: 9
+}

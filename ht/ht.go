@@ -468,7 +468,7 @@ func (t *Test) Run() error {
 	}
 
 	// Prepare checks and request. Both may declare the Test to be bogus.
-	err := t.prepareChecks()
+	err := t.PrepareChecks()
 	if err != nil {
 		t.Status, t.Error = Bogus, err
 		return err
@@ -553,7 +553,7 @@ func (t *Test) execute() {
 				t.debugf("InterSleep %s", t.Execution.InterSleep)
 				time.Sleep(t.Execution.InterSleep)
 			}
-			t.executeChecks()
+			t.ExecuteChecks()
 		} else {
 			t.Status = Pass
 		}
@@ -563,7 +563,7 @@ func (t *Test) execute() {
 	}
 }
 
-func (t *Test) prepareChecks() error {
+func (t *Test) PrepareChecks() error {
 	// Compile the checks.
 	cel := ErrorList{}
 	for i := range t.Checks {
@@ -891,13 +891,12 @@ done:
 }
 
 // executeChecks applies the checks in t to the HTTP response received during
-// executeRequest. A non-nil error is returned for bogus checks and checks
-// which have errors: Just failing checks do not lead to non-nil-error
+// executeRequest.
 //
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
-func (t *Test) executeChecks() {
+func (t *Test) ExecuteChecks() {
 	done := false
 	for i, ck := range t.Checks {
 		start := time.Now()
