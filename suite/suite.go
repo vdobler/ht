@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -224,8 +225,25 @@ func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test
 		expect = append(expect, mk.Name)
 	}
 
-	// TODO: handle 404
-	stopMocks, err = mock.Serve(mocks, nil, suite.Log)
+	// Report any calls that miss explicit mock handlers as 404.
+	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := ioutil.ReadAll(r.Body)
+		u := r.URL.String()
+		report := &ht.Test{
+			Name: "Not Found " + u,
+			Request: ht.Request{
+				Method:   r.Method,
+				URL:      u,
+				Header:   r.Header,
+				Request:  r,
+				SentBody: string(body),
+			},
+		}
+		http.Error(w, "No mock for "+u, http.StatusNotFound)
+		monitor <- report
+	})
+
+	stopMocks, err = mock.Serve(mocks, notFoundHandler, suite.Log)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
