@@ -40,11 +40,15 @@ func allTypes() []string {
 
 	rtypes := []string{
 		"RawTest", "RawSuite", "RawElement", "RawScenario",
-		"RawLoadTest",
+		"RawLoadTest", "RawMock",
 	}
 	for _, name := range rtypes {
 		t = append(t, "github.com/vdobler/ht/suite."+name)
 	}
+	for _, name := range []string{"Mock", "Mapping"} {
+		t = append(t, "github.com/vdobler/ht/mock."+name)
+	}
+	t = append(t, "github.com/vdobler/ht/scope.Variables")
 
 	sort.Strings(t)
 	return t

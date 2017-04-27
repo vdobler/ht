@@ -933,7 +933,7 @@ var typeDoc = map[string]string{
 		"\t// ExValues contains the result of the extractions.\n" +
 		"\tExValues map[string]Extraction \n" +
 		"\n" +
-		"\t// Log is the logger to use\n" +
+		"\t// Log is the logger to use.\n" +
 		"\tLog interface {\n" +
 		"\t\tPrintf(format string, a ...interface{})\n" +
 		"\t}\n" +
@@ -989,9 +989,82 @@ var typeDoc = map[string]string{
 		"\t// Has unexported fields.\n" +
 		"}\n" +
 		"    XML allows to check XML request bodies.",
+	"mapping": "type Mapping struct {\n" +
+		"\t// Variable to set it's value (A)\n" +
+		"\tVariable string\n" +
+		"\n" +
+		"\t// BasedOn selects the variable whos value is used as to find the row\n" +
+		"\t// in the To table (X)\n" +
+		"\tBasedOn string\n" +
+		"\n" +
+		"\t// To is the lookup table.\n" +
+		"\tTo map[string]string\n" +
+		"}\n" +
+		"    Mapping allows to set the value of a variable based on some other variable's\n" +
+		"    value.",
+	"mock": "type Mock struct {\n" +
+		"\t// Name of this mock\n" +
+		"\tName string\n" +
+		"\n" +
+		"\t// Description of this mock.\n" +
+		"\tDescription string\n" +
+		"\n" +
+		"\t// Method for which this mock applies to.\n" +
+		"\tMethod string\n" +
+		"\n" +
+		"\t// URL this mock applies to.\n" +
+		"\t// Schema, Port and Path are considered when deciding if\n" +
+		"\t// this mock is appropriate for the current request.\n" +
+		"\t// The path can be a Gorilla mux style path template in which\n" +
+		"\t// case variables are extracted.\n" +
+		"\tURL string\n" +
+		"\n" +
+		"\t// ParseForm allows to parse query and form parameters into variables.\n" +
+		"\t// If set to true then a request like\n" +
+		"\t//     curl -d A=1 -d B=2 -d B=3 http://localhost/?C=4\n" +
+		"\t// would extract the following variable/value-pairs:\n" +
+		"\t//     A     1\n" +
+		"\t//     B[0]  2\n" +
+		"\t//     B[1]  3\n" +
+		"\t//     C     4\n" +
+		"\tParseForm bool\n" +
+		"\n" +
+		"\t// VarEx contains variable extraction definitions which are applied\n" +
+		"\t// to the incomming request.\n" +
+		"\tVarEx ht.ExtractorMap\n" +
+		"\n" +
+		"\t// Checks are applied to to the received HTTP request. This is done\n" +
+		"\t// by conveting the request to a HTTP response and populating a synthetic\n" +
+		"\t// ht.Test. This implies that several checks are inappropriate here.\n" +
+		"\tChecks ht.CheckList\n" +
+		"\n" +
+		"\t// Response to send for this mock.\n" +
+		"\tResponse Response\n" +
+		"\n" +
+		"\t// Variables. TODO Explain.\n" +
+		"\tVariables scope.Variables\n" +
+		"\n" +
+		"\t// Set is used to set variable values depending on other variables.\n" +
+		"\t// It is executed after VarEx but before constructing the response.\n" +
+		"\tSet []Mapping\n" +
+		"\n" +
+		"\t// Monitor is used to report invocations if this mock.\n" +
+		"\t// The incomming request and the outgoing mocked response are encoded\n" +
+		"\t// in a ht.Test. The optional results of the Checks are stored in the\n" +
+		"\t// Test's CheckResult field.\n" +
+		"\t// This is nonsensical but is the fastet way to get mocking up running.\n" +
+		"\tMonitor chan *ht.Test\n" +
+		"\n" +
+		"\t// Log to report infos to.\n" +
+		"\tLog Log\n" +
+		"}\n" +
+		"    Mock allows to mock a HTTP response for a certain request.",
+	"variables": "type Variables map[string]string\n" +
+		"    Variables represents a set of (variable-name, variable-value)-pairs.",
 	"rawelement": "type RawElement struct {\n" +
 		"\tFile      string\n" +
 		"\tVariables map[string]string\n" +
+		"\tMocks     []string\n" +
 		"\n" +
 		"\tTest map[string]interface{}\n" +
 		"}\n" +
@@ -1004,6 +1077,10 @@ var typeDoc = map[string]string{
 		"\tVariables   map[string]string\n" +
 		"}\n" +
 		"    RawLoadTest as read from disk.",
+	"rawmock": "type RawMock struct {\n" +
+		"\t*File\n" +
+		"\tVariables map[string]string // Variables are the defaults of the variables.\n" +
+		"}",
 	"rawscenario": "type RawScenario struct {\n" +
 		"\tName       string            // Name of this Scenario\n" +
 		"\tFile       string            // File is the RawSuite to use as scenario\n" +
