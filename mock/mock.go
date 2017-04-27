@@ -93,6 +93,10 @@ type Mock struct {
 	// Variables. TODO Explain.
 	Variables scope.Variables
 
+	// Set is used to set variable values depending on other variables.
+	// It is executed after VarEx but before constructing the response.
+	Set []Mapping
+
 	// Monitor is used to report invocations if this mock.
 	// The incomming request and the outgoing mocked response are encoded
 	// in a ht.Test. The optional results of the Checks are stored in the
@@ -109,6 +113,51 @@ type Response struct {
 	StatusCode int
 	Header     http.Header
 	Body       string
+}
+
+// Mapping allows to set the value of a variable based on some other variable's
+// value.
+type Mapping struct {
+	// Variable to set it's value (A)
+	Variable string
+
+	// BasedOn selects the variable whos value is used as to find the row
+	// in the To table (X)
+	BasedOn string
+
+	// To is the lookup table.
+	To map[string]string
+}
+
+// Lookup the m.Variable in vars and return in and the mapped value.
+// It basically implements:
+//     Lookup X's value in the following table and set A to the result
+//
+//          X   |  result
+//         -----+--------
+//          foo |  bar
+//          wuz |  kip
+//          *   |  zet
+//
+// Example: After executing the mapping
+//   Mapping{Variable: "A", BasedOn: "X", To: {"foo": "bar", "wuz": "kip"}}
+// with X=="foo" the variable A will be set to "bar".
+// If X's value is not found in the table then the resulting value will be
+// the value of "*" (if there is a "*" entry) or "-undefined-". If there is
+// no variable named "X" the n the result will be "-undefined-" too.
+func (m Mapping) Lookup(vars scope.Variables) (string, string) {
+	x, ok := vars[m.BasedOn]
+	if !ok {
+		return m.Variable, "-undefined-"
+	}
+	v, ok := m.To[x]
+	if !ok {
+		v, ok = m.To["*"]
+		if !ok {
+			return m.Variable, "-undefined-"
+		}
+	}
+	return m.Variable, v
 }
 
 // ServeHTTP implements http.Handler.
@@ -244,6 +293,13 @@ func (m *Mock) replacer(r *http.Request, extractions scope.Variables) (*strings.
 	}
 
 	vars = scope.New(extractions, vars, true)
+
+	// Work through manual variable setting.
+	for _, set := range m.Set {
+		name, val := set.Lookup(vars)
+		vars[name] = val
+	}
+
 	return vars.Replacer(), vars
 }
 
