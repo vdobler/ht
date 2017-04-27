@@ -150,83 +150,25 @@ func (suite *Suite) Iterate(executor Executor) {
 
 		// Mocks requested for this test: We expect each mock to be
 		// called exactly once (and this call should pass).
-		var stopMocks, monitoringDone chan bool
-		var monitor chan *ht.Test
 		var mockResult []*ht.Test
-		var expect []string
-		if len(rt.mocks) != 0 {
-			monitor = make(chan *ht.Test)
-			mocks := []*mock.Mock{}
-			for i, m := range rt.mocks {
-				mockScope := scope.New(testScope, rt.Variables, false)
-				mockScope["MOCK_DIR"] = m.Dirname()
-				mockScope["MOCK_NAME"] = m.Basename()
-				if mk, err := m.ToMock(mockScope, true); err != nil {
-					test.Status = ht.Bogus
-					test.Error = fmt.Errorf(
-						"Mock %d %q is malformed: %s",
-						i+1, m.Name, err)
-				} else {
-					mk.Monitor = monitor
-					mocks = append(mocks, mk)
-					expect = append(expect, mk.Name)
-				}
-			}
-			if len(mocks) > 0 {
-				// TODO handle 404s
-				stopMocks, err = mock.Serve(mocks, nil, suite.Log)
-				// TODO: handle error
-				monitoringDone = make(chan bool)
-				go func() {
-					for report := range monitor {
-						logMock(suite, report)
-						mockResult = append(mockResult, report)
-					}
-					close(monitoringDone)
-				}()
-				time.Sleep(mockDelay) // I'm clueless...
-			}
+		stopMocks, monitor, monitoringDone, expect, err := startMocks(suite, test, rt, &mockResult, testScope)
+		if err != nil {
+			test.Status = ht.Bogus
+			test.Error = err
 		}
 
+		// Execute the test (if not bogus).
 		exstat := executor(test)
+
 		if stopMocks != nil {
+			// We got running mocks: Stop mock handling and stop monitoring
 			stopMocks <- true
 			<-stopMocks
-		}
-		if monitor != nil {
 			close(monitor)
-		}
-		if monitoringDone != nil {
 			<-monitoringDone
-			// Analyse what we got.
-			actual := []string{}
-			for _, mt := range mockResult {
-				actual = append(actual, mt.Name)
-				// Propagete state of mock invocations to main test.
-				if mt.Status > test.Status {
-					test.Status = mt.Status
-					test.Error = mt.Error
-				}
-				// Augment check name with information about mock.
-				for i := range mt.CheckResults {
-					name := mt.CheckResults[i].Name
-					name = fmt.Sprintf("Request to mock %q: %s", mt.Name, name)
-					mt.CheckResults[i].Name = name
-				}
-				// Append check results of mock to main test checks.
-				test.CheckResults = append(test.CheckResults, mt.CheckResults...)
-			}
 
-			// Did we get exactly what we expected?
-			sort.Strings(expect)
-			sort.Strings(actual)
-			// Sorry for that.
-			want, got := strings.Join(expect, " ※ "), strings.Join(actual, " ※ ")
-			if got != want && test.Status == ht.Pass {
-				test.Status = ht.Fail
-				test.Error = fmt.Errorf("Expected mocks [%s] but actual mock invocations were [%s]",
-					want, got)
-			}
+			// Analyse what we got and updates test.
+			analyseMocks(test, mockResult, expect)
 		}
 		if test.Status == ht.Pass {
 			suite.updateVariables(test)
@@ -256,6 +198,79 @@ func (suite *Suite) Iterate(executor Executor) {
 
 	for n, v := range suite.globals {
 		suite.FinalVariables[n] = v
+	}
+}
+
+func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test, testScope scope.Variables) (stopMocks chan bool, monitor chan *ht.Test, monitoringDone chan bool, expect []string, err error) {
+	if len(rt.mocks) == 0 {
+		return nil, nil, nil, nil, nil
+	}
+
+	monitor = make(chan *ht.Test)
+	mocks := []*mock.Mock{}
+	for i, m := range rt.mocks {
+		mockScope := scope.New(testScope, rt.Variables, false)
+		mockScope["MOCK_DIR"] = m.Dirname()
+		mockScope["MOCK_NAME"] = m.Basename()
+		mk, err := m.ToMock(mockScope, true)
+		if err != nil {
+			return nil, nil, nil, nil,
+				fmt.Errorf("mock %d %q is malformed: %s",
+					i+1, m.Name, err)
+
+		}
+		mk.Monitor = monitor
+		mocks = append(mocks, mk)
+		expect = append(expect, mk.Name)
+	}
+
+	// TODO: handle 404
+	stopMocks, err = mock.Serve(mocks, nil, suite.Log)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	monitoringDone = make(chan bool)
+	go func() {
+		for report := range monitor {
+			logMock(suite, report)
+			*mockResult = append(*mockResult, report)
+		}
+		close(monitoringDone)
+	}()
+	time.Sleep(mockDelay) // I'm clueless...
+
+	return stopMocks, monitor, monitoringDone, expect, nil
+}
+
+func analyseMocks(test *ht.Test, mockResult []*ht.Test, expect []string) {
+	actual := []string{}
+	for _, mt := range mockResult {
+		actual = append(actual, mt.Name)
+		// Propagete state of mock invocations to main test.
+		if mt.Status > test.Status {
+			test.Status = mt.Status
+			test.Error = mt.Error
+		}
+		// Augment check name with information about mock.
+		for i := range mt.CheckResults {
+			name := mt.CheckResults[i].Name
+			name = fmt.Sprintf("Request to mock %q: %s", mt.Name, name)
+			mt.CheckResults[i].Name = name
+		}
+		// Append check results of mock to main test checks.
+		test.CheckResults = append(test.CheckResults, mt.CheckResults...)
+	}
+
+	// Did we get exactly what we expected?
+	sort.Strings(expect)
+	sort.Strings(actual)
+	// Sorry for that.
+	want, got := strings.Join(expect, " ※ "), strings.Join(actual, " ※ ")
+	if got != want && test.Status == ht.Pass {
+		test.Status = ht.Fail
+		test.Error = fmt.Errorf("Expected mocks [%s] but actual mock invocations were [%s]",
+			want, got)
 	}
 }
 
