@@ -296,27 +296,12 @@ func logMock(suite *Suite, report *ht.Test) {
 	if suite.Verbosity <= 0 {
 		return
 	}
-	full := ""
-	if suite.Verbosity >= 3 {
-		full = "\n"
-		full += fmt.Sprintf("  Request\n    Header\n")
-		for k, v := range report.Request.Request.Header {
-			full += fmt.Sprintf("      %s: %s\n", k, v)
-		}
-		full += fmt.Sprintf("    Body\n")
-		full += fmt.Sprintf("      %s\n", report.Request.SentBody)
-		full += fmt.Sprintf("  Response\n    Header\n")
-		for k, v := range report.Response.Response.Header {
-			full += fmt.Sprintf("      %s: %s\n", k, v)
-		}
-		full += fmt.Sprintf("    Body\n")
-		full += fmt.Sprintf("      %s\n", report.Response.BodyStr)
-		full += fmt.Sprintf("========================================================\n")
-
+	if suite.Verbosity < 3 {
+		suite.Log.Printf("Mock invoked %q: %s %s", report.Name,
+			report.Request.Method, report.Request.URL)
+	} else {
+		suite.Log.Printf("%s", mock.PrintReport(report))
 	}
-	suite.Log.Printf("Mock invoked %q: %s %s%s", report.Name,
-		report.Request.Method, report.Request.URL, full)
-
 }
 
 func (suite *Suite) updateVariables(test *ht.Test) {
