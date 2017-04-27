@@ -1,0 +1,14 @@
+{
+    Name: "Complex"
+    Description: "Variable Replacement in Body"
+    Method: "POST"
+    URL: "http://localhost:8880/{LANG}/greet"
+    ParseForm: true
+    Response: {
+        StatusCode: 200
+        Header: {
+            "X-Custom-Header": "trivial"
+        }
+        Body: "@vfile:greet_{{LANG}}.txt"
+    }
+}

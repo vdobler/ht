@@ -13,34 +13,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"sort"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/mock"
+	"github.com/vdobler/ht/scope"
 )
-
-// Random is the source for all randomness used in package suite.
-var Random *rand.Rand
-var randMux sync.Mutex
-
-func init() {
-	Random = rand.New(rand.NewSource(34)) // Seed chosen truly random by Sabine.
-}
-
-// RandomIntn returns a random int in the rnage [0,n) read from Random.
-// It is safe for concurrent use.
-func RandomIntn(n int) int {
-	randMux.Lock()
-	r := Random.Intn(n)
-	randMux.Unlock()
-	return r
-}
 
 // A Suite is a collection of Tests which can be executed sequentily with the
 // result captured.
@@ -56,16 +37,16 @@ type Suite struct {
 
 	Tests []*ht.Test // The Tests to execute
 
-	Variables      map[string]string // The initial variable assignment
-	FinalVariables map[string]string // The final set of variables.
-	Jar            *cookiejar.Jar    // The cookie jar used
+	Variables      scope.Variables // The initial variable assignment
+	FinalVariables scope.Variables // The final set of variables.
+	Jar            *cookiejar.Jar  // The cookie jar used
 
 	Verbosity int
 	Log       interface {
 		Printf(format string, a ...interface{})
 	}
 
-	scope            map[string]string
+	globals          scope.Variables
 	tests            []*RawTest
 	noneTeardownTest int
 }
@@ -82,31 +63,6 @@ func shouldRun(t int, rs *RawSuite, s *Suite) bool {
 		}
 	}
 	return true
-}
-
-func newScope(outer, inner map[string]string, auto bool) map[string]string {
-	// 1. Copy of outer scope
-	scope := make(map[string]string, len(outer)+len(inner)+2)
-	for gn, gv := range outer {
-		scope[gn] = gv
-	}
-	if auto {
-		scope["COUNTER"] = strconv.Itoa(<-GetCounter)
-		scope["RANDOM"] = strconv.Itoa(100000 + RandomIntn(900000))
-	}
-	replacer := varReplacer(scope)
-
-	// 2. Merging inner defaults, allow substitutions from outer scope
-	for name, val := range inner {
-		if _, ok := scope[name]; ok {
-			// Variable name exists in outer scope, do not
-			// overwrite with suite defaults.
-			continue
-		}
-		scope[name] = replacer.Replace(val)
-	}
-
-	return scope
 }
 
 // NewFromRaw sets up a new Suite from rs, read to be Iterated.
@@ -142,15 +98,15 @@ func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logg
 		noneTeardownTest: len(rs.Setup) + len(rs.Main),
 	}
 
-	suite.scope = newScope(global, rs.Variables, true)
-	suite.scope["SUITE_DIR"] = rs.File.Dirname()
-	suite.scope["SUITE_NAME"] = rs.File.Basename()
-	replacer := varReplacer(suite.scope)
+	suite.globals = scope.New(global, rs.Variables, true)
+	suite.globals["SUITE_DIR"] = rs.File.Dirname()
+	suite.globals["SUITE_NAME"] = rs.File.Basename()
+	replacer := suite.globals.Replacer()
 
 	suite.Name = replacer.Replace(rs.Name)
 	suite.Description = replacer.Replace(rs.Description)
 
-	for n, v := range suite.scope {
+	for n, v := range suite.globals {
 		suite.Variables[n] = v
 	}
 
@@ -180,8 +136,8 @@ func (suite *Suite) Iterate(executor Executor) {
 
 	for _, rt := range suite.tests {
 		// suite.Log.Printf("Executing Test %q\n", rt.File.Name)
-		callScope := newScope(suite.scope, rt.contextVars, true)
-		testScope := newScope(callScope, rt.Variables, false)
+		callScope := scope.New(suite.globals, rt.contextVars, true)
+		testScope := scope.New(callScope, rt.Variables, false)
 		testScope["TEST_DIR"] = rt.File.Dirname()
 		testScope["TEST_NAME"] = rt.File.Basename()
 		test, err := rt.ToTest(testScope)
@@ -202,10 +158,10 @@ func (suite *Suite) Iterate(executor Executor) {
 			monitor = make(chan *ht.Test)
 			mocks := []*mock.Mock{}
 			for i, m := range rt.mocks {
-				mockScope := newScope(testScope, rt.Variables, false)
+				mockScope := scope.New(testScope, rt.Variables, false)
 				mockScope["MOCK_DIR"] = m.Dirname()
 				mockScope["MOCK_NAME"] = m.Basename()
-				if mk, err := FileToMock(m, mockScope); err != nil {
+				if mk, err := m.ToMock(mockScope, true); err != nil {
 					test.Status = ht.Bogus
 					test.Error = fmt.Errorf(
 						"Mock %d %q is malformed: %s",
@@ -298,7 +254,7 @@ func (suite *Suite) Iterate(executor Executor) {
 		suite.Error = errors
 	}
 
-	for n, v := range suite.scope {
+	for n, v := range suite.globals {
 		suite.FinalVariables[n] = v
 	}
 }
@@ -337,7 +293,7 @@ func (suite *Suite) updateVariables(test *ht.Test) {
 
 	for varname, value := range test.Extract() {
 		if suite.Verbosity >= 2 {
-			if old, ok := suite.scope[varname]; ok {
+			if old, ok := suite.globals[varname]; ok {
 				if value != old {
 					suite.Log.Printf("Updating variable %q to %q\n",
 						varname, value)
@@ -351,7 +307,7 @@ func (suite *Suite) updateVariables(test *ht.Test) {
 			}
 		}
 
-		suite.scope[varname] = value
+		suite.globals[varname] = value
 	}
 }
 

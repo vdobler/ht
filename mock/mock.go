@@ -42,6 +42,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/scope"
 )
 
 // Log is the interface used for logging.
@@ -89,6 +90,9 @@ type Mock struct {
 	// Response to send for this mock.
 	Response Response
 
+	// Variables. TODO Explain.
+	Variables scope.Variables
+
 	// Monitor is used to report invocations if this mock.
 	// The incomming request and the outgoing mocked response are encoded
 	// in a ht.Test. The optional results of the Checks are stored in the
@@ -118,6 +122,8 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Consume request body and set up a "reversed" fake Test to run
 	// Checks against the request and extract variables from the request.
 	body, bodyerr := ioutil.ReadAll(r.Body)
+	// Restore r.Body for form parsing.
+	r.Body = ioutil.NopCloser(bytes.NewReader(body))
 	faketest := &ht.Test{
 		Name:   "Fake Test for Mock " + m.Name,
 		Checks: m.Checks,
@@ -141,36 +147,20 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	extractions := faketest.Extract()
 
-	// Construct a replacer for the response from the mux variables and
-	// the extractions with extractions overwriting mux variables.
-	vars := mux.Vars(r)
-	if m.ParseForm {
-		// Restore r.Body for form parsing.
-		r.Body = ioutil.NopCloser(bytes.NewReader(body))
-		if r.Header.Get("Content-Type") == "multipart/form-data" {
-			_ = r.ParseMultipartForm(1 << 24)
-		} else {
-			_ = r.ParseForm()
-		}
-		for key, vals := range r.Form {
-			if len(vals) == 1 {
-				vars[key] = vals[0]
-			} else {
-				for i, v := range vals {
-					vars[fmt.Sprintf("%s[%d]", key, i)] = v
-				}
-			}
-		}
+	repl, scope := m.replacer(r, extractions)
+
+	// Body handling: Default variable replacement happens first, then
+	// @file and @vfile syntax is handled. This allows to read different
+	// files based on the variables extracted from the request.
+	preBody := repl.Replace(m.Response.Body)
+	sentBody, _, err := ht.FileData(preBody, scope)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("mock: cannot read response body for mock %q: %s",
+				m.Name, err),
+			http.StatusInternalServerError)
+		return
 	}
-	for k, v := range extractions {
-		vars[k] = v
-	}
-	oldnew := make([]string, 0, 2*len(vars))
-	for k, v := range mux.Vars(r) {
-		oldnew = append(oldnew, "{{"+k+"}}")
-		oldnew = append(oldnew, v)
-	}
-	repl := strings.NewReplacer(oldnew...)
 
 	// Write response to intermediate recorder for reuse in reporting.
 	recw := httptest.NewRecorder()
@@ -180,8 +170,8 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	recw.WriteHeader(m.Response.StatusCode)
+
 	// TODO: handle "file:" and "vfile:" body
-	sentBody := repl.Replace(m.Response.Body)
 	io.WriteString(recw, sentBody)
 	response := recw.Result()
 
@@ -227,6 +217,34 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m.Monitor <- report
+}
+
+func (m *Mock) replacer(r *http.Request, extractions scope.Variables) (*strings.Replacer, scope.Variables) {
+	// Construct a replacer for the response from the mux variables and
+	// the extractions with extractions overwriting mux variables.
+
+	vars := scope.New(scope.Variables(mux.Vars(r)), m.Variables, false)
+
+	if m.ParseForm {
+		// TODO: reformualte to scope.New
+		if r.Header.Get("Content-Type") == "multipart/form-data" {
+			_ = r.ParseMultipartForm(1 << 24)
+		} else {
+			_ = r.ParseForm()
+		}
+		for key, vals := range r.Form {
+			if len(vals) == 1 {
+				vars[key] = vals[0]
+			} else {
+				for i, v := range vals {
+					vars[fmt.Sprintf("%s[%d]", key, i)] = v
+				}
+			}
+		}
+	}
+
+	vars = scope.New(extractions, vars, true)
+	return vars.Replacer(), vars
 }
 
 func splitMocks(mocks []*Mock) (tls map[string][]*Mock, std map[string][]*Mock, err error) {

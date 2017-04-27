@@ -50,7 +50,7 @@ func (s *CustomJS) Prepare() error {
 	// Reading the script with fileData is a hack as it accepts
 	// the @vfile syntax but cannot do the variable replacements
 	// as Prepare is called on the already 'replaced' checked.
-	script, basename, err := fileData(s.Script, nil) // TODO: use test.Variables here!
+	script, basename, err := FileData(s.Script, nil) // TODO: use test.Variables here!
 	if err != nil {
 		return err
 	}

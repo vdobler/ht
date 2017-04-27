@@ -745,7 +745,7 @@ func (t *Test) newRequest() (contentType string, err error) {
 
 	// The body.
 	if t.Request.Body != "" {
-		bodydata, _, err := fileData(t.Request.Body, t.Variables)
+		bodydata, _, err := FileData(t.Request.Body, t.Variables)
 		if err != nil {
 			return "", err
 		}
@@ -779,7 +779,7 @@ func (t *Test) newRequest() (contentType string, err error) {
 //               basename is name-of-file
 //    anything-else
 //               s is anything-else and basename is ""
-func fileData(s string, variables map[string]string) (data string, basename string, err error) {
+func FileData(s string, variables map[string]string) (data string, basename string, err error) {
 	if !strings.HasPrefix(s, "@file:") && !strings.HasPrefix(s, "@vfile:") {
 		return s, "", nil
 	}
@@ -1044,7 +1044,7 @@ func multipartBody(param map[string][]string, variables map[string]string) (io.R
 
 // addFilePart to mpwriter where the parameter n has a @file:-value vv.
 func addFilePart(mpwriter *multipart.Writer, n, vv string, variables map[string]string) error {
-	data, basename, err := fileData(vv, variables)
+	data, basename, err := FileData(vv, variables)
 	if err != nil {
 		return err
 	}

@@ -10,13 +10,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
-	"strings"
 
-	hjson "github.com/hjson/hjson-go"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/mock"
-	"github.com/vdobler/ht/populate"
 	"github.com/vdobler/ht/suite"
 )
 
@@ -44,34 +40,6 @@ func init() {
 	*/
 }
 
-func loadMock(name string, replacer *strings.Replacer) (*mock.Mock, error) {
-	file, err := suite.LoadFile(name)
-	if err != nil {
-		return nil, err
-	}
-	file.Data = replacer.Replace(file.Data)
-
-	var m = &mock.Mock{}
-
-	// TODO: this is a copy of suite.File.decodeStrictTo. Refactor.
-	var soup interface{}
-	err = hjson.Unmarshal([]byte(file.Data), &soup)
-	if err != nil {
-		return nil, fmt.Errorf("file %s is not valid hjson: %s", file.Name, err)
-	}
-	s, ok := soup.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("file %s is not an object (got %T)", file.Name, soup)
-	}
-	err = populate.Strict(m, s)
-	if err != nil {
-		return nil, err // better error message here
-	}
-
-	return m, nil
-
-}
-
 func runMock(cmd *Command, args []string) {
 	// Sanity check.
 	if len(args) == 0 {
@@ -80,21 +48,11 @@ func runMock(cmd *Command, args []string) {
 		os.Exit(9)
 	}
 
-	// TODO: refactore with suite.varReplacer
-	oldnew := []string{}
-	variablesFlag["COUNTER"] = strconv.Itoa(<-suite.GetCounter)
-	variablesFlag["RANDOM"] = strconv.Itoa(100000 + suite.RandomIntn(900000))
-	for k, v := range variablesFlag {
-		oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
-		oldnew = append(oldnew, v)
-	}
-	replacer := strings.NewReplacer(oldnew...)
-
 	monitor := make(chan *ht.Test)
 
 	mocks := []*mock.Mock{}
 	for _, arg := range args {
-		m, err := loadMock(arg, replacer)
+		m, err := suite.LoadMock(arg, nil, variablesFlag, false)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(8)

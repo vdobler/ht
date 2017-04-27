@@ -18,6 +18,7 @@ import (
 	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/mock"
 	"github.com/vdobler/ht/populate"
+	"github.com/vdobler/ht/scope"
 )
 
 func pp(msg string, v interface{}) {
@@ -35,35 +36,6 @@ func ppvars(msg string, vars map[string]string) {
 	for _, k := range keys {
 		fmt.Printf("  %s = %q\n", k, vars[k])
 	}
-}
-
-func varReplacer(vars map[string]string) *strings.Replacer {
-	oldnew := []string{}
-	for k, v := range vars {
-		oldnew = append(oldnew, "{{"+k+"}}") // TODO: make configurable ??
-		oldnew = append(oldnew, v)
-	}
-
-	return strings.NewReplacer(oldnew...)
-}
-
-// ----------------------------------------------------------------------------
-// Counter
-
-// GetCounter returns a strictly increasing sequence of int values.
-var GetCounter <-chan int
-
-var counter int = 1
-
-func init() {
-	ch := make(chan int)
-	GetCounter = ch
-	go func() {
-		for {
-			ch <- counter
-			counter += 1
-		}
-	}()
 }
 
 // ----------------------------------------------------------------------------
@@ -201,7 +173,7 @@ type RawTest struct {
 	Mixins      []*Mixin          // Mixins of this test.
 	Variables   map[string]string // Variables are the defaults of the variables.
 	contextVars map[string]string
-	mocks       []*File
+	mocks       []*RawMock
 	disabled    bool
 }
 
@@ -264,46 +236,10 @@ func loadMixins(mixs []string, dir string, fs FileSystem) ([]*Mixin, error) {
 	return mixins, nil
 }
 
-func makeRawTest(filename string, fs map[string]*File) (*RawTest, error) {
-	raw, ok := fs[filename]
-	if !ok {
-		return nil, fmt.Errorf("cannot find %s", filename)
-	}
-
-	// Unmarshal to find the Mixins and Variables
-	x := &struct {
-		Mixin     []string
-		Variables map[string]string
-	}{}
-	err := raw.decodeLaxTo(x)
-	if err != nil {
-		return nil, err // better error message here
-	}
-
-	// Load all mixins from disk.
-	testdir := raw.Dirname()
-	mixins := make([]*Mixin, len(x.Mixin))
-	for i, file := range x.Mixin {
-		mixpath := path.Join(testdir, file)
-		mixin, err := makeMixin(mixpath, fs)
-		if err != nil {
-			return nil, fmt.Errorf("cannot read mixin %s in test %s: %s",
-				file, filename, err)
-		}
-		mixins[i] = mixin
-	}
-
-	return &RawTest{
-		File:      raw,
-		Mixins:    mixins,
-		Variables: x.Variables,
-	}, nil
-}
-
 // ToTest produces a ht.Test from a raw test rt.
-func (rt *RawTest) ToTest(variables map[string]string) (*ht.Test, error) {
+func (rt *RawTest) ToTest(variables scope.Variables) (*ht.Test, error) {
 	bogus := &ht.Test{Status: ht.Bogus}
-	replacer := varReplacer(variables)
+	replacer := variables.Replacer()
 
 	// Make substituted a copy of rt with variables substituted.
 	// Dropping the Variabels field as this is no longer useful.
@@ -468,7 +404,7 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 			}
 			rt.contextVars = elem.Variables
 			for _, mockname := range elem.Mocks {
-				mf, err := LoadFile(path.Join(dir, mockname))
+				mf, err := LoadRawMock(path.Join(dir, mockname), fs)
 				if err != nil {
 					return fmt.Errorf("unable to load mock: %s", err)
 				}
@@ -528,14 +464,14 @@ func rawTestFromInline(name, dir string, fs FileSystem, inline map[string]interf
 
 // Validate rs to make sure it can be decoded into welformed ht.Tests.
 func (rs *RawSuite) Validate(global map[string]string) error {
-	suiteScope := newScope(global, rs.Variables, true)
+	suiteScope := scope.New(global, rs.Variables, true)
 	suiteScope["SUITE_DIR"] = rs.File.Dirname()
 	suiteScope["SUITE_NAME"] = rs.File.Basename()
 
 	el := ht.ErrorList{}
 	for _, rt := range rs.tests {
-		callScope := newScope(suiteScope, rt.contextVars, true)
-		testScope := newScope(callScope, rt.Variables, false)
+		callScope := scope.New(suiteScope, rt.contextVars, true)
+		testScope := scope.New(callScope, rt.Variables, false)
 		testScope["TEST_DIR"] = rt.File.Dirname()
 		testScope["TEST_NAME"] = rt.File.Basename()
 		_, err := rt.ToTest(testScope)
@@ -758,9 +694,9 @@ func LoadRawLoadtest(filename string, fs FileSystem) (*RawLoadTest, error) {
 // ToScenario produces a list of scenarios from raw.
 func (raw *RawLoadTest) ToScenario(globals map[string]string) []Scenario {
 	scenarios := []Scenario{}
-	ltscope := newScope(globals, raw.Variables, true)
+	ltscope := scope.New(globals, raw.Variables, true)
 	for _, rs := range raw.Scenarios {
-		callscope := newScope(ltscope, rs.Variables, true)
+		callscope := scope.New(ltscope, rs.Variables, true)
 		scen := Scenario{
 			Name:       rs.Name,
 			RawSuite:   rs.rawSuite,
@@ -778,27 +714,58 @@ func (raw *RawLoadTest) ToScenario(globals map[string]string) []Scenario {
 // ----------------------------------------------------------------------------
 // Mocks
 
-func FileToMock(file *File, variables map[string]string) (*mock.Mock, error) {
-	replacer := varReplacer(variables)
-	data := replacer.Replace(file.Data)
+type RawMock struct {
+	*File
+	Variables map[string]string // Variables are the defaults of the variables.
+}
 
-	var m = &mock.Mock{}
-
-	// TODO: this is a copy of suite.File.decodeStrictTo. Refactor.
-	var soup interface{}
-	err := hjson.Unmarshal([]byte(data), &soup)
+func LoadRawMock(filename string, fs FileSystem) (*RawMock, error) {
+	raw, err := fs.Load(filename)
 	if err != nil {
-		return nil, fmt.Errorf("file %s is not valid hjson: %s", file.Name, err)
+		return nil, err
 	}
-	s, ok := soup.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("file %s is not an object (got %T)", file.Name, soup)
-	}
-	err = populate.Strict(m, s)
+
+	// Unmarshal to find Variables
+	x := &struct {
+		Variables map[string]string
+	}{}
+	err = raw.decodeLaxTo(x)
 	if err != nil {
 		return nil, err // better error message here
 	}
 
-	return m, nil
+	return &RawMock{
+		File:      raw,
+		Variables: x.Variables,
+	}, nil
+}
 
+// ToMock produces a real Mock from rm. The auto flag triggers generation of
+// COUNTER and RANDOM variables.
+func (rm *RawMock) ToMock(variables scope.Variables, auto bool) (*mock.Mock, error) {
+	vars := scope.New(variables, rm.Variables, auto)
+	replacer := vars.Replacer()
+
+	substituted := &File{
+		Data: replacer.Replace(rm.File.Data),
+		Name: rm.File.Name,
+	}
+
+	var m = &mock.Mock{}
+	if err := substituted.decodeStrictTo(m, nil); err != nil {
+		return nil, err
+	}
+
+	// Copy scope to mock for use in @vbody et al.
+	m.Variables = vars.Copy()
+
+	return m, nil
+}
+
+func LoadMock(filename string, fs FileSystem, variables map[string]string, auto bool) (*mock.Mock, error) {
+	raw, err := LoadRawMock(filename, fs)
+	if err != nil {
+		return nil, err
+	}
+	return raw.ToMock(variables, auto)
 }

@@ -12,6 +12,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/vdobler/ht/scope"
 )
 
 func logger() *log.Logger {
@@ -126,8 +128,8 @@ func TestVariableHanddown(t *testing.T) {
 // and call scope so that call- and test-scope have just one value of COUNTER
 // and RANDOM.
 func TestAutomaticVariables(t *testing.T) {
-	Random.Seed(1234)
-	lastCnt := <-GetCounter // next value from GetCounter is lastCnt+1
+	scope.Random.Seed(1234)
+	lastCnt := <-scope.GetCounter // next value from GetCounter is lastCnt+1
 
 	txt := `
 # automatic.suite

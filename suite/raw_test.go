@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/scope"
 )
 
 func TestNewFilesystem(t *testing.T) {
@@ -91,7 +92,7 @@ func TestRawTestToTest(t *testing.T) {
 	variables := map[string]string{
 		"VAR_B": "zulu",
 	}
-	testScope := newScope(variables, raw.Variables, false)
+	testScope := scope.New(variables, raw.Variables, false)
 	test, err := raw.ToTest(testScope)
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)

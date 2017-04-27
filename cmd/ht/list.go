@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/scope"
 	"github.com/vdobler/ht/suite"
 )
 
@@ -56,7 +57,7 @@ func runList(cmd *Command, suites []*suite.RawSuite) {
 func displayTest(id string, test *suite.RawTest) {
 	fmt.Printf("%-6s %s", id, test.File.Name)
 	if fullFlag {
-		ht, err := test.ToTest(variablesFlag)
+		ht, err := test.ToTest(scope.Variables(variablesFlag))
 		if err != nil {
 			fmt.Printf("  oops: %s\n", err)
 			return

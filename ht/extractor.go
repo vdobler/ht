@@ -359,7 +359,7 @@ func (e JSExtractor) Extract(t *Test) (string, error) {
 	// the @vfile syntax but cannot do the variable replacements
 	// as Prepare is called on the already 'replaced' checked.
 
-	source, basename, err := fileData(e.Script, nil) // TODO: can use t.Variables here!
+	source, basename, err := FileData(e.Script, nil) // TODO: can use t.Variables here!
 	if err != nil {
 		return "", err
 	}
