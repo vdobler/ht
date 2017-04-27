@@ -611,7 +611,6 @@ func bodyReadTestHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Ooops", http.StatusInternalServerError)
 	}
-	return
 }
 
 func TestReadBody(t *testing.T) {
