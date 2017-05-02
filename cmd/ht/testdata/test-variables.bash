@@ -6,21 +6,23 @@
 set -euo pipefail
 
 # ----------------------------------------------------------------------------
-#
-# Test the following things:
-#   - Reading variables from file with -Dfile
-#   - Setting variables via -D
-#   - Command line set variables overwrite suite variables
-#   - Later -D overwrite earlier ones
-#   - Variables are substututed in the tests
-#   - Variables are extracted
-#   - All variables get dumped
-#   - Cookies get dumped
+# Suite1: general variable handling
 #
 
 cat > suite1.suite <<EOF
 {
-    Name: "First Suite",
+    Name: "General Variable Handling",
+    Description: '''
+        Test the following things:
+          - Reading variables from file with -Dfile
+          - Setting variables via -D
+          - Command line set variables overwrite suite variables
+          - Later -D overwrite earlier ones
+          - Variables are substituted in the tests
+          - Variables are extracted
+          - All variables get dumped
+          - Cookies get dumped
+    '''
     Main: [
         {File: "req1.ht", Variables: {VAR_Y: "call-Y", VAR_Z: "{{VAR_A}}"} }
         {File: "req2.ht"}
@@ -83,13 +85,13 @@ EOF
 
 
 echo
-echo "First Test"
-echo "=========="
+echo "General Variable Handling"
+echo "========================="
 
 ../ht exec -Dfile vars1.json -D VAR_C=cmdline-C \
     -vardump vars2.json -D VAR_U=cmdline-U \
     -cookiedump cookies.json suite1.suite || \
-    (echo "FAIL: First suite returned $?"; exit 1;)
+    (echo "FAIL: suite1 returned $?"; exit 1;)
 
 # check dumped vars2.json file for proper content
 grep -q '"VAR_A": "suite-A"' vars2.json && \
@@ -106,15 +108,18 @@ grep -q '"Name": "foo"' cookies.json && \
     grep -q '"Path": "/"' cookies.json || \
     (echo "FAIL: Bad cookies.json"; exit 1;)
 
+
 # ----------------------------------------------------------------------------
-#
-# Test the following:
-#   - Dumped variables can be used as argument to -Dfile
-#   - Cookies can be loaded at startup via -cookies
+# Suite 2: Loading of Cookies and Dumped variables
 
 cat > suite2.suite <<EOF
 {
-    Name: "Second Suite",
+    Name: "Load of Cookies and Dumped variables",
+    Description: '''
+       Test the following:
+         - Dumped variables can be used as argument to -Dfile
+         - Cookies can be loaded at startup via -cookies
+    '''
     KeepCookies: true,
     Main: [
         {File: "req3.ht"}
@@ -138,60 +143,70 @@ EOF
 
 
 echo
-echo "Second Test"
-echo "==========="
+echo "Loading of Cookies and Dumped Variables"
+echo "======================================="
 
 ../ht exec -Dfile vars2.json -cookies cookies.json suite2.suite || \
-    (echo "FAIL: Second suite returned $?"; exit 1;)
+    (echo "FAIL: suite2 returned $?"; exit 1;)
 
 
 # ----------------------------------------------------------------------------
-#
-# Test the following:
-#  - Seeding the random number generator works
+# Suite 3: Seeding the RANDOM and COUNTER variable
 #
 
 cat > suite3.suite <<EOF
 {
-    Name: "Third Suite",
+    Name: "Seeding RANDOM and COUNTER",
+    Description: '''
+       Test the following:
+        - Seeding the random number generator works
+        - Seeding the counter generator works
+    '''
     Main: [
         {File: "req4.ht", Variables: { WANT: "{{WANT1}}" }  }
         {File: "req4.ht", Variables: { WANT: "{{WANT2}}" } }
     ]
+    Variables: {
+        CNT: "{{COUNTER}}",
+    }
 }
 EOF
 
 cat > req4.ht <<EOF
 {
     Name: "Request 4",
-    Request: { URL: "http://httpbin.org/get?r={{RANDOM}}" },
+    Request: { URL: "http://httpbin.org/get?r={{RANDOM}}&c={{CNT}}" },
     Checks: [
         {Check: "StatusCode", Expect: 200},
         {Check: "JSON", Element: "args.r", Equals: "\"{{WANT}}\""},
+        {Check: "JSON", Element: "args.c", Equals: "\"31415\""},
     ]
 }
 EOF
 
 
 echo
-echo "Third Test"
-echo "=========="
+echo "Seeding RANDOM and COUNTER"
+echo "=========================="
 
-../ht exec -seed 123 -D WANT1=616249 -D WANT2=505403 suite3.suite || \
-    (echo "FAIL: Third suite run 1 returned $?"; exit 1;)
+../ht exec -seed 123 -counter 31415 -D WANT1=616249 -D WANT2=505403 suite3.suite || \
+    (echo "FAIL: suite3 run 1 returned $?"; exit 1;)
 
-../ht exec -seed 987 -D WANT1=848308 -D WANT2=143250 suite3.suite || \
-    (echo "FAIL: Third suite run 2 returned $?"; exit 1;)
+../ht exec -seed 987  -counter 31415 -D WANT1=848308 -D WANT2=143250 suite3.suite || \
+    (echo "FAIL: suite3 run 2 returned $?"; exit 1;)
+
 
 # ----------------------------------------------------------------------------
-#
-# Test the following:
-#  - RANDOM and COUNTER variables work properly
+# Suite 4: RANDOM and COUNTER variables
 #
 
 cat > suite4.suite <<EOF
 {
-    Name: "Forth Suite",
+    Name: "RANDOM and COUNTER variables",
+    Description: '''
+       Test the following:
+        - RANDOM and COUNTER variables work properly
+    '''
     Main: [
         {File: "req5.ht", Variables: { C2: "{{COUNTER}}", R2: "{{RANDOM}}" } }
         {File: "req6.ht", Variables: { C2: "{{COUNTER}}", R2: "{{RANDOM}}" } }
@@ -244,18 +259,18 @@ cat > req6.ht <<EOF
 EOF
 
 echo
-echo "Forth Test"
-echo "=========="
+echo "RANDOM and COUNTER Variables"
+echo "============================"
 
 ../ht exec -seed 123 suite4.suite || \
-    (echo "FAIL: Fourth suite returned $?"; exit 1;)
+    (echo "FAIL: suite4 returned $?"; exit 1;)
 
 
 
 rm -f suite1.suite suite2.suite suite3.suite suite4.suite
-rm -f req1.ht req2.ht req3.ht req4.ht req5.ht
+rm -f req1.ht req2.ht req3.ht req4.ht req5.ht req6.ht
 rm -f vars1.json vars2.json cookies.json
-
+rm -rf 201?-??-??_??h??m??s
 
 echo "PASS"
 exit 0
