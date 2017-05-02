@@ -130,6 +130,8 @@ func TestVariableHanddown(t *testing.T) {
 func TestAutomaticVariables(t *testing.T) {
 	scope.Random.Seed(1234)
 	lastCnt := <-scope.GetCounter // next value from GetCounter is lastCnt+1
+	scope.ResetCounter <- 1
+	lastCnt = 0
 
 	txt := `
 # automatic.suite

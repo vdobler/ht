@@ -70,6 +70,7 @@ var (
 	verbosity        int               // flag -verbosity
 	outputDir        string            // flag -output
 	randomSeed       int64             // flag -seed
+	counterSeed      int               // flag -counter
 	skipTLSVerify    bool              // flag -skiptlsverify
 	phantomjs        string            // flag -phantomjs
 	v, vv, vvv, vvvv bool              // flag -v, -vv, -vvv, -vvvv
@@ -87,6 +88,7 @@ func addTestFlags(fs *flag.FlagSet) {
 	addVarsFlags(fs)
 	addVerbosityFlag(fs)
 	addSeedFlag(fs)
+	addCounterFlag(fs)
 	addSkiptlsverifyFlag(fs)
 	addPhantomJSFlag(fs)
 	addDumpFlag(fs)
@@ -106,6 +108,11 @@ func addOutputFlag(fs *flag.FlagSet) {
 func addSeedFlag(fs *flag.FlagSet) {
 	fs.Int64Var(&randomSeed, "seed", 0,
 		"use `num` as seed for PRNG (0 will take seed from time)")
+}
+
+func addCounterFlag(fs *flag.FlagSet) {
+	fs.IntVar(&counterSeed, "counter", 1,
+		"use `num` as start value for COUNTER variables")
 }
 
 func addSkiptlsverifyFlag(fs *flag.FlagSet) {
