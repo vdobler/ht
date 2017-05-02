@@ -46,13 +46,14 @@ var htmlCheckTmpl = `{{define "CHECK"}}
 `
 
 var htmlTestTmpl = `{{define "TEST"}}
+{{$seqno := identifier .}}
 <div class="toggle">
   <input type="checkbox" value="selected" {{if gt .Status 2}}checked{{end}}
-         id="test-{{.Reporting.SeqNo}}" class="toggle-input">
-  <label for="test-{{.Reporting.SeqNo}}" class="toggle-label">
-    <h2>{{.Reporting.SeqNo}}:
+         id="test-{{$seqno}}" class="toggle-input">
+  <label for="test-{{$seqno}}" class="toggle-label">
+    <h2>{{$seqno}}:
       <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
-      "{{.Name}}" <small>(<code>{{.Reporting.Filename}}</code>, {{niceduration .FullDuration}})</small>
+      "{{.Name}}" <small>(<code>{{filename .}}</code>, {{niceduration .FullDuration}})</small>
     </h2>
   </label>
   <div class="toggle-content">
@@ -78,20 +79,20 @@ var htmlTestTmpl = `{{define "TEST"}}
       </div>
       {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
       {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
-      {{if .Request.SentParams}}{{template "FORMDATA" dict "Params" .Request.SentParams "SeqNo" .Reporting.SeqNo}}{{end}}
+      {{if .Request.SentParams}}{{template "FORMDATA" dict "Params" .Request.SentParams "SeqNo" $seqno}}{{end}}
       {{if or .Variables .ExValues}}{{template "VARIABLES" .}}{{end}}
       {{if eq .Status 2 3 4 5}}{{if .CheckResults}}
         <div class="checks">
           {{range $i, $e := .CheckResults}}
-{{template "CHECK" dict "Check" . "SeqNo" $.Reporting.SeqNo "N" $i}}
+{{template "CHECK" dict "Check" . "SeqNo" $seqno "N" $i}}
           {{end}}
         </div>
       {{end}}{{end}}
       <div>
         <div class="toggle">
           <input type="checkbox" value="selected"
-                 id="curl-{{.Reporting.SeqNo}}" class="toggle-input">
-          <label for="curl-{{.Reporting.SeqNo}}" class="toggle-label"><h3>Curl Call</h3></label>
+                 id="curl-{{$seqno}}" class="toggle-input">
+          <label for="curl-{{$seqno}}" class="toggle-label"><h3>Curl Call</h3></label>
           <div class="toggle-content">
             <div>
 <pre>
@@ -117,10 +118,11 @@ var htmlHeaderTmpl = `{{define "HEADER"}}
 {{end}}`
 
 var htmlResponseTmpl = `{{define "RESPONSE"}}
+{{$seqno := identifier .}}
 <div class="toggle">
   <input type="checkbox" value="selected" checked
-         id="resp-{{.Reporting.SeqNo}}" class="toggle-input">
-  <label for="resp-{{.Reporting.SeqNo}}" class="toggle-label"><h3>HTTP Response</h3></label>
+         id="resp-{{$seqno}}" class="toggle-input">
+  <label for="resp-{{$seqno}}" class="toggle-label"><h3>HTTP Response</h3></label>
   <div class="toggle-content">
     <div class="responseDetails">
       {{if .Response.Response}}
@@ -133,7 +135,7 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
 <pre class="responseBodySummary">
 {{Summary .Response.BodyStr}}
 </pre>
-        <a href="{{.Reporting.SeqNo}}.ResponseBody.{{.Reporting.Extension}}" target="_blank">Response Body</a>
+        <a href="{{$seqno}}.ResponseBody.{{fileext .}}" target="_blank">Response Body</a>
         {{else}}
           &#x2014; &#x2003; no body &#x2003; &#x2014;
         {{end}}
@@ -145,10 +147,11 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
 `
 
 var htmlRequestTmpl = `{{define "REQUEST"}}
+{{$seqno := identifier .}}
 <div class="toggle">
   <input type="checkbox" value="selected"
-         id="req-{{.Reporting.SeqNo}}" class="toggle-input">
-  <label for="req-{{.Reporting.SeqNo}}" class="toggle-label"><h3>HTTP Request</h3></label>
+         id="req-{{$seqno}}" class="toggle-input">
+  <label for="req-{{$seqno}}" class="toggle-label"><h3>HTTP Request</h3></label>
   <div class="toggle-content">
     <div class="requestDetails">
       <code><strong>{{.Request.Request.Method}}</strong> {{.Request.Request.URL.String}}
@@ -181,10 +184,11 @@ var htmlFormdataTmpl = `{{define "FORMDATA"}}
 `
 
 var htmlVariablesTmpl = `{{define "VARIABLES"}}
+{{$seqno := identifier .}}
 <div class="toggle">
   <input type="checkbox" value="selected"
-         id="var-{{.Reporting.SeqNo}}" class="toggle-input">
-  <label for="var-{{.Reporting.SeqNo}}" class="toggle-label"><h3>Variables</h3></label>
+         id="var-{{$seqno}}" class="toggle-input">
+  <label for="var-{{$seqno}}" class="toggle-label"><h3>Variables</h3></label>
 
   <div class="toggle-content">
     <div class="variableDetail">
@@ -377,6 +381,10 @@ func cleanSentBody(s string) string {
 	return string(runes)
 }
 
+func identifier(t *ht.Test) string { return t.GetStringMetadata("SeqNo") }
+func filename(t *ht.Test) string   { return t.GetStringMetadata("Filename") }
+func fileext(t *ht.Test) string    { return t.GetStringMetadata("Extension") }
+
 func roundTimeToMS(t time.Time) time.Time {
 	return t.Round(time.Millisecond)
 }
@@ -444,6 +452,9 @@ func init() {
 		"clean":        cleanSentBody,
 		"nicetime":     roundTimeToMS,
 		"niceduration": roundDuration,
+		"identifier":   identifier,
+		"filename":     filename,
+		"fileext":      fileext,
 	})
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlSuiteTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
@@ -492,17 +503,21 @@ func guessResponseExtension(test *ht.Test) string {
 func HTMLReport(dir string, s *Suite) error {
 	errs := ht.ErrorList{}
 
-	for _, test := range s.Tests {
+	for i, test := range s.Tests {
+		tfn := "??"
 		if tn, ok := test.Variables["TEST_NAME"]; ok {
-			test.Reporting.Filename = tn
-		} else {
-			test.Reporting.Filename = "??"
+			tfn = tn
 		}
-		test.Reporting.Extension = guessResponseExtension(test)
+		test.SetMetadata("Filename", tfn)
+		extension := guessResponseExtension(test)
+		test.SetMetadata("Extension", extension)
 
 		body := []byte(test.Response.BodyStr)
-		fn := fmt.Sprintf("%s.ResponseBody.%s", test.Reporting.SeqNo,
-			test.Reporting.Extension)
+		seqno := test.GetStringMetadata("SeqNo")
+		if seqno == "" {
+			seqno = fmt.Sprintf("%d", i+1)
+		}
+		fn := fmt.Sprintf("%s.ResponseBody.%s", seqno, extension)
 		name := path.Join(dir, fn)
 		err := ioutil.WriteFile(name, body, 0666)
 		if err != nil {
