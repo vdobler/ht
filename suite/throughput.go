@@ -484,7 +484,7 @@ func Throughput(scenarios []Scenario, opts ThroughputOptions, csvout io.Writer) 
 }
 
 // TestIdentifier identifies a single Test, i.e. a single request in a
-// throughput test.
+// throughput test. All number fields are 1-based.
 type TestIdentifier struct {
 	Scenario     int
 	Thread       int
@@ -855,6 +855,74 @@ type TestData struct {
 	Overage      time.Duration
 }
 
+// fields serialises data into a set of strings suitable (i.e. in appropriate
+// units) to write to a CSV file. Must stay in sync with testdataFromFields.
+func (data TestData) fields() []string {
+	r := make([]string, 13)
+	r[0] = data.Started.Format("2006-01-02T15:04:05.99999Z07:00")
+	r[1] = data.Status.String()
+	r[2] = fmt.Sprintf("%.3f", dToMs(data.ReqDuration))
+	r[3] = fmt.Sprintf("%.3f", dToMs(data.TestDuration))
+	r[4] = fmt.Sprintf("%.1f", dToMs(time.Duration(data.Wait)))
+	r[5] = fmt.Sprintf("%.1f", dToMs(time.Duration(data.Overage)))
+	r[6] = fmt.Sprintf("%d", data.ID.Scenario)
+	r[7] = fmt.Sprintf("%d", data.ID.Thread)
+	r[8] = fmt.Sprintf("%d", data.ID.Repetition)
+	r[9] = fmt.Sprintf("%d", data.ID.Test)
+	r[10] = data.ID.ScenarioName
+	r[11] = data.ID.TestName
+	if data.Error != nil {
+		r[12] = data.Error.Error()
+	}
+	return r
+}
+
+func testdataFromFields(line []string) (TestData, error) {
+	data := TestData{}
+	var err error
+	data.Started, err = time.Parse("2006-01-02T15:04:05.99999Z07:00", line[0])
+	if err != nil {
+		return data, err
+	}
+
+	data.Status = ht.StatusFromString(line[1])
+	if data.Status < 0 {
+		return data, fmt.Errorf("unknown status %q", line[1])
+	}
+
+	msToD := func(s string) time.Duration {
+		f, e := strconv.ParseFloat(s, 64)
+		if e != nil && err == nil {
+			err = e
+		}
+		return time.Duration(f * 1e6)
+	}
+	sToN := func(s string) int {
+		n, e := strconv.Atoi(s)
+		if e != nil && err == nil {
+			err = e
+		}
+		return n
+	}
+	data.ReqDuration = msToD(line[2])
+	data.TestDuration = msToD(line[3])
+	data.Wait = msToD(line[4])
+	data.Overage = msToD(line[5])
+
+	data.ID.Scenario = sToN(line[6])
+	data.ID.Thread = sToN(line[7])
+	data.ID.Repetition = sToN(line[8])
+	data.ID.Test = sToN(line[9])
+	data.ID.ScenarioName = line[10]
+	data.ID.TestName = line[11]
+
+	if line[12] != "" {
+		data.Error = errors.New(line[8])
+	}
+
+	return data, err
+}
+
 // ByStarted sorts []TestData by the Started field.
 type ByStarted []TestData
 
@@ -864,17 +932,19 @@ func (s ByStarted) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Writer, sr *StatusRing) bender.Recorder {
 	cnt := 0
-	start := time.Now()
-	r := make([]string, 0, 14)
 	header := []string{
-		"Started",
-		"Elapsed",
-		"Status",
-		"ReqDuration",
-		"TestDuration",
-		"Wait",
-		"Overage",
-		"SeqNo",
+		"Started",      // 0
+		"Status",       // 1
+		"ReqDuration",  // 2
+		"TestDuration", // 3
+		"Wait",         // 4
+		"Overage",      // 5
+		"Scenario",     // 6
+		"Thread",       // 7
+		"Repetition",   // 8
+		"Test",         // 9
+		"ScenName",     // 10
+		"TestName",     // 11
 		"Error",
 	}
 	w.Write(header) // TODO: handle error; also below
@@ -903,8 +973,7 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 		}
 
 		// CSV Recording
-		r = data2csvline(d, start, r)
-		w.Write(r)
+		w.Write(d.fields())
 		if cnt%5 == 0 {
 			w.Flush()
 		}
@@ -928,82 +997,11 @@ func ReadLiveCSV(r io.Reader) ([]TestData, error) {
 	all = all[1:] // strip header
 	data := make([]TestData, 0, len(all))
 	for i, line := range all {
-		d, err := csvline2Data(line)
+		d, err := testdataFromFields(line)
 		if err != nil {
 			return data, fmt.Errorf("line %d: %s", i+2, err)
 		}
 		data = append(data, d)
-	}
-
-	return data, nil
-}
-
-// must be kept in sync with csvline2Data
-func data2csvline(data TestData, start time.Time, r []string) []string {
-	r = r[:0]
-	r = append(r, data.Started.Format("2006-01-02T15:04:05.99999Z07:00"))
-	r = append(r, fmt.Sprintf("%.3f", dToMs(data.Started.Sub(start))))
-	r = append(r, data.Status.String())
-	r = append(r, fmt.Sprintf("%.3f", dToMs(data.ReqDuration)))
-	r = append(r, fmt.Sprintf("%.3f", dToMs(data.TestDuration)))
-	r = append(r, fmt.Sprintf("%.1f", dToMs(time.Duration(data.Wait))))
-	r = append(r, fmt.Sprintf("%.1f", dToMs(time.Duration(data.Overage))))
-	r = append(r, data.ID.String())
-	if data.Error != nil {
-		r = append(r, data.Error.Error())
-	} else {
-		r = append(r, "")
-	}
-
-	return r
-}
-
-// must be in sync with data2csvline
-func csvline2Data(line []string) (TestData, error) {
-	data := TestData{}
-	var err error
-	var f float64
-	data.Started, err = time.Parse("2006-01-02T15:04:05.99999Z07:00", line[0])
-	if err != nil {
-		return data, err
-	}
-
-	data.Status = ht.StatusFromString(line[2])
-	if data.Status < 0 {
-		return data, fmt.Errorf("unknown status %q", line[2])
-	}
-
-	f, err = strconv.ParseFloat(line[3], 64)
-	if err != nil {
-		return data, err
-	}
-	data.ReqDuration = time.Duration(f * 1e6)
-
-	f, err = strconv.ParseFloat(line[4], 64)
-	if err != nil {
-		return data, err
-	}
-	data.TestDuration = time.Duration(f * 1e6)
-
-	f, err = strconv.ParseFloat(line[5], 64)
-	if err != nil {
-		return data, err
-	}
-	data.Wait = time.Duration(f * 1e6)
-
-	f, err = strconv.ParseFloat(line[6], 64)
-	if err != nil {
-		return data, err
-	}
-	data.Overage = time.Duration(f * 1e6)
-
-	data.ID, err = TestIDFromString(line[7])
-	if err != nil {
-		return data, err
-	}
-
-	if line[8] != "" {
-		data.Error = errors.New(line[8])
 	}
 
 	return data, nil
