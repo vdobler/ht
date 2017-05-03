@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/vdobler/ht/internal/asciistat"
@@ -81,7 +80,7 @@ func runStat(cmd *Command, args []string) {
 
 	// Output augmented data.
 	if output != "" {
-		ofile, err := os.Open(output)
+		ofile, err := os.Create(output)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot open file %q for output: %s\n",
 				output, err)
@@ -124,8 +123,7 @@ func printStatistics(data []suite.TestData) {
 	// Per test
 	perTest := make(map[string][]suite.TestData)
 	for _, d := range data {
-		parts := strings.Split(d.ID, suite.IDSep)
-		testname := parts[2]
+		testname := d.ID.TestName
 		perTest[testname] = append(perTest[testname], d)
 	}
 

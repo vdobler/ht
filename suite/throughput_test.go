@@ -13,7 +13,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -262,8 +261,7 @@ func TestThroughput(t *testing.T) {
 
 	cnt := make(map[string]int)
 	for _, d := range data {
-		parts := strings.SplitN(d.ID, IDSep, 3)
-		sn := parts[1]
+		sn := d.ID.ScenarioName
 		cnt[sn] = cnt[sn] + 1
 	}
 
