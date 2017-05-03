@@ -917,7 +917,7 @@ func testdataFromFields(line []string) (TestData, error) {
 	data.ID.TestName = line[11]
 
 	if line[12] != "" {
-		data.Error = errors.New(line[8])
+		data.Error = errors.New(line[12])
 	}
 
 	return data, err
