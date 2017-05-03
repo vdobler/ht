@@ -753,12 +753,12 @@ func DataToCSV(data []TestData, out io.Writer) error {
 	r := make([]string, 0, 19)
 	for i, d := range data {
 		r = append(r, fmt.Sprintf("%d", i))
-		r = append(r, d.Started.Format("2006-01-02T15:04:05.99999Z07:00"))
-		r = append(r, fmt.Sprintf("%.3f", dToMs(d.Started.Sub(first))))
+		r = append(r, d.Started.Format("2006-01-02T15:04:05.999999Z07:00"))
+		r = append(r, fmt.Sprintf("%.2f", dToMs(d.Started.Sub(first))))
 		r = append(r, fmt.Sprintf("%.1f", effectiveRate(i, data, rateWindow)))
 		r = append(r, d.Status.String())
-		r = append(r, fmt.Sprintf("%.3f", dToMs(d.ReqDuration)))
-		r = append(r, fmt.Sprintf("%.3f", dToMs(d.TestDuration)))
+		r = append(r, fmt.Sprintf("%.2f", dToMs(d.ReqDuration)))
+		r = append(r, fmt.Sprintf("%.2f", dToMs(d.TestDuration)))
 		r = append(r, fmt.Sprintf("%.1f", dToMs(d.Wait)))
 		r = append(r, fmt.Sprintf("%.1f", dToMs(d.Overage)))
 		concTot, concOwn := concurrencyLevel(i, data)
@@ -859,7 +859,7 @@ type TestData struct {
 // units) to write to a CSV file. Must stay in sync with testdataFromFields.
 func (data TestData) fields() []string {
 	r := make([]string, 13)
-	r[0] = data.Started.Format("2006-01-02T15:04:05.99999Z07:00")
+	r[0] = data.Started.Format("2006-01-02T15:04:05.999999Z07:00")
 	r[1] = data.Status.String()
 	r[2] = fmt.Sprintf("%.3f", dToMs(data.ReqDuration))
 	r[3] = fmt.Sprintf("%.3f", dToMs(data.TestDuration))
@@ -880,7 +880,7 @@ func (data TestData) fields() []string {
 func testdataFromFields(line []string) (TestData, error) {
 	data := TestData{}
 	var err error
-	data.Started, err = time.Parse("2006-01-02T15:04:05.99999Z07:00", line[0])
+	data.Started, err = time.Parse("2006-01-02T15:04:05.999999Z07:00", line[0])
 	if err != nil {
 		return data, err
 	}
