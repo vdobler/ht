@@ -243,7 +243,7 @@ func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test
 		monitor <- report
 	})
 
-	stopMocks, err = mock.Serve(mocks, notFoundHandler, suite.Log)
+	stopMocks, err = mock.Serve(mocks, notFoundHandler, suite.Log, "", "")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
