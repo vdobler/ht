@@ -106,6 +106,8 @@ type Mock struct {
 
 	// Log to report infos to.
 	Log Log
+
+	tls bool // served via https
 }
 
 // Response to send as mocked answer.
@@ -303,18 +305,31 @@ func (m *Mock) replacer(r *http.Request, extractions scope.Variables) (*strings.
 	return vars.Replacer(), vars
 }
 
-func splitMocks(mocks []*Mock) (tls map[string][]*Mock, std map[string][]*Mock, err error) {
-	tls, std = make(map[string][]*Mock), make(map[string][]*Mock)
+// groupMocks groups the mocks by their port number.
+func groupMocks(mocks []*Mock) (map[string][]*Mock, error) {
+	group := make(map[string][]*Mock)
 	for _, m := range mocks {
 		u, err := url.Parse(m.URL)
 		if err != nil {
-			return tls, std, err
+			return nil, err
 		}
-		// TODO: handle TLS
+		if u.Scheme == "https" {
+			m.tls = true
+		}
 		port := u.Port()
-		std[port] = append(std[port], m)
+		group[port] = append(group[port], m)
 	}
-	return tls, std, err
+	// Cannot mix tls and non-tls on one port for now.
+	for port, ms := range group {
+		for i := 2; i < len(ms); i++ {
+			if ms[i].tls != ms[0].tls {
+				return nil, fmt.Errorf("mock: TLS and non-TLS mocks on port %s (e.g. %q and %q)",
+					port, ms[0].Name, ms[i].Name)
+			}
+		}
+	}
+
+	return group, nil
 }
 
 // ServerShutdownGraceperiode is the time given the mock servers
@@ -323,18 +338,28 @@ var ServerShutdownGraceperiode = 250 * time.Millisecond
 
 // Serve the given mocks until something is sent on the stop channel.
 // once the mock servers have shut down stop is closed.
-func Serve(mocks []*Mock, notfound http.Handler, log Log) (stop chan bool, err error) {
+// The notfound handler is used to catch all request not matching
+// a defined route and log can be used for diagnostic messages, both
+// may be nil.
+// To handle TLS connections you can provide certFile and keyFile as
+// described in https://golang.org/pkg/net/http/#Server.ListenAndServeTLS
+func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile string) (stop chan bool, err error) {
 	stop = make(chan bool)
-	tls, std, err := splitMocks(mocks)
+	group, err := groupMocks(mocks)
 	if err != nil {
 		return stop, err
 	}
 
 	var servers []*http.Server
 
-	for port, ms := range std {
+	for port, ms := range group {
+		tls := ms[0].tls
 		if port == "" {
-			port = "80"
+			if tls {
+				port = "443"
+			} else {
+				port = "80"
+			}
 		}
 		r := mux.NewRouter()
 		for _, m := range ms {
@@ -343,7 +368,9 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log) (stop chan bool, err e
 				m.Method = http.MethodGet
 			}
 			r.Handle(u.Path, m).Methods(m.Method)
-			log.Printf("Will handle %s %s", m.Method, m.URL)
+			if log != nil {
+				log.Printf("Will handle %s %s", m.Method, m.URL)
+			}
 		}
 		r.NotFoundHandler = notfound
 		srv := &http.Server{
@@ -351,7 +378,15 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log) (stop chan bool, err e
 			Handler: r,
 		}
 		servers = append(servers, srv)
-		go srv.ListenAndServe() // TODO: handle error
+		if tls {
+			go func() {
+				fmt.Println("TLS serving on ", srv.Addr)
+				err := srv.ListenAndServeTLS(certFile, keyFile)
+				fmt.Println(err)
+			}()
+		} else {
+			go srv.ListenAndServe() // TODO: handle error
+		}
 	}
 	go func() {
 		<-stop
@@ -362,10 +397,6 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log) (stop chan bool, err e
 		}
 		close(stop)
 	}()
-
-	if len(tls) != 0 {
-		panic("https mocks not implemented jet")
-	}
 
 	return stop, nil
 }

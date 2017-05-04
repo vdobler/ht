@@ -1,7 +1,14 @@
 package mock
 
 import (
+	"crypto/tls"
+	"io/ioutil"
+	"log"
+	"net"
+	"net/http"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/vdobler/ht/scope"
 )
@@ -51,4 +58,86 @@ func TestMapping(t *testing.T) {
 				i, value, tc.want)
 		}
 	}
+}
+
+// client is a fast-failing client which does not verify TLS certificates.
+var client = &http.Client{
+	Transport: &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   1 * time.Second,
+			KeepAlive: 2 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:    10,
+		IdleConnTimeout: 4 * time.Second,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		TLSHandshakeTimeout:   1 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	},
+	Timeout: 500 * time.Millisecond,
+}
+
+// get the URL u and return status code and body. Uses client to skip
+// TLS certificate verification.
+func get(u string) (int, string, error) {
+	resp, err := client.Get(u)
+	if err != nil {
+		return 0, "", err
+	}
+	defer resp.Body.Close()
+	code := resp.StatusCode
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return code, "", err
+	}
+	return code, string(body), nil
+}
+
+func TestServe(t *testing.T) {
+	var logger Log
+	if testing.Verbose() {
+		logger = log.New(os.Stdout, "", 0)
+	}
+	mocks := []*Mock{
+		&Mock{
+			Name:   "Mock A",
+			Method: "GET",
+			URL:    "http://localhost:8080/ma/{NAME}",
+			Response: Response{
+				StatusCode: 200,
+				Body:       "Hello {{NAME}}",
+			},
+		},
+		&Mock{
+			Name:   "Mock B",
+			Method: "GET",
+			URL:    "https://localhost:8443/mb/{NAME}",
+			Response: Response{
+				StatusCode: 200,
+				Body:       "Hola {{NAME}}",
+			},
+		},
+	}
+
+	stop, err := Serve(mocks, nil, logger, "./testdata/dummy.cert", "./testdata/dummy.key")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(20 * time.Millisecond)
+
+	status, body, err := get("http://localhost:8080/ma/Foo")
+	if status != 200 || body != "Hello Foo" || err != nil {
+		t.Errorf("Mock A: got %d %q %v", status, body, err)
+	}
+
+	status, body, err = get("https://localhost:8443/mb/Bar")
+	if status != 200 || body != "Hola Bar" || err != nil {
+		t.Errorf("Mock B: got %d %q %v", status, body, err)
+	}
+
+	stop <- true
 }
