@@ -1,21 +1,23 @@
 {
     Name: "Complex"
-    Description: "Variable Replacement in Body"
+    Description: "Complex Variable Replacement in Body"
 
     Method: "POST"
-    URL: "http://localhost:8880/{LANG}/greet"
+    URL: "https://localhost:8880/{LANG}/greet"
 
     ParseForm: true
-    Set: [
-        {Variable: "title", BasedOn: "last", To: {
-            "Dumbledore": "Prof. ",
-            "Jones":      "Dr. ",
-            "*":          "",
-        }},
-        {Variable: "middle", BasedOn: "last", To: {
-            "Jones": "'Indiana' "
-            "*":     "",
-        }}
+    Map: [
+        {
+            Variables: [ "last",       "title"   ],
+            Table:     [ "Dumbledore", "Prof. ",
+                         "Jones",      "Dr. ",
+                         "*",          ""        ]
+        }
+        {
+            Variables: [ "last",       "middle"     ],
+            Table:     [ "Jones",      "'Indiana' ",
+                         "*",          ""           ]
+        }
     ]
 
     Response: {

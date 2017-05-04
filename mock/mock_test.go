@@ -17,45 +17,116 @@ type mapTest struct {
 	vars    scope.Variables
 	mapping Mapping
 	want    string
+	value   string
 }
 
 var mapTests = []mapTest{
 	{
 		scope.Variables{"X": "foo"},
-		Mapping{Variable: "A", BasedOn: "X",
-			To: map[string]string{"foo": "bar"}},
-		"bar",
+		Mapping{Variables: []string{"X", "A"},
+			Table: []string{"foo", "bar"}},
+		"A", "bar",
 	},
 	{
 		scope.Variables{"X": "foo"},
-		Mapping{Variable: "A", BasedOn: "X",
-			To: map[string]string{"zzz": "bar"}},
-		"-undefined-",
+		Mapping{Variables: []string{"X", "A"},
+			Table: []string{
+				"foo", "bar",
+				"foo", "waz",
+			}},
+		"A", "bar",
+	},
+	{
+		scope.Variables{"X": "foo", "Y": "bar"},
+		Mapping{Variables: []string{"X", "Y", "A"},
+			Table: []string{
+				"foo", "bar", "123",
+				"foo", "wuz", "999",
+				"foo", "*", "234",
+				"*", "bar", "345",
+				"*", "*", "456",
+			}},
+		"A", "123",
+	},
+	{
+		scope.Variables{"X": "rr", "Y": "tt"},
+		Mapping{Variables: []string{"X", "Y", "A"},
+			Table: []string{
+				"foo", "bar", "123",
+				"foo", "wuz", "999",
+				"foo", "*", "234",
+				"*", "bar", "345",
+				"*", "*", "456",
+			}},
+		"A", "456",
+	},
+	{
+		scope.Variables{"X": "foo", "Y": "tt"},
+		Mapping{Variables: []string{"X", "Y", "A"},
+			Table: []string{
+				"foo", "bar", "123",
+				"foo", "wuz", "999",
+				"foo", "*", "234",
+				"*", "bar", "345",
+				"*", "*", "456",
+			}},
+		"A", "234",
+	},
+	{
+		scope.Variables{"X": "rr", "Y": "bar"},
+		Mapping{Variables: []string{"X", "Y", "A"},
+			Table: []string{
+				"foo", "bar", "123",
+				"foo", "wuz", "999",
+				"foo", "*", "234",
+				"*", "*", "456",
+				"*", "bar", "345",
+			}},
+		"A", "345",
+	},
+
+	// The un-happy paths.
+	{
+		scope.Variables{"X": "foo"},
+		Mapping{Variables: []string{"X", "A"},
+			Table: []string{"wuz", "bar"}},
+		"A", "-undefined-",
 	},
 	{
 		scope.Variables{"X": "foo"},
-		Mapping{Variable: "A", BasedOn: "X",
-			To: map[string]string{"zzz": "bar", "*": "quz"}},
-		"quz",
+		Mapping{Variables: []string{"Z", "A"},
+			Table: []string{"foo", "bar"}},
+		"A", "-undefined-Z-",
 	},
 	{
 		scope.Variables{"X": "foo"},
-		Mapping{Variable: "A", BasedOn: "K",
-			To: map[string]string{"foo": "bar"}},
-		"-undefined-",
+		Mapping{Variables: []string{"X", "A"}},
+		"", "-malformed-table-",
+	},
+	{
+		scope.Variables{"X": "foo"},
+		Mapping{Variables: []string{"X", "A"},
+			Table: []string{"wuz", "bar", "kiz"}},
+		"", "-malformed-table-",
+	},
+	{
+		scope.Variables{"X": "foo"},
+		Mapping{Variables: []string{"X"},
+			Table: []string{"foo", "bar"}},
+		"", "-malformed-variables-",
 	},
 }
 
 func TestMapping(t *testing.T) {
 	for i, tc := range mapTests {
-		name, value := tc.mapping.Lookup(tc.vars)
-		if name != tc.mapping.Variable {
+		name, value := tc.mapping.lookup(tc.vars)
+		if name != tc.want {
 			t.Errorf("%d. Bad name, got %q, want %q",
-				i, name, tc.mapping.Variable)
+				i, name, tc.want)
 		}
-		if value != tc.want {
+		if value != tc.value {
 			t.Errorf("%d. Bad value, got %q, want %q",
-				i, value, tc.want)
+				i, value, tc.value)
 		}
 	}
 }

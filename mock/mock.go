@@ -32,6 +32,7 @@ package mock
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -94,9 +95,9 @@ type Mock struct {
 	// Variables contains the default variables/values for this mock.
 	Variables scope.Variables
 
-	// Set is used to set variable values depending on other variables.
+	// Map is used to set variable values depending on other variables.
 	// It is executed after VarEx but before constructing the response.
-	Set []Mapping
+	Map []Mapping
 
 	// Monitor is used to report invocations if this mock.
 	// The incomming request and the outgoing mocked response are encoded
@@ -127,47 +128,81 @@ type Response struct {
 
 // Mapping allows to set the value of a variable based on some other variable's
 // value.
+// Consider the follwing Mapping:
+//      Variables: []string{ "first", "last", "age" },
+//      Table: []string{
+//          "John", "Smith", "20",
+//          "John", "*",     "45",
+//          "Paul", "Brown", "30",
+//          "*",    "Brown", "55",
+//          "*",    "*",     "25",
+//     }
+// It would set the variable "age" to 30 if first=="Paul" && last=="Brown".
+// "John Miller" would be 45 years old and "Sue Carter" 25 because "*" matches
+// any value. "John Brown" is 45 because matching happens left to right,
+//
 type Mapping struct {
-	// Variable to set it's value (A)
-	Variable string
+	// Variables contains (single or multiple) input variable names and
+	// the single output variable name.
+	Variables []string
 
-	// BasedOn selects the variable whos value is used as to find the row
-	// in the To table (X)
-	BasedOn string
-
-	// To is the lookup table.
-	To map[string]string
+	// Table is the mapping table, its len must be an integer multiple
+	// of 3*len(Variables).
+	Table []string
 }
 
-// Lookup the m.Variable in vars and return in and the mapped value.
-// It basically implements:
-//     Lookup X's value in the following table and set A to the result
-//
-//          X   |  result
-//         -----+--------
-//          foo |  bar
-//          wuz |  kip
-//          *   |  zet
-//
-// Example: After executing the mapping
-//   Mapping{Variable: "A", BasedOn: "X", To: {"foo": "bar", "wuz": "kip"}}
-// with X=="foo" the variable A will be set to "bar".
-// If X's value is not found in the table then the resulting value will be
-// the value of "*" (if there is a "*" entry) or "-undefined-". If there is
-// no variable named "X" the n the result will be "-undefined-" too.
-func (m Mapping) Lookup(vars scope.Variables) (string, string) {
-	x, ok := vars[m.BasedOn]
-	if !ok {
-		return m.Variable, "-undefined-"
+func (m Mapping) lookup(vars scope.Variables) (string, string) {
+	N := len(m.Variables)
+	if N < 2 {
+		return "", "-malformed-variables-"
 	}
-	v, ok := m.To[x]
-	if !ok {
-		v, ok = m.To["*"]
+	if len(m.Table) == 0 || len(m.Table)%N != 0 {
+		return "", "-malformed-table-"
+	}
+	from, to := m.Variables[:len(m.Variables)-1], m.Variables[len(m.Variables)-1]
+
+	candidate := make([]int, len(m.Table)/N) // line numbers of possible matching candidates
+	for i := range candidate {
+		candidate[i] = i * N
+	}
+
+	// Thin list of candidate table lines
+	for i, v := range from {
+		x, ok := vars[v]
 		if !ok {
-			return m.Variable, "-undefined-"
+			return to, fmt.Sprintf("-undefined-%s-", v)
+		}
+
+		remaining := []int{}
+		for _, c := range candidate {
+			if m.Table[c+i] == x || m.Table[c+i] == "*" {
+				// still a candidate
+				remaining = append(remaining, c)
+			}
+		}
+		candidate = remaining
+	}
+
+	value, bestrank := "-undefined-", int64(-1)
+	//   Paul  Brown   --> 3
+	//   John  *       --> 2
+	//   *     Brown   --> 1
+	//   *     *       --> 0
+	for _, c := range candidate {
+		rank := uint64(0)
+		for i := range from {
+			if m.Table[c+i] == "*" {
+				continue
+			}
+			rank |= 1 << uint64(i)
+		}
+		if r := int64(rank); r > bestrank {
+			value = m.Table[c+len(from)]
+			bestrank = r
 		}
 	}
-	return m.Variable, v
+
+	return to, value
 }
 
 // ServeHTTP implements http.Handler.
@@ -308,8 +343,8 @@ func (m *Mock) replacer(r *http.Request, extractions scope.Variables) (*strings.
 	vars = scope.New(extractions, vars, true)
 
 	// Work through manual variable setting.
-	for _, set := range m.Set {
-		name, val := set.Lookup(vars)
+	for _, mapping := range m.Map {
+		name, val := mapping.lookup(vars)
 		vars[name] = val
 	}
 
@@ -334,6 +369,17 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile stri
 	if err != nil {
 		return nil, err
 	}
+	haveTLS := false
+	for _, ms := range group {
+		if ms[0].tls {
+			haveTLS = true
+			break
+		}
+	}
+	if haveTLS && (certFile == "" || keyFile == "") {
+		return nil, errors.New("mock: need cert and key file to mock https")
+	}
+	// TODO: handle unreadable cert/keyfile here.
 
 	var servers []*http.Server
 	serveErrs := make(chan error)
