@@ -113,9 +113,16 @@ type Mock struct {
 
 // Response to send as mocked answer.
 type Response struct {
+	// StatusCode of the response. A value of 0 will result in StatusCode 200.
 	StatusCode int
-	Header     http.Header
-	Body       string
+
+	// Header is the HTTP header to send. If Go's default header is okay it
+	// can be empty.
+	Header http.Header
+
+	// Body of the response. Body may start with "@file:" and "@vfile:" as
+	// explained in detail for ht.FileData.
+	Body string
 }
 
 // Mapping allows to set the value of a variable based on some other variable's
@@ -231,7 +238,11 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for h, vs := range response.Header {
 		w.Header()[h] = vs
 	}
-	w.WriteHeader(m.Response.StatusCode)
+	status := m.Response.StatusCode
+	if status == 0 {
+		status = http.StatusOK // 200 is the default
+	}
+	w.WriteHeader(status)
 	io.WriteString(w, sentBody)
 
 	if m.Monitor == nil {

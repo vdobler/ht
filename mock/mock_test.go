@@ -107,8 +107,8 @@ func TestServe(t *testing.T) {
 			Method: "GET",
 			URL:    "http://localhost:8080/ma/{NAME}",
 			Response: Response{
-				StatusCode: 200,
-				Body:       "Hello {{NAME}}",
+				// StatusCode defaults to 200
+				Body: "Hello {{NAME}}",
 			},
 		},
 		&Mock{
