@@ -1,31 +1,32 @@
 // Package mock provides basic functionality to mock HTTP responses.
 //
 // Its main use is the following szenario where a ht.Test is used to test
-// an endpoint on a server. Handling this endpoint require an additional
-// request to an external backend system which is mocked by a mock.Mock.
+// an endpoint on a server. Handling this endpoint requires one or more
+// additional requests to an external backend system which is mocked by
+// a Mock.
 // Like this the server endpoint can be tested without the need for a working
 // backend system and at the same time it is possible to validate the
 // request made by the server.
 //
-//    Suite     Test    Server    Mock
-//      |         |     to test     |
-//    +---+       |        |        |
-//    |   |       |        |      +---+
-//    |   +--start backend mock--->   |
-//    |   |       |        |      |   |
-//    |   |     +---+      |      |   |
-//    |   +---->|   |    +---+    |   |
-//    |   |     |   |--->|   |    |   |
-//    |   |     |   |    |   |--->|   |
-//    |   |     |   |    |   |<---|   |
-//    |   |     |   |<---|   |    |   |
-//    |   |<----|   |    +---+    |   |
-//    |   |     +---+             |   |
-//    |   |                       |   |
-//    |   |<--report if called----|   |
-//    +---+                       +---+
+//      Suite     Test    Server    Mock
+//        |         |     to test     |
+//      +---+       |        |        |
+//      |   |       |        |      +---+
+//      |   +--start backend mock-->|   |
+//      |   |       |        |      |   |
+//      |   |     +---+      |      |   |
+//      |   +---->|   |    +---+    |   |
+//      |   |     |   |--->|   |    |   |
+//      |   |     |   |    |   |--->|   |
+//      |   |     |   |    |   |<---|   |
+//      |   |     |   |<---|   |    |   |
+//      |   |<----|   |    +---+    |   |
+//      |   |     +---+             |   |
+//      |   |                       |   |
+//      |   |<--report if called----|   |
+//      +---+                       +---+
 //
-//
+// Of course Mocks can be used for general mocking too.
 package mock
 
 import (
@@ -68,7 +69,7 @@ type Mock struct {
 	// case variables are extracted.
 	URL string
 
-	// ParseForm allows to parse query and form parameters into variables.
+	// ParseForm allows to parse query- and form-parameters into variables.
 	// If set to true then a request like
 	//     curl -d A=1 -d B=2 -d B=3 http://localhost/?C=4
 	// would extract the following variable/value-pairs:
@@ -90,7 +91,7 @@ type Mock struct {
 	// Response to send for this mock.
 	Response Response
 
-	// Variables. TODO Explain.
+	// Variables contains the default variables/values for this mock.
 	Variables scope.Variables
 
 	// Set is used to set variable values depending on other variables.
@@ -270,10 +271,9 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.Monitor <- report
 }
 
+// Construct a replacer for the response from the mux variables and
+// the extractions with extractions overwriting mux variables.
 func (m *Mock) replacer(r *http.Request, extractions scope.Variables) (*strings.Replacer, scope.Variables) {
-	// Construct a replacer for the response from the mux variables and
-	// the extractions with extractions overwriting mux variables.
-
 	vars := scope.New(scope.Variables(mux.Vars(r)), m.Variables, false)
 
 	if m.ParseForm {
@@ -305,6 +305,82 @@ func (m *Mock) replacer(r *http.Request, extractions scope.Variables) (*strings.
 	return vars.Replacer(), vars
 }
 
+// ServerShutdownGraceperiode is the time given the mock servers
+// to shut down.
+var ServerShutdownGraceperiode = 250 * time.Millisecond
+
+// Serve the given mocks until something is sent on the stop channel.
+// once the mock servers have shut down stop is closed.
+// The notfound handler is used to catch all request not matching
+// a defined route and log can be used for diagnostic messages, both
+// may be nil.
+// To handle TLS connections you can provide certFile and keyFile as
+// described in https://golang.org/pkg/net/http/#Server.ListenAndServeTLS.
+// All mocks must use the same certificate/key pair.
+func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile string) (stop chan bool, err error) {
+	stop = make(chan bool)
+	group, err := groupMocks(mocks)
+	if err != nil {
+		return nil, err
+	}
+
+	var servers []*http.Server
+	serveErrs := make(chan error)
+
+	// Start servers listeing an all ports with mocks.
+	for port, ms := range group {
+		tls := ms[0].tls
+		if port == "" {
+			if tls {
+				port = "443"
+			} else {
+				port = "80"
+			}
+		}
+		srv := createServer(port, ms, notfound, log)
+		servers = append(servers, srv)
+		if tls {
+			go func() {
+				err := srv.ListenAndServeTLS(certFile, keyFile)
+				serveErrs <- err
+			}()
+		} else {
+			go func() {
+				err := srv.ListenAndServe()
+				serveErrs <- err
+			}()
+		}
+	}
+
+	// Start goroutine which handels stopping the servers.
+	go func() {
+		<-stop
+		for _, srv := range servers {
+			ctx, canc := context.WithTimeout(context.Background(), ServerShutdownGraceperiode)
+			srv.Shutdown(ctx)
+			canc()
+		}
+		close(stop)
+	}()
+
+	// TODO: waiting is bad, better stuff needed.
+	select {
+	case <-time.After(50 * time.Millisecond):
+		// TCP listerners now probably ready.
+		// TODO: Thsi should be replaced by our own code. Unfortunately
+		// this is some work: a) setup TLS config b) net.Listen on the
+		// ports, c) start serving, d) implement own shutdown logic.
+		// Especially d) is out of my reach for now.
+	case serr := <-serveErrs:
+		// At least one server could not start. Shutdown all.
+		stop <- true
+		<-stop // Wait until all are stopped
+		return nil, serr
+	}
+
+	return stop, nil
+}
+
 // groupMocks groups the mocks by their port number.
 func groupMocks(mocks []*Mock) (map[string][]*Mock, error) {
 	group := make(map[string][]*Mock)
@@ -319,86 +395,39 @@ func groupMocks(mocks []*Mock) (map[string][]*Mock, error) {
 		port := u.Port()
 		group[port] = append(group[port], m)
 	}
+
 	// Cannot mix tls and non-tls on one port for now.
 	for port, ms := range group {
 		for i := 2; i < len(ms); i++ {
-			if ms[i].tls != ms[0].tls {
-				return nil, fmt.Errorf("mock: TLS and non-TLS mocks on port %s (e.g. %q and %q)",
-					port, ms[0].Name, ms[i].Name)
+			if ms[i].tls == ms[0].tls {
+				continue
 			}
+			return nil, fmt.Errorf(
+				"mock: TLS and non-TLS mocks on port %s (e.g. %q and %q)",
+				port, ms[0].Name, ms[i].Name)
 		}
 	}
 
 	return group, nil
 }
 
-// ServerShutdownGraceperiode is the time given the mock servers
-// to shut down.
-var ServerShutdownGraceperiode = 250 * time.Millisecond
-
-// Serve the given mocks until something is sent on the stop channel.
-// once the mock servers have shut down stop is closed.
-// The notfound handler is used to catch all request not matching
-// a defined route and log can be used for diagnostic messages, both
-// may be nil.
-// To handle TLS connections you can provide certFile and keyFile as
-// described in https://golang.org/pkg/net/http/#Server.ListenAndServeTLS
-func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile string) (stop chan bool, err error) {
-	stop = make(chan bool)
-	group, err := groupMocks(mocks)
-	if err != nil {
-		return stop, err
-	}
-
-	var servers []*http.Server
-
-	for port, ms := range group {
-		tls := ms[0].tls
-		if port == "" {
-			if tls {
-				port = "443"
-			} else {
-				port = "80"
-			}
+func createServer(port string, mocks []*Mock, notfound http.Handler, log Log) *http.Server {
+	r := mux.NewRouter()
+	for _, m := range mocks {
+		u, _ := url.Parse(m.URL) // Cannot fail: validated during splitMocks.
+		if m.Method == "" {
+			m.Method = http.MethodGet
 		}
-		r := mux.NewRouter()
-		for _, m := range ms {
-			u, _ := url.Parse(m.URL) // Cannot fail: validated during splitMocks.
-			if m.Method == "" {
-				m.Method = http.MethodGet
-			}
-			r.Handle(u.Path, m).Methods(m.Method)
-			if log != nil {
-				log.Printf("Will handle %s %s", m.Method, m.URL)
-			}
-		}
-		r.NotFoundHandler = notfound
-		srv := &http.Server{
-			Addr:    ":" + port,
-			Handler: r,
-		}
-		servers = append(servers, srv)
-		if tls {
-			go func() {
-				fmt.Println("TLS serving on ", srv.Addr)
-				err := srv.ListenAndServeTLS(certFile, keyFile)
-				fmt.Println(err)
-			}()
-		} else {
-			go srv.ListenAndServe() // TODO: handle error
+		r.Handle(u.Path, m).Methods(m.Method)
+		if log != nil {
+			log.Printf("Will handle %s %s", m.Method, m.URL)
 		}
 	}
-	go func() {
-		<-stop
-		for _, srv := range servers {
-			ctx, canc := context.WithTimeout(context.Background(), ServerShutdownGraceperiode)
-			srv.Shutdown(ctx)
-			canc()
-		}
-		close(stop)
-	}()
-
-	return stop, nil
+	r.NotFoundHandler = notfound
+	return &http.Server{
+		Addr:    ":" + port,
+		Handler: r,
+	}
 }
 
 // PrintReport produces a multiline report of the request/response pair

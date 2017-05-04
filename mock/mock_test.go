@@ -116,7 +116,7 @@ func TestServe(t *testing.T) {
 			Method: "GET",
 			URL:    "https://localhost:8443/mb/{NAME}",
 			Response: Response{
-				StatusCode: 200,
+				StatusCode: 202,
 				Body:       "Hola {{NAME}}",
 			},
 		},
@@ -135,8 +135,13 @@ func TestServe(t *testing.T) {
 	}
 
 	status, body, err = get("https://localhost:8443/mb/Bar")
-	if status != 200 || body != "Hola Bar" || err != nil {
+	if status != 202 || body != "Hola Bar" || err != nil {
 		t.Errorf("Mock B: got %d %q %v", status, body, err)
+	}
+
+	status, body, err = get("http://localhost:8080/xyz")
+	if status != 404 || body != "404 page not found\n" || err != nil {
+		t.Errorf("404: got %d %q %v", status, body, err)
 	}
 
 	stop <- true
