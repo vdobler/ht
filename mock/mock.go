@@ -371,6 +371,7 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile stri
 			srv.Shutdown(ctx)
 			canc()
 		}
+		time.Sleep(5 * time.Millisecond)
 		close(stop)
 	}()
 

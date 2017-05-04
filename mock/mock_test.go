@@ -127,8 +127,6 @@ func TestServe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(20 * time.Millisecond)
-
 	status, body, err := get("http://localhost:8080/ma/Foo")
 	if status != 200 || body != "Hello Foo" || err != nil {
 		t.Errorf("Mock A: got %d %q %v", status, body, err)
@@ -145,4 +143,5 @@ func TestServe(t *testing.T) {
 	}
 
 	stop <- true
+	<-stop
 }
