@@ -26,18 +26,17 @@ Mock starts a HTTP server providing the given mocks.
 `,
 }
 
+var (
+	certFile string
+	keyFile  string
+)
+
 func init() {
 	addVarsFlags(cmdMock.Flag)
-	/*
-		cmdMock.Flag.StringVar(&output, "output", "throughput.csv",
-			"save results to `name`")
-		cmdMock.Flag.BoolVar(&logplot, "log", true,
-			"show logarithmic scale on plot")
-		cmdMock.Flag.IntVar(&plotwidth, "plotwidth", 120,
-			"draw plot `num` chars wide")
-		cmdMock.Flag.DurationVar(&rampDuration, "ramp", 5*time.Second,
-			"ramp duration to ignore while computing average QPS")
-	*/
+	cmdMock.Flag.StringVar(&certFile, "cert", "",
+		"load server certificate for https mocks from `file`")
+	cmdMock.Flag.StringVar(&keyFile, "key", "",
+		"load private key for https mocks from `file`")
 }
 
 func runMock(cmd *Command, args []string) {
@@ -67,7 +66,7 @@ func runMock(cmd *Command, args []string) {
 		fmt.Println("%s", "===========================================================")
 		http.Error(w, "Not found", 404)
 	}
-	_, err := mock.Serve(mocks, http.HandlerFunc(nfh), logger)
+	_, err := mock.Serve(mocks, http.HandlerFunc(nfh), logger, certFile, keyFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Problems staring server: %s\n", err)
 		os.Exit(9)
