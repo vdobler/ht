@@ -129,9 +129,7 @@ func TestVariableHanddown(t *testing.T) {
 // and RANDOM.
 func TestAutomaticVariables(t *testing.T) {
 	scope.Random.Seed(1234)
-	lastCnt := <-scope.GetCounter // next value from GetCounter is lastCnt+1
 	scope.ResetCounter <- 1
-	lastCnt = 0
 
 	txt := `
 # automatic.suite
@@ -175,19 +173,19 @@ func TestAutomaticVariables(t *testing.T) {
 	}
 	s := rs.Execute(globals, nil, logger())
 
-	want1 := fmt.Sprintf("SuiteCount=%d SuiteRand=131682 ", lastCnt+1)
-	want1 += fmt.Sprintf("CallCount=%d CallRand=858315 ", lastCnt+2)
-	want1 += fmt.Sprintf("TestCount=%d TestRand=858315 ", lastCnt+2) // Same as Call{Count,Rand}
-	want1 += fmt.Sprintf("COUNTER=%d RANDOM=858315", lastCnt+2)      // Same as Call{Count,Rand}
+	want1 := fmt.Sprintf("SuiteCount=%d SuiteRand=131682 ", 1)
+	want1 += fmt.Sprintf("CallCount=%d CallRand=858315 ", 2)
+	want1 += fmt.Sprintf("TestCount=%d TestRand=858315 ", 2) // Same as Call{Count,Rand}
+	want1 += fmt.Sprintf("COUNTER=%d RANDOM=858315", 2)      // Same as Call{Count,Rand}
 	if wrong := matchVars(s.Tests[0].Variables, want1); wrong != "" {
 		s.PrintReport(os.Stdout)
 		t.Errorf("First invocation. Got %s", wrong)
 	}
 
-	want2 := fmt.Sprintf("SuiteCount=%d SuiteRand=131682 ", lastCnt+1) // Same as in first invocation
-	want2 += fmt.Sprintf("CallCount=%d CallRand=817389 ", lastCnt+3)
-	want2 += fmt.Sprintf("TestCount=%d TestRand=817389 ", lastCnt+3) // Same as Call{Count,Rand}
-	want2 += fmt.Sprintf("COUNTER=%d RANDOM=817389", lastCnt+3)      // Same as Call{Count,Rand}
+	want2 := fmt.Sprintf("SuiteCount=%d SuiteRand=131682 ", 1) // Same as in first invocation
+	want2 += fmt.Sprintf("CallCount=%d CallRand=817389 ", 3)
+	want2 += fmt.Sprintf("TestCount=%d TestRand=817389 ", 3) // Same as Call{Count,Rand}
+	want2 += fmt.Sprintf("COUNTER=%d RANDOM=817389", 3)      // Same as Call{Count,Rand}
 	if wrong := matchVars(s.Tests[1].Variables, want2); wrong != "" {
 		s.PrintReport(os.Stdout)
 		t.Errorf("Second invocation. Got %s", wrong)
