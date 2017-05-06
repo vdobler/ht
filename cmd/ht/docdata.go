@@ -921,11 +921,6 @@ var typeDoc = map[string]string{
 		"\tFullDuration time.Duration \n" +
 		"\tTries        int           \n" +
 		"\tCheckResults []CheckResult  // The individual checks.\n" +
-		"\tReporting    struct {\n" +
-		"\t\tSeqNo     string\n" +
-		"\t\tFilename  string\n" +
-		"\t\tExtension string\n" +
-		"\t} \n" +
 		"\n" +
 		"\t// VarEx may be used to popultate variables from the response. TODO: Rename.\n" +
 		"\tVarEx ExtractorMap // map[string]Extractor \n" +
@@ -990,18 +985,29 @@ var typeDoc = map[string]string{
 		"}\n" +
 		"    XML allows to check XML request bodies.",
 	"mapping": "type Mapping struct {\n" +
-		"\t// Variable to set it's value (A)\n" +
-		"\tVariable string\n" +
+		"\t// Variables contains (single or multiple) input variable names and\n" +
+		"\t// the single output variable name.\n" +
+		"\tVariables []string\n" +
 		"\n" +
-		"\t// BasedOn selects the variable whos value is used as to find the row\n" +
-		"\t// in the To table (X)\n" +
-		"\tBasedOn string\n" +
-		"\n" +
-		"\t// To is the lookup table.\n" +
-		"\tTo map[string]string\n" +
+		"\t// Table is the mapping table, its len must be an integer multiple\n" +
+		"\t// of 3*len(Variables).\n" +
+		"\tTable []string\n" +
 		"}\n" +
 		"    Mapping allows to set the value of a variable based on some other variable's\n" +
-		"    value.",
+		"    value. Consider the follwing Mapping:\n" +
+		"\n" +
+		"     Variables: []string{ \"first\", \"last\", \"age\" },\n" +
+		"     Table: []string{\n" +
+		"         \"John\", \"Smith\", \"20\",\n" +
+		"         \"John\", \"*\",     \"45\",\n" +
+		"         \"Paul\", \"Brown\", \"30\",\n" +
+		"         \"*\",    \"Brown\", \"55\",\n" +
+		"         \"*\",    \"*\",     \"25\",\n" +
+		"    }\n" +
+		"\n" +
+		"    It would set the variable \"age\" to 30 if first==\"Paul\" && last==\"Brown\".\n" +
+		"    \"John Miller\" would be 45 years old and \"Sue Carter\" 25 because \"*\" matches\n" +
+		"    any value. \"John Brown\" is 45 because matching happens left to right,",
 	"mock": "type Mock struct {\n" +
 		"\t// Name of this mock\n" +
 		"\tName string\n" +
@@ -1019,7 +1025,7 @@ var typeDoc = map[string]string{
 		"\t// case variables are extracted.\n" +
 		"\tURL string\n" +
 		"\n" +
-		"\t// ParseForm allows to parse query and form parameters into variables.\n" +
+		"\t// ParseForm allows to parse query- and form-parameters into variables.\n" +
 		"\t// If set to true then a request like\n" +
 		"\t//     curl -d A=1 -d B=2 -d B=3 http://localhost/?C=4\n" +
 		"\t// would extract the following variable/value-pairs:\n" +
@@ -1041,12 +1047,12 @@ var typeDoc = map[string]string{
 		"\t// Response to send for this mock.\n" +
 		"\tResponse Response\n" +
 		"\n" +
-		"\t// Variables. TODO Explain.\n" +
+		"\t// Variables contains the default variables/values for this mock.\n" +
 		"\tVariables scope.Variables\n" +
 		"\n" +
-		"\t// Set is used to set variable values depending on other variables.\n" +
+		"\t// Map is used to set variable values depending on other variables.\n" +
 		"\t// It is executed after VarEx but before constructing the response.\n" +
-		"\tSet []Mapping\n" +
+		"\tMap []Mapping\n" +
 		"\n" +
 		"\t// Monitor is used to report invocations if this mock.\n" +
 		"\t// The incomming request and the outgoing mocked response are encoded\n" +
@@ -1057,6 +1063,8 @@ var typeDoc = map[string]string{
 		"\n" +
 		"\t// Log to report infos to.\n" +
 		"\tLog Log\n" +
+		"\n" +
+		"\t// Has unexported fields.\n" +
 		"}\n" +
 		"    Mock allows to mock a HTTP response for a certain request.",
 	"variables": "type Variables map[string]string\n" +
