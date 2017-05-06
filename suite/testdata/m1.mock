@@ -1,0 +1,32 @@
+{
+    Name: "Mock for POST /rest/onbehalf"
+    Description: "Jira HTDEV-123456"
+
+    // Method, URL-Pattern and all Checks must match to the request
+    // so that it is handled by this Mock.
+    Method: POST
+    URL:    "https://localhost:9981/rest/onbehalf/{USER}"
+
+    ParseForm: true,
+    Checks: [
+        {Check: "Body", Contains: "Please buy me a"}
+    ]
+    
+    VarEx: {
+        "USERID": {Extractor: "BodyExtractor", Regexp: "UUID=[a-z0-9]*"}
+    }
+
+    Response: {
+        StatusCode: 200
+        Header: {
+            Set-Cookie: "msg=it-worked"
+        }
+        Body: '''{
+            "status": true,
+            "ids": [345,{{USERID}},{{RANDOM}}],
+            "user": "{{USER}}",
+            "qu": {{urlparam}}, 
+            "qb": {{bodyparam[1]}} 
+        }'''
+    }
+}
