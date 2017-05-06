@@ -63,7 +63,7 @@ func runMock(cmd *Command, args []string) {
 	logger := log.New(os.Stdout, "", 0)
 	nfh := func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Mock not found: 404 for %s %s\n", r.Method, r.URL)
-		fmt.Println("%s", "===========================================================")
+		fmt.Println("===========================================================")
 		http.Error(w, "Not found", 404)
 	}
 	_, err := mock.Serve(mocks, http.HandlerFunc(nfh), logger, certFile, keyFile)
