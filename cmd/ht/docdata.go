@@ -30,6 +30,18 @@ var typeDoc = map[string]string{
 		"}\n" +
 		"    BodyExtractor extracts a value from the uninterpreted response body via a\n" +
 		"    regular expression.",
+	"cache": "type Cache struct {\n" +
+		"\t// NoStore checks for no-store.\n" +
+		"\tNoStore bool\n" +
+		"\n" +
+		"\t// NoCache checks for no-cache.\n" +
+		"\tNoCache bool\n" +
+		"\n" +
+		"\t// MaxAge checks for the presence of a max-age value at leas as long.\n" +
+		"\tMaxAge time.Duration\n" +
+		"}\n" +
+		"    Cache allows to test for HTTP Cache-Control headers. The zero value checks\n" +
+		"    for the existence of a Cache-Control header only.",
 	"checklist": "type CheckList []Check\n" +
 		"    CheckList is a slice of checks with the sole purpose of attaching JSON\n" +
 		"    (un)marshaling methods.",
@@ -155,6 +167,9 @@ var typeDoc = map[string]string{
 		"    DeleteCookie checks that the HTTP response properly deletes all cookies\n" +
 		"    matching Name, Path and Domain. Path and Domain are optional in which case\n" +
 		"    all cookies with the given Name are checked for deletion.",
+	"etag": "type ETag struct{}\n" +
+		"    ETag checks presence of a (stron) ETag header and that a subsequent request\n" +
+		"    with a If-None-Match header results in a 304 Not Modified response.",
 	"execution": "type Execution struct {\n" +
 		"\t// Tries is the maximum number of tries made for this test.\n" +
 		"\t// Both 0 and 1 mean: \"Just one try. No redo.\"\n" +

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 var wrongETagTests = []TC{
@@ -96,5 +97,45 @@ func etagHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	default:
 		http.Error(w, "Unknow path "+path, http.StatusBadRequest)
+	}
+}
+
+func makeCCResp(s string) Response {
+	return Response{
+		Response: &http.Response{
+			Header: http.Header{
+				"Cache-Control": []string{s},
+			},
+		},
+	}
+}
+
+var cacheTests = []TC{
+	{Response{Response: &http.Response{Header: http.Header{}}},
+		Cache{}, errCacheControlMissing},
+	{makeCCResp("no-store"), Cache{NoStore: true}, nil},
+	{makeCCResp("no-cache"), Cache{NoCache: true}, nil},
+	{makeCCResp("no-cache, no-store"), Cache{}, errIllegalCacheControl},
+	{makeCCResp("no-cache"), Cache{NoStore: true}, errMissingNoStore},
+	{makeCCResp("no-store"), Cache{NoCache: true}, errMissingNoCache},
+	{makeCCResp("no-store"), Cache{AtLeast: 3 * time.Minute}, errMissingMaxAge},
+	{makeCCResp("no-store"), Cache{AtMost: 3 * time.Minute}, errMissingMaxAge},
+
+	{makeCCResp("max-age=123"), Cache{AtLeast: 100 * time.Second}, nil},
+	{makeCCResp("max-age=123"), Cache{AtMost: 130 * time.Second}, nil},
+	{makeCCResp("max-age=123"), Cache{AtMost: 130 * time.Second}, nil},
+	{makeCCResp("max-age=90"), Cache{AtMost: 90 * time.Second, AtLeast: 90 * time.Second}, nil},
+	{makeCCResp("max-age=123"), Cache{AtMost: 1 * time.Minute}, errCheck},
+	{makeCCResp("max-age=123"), Cache{AtLeast: 3 * time.Minute}, errCheck},
+
+	{makeCCResp("max-age=90, no-cache"), Cache{AtLeast: time.Minute}, nil},
+	{makeCCResp("no-cache, max-age=90"), Cache{AtLeast: time.Minute}, nil},
+	{makeCCResp("max-age=abc, no-cache"), Cache{AtLeast: time.Minute}, errMissingMaxAgeValue},
+	{makeCCResp("no-cache, max-age="), Cache{AtLeast: time.Minute}, errMissingMaxAgeValue},
+}
+
+func TestCache(t *testing.T) {
+	for i, tc := range cacheTests {
+		runTest(t, i, tc)
 	}
 }
