@@ -24,6 +24,7 @@ ht tries to achieve the following:
   runs them.
 * Provide good diagnostics on the generated request, the received response
   and on potential failed checks for ease of debugging.
+* Provide basic functionalities to mock responses.
 
 
 Non-Goals
@@ -54,8 +55,8 @@ of (PhantomJS)[http://phantomjs.org] in version >= 2.0.
 Nomenclature
 ------------
 
-The following terms are necessary to know whether you use ht as a package
-or as the executable.
+The following terms are necessary to know and understand regardless of whether
+you use ht as a package or as the executable.
 
 The main concept of `ht` is that of a **`Test`**: A `Test` makes one request and
 performs various `Check`s on the received response. If the request worked and
@@ -72,7 +73,7 @@ of requests. Tests in a suite may share a common cookie jar so that simulating
 a browser session becomes easy.
 
 A load test is a throughput test which uses a mixture of suites to generate
-a distribution of requests: The load test is a set of `Scenarios where
+a distribution of requests: The load test is a set of **`Scenario`**s where
 each scenario (technically just a suite) contributes a certain percentage to
 the whole set of request.
 
@@ -91,7 +92,7 @@ Tests, Checks and Suites
 
 The following describes the use of cmd/ht, i.e. the executable and how to
 define tests and checks and have them executed. 
-All tests, checks, suites and loadtest are stored on disk in
+All tests, checks, suites and loadtests are stored on disk in
 (Hjson)[http://hjson.org] format which is light enough to write and reads
 (almost) like a Go struct. Hjson allows comments, quotes and commas are often
 optional.
@@ -146,7 +147,7 @@ sugar available when writing tests:
         Body: '''{"value": 9988}'''  // send POST body
         FollowRedirects: "true"  // follow 30x until 'real' response
         BasicAuthUser: "root"    // Convenience: Set proper Authorization: Basic 
-        BasicAuthPass: "secret"  // header from username/password.
+        BasicAuthPass: "secret"  //              header from username/password.
         Timeout: "2s"    // shorter timeout
         Chunked: "true"  // force chunked POST bodies
     }
