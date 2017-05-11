@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -152,7 +151,7 @@ func (suite *Suite) Iterate(executor Executor) {
 		// Mocks requested for this test: We expect each mock to be
 		// called exactly once (and this call should pass).
 		var mockResult []*ht.Test
-		stopMocks, monitor, monitoringDone, expect, err := startMocks(suite, test, rt, &mockResult, testScope)
+		stopMocks, monitor, monitoringDone, mocks, err := startMocks(suite, test, rt, &mockResult, testScope)
 		if err != nil {
 			test.Status = ht.Bogus
 			test.Error = err
@@ -169,7 +168,7 @@ func (suite *Suite) Iterate(executor Executor) {
 			<-monitoringDone
 
 			// Analyse what we got and updates test.
-			analyseMocks(test, mockResult, expect)
+			analyseMocks(test, mockResult, mocks)
 		}
 		if test.Status == ht.Pass {
 			suite.updateVariables(test)
@@ -202,13 +201,13 @@ func (suite *Suite) Iterate(executor Executor) {
 	}
 }
 
-func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test, testScope scope.Variables) (stopMocks chan bool, monitor chan *ht.Test, monitoringDone chan bool, expect []string, err error) {
+func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test, testScope scope.Variables) (stopMocks chan bool, monitor chan *ht.Test, monitoringDone chan bool, mocks []*mock.Mock, err error) {
 	if len(rt.mocks) == 0 {
 		return nil, nil, nil, nil, nil
 	}
 
 	monitor = make(chan *ht.Test)
-	mocks := []*mock.Mock{}
+
 	for i, m := range rt.mocks {
 		mockScope := scope.New(testScope, rt.Variables, false)
 		mockScope["MOCK_DIR"] = m.Dirname()
@@ -221,8 +220,9 @@ func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test
 
 		}
 		mk.Monitor = monitor
+		// Prepend serial number to mock to allow identification.
+		mk.Name = fmt.Sprintf("Mock %d: %s", i, mk.Name)
 		mocks = append(mocks, mk)
-		expect = append(expect, mk.Name)
 	}
 
 	// Report any calls that miss explicit mock handlers as 404.
@@ -258,38 +258,63 @@ func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test
 	}()
 	time.Sleep(mockDelay) // I'm clueless...
 
-	return stopMocks, monitor, monitoringDone, expect, nil
+	return stopMocks, monitor, monitoringDone, mocks, nil
 }
 
-func analyseMocks(test *ht.Test, mockResult []*ht.Test, expect []string) {
-	actual := []string{}
+// The following cases can happen
+//   - Mock executed and okay  --> Pass,  recorde in mockResults
+//   - Mock executed and fail  --> Fail,  recorde in mockResults
+//   - Mock not executed       --> Error, handled here
+//   - Stray call to somewhere --> Fail,  recorde in mockResults via notFoundHandler
+func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
+	// Collect mockResults into a generated sub-suite and attach as
+	// metadata to the test.
+	subsuite := &Suite{
+		Name:        "Mocks",
+		Description: fmt.Sprintf("Mock invocations expected during test %q", test.Name),
+		Tests:       mockResult,
+	}
+
+	actual := map[string]bool{} // set of actual invocations
 	for _, mt := range mockResult {
-		actual = append(actual, mt.Name)
+		parts := strings.SplitN(mt.Name, ": ", 2) // split "Mock 4" and "Geolocation Mock"
+		if len(parts) == 2 && strings.HasPrefix(parts[0], "Mock ") {
+			actual[parts[0]] = true
+		}
 		// Propagete state of mock invocations to main test.
 		if mt.Status > test.Status {
 			test.Status = mt.Status
 			test.Error = mt.Error
 		}
-		// Augment check name with information about mock.
-		for i := range mt.CheckResults {
-			name := mt.CheckResults[i].Name
-			name = fmt.Sprintf("Request to mock %q: %s", mt.Name, name)
-			mt.CheckResults[i].Name = name
-		}
-		// Append check results of mock to main test checks.
-		test.CheckResults = append(test.CheckResults, mt.CheckResults...)
+		subsuite.updateStatus(mt)
 	}
 
-	// Did we get exactly what we expected?
-	sort.Strings(expect)
-	sort.Strings(actual)
-	// Sorry for that.
-	want, got := strings.Join(expect, " ※ "), strings.Join(actual, " ※ ")
-	if got != want && test.Status == ht.Pass {
-		test.Status = ht.Fail
-		test.Error = fmt.Errorf("Expected mocks [%s] but actual mock invocations were [%s]",
-			want, got)
+	// Did we get all expected mocks?
+	for i, mock := range mocks {
+		if actual[fmt.Sprintf("Mock %d", i)] {
+			continue // fine, mock was called
+		}
+		// Add errorred test to subsuite.
+		errored := &ht.Test{
+			Name: mock.Name,
+			Request: ht.Request{
+				Method: mock.Method,
+				URL:    mock.URL,
+			},
+			Status: ht.Error,
+			Error:  errors.New("mock not called"),
+		}
+		subsuite.Tests = append(subsuite.Tests, errored)
+		subsuite.updateStatus(errored)
+
 	}
+	if subsuite.Status > ht.Pass && test.Status == ht.Pass {
+		test.Status = ht.Fail
+		test.Error = fmt.Errorf("Direkt checks passed but mocks failed with error: %s", subsuite.Error)
+	}
+
+	// Now glue the subsuite as a metadata to the original Test.
+	test.SetMetadata("Mock-Results", subsuite)
 }
 
 func logMock(suite *Suite, report *ht.Test) {
