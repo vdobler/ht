@@ -95,6 +95,7 @@ var (
 	errIllegalCacheControl = errors.New("no-store illegaly combined with no-cache")
 	errMissingNoStore      = errors.New("missing no-store")
 	errMissingNoCache      = errors.New("missing no-cache")
+	errMissingPrivate      = errors.New("missing private")
 	errMissingMaxAge       = errors.New("missing max-age")
 	errMissingMaxAgeValue  = errors.New("missing max-age value")
 )
@@ -103,16 +104,21 @@ var (
 // for the existence of a Cache-Control header only.
 // Note that not all combinations are sensible.
 type Cache struct {
-	// NoStore checks for no-store.
+	// NoStore checks for the "no-store" directive.
 	NoStore bool
 
-	// NoCache checks for no-cache.
+	// NoCache checks for the "no-cache" directive.
 	NoCache bool
 
-	// AtLeast checks for the presence of a max-age value at least as long.
+	// Private checks for the "private"  directive
+	Private bool
+
+	// AtLeast checks for the presence of a "max-age" directive with a
+	// value at least as long.
 	AtLeast time.Duration
 
-	// AtMost checks for the presence of a max-age value at most as long.
+	// AtMost checks for the presence of a "max-age" directive with a
+	// value at most as long.
 	AtMost time.Duration
 }
 
@@ -130,10 +136,23 @@ func (c Cache) Execute(t *Test) error {
 		return errCacheControlMissing
 	}
 
-	nostore, nocache := strings.Contains(cc, "no-store"), strings.Contains(cc, "no-cache")
+	nostore, nocache, private, ma := false, false, false, ""
+	for _, d := range strings.Split(cc, ",") {
+		d = strings.TrimSpace(d)
+		switch {
+		case d == "no-store":
+			nostore = true
+		case d == "no-cache":
+			nocache = true
+		case d == "private":
+			private = true
+		case strings.HasPrefix(d, "max-age="):
+			ma = d[len("max-age="):]
+		}
+	}
 
 	// Sanity check first.
-	if nostore && nocache {
+	if nostore && (nocache || private || ma != "") {
 		return errIllegalCacheControl
 	}
 
@@ -143,18 +162,17 @@ func (c Cache) Execute(t *Test) error {
 	if c.NoCache && !nocache {
 		return errMissingNoCache
 	}
+	if c.Private && !private {
+		return errMissingPrivate
+	}
 
 	if c.AtMost != 0 || c.AtLeast != 0 {
-		i := strings.Index(cc, "max-age=")
-		if i == -1 {
+		if ma == "" {
 			return errMissingMaxAge
 		}
-		ma := cc[i+len("max-age="):]
-		digits := len(ma) - len(strings.TrimLeft(ma, "0123456789"))
-		ma = ma[:digits]
 		seconds, err := strconv.Atoi(ma)
 		if err != nil {
-			return errMissingMaxAgeValue
+			return fmt.Errorf("bad max-age value %s: %s", ma, err)
 		}
 		got := time.Duration(seconds) * time.Second
 
