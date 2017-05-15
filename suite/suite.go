@@ -314,7 +314,7 @@ func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
 	}
 
 	// Now glue the subsuite as a metadata to the original Test.
-	test.SetMetadata("Mock-Results", subsuite)
+	test.SetMetadata("Subsuite", subsuite)
 }
 
 func logMock(suite *Suite, report *ht.Test) {

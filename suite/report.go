@@ -102,6 +102,20 @@ var htmlTestTmpl = `{{define "TEST"}}
           </div>
         </div>
       </div>
+{{with subsuite .}}
+      <div>
+        <div class="toggle">
+          <input type="checkbox" value="selected"
+                 id="subsuite-{{$seqno}}" class="toggle-input">
+          <label for="subsuite-{{$seqno}}" class="toggle-label"><h3>Sub-Suite</h3></label>
+          <div class="toggle-content">
+            <div  class="subsuite">
+{{template "SUITE" .}}
+            </div>
+          </div>
+        </div>
+      </div>
+{{end}}
     </div>
   </div>
 </div>
@@ -290,10 +304,21 @@ h3 {
 .NOTRUN { color: grey; }
 
 pre.description { font-family: serif; margin: 0px; }
+
+div.subsuite {
+  margin-left: 2em;
+  padding: 0.5ex 1em 0.5ex 2em;
+  background-color: lightblue;
+}
+
+div.subsuite h1 { font-size: 1.2em; }
+div.subsuite h2 { font-size: 1.1em; }
+div.subsuite h3 { font-size: 1em; }
+
 </style>
 {{end}}`
 
-var htmlSuiteTmpl = `<!DOCTYPE html>
+var htmlDocumentTmpl = `<!DOCTYPE html>
 <html>
 <head>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
@@ -303,7 +328,13 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 <body>
 <a href="../">Up/Back/Home</a>
 
+{{template "SUITE" .}}
 
+</body>
+</html>
+`
+
+var htmlSuiteTmpl = `{{define "SUITE"}}
 <h1>Results of Suite "{{.Name}}"</h1>
 
 {{.Description}}
@@ -315,9 +346,7 @@ var htmlSuiteTmpl = `<!DOCTYPE html>
 </div>
 
 {{range .Tests}}{{template "TEST" .}}{{end}}
-
-</body>
-</html>
+{{end}}
 `
 
 // Templates used to generate default and short text output and HTML page.
@@ -424,6 +453,26 @@ func roundDuration(d time.Duration) time.Duration {
 	return d
 }
 
+func subsuite(dot interface{}) (*Suite, error) {
+	test, ok := dot.(*ht.Test)
+	if !ok {
+		return nil,
+			fmt.Errorf("suite: argument to subsuite must be *ht.Test, got %T", dot)
+	}
+
+	md := test.GetMetadata("Subsuite")
+	if md == nil {
+		return nil, nil
+	}
+	ss, ok := md.(*Suite)
+	if !ok {
+		return nil,
+			fmt.Errorf("suite: type of Subsuite metadata must be *suite.Suite, got %T", md)
+	}
+
+	return ss, nil
+}
+
 func init() {
 	fm := make(template.FuncMap)
 	//fm["Underline"] = Underline
@@ -443,7 +492,7 @@ func init() {
 	ShortSuiteTmpl = template.Must(ShortSuiteTmpl.Parse(shortSuiteTmpl))
 	ShortSuiteTmpl = template.Must(ShortSuiteTmpl.Parse(ht.ShortTestTemplate))
 
-	HtmlSuiteTmpl = htmltemplate.New("SUITE")
+	HtmlSuiteTmpl = htmltemplate.New("DOCUMENT")
 	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{
 		"ToUpper":      strings.ToUpper,
 		"Summary":      ht.Summary,
@@ -455,7 +504,10 @@ func init() {
 		"identifier":   identifier,
 		"filename":     filename,
 		"fileext":      fileext,
+		"subsuite":     subsuite,
 	})
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlDocumentTmpl))
+	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlSuiteTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlTestTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlCheckTmpl))
@@ -464,7 +516,6 @@ func init() {
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlHeaderTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlFormdataTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlVariablesTmpl))
-	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
 }
 
 // PrintReport outputs a textual report of s to w.
@@ -499,8 +550,10 @@ func guessResponseExtension(test *ht.Test) string {
 	return "txt"
 }
 
-// HTMLReport generates a report of the outcome of s to directory dir.
-func HTMLReport(dir string, s *Suite) error {
+// make sure HTML-report relevante metadata are present in Test
+// and it's attached subsuites. Especially SeqNo is made non-empty.
+// Dump all bodies while traversing.
+func augmentMetadataAndDumpBody(s *Suite, dir string, prefix string) error {
 	errs := ht.ErrorList{}
 
 	for i, test := range s.Tests {
@@ -517,13 +570,32 @@ func HTMLReport(dir string, s *Suite) error {
 		if seqno == "" {
 			seqno = fmt.Sprintf("%d", i+1)
 		}
+		seqno = prefix + seqno
+		test.SetMetadata("SeqNo", seqno) // write back to be used in template for HTML ids.
+
+		if sub := test.GetMetadata("Subsuite"); sub != nil {
+			subsuite := sub.(*Suite)
+			augmentMetadataAndDumpBody(subsuite, dir, "sub_"+seqno)
+		}
 		fn := fmt.Sprintf("%s.ResponseBody.%s", seqno, extension)
 		name := path.Join(dir, fn)
 		err := ioutil.WriteFile(name, body, 0666)
 		if err != nil {
 			errs = append(errs, err)
 		}
+
 	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
+}
+
+// HTMLReport generates a report of the outcome of s to directory dir.
+func HTMLReport(dir string, s *Suite) error {
+	errs := ht.ErrorList{}
+
+	augmentMetadataAndDumpBody(s, dir, "")
 
 	report, err := os.Create(path.Join(dir, "_Report_.html"))
 	if err != nil {
