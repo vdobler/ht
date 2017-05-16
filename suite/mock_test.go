@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -108,6 +109,17 @@ func pipeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
+var mockSuiteResults = []struct {
+	status ht.Status
+	err    string
+}{
+	{ht.Fail, "got 500, want 200\n"},
+	{ht.Fail, "Main test pased, but mock invocations failed: Unequal, was \"okay\"\n"},
+	{ht.Pass, "<nil>\n"},
+	{ht.Fail, "Main test pased, but mock invocations failed: mock \"Mock 2: Some other Mock\" was not called\n"},
+	{ht.Pass, "<nil>\n"},
+}
+
 func TestMockSuite(t *testing.T) {
 	raw, err := LoadRawSuite("testdata/mock.suite", nil)
 	if err != nil {
@@ -119,7 +131,8 @@ func TestMockSuite(t *testing.T) {
 	s := raw.Execute(map[string]string{"BASEURL": ts.URL}, nil, logger())
 
 	if testing.Verbose() {
-		err = HTMLReport(".", s)
+		os.MkdirAll("./testdata/mockreport", 0766)
+		err = HTMLReport("./testdata/mockreport", s)
 		if err != nil {
 			t.Fatalf("Unexpected error %s", err)
 		}
@@ -129,16 +142,14 @@ func TestMockSuite(t *testing.T) {
 		t.Errorf("Got suite status of %s, want Fail; err=%v", got, s.Error)
 	}
 
-	if s.Tests[0].Status != ht.Fail || s.Tests[1].Status != ht.Fail ||
-		s.Tests[2].Status != ht.Pass || s.Tests[3].Status != ht.Fail ||
-		s.Tests[4].Status != ht.Pass {
-		t.Errorf("Got test status of %s, %s, %s, %s %s; want Fail, Fail, Pass, Fail, Pass",
-			s.Tests[0].Status, s.Tests[1].Status, s.Tests[2].Status,
-			s.Tests[2].Status, s.Tests[3].Status)
-	}
-
 	for i, test := range s.Tests {
-		fmt.Println(i, test.Status, test.Error)
+		if test.Status != mockSuiteResults[i].status {
+			t.Errorf("Test %d: Got status %s, want %s",
+				i, test.Status, mockSuiteResults[i].status)
+		}
+		if e := fmt.Sprintln(test.Error); e != mockSuiteResults[i].err {
+			t.Errorf("Test %d: Got error %q, want %q",
+				i, e, mockSuiteResults[i].err)
+		}
 	}
-
 }

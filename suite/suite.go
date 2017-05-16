@@ -298,7 +298,7 @@ func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
 		if len(parts) == 2 && strings.HasPrefix(parts[0], "Mock ") {
 			actual[parts[0]] = true
 		}
-		subsuite.updateStatus(mt)
+		subsuite.updateStatusAndErr(mt)
 	}
 
 	// Step 2: Are there mocks which where not invoked?
@@ -316,10 +316,10 @@ func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
 				URL:    mock.URL,
 			},
 			Status: ht.Error,
-			Error:  errors.New("mock not called"),
+			Error:  fmt.Errorf("mock %q was not called", mock.Name),
 		}
 		subsuite.Tests = append(subsuite.Tests, errored)
-		subsuite.updateStatus(errored)
+		subsuite.updateStatusAndErr(errored)
 
 	}
 	// Propagete state of mock invocations to main test:
@@ -384,15 +384,22 @@ func (suite *Suite) updateVariables(test *ht.Test) {
 	}
 }
 
-func (suite *Suite) updateStatus(test *ht.Test) {
-	if test.Status <= suite.Status {
-		return
+func (suite *Suite) updateStatusAndErr(test *ht.Test) {
+	if test.Status > suite.Status {
+		suite.Status = test.Status
 	}
 
-	suite.Status = test.Status
-	if test.Error != nil {
-		suite.Error = test.Error
+	if test.Error == nil {
+		return
 	}
+	if suite.Error == nil {
+		suite.Error = ht.ErrorList{test.Error}
+	} else if el, ok := suite.Error.(ht.ErrorList); ok {
+		suite.Error = append(el, test.Error)
+	} else {
+		suite.Error = ht.ErrorList{suite.Error, test.Error}
+	}
+
 }
 
 // Stats counts the test results of s.

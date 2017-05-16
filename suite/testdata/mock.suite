@@ -12,5 +12,5 @@
             Mocks: [ "surename.mock", "lastname.mock", "other.mock" ]}
     ],
 
-    Verbosity: 9
+    Verbosity: 0
 }
