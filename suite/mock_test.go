@@ -126,13 +126,19 @@ func TestMockSuite(t *testing.T) {
 	}
 
 	if got := s.Status; got != ht.Fail {
-		t.Errorf("Got suite status of %s, want Fail", got)
+		t.Errorf("Got suite status of %s, want Fail; err=%v", got, s.Error)
 	}
 
 	if s.Tests[0].Status != ht.Fail || s.Tests[1].Status != ht.Fail ||
-		s.Tests[2].Status != ht.Pass || s.Tests[3].Status != ht.Fail {
-		t.Errorf("Got test status of %s, %s, %s, %s; want Fail, Fail, Pass, Fail",
-			s.Tests[0].Status, s.Tests[1].Status, s.Tests[2].Status, s.Tests[2].Status)
+		s.Tests[2].Status != ht.Pass || s.Tests[3].Status != ht.Fail ||
+		s.Tests[4].Status != ht.Pass {
+		t.Errorf("Got test status of %s, %s, %s, %s %s; want Fail, Fail, Pass, Fail, Pass",
+			s.Tests[0].Status, s.Tests[1].Status, s.Tests[2].Status,
+			s.Tests[2].Status, s.Tests[3].Status)
+	}
+
+	for i, test := range s.Tests {
+		fmt.Println(i, test.Status, test.Error)
 	}
 
 }

@@ -60,6 +60,9 @@ type Mock struct {
 	// Description of this mock.
 	Description string
 
+	// Disable can be used to disable this mock.
+	Disable bool
+
 	// Method for which this mock applies to.
 	Method string
 

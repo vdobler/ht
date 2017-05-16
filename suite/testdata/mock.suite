@@ -2,9 +2,14 @@
     Name: "Suite with Mocks"
     Main: [
         { File: "pipe.ht"}
-        { File: "pipe.ht", Mocks: [ "surename.mock", "lastname.mock" ]}
-        { File: "pipe.ht", Variables: {AUTH: "okay"}, Mocks: [ "surename.mock", "lastname.mock" ]}
-        { File: "pipe.ht", Variables: {AUTH: "okay"}, Mocks: [ "surename.mock", "lastname.mock", "surename.mock" ]}
+        { File: "pipe.ht",
+            Mocks: [ "surename.mock", "lastname.mock" ]}
+        { File: "pipe.ht", Variables: {AUTH: "okay"},
+            Mocks: [ "surename.mock", "lastname.mock" ]}
+        { File: "pipe.ht", Variables: {AUTH: "okay", DISABLE: "false"}, 
+            Mocks: [ "surename.mock", "lastname.mock", "other.mock" ]}
+        { File: "pipe.ht", Variables: {AUTH: "okay", DISABLE: "true"}, 
+            Mocks: [ "surename.mock", "lastname.mock", "other.mock" ]}
     ],
 
     Verbosity: 9

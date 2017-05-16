@@ -151,7 +151,7 @@ func (suite *Suite) Iterate(executor Executor) {
 		// Mocks requested for this test: We expect each mock to be
 		// called exactly once (and this call should pass).
 		var mockResult []*ht.Test
-		stopMocks, monitor, monitoringDone, mocks, err := startMocks(suite, test, rt, &mockResult, testScope)
+		ctrl, mocks, err := startMocks(suite, test, rt, &mockResult, testScope)
 		if err != nil {
 			test.Status = ht.Bogus
 			test.Error = err
@@ -160,12 +160,12 @@ func (suite *Suite) Iterate(executor Executor) {
 		// Execute the test (if not bogus).
 		exstat := executor(test)
 
-		if stopMocks != nil {
+		if ctrl != nil {
 			// We got running mocks: Stop mock handling and stop monitoring
-			stopMocks <- true
-			<-stopMocks
-			close(monitor)
-			<-monitoringDone
+			ctrl.stopMocks <- true
+			<-ctrl.stopMocks
+			close(ctrl.monitor)
+			<-ctrl.monitoringDone
 
 			// Analyse what we got and updates test.
 			analyseMocks(test, mockResult, mocks)
@@ -201,12 +201,16 @@ func (suite *Suite) Iterate(executor Executor) {
 	}
 }
 
-func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test, testScope scope.Variables) (stopMocks chan bool, monitor chan *ht.Test, monitoringDone chan bool, mocks []*mock.Mock, err error) {
-	if len(rt.mocks) == 0 {
-		return nil, nil, nil, nil, nil
-	}
+// collect stuff to controll mock execution and result gathering.
+type mockCtrl struct {
+	stopMocks      chan bool
+	monitor        chan *ht.Test
+	monitoringDone chan bool
+}
 
-	monitor = make(chan *ht.Test)
+func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test, testScope scope.Variables) (*mockCtrl, []*mock.Mock, error) {
+	monitor := make(chan *ht.Test)
+	mocks := make([]*mock.Mock, 0)
 
 	for i, m := range rt.mocks {
 		mockScope := scope.New(testScope, rt.Variables, false)
@@ -214,15 +218,21 @@ func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test
 		mockScope["MOCK_NAME"] = m.Basename()
 		mk, err := m.ToMock(mockScope, true)
 		if err != nil {
-			return nil, nil, nil, nil,
+			return nil, nil,
 				fmt.Errorf("mock %d %q is malformed: %s",
 					i+1, m.Name, err)
 
+		}
+		if mk.Disable {
+			continue // Don't start disabled mocks.
 		}
 		mk.Monitor = monitor
 		// Prepend serial number to mock to allow identification.
 		mk.Name = fmt.Sprintf("Mock %d: %s", i, mk.Name)
 		mocks = append(mocks, mk)
+	}
+	if len(mocks) == 0 {
+		return nil, nil, nil
 	}
 
 	// Report any calls that miss explicit mock handlers as 404.
@@ -230,7 +240,8 @@ func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test
 		body, _ := ioutil.ReadAll(r.Body)
 		u := r.URL.String()
 		report := &ht.Test{
-			Name: "Not Found " + u,
+			Name:   "Not Found " + u,
+			Status: ht.Fail,
 			Request: ht.Request{
 				Method:   r.Method,
 				URL:      u,
@@ -243,12 +254,12 @@ func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test
 		monitor <- report
 	})
 
-	stopMocks, err = mock.Serve(mocks, notFoundHandler, suite.Log, "", "")
+	stopMocks, err := mock.Serve(mocks, notFoundHandler, suite.Log, "", "")
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	monitoringDone = make(chan bool)
+	monitoringDone := make(chan bool)
 	go func() {
 		for report := range monitor {
 			logMock(suite, report)
@@ -258,7 +269,12 @@ func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test
 	}()
 	time.Sleep(mockDelay) // I'm clueless...
 
-	return stopMocks, monitor, monitoringDone, mocks, nil
+	ctrl := &mockCtrl{
+		stopMocks:      stopMocks,
+		monitor:        monitor,
+		monitoringDone: monitoringDone}
+
+	return ctrl, mocks, nil
 }
 
 // The following cases can happen
@@ -275,25 +291,23 @@ func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
 		Tests:       mockResult,
 	}
 
+	// Step 1: Mocks that actually where invked.
 	actual := map[string]bool{} // set of actual invocations
 	for _, mt := range mockResult {
 		parts := strings.SplitN(mt.Name, ": ", 2) // split "Mock 4" and "Geolocation Mock"
 		if len(parts) == 2 && strings.HasPrefix(parts[0], "Mock ") {
 			actual[parts[0]] = true
 		}
-		// Propagete state of mock invocations to main test.
-		if mt.Status > test.Status {
-			test.Status = mt.Status
-			test.Error = mt.Error
-		}
 		subsuite.updateStatus(mt)
 	}
 
-	// Did we get all expected mocks?
+	// Step 2: Are there mocks which where not invoked?
 	for i, mock := range mocks {
 		if actual[fmt.Sprintf("Mock %d", i)] {
-			continue // fine, mock was called
+			// Fine: mock was called, status propagation happend above.
+			continue
 		}
+
 		// Add errorred test to subsuite.
 		errored := &ht.Test{
 			Name: mock.Name,
@@ -308,9 +322,25 @@ func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
 		subsuite.updateStatus(errored)
 
 	}
-	if subsuite.Status > ht.Pass && test.Status == ht.Pass {
-		test.Status = ht.Fail
-		test.Error = fmt.Errorf("Direkt checks passed but mocks failed with error: %s", subsuite.Error)
+	// Propagete state of mock invocations to main test:
+	// Subsuite Fail and Error should render the main test Fail (not Error as
+	// Error indicates failure making the initial request).
+	// Unclear what to do with Bogus.
+	switch subsuite.Status {
+	case ht.NotRun, ht.Skipped:
+		panic("suite: subsuite status " + subsuite.Status.String())
+	case ht.Pass:
+		// Fine!
+	case ht.Fail, ht.Error:
+		if test.Status <= ht.Pass { // actually equal
+			test.Status = ht.Fail
+			test.Error = fmt.Errorf("Main test pased, but mock invocations failed: %s",
+				subsuite.Error)
+		}
+	case ht.Bogus:
+		panic("suite: ooops, should not happen")
+	default:
+		panic(fmt.Sprintf("suite: unknown subsuite status %d", int(subsuite.Status)))
 	}
 
 	// Now glue the subsuite as a metadata to the original Test.

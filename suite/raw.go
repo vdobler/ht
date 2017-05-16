@@ -714,9 +714,12 @@ func (raw *RawLoadTest) ToScenario(globals map[string]string) []Scenario {
 // ----------------------------------------------------------------------------
 // Mocks
 
+// RawMock is the raw form of a mock read in from disk.
 type RawMock struct {
 	*File
-	Variables map[string]string // Variables are the defaults of the variables.
+
+	// Variables are the defaults of the variables.
+	Variables map[string]string
 }
 
 func LoadRawMock(filename string, fs FileSystem) (*RawMock, error) {
@@ -725,7 +728,7 @@ func LoadRawMock(filename string, fs FileSystem) (*RawMock, error) {
 		return nil, err
 	}
 
-	// Unmarshal to find Variables
+	// Unmarshal to findVariables.
 	x := &struct {
 		Variables map[string]string
 	}{}

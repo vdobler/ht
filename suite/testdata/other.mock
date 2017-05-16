@@ -1,0 +1,17 @@
+{
+    Name: "Some other Mock"
+    
+    Disable: "{{DISABLE}}"
+
+    Method: GET
+    URL:    "http://localhost:9901/other"
+    
+    Response: {
+        StatusCode: 200
+        Body: '''Well done!'''
+    }
+
+    Variables: {
+        DISABLE: false
+    }
+}
