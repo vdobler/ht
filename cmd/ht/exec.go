@@ -287,7 +287,7 @@ func prepareHT() {
 	}
 	fmt.Printf("Seeding random number generator with %d.\n", randomSeed)
 	scope.Random = rand.New(rand.NewSource(randomSeed))
-	fmt.Printf("Resetting gloabl counter to %d.\n", counterSeed)
+	fmt.Printf("Resetting global counter to %d.\n", counterSeed)
 	scope.ResetCounter <- counterSeed
 	if skipTLSVerify {
 		fmt.Println("Skipping verification of TLS certificates presented by any server.")

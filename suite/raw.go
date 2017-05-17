@@ -722,6 +722,7 @@ type RawMock struct {
 	Variables map[string]string
 }
 
+// LoadRawMock tries to reads filename from fs as a RawMock.
 func LoadRawMock(filename string, fs FileSystem) (*RawMock, error) {
 	raw, err := fs.Load(filename)
 	if err != nil {
@@ -765,6 +766,8 @@ func (rm *RawMock) ToMock(variables scope.Variables, auto bool) (*mock.Mock, err
 	return m, nil
 }
 
+// LoadMock loads filename from fs and replaces the variables. If auto is
+// true the automatic variables COUNTER and RANDOM are set too.
 func LoadMock(filename string, fs FileSystem, variables map[string]string, auto bool) (*mock.Mock, error) {
 	raw, err := LoadRawMock(filename, fs)
 	if err != nil {

@@ -807,7 +807,7 @@ func (t *Test) newRequest() (contentType string, err error) {
 	return contentType, nil
 }
 
-// fileData allows to reading file data to be used as the value for s.
+// FileData allows to reading file data to be used as the value for s.
 // Handled cases if s is of the form:
 //    @file:/path/to/thefile
 //               read in /path/to/thefile and use its content as s

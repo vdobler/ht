@@ -114,9 +114,9 @@ var mockSuiteResults = []struct {
 	err    string
 }{
 	{ht.Fail, "got 500, want 200\n"},
-	{ht.Fail, "Main test pased, but mock invocations failed: Unequal, was \"okay\"\n"},
+	{ht.Fail, "Main test passed, but mock invocations failed: Unequal, was \"okay\"\n"},
 	{ht.Pass, "<nil>\n"},
-	{ht.Fail, "Main test pased, but mock invocations failed: mock \"Mock 2: Some other Mock\" was not called\n"},
+	{ht.Fail, "Main test passed, but mock invocations failed: mock \"Mock 2: Some other Mock\" was not called\n"},
 	{ht.Pass, "<nil>\n"},
 }
 

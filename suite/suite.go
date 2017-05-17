@@ -201,7 +201,7 @@ func (suite *Suite) Iterate(executor Executor) {
 	}
 }
 
-// collect stuff to controll mock execution and result gathering.
+// collect stuff to control mock execution and result gathering.
 type mockCtrl struct {
 	stopMocks      chan bool
 	monitor        chan *ht.Test
@@ -304,7 +304,7 @@ func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
 	// Step 2: Are there mocks which where not invoked?
 	for i, mock := range mocks {
 		if actual[fmt.Sprintf("Mock %d", i)] {
-			// Fine: mock was called, status propagation happend above.
+			// Fine: mock was called, status propagation happened above.
 			continue
 		}
 
@@ -334,7 +334,7 @@ func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
 	case ht.Fail, ht.Error:
 		if test.Status <= ht.Pass { // actually equal
 			test.Status = ht.Fail
-			test.Error = fmt.Errorf("Main test pased, but mock invocations failed: %s",
+			test.Error = fmt.Errorf("Main test passed, but mock invocations failed: %s",
 				subsuite.Error)
 		}
 	case ht.Bogus:

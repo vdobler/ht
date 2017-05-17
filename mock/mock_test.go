@@ -173,7 +173,7 @@ func TestServe(t *testing.T) {
 		logger = log.New(os.Stdout, "", 0)
 	}
 	mocks := []*Mock{
-		&Mock{
+		{
 			Name:   "Mock A",
 			Method: "GET",
 			URL:    "http://localhost:8080/ma/{NAME}",
@@ -182,7 +182,7 @@ func TestServe(t *testing.T) {
 				Body: "Hello {{NAME}}",
 			},
 		},
-		&Mock{
+		{
 			Name:   "Mock B",
 			Method: "GET",
 			URL:    "https://localhost:8443/mb/{NAME}",
