@@ -36,6 +36,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -315,6 +316,12 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		CheckResults: faketest.CheckResults,
 		ExValues:     faketest.ExValues,
 	}
+
+	// We want to analyse if this mock was called, so we need a way to
+	// identify the mock from which this report does come from. The
+	// address seems natural.
+	report.SetMetadata("MockID", fmt.Sprintf("%p", m))
+
 	if checkPrepareErr != nil {
 		report.Status, report.Error = ht.Bogus, checkPrepareErr
 	}
@@ -514,4 +521,132 @@ func PrintReport(report *ht.Test) string {
 	fmt.Fprintf(buf, "========================================================\n")
 
 	return buf.String()
+}
+
+// control structure for providing and analysing mocks.
+type control struct {
+	started        time.Time
+	mocks          []*Mock
+	stopMocks      chan bool
+	monitor        chan *ht.Test
+	monitoringDone chan bool
+	results        []*ht.Test
+}
+
+// Provide starts the given mocks, it returns a control handle which
+// allows to stop the mocks and analyse if all where properly called.
+// Stray calls not hitting a defined and enabled mock will be catched
+// and recorded.
+// The returned control handle must be Analyze'd to stop data collection
+// and prevent goroutine leaks.
+func Provide(mocks []*Mock, logger Log) (control, error) {
+	monitor := make(chan *ht.Test)
+	enabled := []*Mock{}
+
+	for _, m := range mocks {
+		if m.Disable {
+			continue // Don't start disabled mocks.
+		}
+		enabled = append(enabled, m)
+	}
+	if len(enabled) == 0 {
+		return control{}, nil
+	}
+
+	// Report any calls that miss explicit mock handlers as 404.
+	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := ioutil.ReadAll(r.Body)
+		u := r.URL.String()
+		report := &ht.Test{
+			Name:   "Not Found " + u,
+			Status: ht.Fail,
+			Request: ht.Request{
+				Method:   r.Method,
+				URL:      u,
+				Header:   r.Header,
+				Request:  r,
+				SentBody: string(body),
+			},
+		}
+		http.Error(w, "No mock for "+u, http.StatusNotFound)
+		monitor <- report
+	})
+
+	stopMocks, err := Serve(mocks, notFoundHandler, logger, "", "")
+	if err != nil {
+		return control{}, err
+	}
+
+	monitoringDone := make(chan bool)
+
+	ctrl := control{
+		started:        time.Now(),
+		mocks:          enabled,
+		stopMocks:      stopMocks,
+		monitor:        monitor,
+		monitoringDone: monitoringDone,
+		results:        []*ht.Test{},
+	}
+
+	// Start goroutine which collects results from the called mocks.
+	go func() {
+		for report := range monitor {
+			if logger != nil {
+				logger.Printf("%s", PrintReport(report))
+			}
+			ctrl.results = append(ctrl.results, report)
+		}
+		close(monitoringDone)
+	}()
+
+	return ctrl, nil
+}
+
+// Analyse analyses whether all and only the enabled mocks have been called
+// after the mocks have been started with Provide.
+// Analyse is not idempotent, each ctrl can be analysed only once.
+func Analyse(ctrl control) []*ht.Test {
+	if ctrl.stopMocks == nil {
+		// No mocks have been enabled or there where other errors.
+		return nil
+	}
+
+	// Stop serving mocks and data collection.
+	ctrl.stopMocks <- true
+	<-ctrl.stopMocks
+	close(ctrl.monitor)
+	<-ctrl.monitoringDone
+
+	// Step 1: Mocks that actually where invoked and all hits to the Not Found handler.
+	actual := map[string]bool{} // set of actual invocations
+	for _, test := range ctrl.results {
+		mockID := test.GetStringMetadata("MockID")
+		if mockID == "" {
+			log.Printf("This should not happen...")
+		}
+		actual[mockID] = true
+	}
+
+	// Step 2: Are there expected mocks which where not invoked?
+	for _, m := range ctrl.mocks {
+		mockID := fmt.Sprintf("%p", m)
+		if actual[mockID] {
+			// Fine: mock was called, status propagation happened above.
+			continue
+		}
+
+		// Add errorred test to result.
+		errored := &ht.Test{
+			Name: m.Name,
+			Request: ht.Request{
+				Method: m.Method,
+				URL:    m.URL,
+			},
+			Status: ht.Error,
+			Error:  fmt.Errorf("mock %q was not called", m.Name),
+		}
+		ctrl.results = append(ctrl.results, errored)
+	}
+
+	return ctrl.results
 }
