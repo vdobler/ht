@@ -215,6 +215,7 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	started := time.Now()
 	reportStatus := ht.Pass
+	var reportError error
 
 	// Consume request body and set up a "reversed" fake Test to run
 	// Checks against the request and extract variables from the request.
@@ -241,6 +242,7 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if checkPrepareErr == nil {
 		faketest.ExecuteChecks()
 		reportStatus = faketest.Status
+		reportError = faketest.Error
 	}
 	extractions := faketest.Extract()
 
@@ -306,6 +308,7 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BodyErr:  nil,
 		},
 		Status:       reportStatus,
+		Error:        reportError,
 		Started:      started,
 		Duration:     time.Since(started),
 		FullDuration: time.Since(started),
@@ -420,7 +423,7 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile stri
 			srv.Shutdown(ctx)
 			canc()
 		}
-		time.Sleep(5 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond) // TODO: needed?
 		close(stop)
 	}()
 
@@ -428,14 +431,14 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile stri
 	select {
 	case <-time.After(50 * time.Millisecond):
 		// TCP listerners now probably ready.
-		// TODO: Thsi should be replaced by our own code. Unfortunately
+		// TODO: This should be replaced by our own code. Unfortunately
 		// this is some work: a) setup TLS config b) net.Listen on the
 		// ports, c) start serving, d) implement own shutdown logic.
 		// Especially d) is out of my reach for now.
 	case serr := <-serveErrs:
 		// At least one server could not start. Shutdown all.
 		stop <- true
-		<-stop // Wait until all are stopped
+		<-stop // Wait until all are stopped.
 		return nil, serr
 	}
 
