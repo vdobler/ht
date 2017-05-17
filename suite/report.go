@@ -575,7 +575,7 @@ func augmentMetadataAndDumpBody(s *Suite, dir string, prefix string) error {
 
 		if sub := test.GetMetadata("Subsuite"); sub != nil {
 			subsuite := sub.(*Suite)
-			augmentMetadataAndDumpBody(subsuite, dir, "sub_"+seqno)
+			augmentMetadataAndDumpBody(subsuite, dir, seqno+"_sub")
 		}
 		fn := fmt.Sprintf("%s.ResponseBody.%s", seqno, extension)
 		name := path.Join(dir, fn)
