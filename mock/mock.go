@@ -270,7 +270,6 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	recw.WriteHeader(m.Response.StatusCode)
 
-	// TODO: handle "file:" and "vfile:" body
 	io.WriteString(recw, sentBody)
 	response := recw.Result()
 
