@@ -557,11 +557,9 @@ func augmentMetadataAndDumpBody(s *Suite, dir string, prefix string) error {
 	errs := ht.ErrorList{}
 
 	for i, test := range s.Tests {
-		tfn := "??"
-		if tn, ok := test.Variables["TEST_NAME"]; ok {
-			tfn = tn
+		if test.GetStringMetadata("Filename") == "" {
+			test.SetMetadata("Filename", "??")
 		}
-		test.SetMetadata("Filename", tfn)
 		extension := guessResponseExtension(test)
 		test.SetMetadata("Extension", extension)
 
