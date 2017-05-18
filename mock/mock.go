@@ -314,6 +314,7 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		FullDuration: time.Since(started),
 		Tries:        1,
 		CheckResults: faketest.CheckResults,
+		Variables:    scope,
 		ExValues:     faketest.ExValues,
 	}
 
@@ -321,6 +322,8 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// identify the mock from which this report does come from. The
 	// address seems natural.
 	report.SetMetadata("MockID", fmt.Sprintf("%p", m))
+	report.SetMetadata("Filename", scope["MOCK_NAME"])
+
 	if checkPrepareErr != nil {
 		report.Status, report.Error = ht.Bogus, checkPrepareErr
 	}
