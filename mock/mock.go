@@ -337,7 +337,7 @@ func (m *Mock) replacer(r *http.Request, extractions scope.Variables) (*strings.
 	vars := scope.New(scope.Variables(mux.Vars(r)), m.Variables, false)
 
 	if m.ParseForm {
-		// TODO: reformualte to scope.New
+		// TODO: reformulate to scope.New?
 		if r.Header.Get("Content-Type") == "multipart/form-data" {
 			_ = r.ParseMultipartForm(1 << 24)
 		} else {
@@ -398,7 +398,7 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile stri
 	if haveTLS && (certFile == "" || keyFile == "") {
 		return nil, errors.New("mock: need cert and key file to mock https")
 	}
-	// TODO: handle unreadable cert/keyfile here.
+	// Handle obviosely non-existing cert/key-files here.
 
 	var servers []*http.Server
 	serveErrs := make(chan error)
@@ -462,6 +462,9 @@ func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile stri
 func groupMocks(mocks []*Mock) (map[string][]*Mock, error) {
 	group := make(map[string][]*Mock)
 	for _, m := range mocks {
+		if m.Disable {
+			continue
+		}
 		u, err := url.Parse(m.URL)
 		if err != nil {
 			return nil, err

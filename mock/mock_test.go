@@ -191,6 +191,27 @@ func TestServe(t *testing.T) {
 				Body:       "Hola {{NAME}}",
 			},
 		},
+		{
+			Name:     "Mock C",
+			Disable:  true,
+			Method:   "GET",
+			URL:      "put something sensible here",
+			Response: Response{StatusCode: 200},
+		},
+		{
+			Name:    "Mock D",
+			Disable: false,
+			Method:  "GET",
+			URL:     "https://localhost:8443/redirect",
+			Response: Response{
+				StatusCode: 302,
+				Header: http.Header{
+					"Location": []string{
+						"http://localhost:8080/ma/Charly",
+					},
+				},
+			},
+		},
 	}
 
 	stop, err := Serve(mocks, nil, logger, "./testdata/dummy.cert", "./testdata/dummy.key")
@@ -211,6 +232,11 @@ func TestServe(t *testing.T) {
 	status, body, err = get("http://localhost:8080/xyz")
 	if status != 404 || body != "404 page not found\n" || err != nil {
 		t.Errorf("404: got %d %q %v", status, body, err)
+	}
+
+	status, body, err = get("https://localhost:8443/redirect")
+	if status != 200 || body != "Hello Charly" || err != nil {
+		t.Errorf("Mock D: got %d %q %v", status, body, err)
 	}
 
 	stop <- true
