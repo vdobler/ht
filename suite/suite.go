@@ -13,8 +13,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
-	"strings"
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
@@ -150,25 +148,32 @@ func (suite *Suite) Iterate(executor Executor) {
 
 		// Mocks requested for this test: We expect each mock to be
 		// called exactly once (and this call should pass).
-		var mockResult []*ht.Test
-		ctrl, mocks, err := startMocks(suite, test, rt, &mockResult, testScope)
-		if err != nil {
+		mocks := make([]*mock.Mock, len(rt.mocks))
+		for i, m := range rt.mocks {
+			mockScope := scope.New(testScope, rt.Variables, false)
+			mockScope["MOCK_DIR"] = m.Dirname()
+			mockScope["MOCK_NAME"] = m.Basename()
+			mk, err := m.ToMock(mockScope, true)
+			if err != nil {
+				test.Status = ht.Bogus
+				test.Error = err
+				break
+			}
+			mocks[i] = mk
+		}
+
+		ctrl, merr := mock.Provide(mocks, suite.Log)
+		if merr != nil {
 			test.Status = ht.Bogus
-			test.Error = err
+			test.Error = merr
 		}
 
 		// Execute the test (if not bogus).
+		test.Execution.Verbosity = 9
 		exstat := executor(test)
 
-		if ctrl != nil {
-			// We got running mocks: Stop mock handling and stop monitoring
-			ctrl.stopMocks <- true
-			<-ctrl.stopMocks
-			close(ctrl.monitor)
-			<-ctrl.monitoringDone
-
-			// Analyse what we got and updates test.
-			analyseMocks(test, mockResult, mocks)
+		if merr == nil {
+			analyseMocks(test, ctrl)
 		}
 		if test.Status == ht.Pass {
 			suite.updateVariables(test)
@@ -201,133 +206,31 @@ func (suite *Suite) Iterate(executor Executor) {
 	}
 }
 
-// collect stuff to control mock execution and result gathering.
-type mockCtrl struct {
-	stopMocks      chan bool
-	monitor        chan *ht.Test
-	monitoringDone chan bool
-}
-
-func startMocks(suite *Suite, test *ht.Test, rt *RawTest, mockResult *[]*ht.Test, testScope scope.Variables) (*mockCtrl, []*mock.Mock, error) {
-	monitor := make(chan *ht.Test)
-	mocks := make([]*mock.Mock, 0)
-
-	for i, m := range rt.mocks {
-		mockScope := scope.New(testScope, rt.Variables, false)
-		mockScope["MOCK_DIR"] = m.Dirname()
-		mockScope["MOCK_NAME"] = m.Basename()
-		mk, err := m.ToMock(mockScope, true)
-		if err != nil {
-			return nil, nil,
-				fmt.Errorf("mock %d %q is malformed: %s",
-					i+1, m.Name, err)
-
-		}
-		if mk.Disable {
-			continue // Don't start disabled mocks.
-		}
-		mk.Monitor = monitor
-		// Prepend serial number to mock to allow identification.
-		mk.Name = fmt.Sprintf("Mock %d: %s", i, mk.Name)
-		mocks = append(mocks, mk)
-	}
-	if len(mocks) == 0 {
-		return nil, nil, nil
-	}
-
-	// Report any calls that miss explicit mock handlers as 404.
-	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := ioutil.ReadAll(r.Body)
-		u := r.URL.String()
-		report := &ht.Test{
-			Name:   "Not Found " + u,
-			Status: ht.Fail,
-			Request: ht.Request{
-				Method:   r.Method,
-				URL:      u,
-				Header:   r.Header,
-				Request:  r,
-				SentBody: string(body),
-			},
-		}
-		http.Error(w, "No mock for "+u, http.StatusNotFound)
-		monitor <- report
-	})
-
-	stopMocks, err := mock.Serve(mocks, notFoundHandler, suite.Log, "", "")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	monitoringDone := make(chan bool)
-	go func() {
-		for report := range monitor {
-			logMock(suite, report)
-			*mockResult = append(*mockResult, report)
-		}
-		close(monitoringDone)
-	}()
-	time.Sleep(mockDelay) // I'm clueless...
-
-	ctrl := &mockCtrl{
-		stopMocks:      stopMocks,
-		monitor:        monitor,
-		monitoringDone: monitoringDone}
-
-	return ctrl, mocks, nil
-}
-
 // The following cases can happen
 //   - Mock executed and okay  --> Pass,  recorde in mockResults
 //   - Mock executed and fail  --> Fail,  recorde in mockResults
 //   - Mock not executed       --> Error, handled here
 //   - Stray call to somewhere --> Fail,  recorde in mockResults via notFoundHandler
-func analyseMocks(test *ht.Test, mockResult []*ht.Test, mocks []*mock.Mock) {
+func analyseMocks(test *ht.Test, ctrl mock.Control) {
 	// Collect mockResults into a generated sub-suite and attach as
 	// metadata to the test.
 	subsuite := &Suite{
 		Name:        "Mocks",
 		Description: fmt.Sprintf("Mock invocations expected during test %q", test.Name),
-		Tests:       mockResult,
+		Tests:       mock.Analyse(ctrl),
+	}
+	for _, t := range subsuite.Tests {
+		subsuite.updateStatusAndErr(t)
 	}
 
-	// Step 1: Mocks that actually where invked.
-	actual := map[string]bool{} // set of actual invocations
-	for _, mt := range mockResult {
-		parts := strings.SplitN(mt.Name, ": ", 2) // split "Mock 4" and "Geolocation Mock"
-		if len(parts) == 2 && strings.HasPrefix(parts[0], "Mock ") {
-			actual[parts[0]] = true
-		}
-		subsuite.updateStatusAndErr(mt)
-	}
-
-	// Step 2: Are there mocks which where not invoked?
-	for i, mock := range mocks {
-		if actual[fmt.Sprintf("Mock %d", i)] {
-			// Fine: mock was called, status propagation happened above.
-			continue
-		}
-
-		// Add errorred test to subsuite.
-		errored := &ht.Test{
-			Name: mock.Name,
-			Request: ht.Request{
-				Method: mock.Method,
-				URL:    mock.URL,
-			},
-			Status: ht.Error,
-			Error:  fmt.Errorf("mock %q was not called", mock.Name),
-		}
-		subsuite.Tests = append(subsuite.Tests, errored)
-		subsuite.updateStatusAndErr(errored)
-
-	}
 	// Propagete state of mock invocations to main test:
 	// Subsuite Fail and Error should render the main test Fail (not Error as
 	// Error indicates failure making the initial request).
 	// Unclear what to do with Bogus.
 	switch subsuite.Status {
-	case ht.NotRun, ht.Skipped:
+	case ht.NotRun:
+		return // Fine, no mocks request, none invoked.
+	case ht.Skipped:
 		panic("suite: subsuite status " + subsuite.Status.String())
 	case ht.Pass:
 		// Fine!

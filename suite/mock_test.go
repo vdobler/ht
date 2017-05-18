@@ -40,7 +40,6 @@ func pipeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	snJson, err := ioutil.ReadAll(snResp.Body)
-	// fmt.Println("Surname-Service Body: ", string(snJson))
 	snResp.Body.Close()
 	var x struct {
 		Status   string `json:"status"`
@@ -61,7 +60,6 @@ func pipeHandler(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println("Got surename: ", surename)
 
 	// Lastname
-	// TODO: POST to "http://localhost:9902/rest/v7/lookup"
 	lnReq, err := http.NewRequest("POST", "http://localhost:9902/rest/v7/lookup",
 		strings.NewReader("userid="+userid))
 	if err != nil {
@@ -116,7 +114,7 @@ var mockSuiteResults = []struct {
 	{ht.Fail, "got 500, want 200\n"},
 	{ht.Fail, "Main test passed, but mock invocations failed: Unequal, was \"okay\"\n"},
 	{ht.Pass, "<nil>\n"},
-	{ht.Fail, "Main test passed, but mock invocations failed: mock \"Mock 2: Some other Mock\" was not called\n"},
+	{ht.Fail, "Main test passed, but mock invocations failed: mock \"Some other Mock\" was not called\n"},
 	{ht.Pass, "<nil>\n"},
 }
 

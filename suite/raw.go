@@ -543,6 +543,7 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 		if test.Status > ht.Pass && isSetup() {
 			setupfailures = true
 		}
+
 		return nil
 	}
 
