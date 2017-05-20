@@ -39,7 +39,7 @@ func (vars Variables) Copy() Variables {
 // Variables defined in the outer scope will be copied to the new scope:
 // Variables from the inner scope may not overwrite variables from the
 // outer scope. Worded differently: The inner scope provides some kind
-// of defauklt which gets overwriten from the outside.
+// of default which gets overwriten from the outside.
 //
 // Variable values in the inner scope may reference values from the
 // outer scope.
