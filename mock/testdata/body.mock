@@ -25,7 +25,7 @@
         Header: {
             "X-Custom-Header": "trivial"
         }
-        Body: "@vfile:greet_{{LANG}}.txt"
+        Body: "@vfile:{{MOCK_DIR}}/greet_{{LANG}}.txt"
     }
 
     Variables: {
