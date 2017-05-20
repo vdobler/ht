@@ -13,6 +13,7 @@ import (
 
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/mock"
+	"github.com/vdobler/ht/scope"
 	"github.com/vdobler/ht/suite"
 )
 
@@ -51,11 +52,20 @@ func runMock(cmd *Command, args []string) {
 
 	mocks := []*mock.Mock{}
 	for _, arg := range args {
-		m, err := suite.LoadMock(arg, nil, variablesFlag, false)
+		raw, err := suite.LoadRawMock(arg, nil)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(8)
 		}
+		mockScope := scope.New(scope.Variables(variablesFlag), raw.Variables, false)
+		mockScope["MOCK_DIR"] = raw.Dirname()
+		mockScope["MOCK_NAME"] = raw.Basename()
+		m, err := raw.ToMock(mockScope, false)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(8)
+		}
+
 		m.Monitor = monitor
 		mocks = append(mocks, m)
 	}
