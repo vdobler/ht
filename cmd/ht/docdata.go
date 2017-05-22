@@ -31,17 +31,26 @@ var typeDoc = map[string]string{
 		"    BodyExtractor extracts a value from the uninterpreted response body via a\n" +
 		"    regular expression.",
 	"cache": "type Cache struct {\n" +
-		"\t// NoStore checks for no-store.\n" +
+		"\t// NoStore checks for the \"no-store\" directive.\n" +
 		"\tNoStore bool\n" +
 		"\n" +
-		"\t// NoCache checks for no-cache.\n" +
+		"\t// NoCache checks for the \"no-cache\" directive.\n" +
 		"\tNoCache bool\n" +
 		"\n" +
-		"\t// MaxAge checks for the presence of a max-age value at leas as long.\n" +
-		"\tMaxAge time.Duration\n" +
+		"\t// Private checks for the \"private\"  directive\n" +
+		"\tPrivate bool\n" +
+		"\n" +
+		"\t// AtLeast checks for the presence of a \"max-age\" directive with a\n" +
+		"\t// value at least as long.\n" +
+		"\tAtLeast time.Duration\n" +
+		"\n" +
+		"\t// AtMost checks for the presence of a \"max-age\" directive with a\n" +
+		"\t// value at most as long.\n" +
+		"\tAtMost time.Duration\n" +
 		"}\n" +
 		"    Cache allows to test for HTTP Cache-Control headers. The zero value checks\n" +
-		"    for the existence of a Cache-Control header only.",
+		"    for the existence of a Cache-Control header only. Note that not all\n" +
+		"    combinations are sensible.",
 	"checklist": "type CheckList []Check\n" +
 		"    CheckList is a slice of checks with the sole purpose of attaching JSON\n" +
 		"    (un)marshaling methods.",
@@ -1030,6 +1039,9 @@ var typeDoc = map[string]string{
 		"\t// Description of this mock.\n" +
 		"\tDescription string\n" +
 		"\n" +
+		"\t// Disable can be used to disable this mock.\n" +
+		"\tDisable bool\n" +
+		"\n" +
 		"\t// Method for which this mock applies to.\n" +
 		"\tMethod string\n" +
 		"\n" +
@@ -1102,8 +1114,11 @@ var typeDoc = map[string]string{
 		"    RawLoadTest as read from disk.",
 	"rawmock": "type RawMock struct {\n" +
 		"\t*File\n" +
-		"\tVariables map[string]string // Variables are the defaults of the variables.\n" +
-		"}",
+		"\n" +
+		"\t// Variables are the defaults of the variables.\n" +
+		"\tVariables map[string]string\n" +
+		"}\n" +
+		"    RawMock is the raw form of a mock read in from disk.",
 	"rawscenario": "type RawScenario struct {\n" +
 		"\tName       string            // Name of this Scenario\n" +
 		"\tFile       string            // File is the RawSuite to use as scenario\n" +
