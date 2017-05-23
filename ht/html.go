@@ -193,7 +193,7 @@ func (c *HTMLTag) Prepare() (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
 		c.sel = nil
-		return MalformedCheck{Err: err}
+		return err
 	}
 	return nil
 }
@@ -298,7 +298,7 @@ func (c *HTMLContains) Prepare() (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
 		c.sel = nil
-		return MalformedCheck{Err: err}
+		return err
 	}
 	return nil
 }

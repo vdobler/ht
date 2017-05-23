@@ -273,7 +273,7 @@ func (c *Condition) Compile() (err error) {
 		c.re, err = regexp.Compile(c.Regexp)
 		if err != nil {
 			c.re = nil
-			return MalformedCheck{Err: err}
+			return err
 		}
 	}
 	return nil
@@ -297,9 +297,7 @@ func (c *Condition) checkIs(s string) error {
 		}
 		validationFn, ok := ValidationMap[ctyp]
 		if !ok {
-			return MalformedCheck{
-				Err: fmt.Errorf("No such type check %q", typ),
-			}
+			return fmt.Errorf("no such type check %q", typ)
 		}
 		if validationFn(s) {
 			return nil // s is of type typ

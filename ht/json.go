@@ -62,14 +62,13 @@ func (c *JSONExpr) Prepare() (err error) {
 
 // Execute implements Check's Execute method.
 func (c *JSONExpr) Execute(t *Test) error {
-	if t.Response.BodyErr != nil {
-		return ErrBadBody
-	}
-
 	if c.tt == nil {
 		if err := c.Prepare(); err != nil {
-			return MalformedCheck{Err: err}
+			return MalformedCheck{err}
 		}
+	}
+	if t.Response.BodyErr != nil {
+		return ErrBadBody
 	}
 
 	var bmsg jee.BMsg
@@ -84,7 +83,7 @@ func (c *JSONExpr) Execute(t *Test) error {
 	}
 
 	if b, ok := result.(bool); !ok {
-		return MalformedCheck{Err: fmt.Errorf("Expected bool, got %T (%#v)", result, result)}
+		return MalformedCheck{fmt.Errorf("Expected bool, got %T (%#v)", result, result)}
 	} else if !b {
 		return ErrFailed
 	}

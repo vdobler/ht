@@ -16,8 +16,7 @@ var responseTimeTests = []TC{
 	{Response{Duration: 10 * ms}, ResponseTime{Higher: 5 * ms, Lower: 20 * ms}, nil},
 	{Response{Duration: 10 * ms}, ResponseTime{Higher: 15 * ms, Lower: 20 * ms}, errCheck},
 	{Response{Duration: 10 * ms}, ResponseTime{Higher: 5 * ms, Lower: 8 * ms}, errCheck},
-	{Response{Duration: 10 * ms}, ResponseTime{Higher: 20 * ms, Lower: 5 * ms},
-		MalformedCheck{Err: errCheck}},
+	{Response{Duration: 10 * ms}, ResponseTime{Higher: 20 * ms, Lower: 5 * ms}, errDuringPrepare},
 }
 
 func TestResponseTime(t *testing.T) {

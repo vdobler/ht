@@ -25,11 +25,13 @@ type ResponseTime struct {
 }
 
 // Execute implements Check's Execute method.
+// TODO: fix spelling of unfullfillable.
 func (c ResponseTime) Execute(t *Test) error {
-	actual := t.Response.Duration
-	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
-		return MalformedCheck{Err: fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)}
+	if err := c.Prepare(); err != nil {
+		return MalformedCheck{err}
 	}
+
+	actual := t.Response.Duration
 	if c.Lower > 0 && c.Lower < actual {
 		return fmt.Errorf("Response took %s (allowed max %s).",
 			actual.String(), c.Lower.String())
@@ -37,6 +39,13 @@ func (c ResponseTime) Execute(t *Test) error {
 	if c.Higher > 0 && c.Higher > actual {
 		return fmt.Errorf("Response took %s (required min %s).",
 			actual.String(), c.Higher.String())
+	}
+	return nil
+}
+
+func (c ResponseTime) Prepare() error {
+	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
+		return fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)
 	}
 	return nil
 }

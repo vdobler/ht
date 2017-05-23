@@ -203,11 +203,11 @@ func dotMatch(got, want string) bool {
 // Prepare implements Check's Prepare method.
 func (r Redirect) Prepare() error {
 	if r.To == "" {
-		return MalformedCheck{fmt.Errorf("To must not be empty")}
+		return fmt.Errorf("To must not be empty")
 	}
 
 	if r.StatusCode > 0 && (r.StatusCode < 300 || r.StatusCode > 399) {
-		return MalformedCheck{fmt.Errorf("status code %d out of redirect range", r.StatusCode)}
+		return fmt.Errorf("status code %d out of redirect range", r.StatusCode)
 	}
 	return nil
 }
@@ -252,7 +252,7 @@ func (r RedirectChain) Execute(t *Test) error {
 // Prepare implements Check's Prepare method.
 func (r RedirectChain) Prepare() error {
 	if len(r.Via) == 0 {
-		return MalformedCheck{fmt.Errorf("Via must not be empty")}
+		return fmt.Errorf("Via must not be empty")
 	}
 	return nil
 }

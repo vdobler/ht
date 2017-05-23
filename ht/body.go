@@ -125,16 +125,11 @@ func (s *Sorted) Execute(t *Test) error {
 // Prepare implements Check's Prepare method.
 func (s *Sorted) Prepare() error {
 	if len(s.Text) < 2 {
-		return MalformedCheck{
-			Err: errors.New("not enough values to check sorted"),
-		}
+		return errors.New("not enough values to check sortedness")
 	}
 
 	if s.AllowedMisses > len(s.Text)-2 {
-		return MalformedCheck{
-			Err: errors.New("too many allowed misses"),
-		}
-
+		return errors.New("more allowed misses than values to look for")
 	}
 	return nil
 }

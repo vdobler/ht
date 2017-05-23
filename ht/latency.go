@@ -288,10 +288,7 @@ func (L *Latency) Prepare() error {
 	if L.Concurrent == 0 {
 		L.Concurrent = 2
 	} else if L.Concurrent > 64 {
-		return MalformedCheck{
-			Err: fmt.Errorf("concurrency %d > allowed max of 64",
-				L.Concurrent),
-		}
+		return fmt.Errorf("concurrency %d > allowed max of 64", L.Concurrent)
 	}
 
 	if L.Limits == "" {
@@ -300,7 +297,7 @@ func (L *Latency) Prepare() error {
 
 	if err := L.parseLimit(); err != nil {
 		fmt.Printf("err = %v\n", err)
-		return MalformedCheck{Err: err}
+		return err
 	}
 
 	return nil

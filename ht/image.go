@@ -102,17 +102,15 @@ func (i Image) Prepare() error {
 	case 16:
 		_, err := fingerprint.BMVHashFromString(i.Fingerprint)
 		if err != nil {
-			return MalformedCheck{err}
+			return err
 		}
 	case 24:
 		_, err := fingerprint.ColorHistFromString(i.Fingerprint)
 		if err != nil {
-			return MalformedCheck{err}
+			return err
 		}
 	default:
-		return MalformedCheck{
-			fmt.Errorf("fingerprint has illegal length %d", len(i.Fingerprint)),
-		}
+		return fmt.Errorf("fingerprint has illegal length %d", len(i.Fingerprint))
 	}
 	return nil
 }
