@@ -32,6 +32,17 @@ Open Issues
      - Introduce a new type ValidatableCheck (or Preparer?) with 
        a method  Validate(*Test) error which does the validation
        work.
+   While experimenting with a Prepare-less Check type it turned out that it's
+   not that simple: At least one check (Logfile) relies on the fact that its
+   Prepare method was called before the actual HTTP request is made. The
+   Logfile check compares the logfile before to the logfile after the request.
+   So the method should not be named "Validate" but be kept to "Prepare".
+   So the refactoring path could look like
+     1. Make Prepare a method of Preparable
+     2. Call Prepare only on Preparables
+     3. Delete dummy Prepare Methods
+     4. Add Test as argument to Prepare
+     5. Refactor MalformedCheck Error handling. 
 
 *  Several types of Checks would be very sensible:
      o Content Efficiency 
