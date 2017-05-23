@@ -105,9 +105,6 @@ func (c ContentType) Execute(t *Test) error {
 	return nil
 }
 
-// Prepare implements Check's Prepare method.
-func (ContentType) Prepare() error { return nil }
-
 // ----------------------------------------------------------------------------
 // FinalURL
 

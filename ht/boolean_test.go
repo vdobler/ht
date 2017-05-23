@@ -17,7 +17,6 @@ type bCheck struct {
 	executed bool
 }
 
-func (b *bCheck) Prepare() error { return nil }
 func (b *bCheck) Execute(t *Test) error {
 	b.executed = true
 	if strings.Contains(t.Response.BodyStr, b.want) {

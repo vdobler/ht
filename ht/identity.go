@@ -39,6 +39,3 @@ func (i Identity) Execute(t *Test) error {
 	}
 	return fmt.Errorf("Got %s", s)
 }
-
-// Prepare implements Check's Prepare method.
-func (Identity) Prepare() error { return nil }

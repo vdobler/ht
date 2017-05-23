@@ -237,8 +237,3 @@ func (c DeleteCookie) Execute(t *Test) error {
 	}
 	return nil
 }
-
-// Prepare implements Check's Prepare method.
-func (c *DeleteCookie) Prepare() error {
-	return nil
-}

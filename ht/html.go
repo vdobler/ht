@@ -113,9 +113,6 @@ outer:
 	return nil
 }
 
-// Prepare implements Check's Prepare method.
-func (W3CValidHTML) Prepare() error { return nil }
-
 // ValidationIssue contains extracted information from the output of
 // a W3C validator run.
 type ValidationIssue struct {

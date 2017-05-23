@@ -40,6 +40,3 @@ func (c ResponseTime) Execute(t *Test) error {
 	}
 	return nil
 }
-
-// Prepare implements Check's Prepare method.
-func (ResponseTime) Prepare() error { return nil }

@@ -46,9 +46,6 @@ func (c UTF8Encoded) Execute(t *Test) error {
 	return nil
 }
 
-// Prepare implements Check's Prepare method.
-func (UTF8Encoded) Prepare() error { return nil }
-
 // ----------------------------------------------------------------------------
 // Body
 

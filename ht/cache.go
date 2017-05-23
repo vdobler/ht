@@ -74,11 +74,6 @@ func (ETag) Execute(t *Test) error {
 	return second.Error
 }
 
-// Prepare implements Check's Prepare method.
-func (ETag) Prepare() error {
-	return nil
-}
-
 // etags returns "ETag" and "Etag" headers from h. There must be an other solution.
 func etags(h http.Header) []string {
 	tags := []string{}
