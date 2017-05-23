@@ -16,12 +16,16 @@ import (
 
 // Check is a single check performed on a Response.
 type Check interface {
+	// Execute executes the check.
+	Execute(*Test) error
+}
+
+// Preparable is the type a Check may implement to signal that it needs some
+// preperation work to be done before the HTTP request is made.
+type Preparable interface {
 	// Prepare is called to prepare the check, e.g. to compile
 	// regular expressions or that like.
 	Prepare() error
-
-	// Execute executes the check.
-	Execute(*Test) error
 }
 
 // NameOf returns the name of the type of inst.

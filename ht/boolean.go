@@ -33,9 +33,11 @@ type AnyOne struct {
 func (a AnyOne) Prepare() error {
 	errs := ErrorList{}
 	for _, c := range a.Of {
-		err := c.Prepare()
-		if err != nil {
-			errs = append(errs, err)
+		if prep, ok := c.(Preparable); ok {
+			err := prep.Prepare()
+			if err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 	if len(errs) == 0 {
@@ -79,9 +81,11 @@ type None struct {
 func (n None) Prepare() error {
 	errs := ErrorList{}
 	for _, c := range n.Of {
-		err := c.Prepare()
-		if err != nil {
-			errs = append(errs, err)
+		if prep, ok := c.(Preparable); ok {
+			err := prep.Prepare()
+			if err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 	if len(errs) == 0 {

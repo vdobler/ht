@@ -608,11 +608,13 @@ func (t *Test) PrepareChecks() error {
 	// Compile the checks.
 	cel := ErrorList{}
 	for i := range t.Checks {
-		e := t.Checks[i].Prepare()
-		if e != nil {
-			cel = append(cel, e)
-			t.errorf("preparing check %d %q: %s",
-				i, NameOf(t.Checks[i]), e.Error())
+		if prep, ok := t.Checks[i].(Preparable); ok {
+			e := prep.Prepare()
+			if e != nil {
+				cel = append(cel, e)
+				t.errorf("preparing check %d %q: %s",
+					i, NameOf(t.Checks[i]), e.Error())
+			}
 		}
 	}
 	if len(cel) != 0 {

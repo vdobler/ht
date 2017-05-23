@@ -597,9 +597,11 @@ func (r *RenderedHTML) Prepare() error {
 	// Prepare each sub-check.
 	errs := ErrorList{}
 	for i, check := range r.Checks {
-		err := check.Prepare()
-		if err != nil {
-			errs = append(errs, fmt.Errorf("%d. %s: %s", i, NameOf(check), err))
+		if prep, ok := check.(Preparable); ok {
+			err := prep.Prepare()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%d. %s: %s", i, NameOf(check), err))
+			}
 		}
 	}
 
