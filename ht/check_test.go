@@ -8,39 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 )
-
-type sampleCheck struct {
-	A string
-	B *string
-	C int
-	D *int
-	E int64
-	F time.Duration
-	G []string
-	H []int
-
-	N nested
-	M []nested
-	P interface{}
-
-	X float32
-	Y int
-	Z int
-
-	privateInt int
-	privateStr string
-}
-
-// let sampleCheck satisfy Check interface.
-func (sampleCheck) Execute(t *Test) error { return nil }
-func (sampleCheck) Prepare() error        { return nil }
-
-type nested struct {
-	X string
-	Y int
-}
 
 func TestChecklistMarshalJSON(t *testing.T) {
 	cl := CheckList{
