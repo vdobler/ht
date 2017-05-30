@@ -139,6 +139,7 @@ func (suite *Suite) Iterate(executor Executor) {
 		testScope["TEST_DIR"] = rt.File.Dirname()
 		testScope["TEST_NAME"] = rt.File.Basename()
 		test, err := rt.ToTest(testScope)
+		test.SetMetadata("Filename", rt.File.Name)
 		if err != nil {
 			test.Status = ht.Bogus
 			test.Error = err
