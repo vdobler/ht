@@ -5,6 +5,7 @@
 package ht
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -201,4 +202,49 @@ func TestFindJSONElement(t *testing.T) {
 		})
 	}
 
+}
+
+var ajeTests = []struct {
+	J    string
+	want string
+}{
+	{`"hello world`,
+		`json syntax error in line 1, byte 12: ` +
+			`unexpected end of JSON input`,
+	},
+	{`{
+  "foo": 3.14,
+  "bar:  123,
+  "waz": -5
+}`,
+		`json syntax error in line 3, byte 14: ` +
+			`invalid character '\n' in string literal`,
+	},
+	{`[
+12,
+3.4,
+
+5.6.7
+]`,
+		`json syntax error in line 5, byte 4: ` +
+			`invalid character '.' after array element`,
+	},
+}
+
+func TestAugmentJSONError(t *testing.T) {
+	for i, tc := range ajeTests {
+		var v interface{}
+		in := []byte(tc.J)
+		err := json.Unmarshal(in, &v)
+		if err == nil {
+			t.Errorf("%d: no error?", i)
+		} else {
+			got := augmentJSONError(err, in).Error()
+			if got != tc.want {
+				t.Errorf("%d: wrong error\n got: %s\nwant: %s",
+					i, got, tc.want)
+
+			}
+		}
+	}
 }

@@ -72,9 +72,10 @@ func (c *JSONExpr) Execute(t *Test) error {
 	}
 
 	var bmsg jee.BMsg
-	err := json.Unmarshal([]byte(t.Response.BodyStr), &bmsg)
+	body := []byte(t.Response.BodyStr)
+	err := json.Unmarshal(body, &bmsg)
 	if err != nil {
-		return err
+		return augmentJSONError(err, body)
 	}
 
 	result, err := jee.Eval(c.tt, bmsg)
@@ -242,13 +243,19 @@ func (c *JSON) Execute(t *Test) error {
 		sep = c.Sep
 	}
 
-	raw, err := findJSONelement([]byte(t.Response.BodyStr), c.Element, sep)
+	// Check for wellformed of overall, outer JSON.
+	var v interface{}
+	body := []byte(t.Response.BodyStr)
+	if err := json.Unmarshal(body, &v); err != nil {
+		return augmentJSONError(err, body)
+	}
+
+	raw, err := findJSONelement(body, c.Element, sep)
 	if err != nil {
 		return err
 	}
 
 	// Check for wellformed JSON.
-	var v interface{}
 	err = json.Unmarshal(raw, &v)
 	if err != nil {
 		return err
@@ -282,6 +289,32 @@ func (c *JSON) Execute(t *Test) error {
 	}
 
 	return c.Fulfilled(string(raw))
+}
+
+// augmentJSONError tries to augment err by a line/column number pointing into
+// jsonData. encoding/json.Unmarshal's error for syntax errors in the JSON is
+// very hard to use as a human, augmenting the error with a line number makes
+// debugging much simplier.
+func augmentJSONError(err error, jsonData []byte) error {
+	off := 0
+
+	se, ok := err.(*json.SyntaxError)
+	if !ok {
+		return err
+	}
+	off = int(se.Offset)
+
+	lines := bytes.Split(jsonData, []byte("\n"))
+	total := 0
+	lineNo := 0
+	for total+len(lines[lineNo])+1 < off {
+		total += len(lines[lineNo]) + 1 // +1 for the \n removed in splitting
+		lineNo++
+	}
+	lineNo++ // Lines are counted 1-based.
+	byteNo := off - total
+	return fmt.Errorf("json syntax error in line %d, byte %d: %s",
+		lineNo, byteNo, err)
 }
 
 func kind(v reflect.Value) string {
