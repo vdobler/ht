@@ -7,7 +7,7 @@
     Checks: [
         // Check for status OK and a body with the given SHA1 hash.
         {Check: "StatusCode", Expect: 200},
-        {Check: "Identity", SHA1: "0054333bab8a3a3d520f94c87e10a231d71348d4"},
+        {Check: "Identity", SHA1: "9c9c10ab999e924e252f3c076cc15fe6f0f138d9"},
 
         // check some header fields.
         {Check: "ContentType", Is: "pdf"},

@@ -26,9 +26,10 @@ func main() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/not/there", missingHandler)
 	http.HandleFunc("/api/v1/books", booksHandler)
-	http.HandleFunc("/api/v1", jsonHandler)
+	http.HandleFunc("/api/v1/", jsonHandler)
 	http.HandleFunc("/static/image/", logoHandler)
 	http.HandleFunc("/search", searchHandler)
+	http.HandleFunc("/tac.pdf", tacHandler)
 	http.HandleFunc("/server/ready", readyHandler)
 	http.HandleFunc("/shut/down/now", shutdownHandler)
 	log.Fatal(http.ListenAndServe(*port, nil))
@@ -170,6 +171,78 @@ func logoHandler(w http.ResponseWriter, r *http.Request) {
 		"\xa2\x87\x2c\x49\xc0\x16\xae\xb3\xcf\x8b\xc2\xba\x57\x00\xa8\x1f"+
 		"\xeb\x73\xe1\x56\xc5\xfa\x68\x00\x8c\x59\x0d\x11\x87\x39\xe4\xc3"+
 		"\x00\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82")
+}
+
+func tacHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="tac.pdf"`)
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, `%PDF-1.4
+1 0 obj
+<< /Type /Catalog
+/Outlines 2 0 R
+/Pages 3 0 R
+>>
+endobj
+2 0 obj
+<< /Type /Outlines
+/Count 0
+>>
+endobj
+3 0 obj
+<< /Type /Pages
+/Kids [4 0 R]
+/Count 1
+>>
+endobj
+4 0 obj
+<< /Type /Page
+/Parent 3 0 R
+/MediaBox [0 0 612 792]
+/Contents 5 0 R
+/Resources << /ProcSet 6 0 R
+/Font << /F1 7 0 R >>
+>>
+>>
+endobj
+5 0 obj
+<< /Length 73 >>
+stream
+BT
+/F1 24 Tf
+100 100 Td
+(ht rules) Tj
+ET
+endstream
+endobj
+6 0 obj
+[/PDF /Text]
+endobj
+7 0 obj
+<< /Type /Font
+/Subtype /Type1
+/Name /F1
+/BaseFont /Helvetica
+/Encoding /MacRomanEncoding
+>>
+endobj
+xref
+0 8
+0000000000 65535 f
+0000000009 00000 n
+0000000074 00000 n
+0000000120 00000 n
+0000000179 00000 n
+0000000364 00000 n
+0000000466 00000 n
+0000000496 00000 n
+trailer
+<< /Size 8
+/Root 1 0 R
+>>
+startxref
+625
+%%EOF`)
 }
 
 func jsonHandler(w http.ResponseWriter, r *http.Request) {
