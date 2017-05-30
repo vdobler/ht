@@ -251,7 +251,7 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `
 {
   "query": "jo nesbo",
-  "result: [ 1, 2 ]
+  "result": [ 1, 2 ]
 }`)
 }
 
