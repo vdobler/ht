@@ -153,7 +153,7 @@ type JSON struct {
 	Condition
 
 	// Schema is the expected structure of the selected element.
-	Schema string
+	Schema string `json:",omitempty"`
 
 	// Embedded is a JSON check applied to the value selected by
 	// Element. Useful when JSON contains embedded, quoted JSON as
