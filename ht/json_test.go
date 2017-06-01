@@ -45,11 +45,11 @@ var jsonConditionTests = []TC{
 	{jr, &JSON{Element: "bar.2"}, nil},
 	{jr, &JSON{Element: "bar#1", Sep: "#", Condition: Condition{Equals: "2"}}, nil},
 	{jr, &JSON{Element: "foo", Condition: Condition{Equals: "bar"}}, errCheck},
-	{jr, &JSON{Element: "bar.5"}, fmt.Errorf("no index 5 in array bar of len 3")},
+	{jr, &JSON{Element: "bar.5"}, fmt.Errorf("No index 5 in array bar of len 3")},
 	{jr, &JSON{Element: "bar.3", Condition: Condition{Equals: "2"}}, errCheck},
 	{jr, &JSON{Element: "foo.wuz", Condition: Condition{Equals: "bar"}}, errCheck},
 	{jr, &JSON{Element: "qux", Condition: Condition{Equals: "bar"}},
-		fmt.Errorf("element qux not found")},
+		fmt.Errorf("Element qux not found")},
 
 	{ar, &JSON{Element: "0", Condition: Condition{Equals: `"jo nesbo"`}}, nil},
 	{ar, &JSON{Element: "1.4", Condition: Condition{Contains: `jo nesbo`}}, nil},
@@ -78,6 +78,15 @@ var jsonConditionTests = []TC{
 	{jrm, &JSON{Element: ".",
 		Embedded: &JSON{Element: "bar.1", Condition: Condition{Equals: "XX"}}},
 		errCheck},
+
+	// different types of "not found"
+	{jr, &JSON{Element: "waz", Condition: Condition{Contains: "needle"}},
+		errors.New("Element waz not found")},
+	{jr, &JSON{Element: "bar.4", Condition: Condition{Contains: "needle"}},
+		errors.New("No index 4 in array bar of len 3")},
+	{Response{BodyStr: `{"foo": "Some ugly long string value."}`},
+		&JSON{Element: "foo", Condition: Condition{Contains: "needle"}},
+		errors.New(`Cannot find "needle" in "Some ugly long string va…`)},
 }
 
 func TestJSONCondition(t *testing.T) {
@@ -149,18 +158,18 @@ var findJSONelementTests = []struct {
 	// Arrays
 	{`[3, 1, 4, 1]`, "2", `4`, ""},
 	{`[3, 1, "foo", 1]`, "2", `"foo"`, ""},
-	{`[3, 1, 4, 1]`, "7", ``, "no index 7 in array  of len 4"},
-	{`[3, 1, 4, 1]`, "-7", ``, "no index -7 in array  of len 4"},
+	{`[3, 1, 4, 1]`, "7", ``, "No index 7 in array  of len 4"},
+	{`[3, 1, 4, 1]`, "-7", ``, "No index -7 in array  of len 4"},
 	{`[3, 1, 4, 1]`, "foo", ``, "foo is not a valid index"},
 	{`[3, 1, 4, 1]`, "2e0", ``, "2e0 is not a valid index"},
-	{`{"A":{"B":[1,2,3]}}`, "A.B.5", ``, "no index 5 in array A.B of len 3"},
+	{`{"A":{"B":[1,2,3]}}`, "A.B.5", ``, "No index 5 in array A.B of len 3"},
 
 	// Objects
 	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "A", `123`, ""},
 	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "B", `"foo"`, ""},
 	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "C", `true`, ""},
 	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "D", `null`, ""},
-	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "E", ``, "element E not found"},
+	{`{"A": 123, "B": "foo", "C": true, "D": null}`, "E", ``, "Element E not found"},
 
 	// Nested stuff
 	{`{"A": [0, 1, {"B": true, "C": 2.72}, 3]}`, "A.2.C", `2.72`, ""},
@@ -168,9 +177,9 @@ var findJSONelementTests = []struct {
 	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c.d", `77`, ""},
 	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c", `{"d":77}`, ""},
 	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b", `{"c":{"d":77}}`, ""},
-	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c.d.X", ``, "element a.b.c.d.X not found"},
-	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c.X", ``, "element a.b.c.X not found"},
-	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.X", ``, "element a.b.X not found"},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c.d.X", ``, "Element a.b.c.d.X not found"},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.c.X", ``, "Element a.b.c.X not found"},
+	{`{"a":{"b":{"c":{"d":77}}}}`, "a.b.X", ``, "Element a.b.X not found"},
 
 	// Ill-formed JSON
 	{`{"A":[{"B":flop}]}`, "", `{"A":[{"B":flop}]}`, ""},

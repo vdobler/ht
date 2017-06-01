@@ -208,7 +208,7 @@ func findJSONelement(data []byte, element, sep string) ([]byte, error) {
 				return nil, fmt.Errorf("%s is not a valid index", elem)
 			}
 			if i < 0 || i >= len(v) {
-				return nil, fmt.Errorf("no index %d in array %s of len %d",
+				return nil, fmt.Errorf("No index %d in array %s of len %d",
 					i, strings.Join(path[:e], sep), len(v))
 			}
 			data = []byte(v[i])
@@ -220,12 +220,12 @@ func findJSONelement(data []byte, element, sep string) ([]byte, error) {
 			}
 			raw, ok := v[elem]
 			if !ok {
-				return nil, fmt.Errorf("element %s not found",
+				return nil, fmt.Errorf("Element %s not found",
 					strings.Join(path[:e+1], sep))
 			}
 			data = []byte(raw)
 		default:
-			return nil, fmt.Errorf("element %s not found",
+			return nil, fmt.Errorf("Element %s not found",
 				strings.Join(path[:e+1], sep))
 		}
 	}
