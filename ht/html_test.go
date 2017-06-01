@@ -52,11 +52,11 @@ var htmlTagTests = []TC{
 	{hcr, &HTMLTag{Selector: "h1"}, nil},
 	{hcr, &HTMLTag{Selector: "p.X", Count: 2}, nil},
 	{hcr, &HTMLTag{Selector: "#mt", Count: 1}, nil},
-	{hcr, &HTMLTag{Selector: "h2"}, ErrNotFound},
+	{hcr, &HTMLTag{Selector: "h2"}, errCheck},
 	{hcr, &HTMLTag{Selector: "h1", Count: 2}, errCheck},
-	{hcr, &HTMLTag{Selector: "h1", Count: -1}, ErrFoundForbidden},
-	{hcr, &HTMLTag{Selector: "p.z"}, ErrNotFound},
-	{hcr, &HTMLTag{Selector: "#nil"}, ErrNotFound},
+	{hcr, &HTMLTag{Selector: "h1", Count: -1}, errCheck},
+	{hcr, &HTMLTag{Selector: "p.z"}, errCheck},
+	{hcr, &HTMLTag{Selector: "#nil"}, errCheck},
 }
 
 func TestHTMLTag(t *testing.T) {

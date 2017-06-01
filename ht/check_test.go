@@ -106,23 +106,12 @@ func runTest(t *testing.T, i int, tc TC) {
 		t.Errorf("%d. %s %+v: missing error, want %v",
 			i, NameOf(tc.c), tc.c, tc.e)
 	case got != nil && tc.e != nil:
-		_, malformed := got.(MalformedCheck)
-		if (tc.e == errCheck && !malformed) ||
-			(tc.e == ErrNotFound && got == ErrNotFound) ||
-			(tc.e == ErrFoundForbidden && got == ErrFoundForbidden) {
-			return
+		if tc.e == errCheck {
+			return // fine, any error
 		}
-		switch tc.e.(type) {
-		case MalformedCheck:
-			if !malformed {
-				t.Errorf("%d. %s %+v:got \"%v\" of type %T, want MalformedCheck",
-					i, NameOf(tc.c), tc.c, got, got)
-			}
-		default:
-			if tc.e.Error() != got.Error() {
-				t.Errorf("%d. %s %+v:\n\tgot  %q  (of type %T)\n\twant %q  (of tyoe %T)",
-					i, NameOf(tc.c), tc.c, got, got, tc.e, tc.e)
-			}
+		if tc.e.Error() != got.Error() {
+			t.Errorf("%d. %s %+v:\n\tgot  %q  (of type %T)\n\twant %q  (of tyoe %T)",
+				i, NameOf(tc.c), tc.c, got, got, tc.e, tc.e)
 		}
 	}
 }

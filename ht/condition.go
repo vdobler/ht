@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/asaskevich/govalidator"
 )
@@ -76,7 +77,7 @@ type Condition struct {
 	// See github.com/asaskevich/govalidator for a detailed description.
 	//
 	// The string "OR" is ignored an can be used to increase the
-	// readability of this condition in sutiation like
+	// readability of this condition in situations like
 	//     Condition{Is: "Hexcolor OR RGBColor OR MongoID"}
 	Is string `json:",omitempty"`
 
@@ -188,28 +189,31 @@ func (c Condition) Fulfilled(s string) error {
 
 	if c.Contains != "" {
 		if c.Count == 0 && !strings.Contains(s, c.Contains) {
-			return ErrNotFound
+			return fmt.Errorf("Cannot find %q", c.Contains)
 		} else if c.Count < 0 && strings.Contains(s, c.Contains) {
-			return ErrFoundForbidden
+			return fmt.Errorf("Found forbidden %q", c.Contains)
 		} else if c.Count > 0 {
 			if cnt := strings.Count(s, c.Contains); cnt != c.Count {
-				return WrongCount{Got: cnt, Want: c.Count}
+				return fmt.Errorf("Found %d occurences of %q, want %d",
+					cnt, c.Contains, c.Count)
 			}
 		}
 	}
 
+	// TODO: remove. All tests may rely on beeing prepared prior to execution.
 	if c.Regexp != "" && c.re == nil {
 		c.re = regexp.MustCompile(c.Regexp)
 	}
 
 	if c.re != nil {
 		if c.Count == 0 && c.re.FindStringIndex(s) == nil {
-			return ErrNotFound
+			return fmt.Errorf("Cannot find match for regexp %q", c.re.String())
 		} else if c.Count < 0 && c.re.FindStringIndex(s) != nil {
-			return ErrFoundForbidden
+			return fmt.Errorf("Found forbidden match of regexp %q", c.re.String())
 		} else if c.Count > 0 {
 			if m := c.re.FindAllString(s, -1); len(m) != c.Count {
-				return WrongCount{Got: len(m), Want: c.Count}
+				return fmt.Errorf("Found %d matches of regexp %q, want %d",
+					len(m), c.re.String(), c.Count)
 			}
 		}
 	}
@@ -306,4 +310,45 @@ func (c *Condition) checkIs(s string) error {
 	}
 
 	return err
+}
+
+// LimitString returns a printable version of s in the following sense:
+//  - unprintable characters are displayed as Unicode numbers
+//  - tabs, linefeeds, etc are displayed as \t, \n. etc.
+//  - the result is clipped to 35 runes.
+func LimitString(s string) string {
+	t := ""
+	for _, r := range s {
+		if utf8.RuneCountInString(t) == 25 {
+			t += "…"
+			break
+		}
+		if unicode.IsPrint(r) {
+			t += fmt.Sprintf("%c", r)
+		} else {
+			switch r {
+			case '\a':
+				t += `\a`
+			case '\b':
+				t += `\b`
+			case '\t':
+				t += `\t`
+			case '\n':
+				t += `\n`
+			case '\v':
+				t += `\v`
+			case '\f':
+				t += `\f`
+			case '\r':
+				t += `\r`
+			default:
+				if r <= 0xffff {
+					t += fmt.Sprintf("\\u%04x", r)
+				} else {
+					t += fmt.Sprintf("\\u%08x", r)
+				}
+			}
+		}
+	}
+	return t
 }

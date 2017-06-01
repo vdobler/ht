@@ -6,7 +6,11 @@
 
 package ht
 
-import "gopkg.in/xmlpath.v2"
+import (
+	"fmt"
+
+	"gopkg.in/xmlpath.v2"
+)
 
 func init() {
 	RegisterCheck(&XML{})
@@ -38,7 +42,7 @@ func (x *XML) Execute(t *Test) error {
 	}
 
 	if s, ok := x.path.String(root); !ok {
-		return ErrNotFound
+		return fmt.Errorf("No such element %s", x.Path)
 	} else if e := x.Fulfilled(s); err != nil {
 		return e
 	}

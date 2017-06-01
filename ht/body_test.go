@@ -20,8 +20,8 @@ var bodyTests = []TC{
 	{br, &Body{Contains: "baz", Count: 1}, nil},
 	{br, &Body{Contains: "wup", Count: -1}, nil},
 	{br, &Body{Contains: "foo bar", Count: 1}, nil},
-	{br, &Body{Contains: "sit"}, ErrNotFound},
-	{br, &Body{Contains: "bar", Count: -1}, ErrFoundForbidden},
+	{br, &Body{Contains: "sit"}, errCheck},
+	{br, &Body{Contains: "bar", Count: -1}, errCheck},
 	{br, &Body{Contains: "bar", Count: 2}, errCheck}, // TODO: real error checking
 	{br, &Body{Prefix: "foo bar", Suffix: "foo foo 15\""}, nil},
 	{br, &Body{Min: 5, Max: 500}, nil},

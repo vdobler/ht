@@ -60,22 +60,9 @@ func RegisterCheck(check Check) {
 // ----------------------------------------------------------------------------
 // Errors
 
-var (
-	// ErrBadBody is returned from checks if the request body is
-	// not available (e.g. due to a failed request).
-	ErrBadBody = errors.New("skipped due to bad body")
-
-	// ErrNotFound is returned by checks if some expected value was
-	// not found.
-	ErrNotFound = errors.New("not found")
-
-	// ErrFoundForbidden is returned by checks if a forbidden value
-	// is found.
-	ErrFoundForbidden = errors.New("found forbidden")
-
-	// ErrFailed is returned by a checks failing unspecificly.
-	ErrFailed = errors.New("failed")
-)
+// ErrBadBody is returned from checks if the request body is
+// not available (e.g. due to a failed request).
+var ErrBadBody = errors.New("skipped due to bad body")
 
 // CantCheck is the error type returned by checks whose preconditions
 // are not fulfilled, e.g. malformed HTML or XML.

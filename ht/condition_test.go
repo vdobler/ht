@@ -48,21 +48,23 @@ var conditionTests = []struct {
 
 	// Contains
 	{"foobarfoobar", Condition{Contains: "oo"}, ``},
-	{"foobarfoobar", Condition{Contains: "waz"}, `not found`},
+	{"foobarfoobar", Condition{Contains: "waz"}, `Cannot find "waz"`},
 	{"foobarfoobar", Condition{Contains: "waz", Count: -1}, ``},
-	{"foobarfoobar", Condition{Contains: "oo", Count: -1}, `found forbidden`},
+	{"foobarfoobar", Condition{Contains: "oo", Count: -1}, `Found forbidden "oo"`},
 	{"foobarfoobar", Condition{Contains: "oo", Count: 2}, ``},
 	{"foobarfoobar", Condition{Contains: "obarf", Count: 1}, ``},
 	{"foobarfoobar", Condition{Contains: "o", Count: 4}, ``},
-	{"foobarfoobar", Condition{Contains: "foo", Count: 1}, `found 2, want 1`},
-	{"foobarfoobar", Condition{Contains: "foo", Count: 3}, `found 2, want 3`},
+	{"foobarfoobar", Condition{Contains: "foo", Count: 1}, `Found 2 occurences of "foo", want 1`},
+	{"foobarfoobar", Condition{Contains: "foo", Count: 3}, `Found 2 occurences of "foo", want 3`},
 
 	// Regexp
 	{"foobarwu", Condition{Regexp: "[aeiou]."}, ``},
 	{"foobarwu", Condition{Regexp: "[aeiou].", Count: 2}, ``},
-	{"foobarwu", Condition{Regexp: "[aeiou].", Count: 3}, `found 2, want 3`},
-	{"foobarwu", Condition{Regexp: "[aeiou].", Count: -1}, `found forbidden`},
-	{"frtgbwu", Condition{Regexp: "[aeiou]."}, `not found`},
+	{"foobarwu", Condition{Regexp: "[aeiou].", Count: 3},
+		`Found 2 matches of regexp "[aeiou].", want 3`},
+	{"foobarwu", Condition{Regexp: "[aeiou].", Count: -1},
+		`Found forbidden match of regexp "[aeiou]."`},
+	{"frtgbwu", Condition{Regexp: "[aeiou]."}, `Cannot find match for regexp "[aeiou]."`},
 
 	// Min and Max
 	{"foobar", Condition{Min: 2}, ``},
@@ -121,5 +123,29 @@ func TestCondition(t *testing.T) {
 			t.Errorf("%d. %s, wrong error %q, want %q", i, tc.s, err, tc.w)
 		}
 
+	}
+}
+
+func TestLimitString(t *testing.T) {
+	for i, tc := range []struct {
+		in   string
+		want string
+	}{
+		{"Hello World", `Hello World`},
+		{"Hello World abcdefghijklmnopqrstuvwxyz", `Hello World abcdefghijklm…`},
+		{"Hello\tWorld\nGoodby\a", `Hello\tWorld\nGoodby\a`},
+		{"Hello äöüÄÖÜ~", `Hello äöüÄÖÜ~`},
+		{"日本語", `日本語`},
+		{"日本語日本語日本語日本語日本語日本語日本語日本語日本語",
+			`日本語日本語日本語日本語日本語日本語日本語日本語日…`},
+		{"Ctrl \x04 \x05 \x06", `Ctrl \u0004 \u0005 \u0006`},
+		{"Printable \u2620 \u2621 \u2622", `Printable ☠ ☡ ☢`},
+		{"Luke \u2067reklawykS\u2066.",
+			`Luke \u2067reklawykS\u2066.`},
+	} {
+		if got := LimitString(tc.in); got != tc.want {
+			t.Errorf("%d. LimitString(%q)=%s, want %s",
+				i, tc.in, got, tc.want)
+		}
 	}
 }

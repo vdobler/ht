@@ -86,7 +86,7 @@ func (c *JSONExpr) Execute(t *Test) error {
 	if b, ok := result.(bool); !ok {
 		return MalformedCheck{fmt.Errorf("Expected bool, got %T (%#v)", result, result)}
 	} else if !b {
-		return ErrFailed
+		return fmt.Errorf("Expression evaluated to false")
 	}
 	return nil
 }
@@ -288,7 +288,11 @@ func (c *JSON) Execute(t *Test) error {
 		}
 	}
 
-	return c.Fulfilled(string(raw))
+	err = c.Fulfilled(string(raw))
+	if err != nil {
+		return fmt.Errorf("%s in %s", err, LimitString(string(raw)))
+	}
+	return nil
 }
 
 // augmentJSONError tries to augment err by a line/column number pointing into
