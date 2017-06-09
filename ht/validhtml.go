@@ -356,9 +356,25 @@ func (s *htmlState) checkURL(raw string) {
 		return
 	}
 
+	// mailto: and tel: anchors
 	if strings.HasPrefix(raw, "mailto:") {
 		if !strings.Contains(raw, "@") {
 			s.err(fmt.Errorf("Not an email address"))
+		}
+		return
+	}
+	if strings.HasPrefix(raw, "tel:") {
+		raw = raw[4:]
+		if !strings.HasPrefix(raw, "+") {
+			s.err(fmt.Errorf("Telephone numbers must start with +"))
+		}
+		raw := raw[1:]
+		if len(raw) == 0 {
+			s.err(fmt.Errorf("Missing actual telephone number"))
+		}
+		raw = strings.TrimLeft(raw, "0123456789-")
+		if len(raw) != 0 {
+			s.err(fmt.Errorf("Not a telephone number"))
 		}
 		return
 	}

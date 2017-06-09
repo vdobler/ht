@@ -164,6 +164,11 @@ func TestURLEscaping(t *testing.T) {
 		{"mailto:info@example.org", ""},
 		{"mailto:info.example-org", "Not an email address"},
 		{"/with space", "Unencoded space in URL"},
+		{"tel:+41123456778", ""},
+		{"tel:+41-12-345-67-78", ""},
+		{"tel:004112345678", "Telephone numbers must start with +"},
+		{"tel:+", "Missing actual telephone number"},
+		{"tel:+++ticker+++", "Not a telephone number"},
 	}
 
 	for i, tc := range testcases {
