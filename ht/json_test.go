@@ -147,7 +147,7 @@ var findJSONelementTests = []struct {
 	{`true`, ".", `true`, ""},
 	{`false`, "", `false`, ""},
 	{`false`, ".", `false`, ""},
-	{`123`, "X", `123`, "element X not found"},
+	{`123`, "X", `123`, "Element X not found"},
 
 	// Whole (non-primitive) documents
 	{`[3, 1 , 4, 1  ]`, "", `[3, 1 , 4, 1  ]`, ""},

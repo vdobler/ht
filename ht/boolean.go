@@ -101,7 +101,7 @@ func (n None) Execute(t *Test) error {
 	for i, c := range n.Of {
 		err := c.Execute(t)
 		if err == nil {
-			return fmt.Errorf("check %d passed", i+1)
+			return fmt.Errorf("Check %d passed", i+1)
 		}
 	}
 	return nil

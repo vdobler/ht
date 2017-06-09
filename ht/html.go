@@ -75,7 +75,7 @@ func (w W3CValidHTML) Execute(t *Test) error {
 	// Interprete response from validator
 	valStat := test.Response.Response.Header.Get("X-W3C-Validator-Status")
 	if valStat == "Abort" {
-		return CantCheck{fmt.Errorf("validator service sent Abort")}
+		return CantCheck{fmt.Errorf("Validator service sent Abort")}
 	} else if valStat == "Valid" {
 		return nil
 	}
@@ -277,7 +277,7 @@ func (c *HTMLContains) Execute(t *Test) error {
 			}
 		}
 		if found < 0 {
-			return fmt.Errorf("missing %q, have %q", want, actual[last:])
+			return fmt.Errorf("Missing %q, have %q", want, actual[last:])
 		}
 		if c.InOrder {
 			last = found + 1

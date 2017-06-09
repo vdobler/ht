@@ -42,9 +42,9 @@ func (h Header) Execute(t *Test) error {
 	if len(values) == 0 && h.Absent {
 		return nil
 	} else if len(values) == 0 && !h.Absent {
-		return fmt.Errorf("header %s not received", h.Header)
+		return fmt.Errorf("Header %s not received", h.Header)
 	} else if len(values) > 0 && h.Absent {
-		return fmt.Errorf("forbidden header %s received", h.Header)
+		return fmt.Errorf("Forbidden header %s received", h.Header)
 	}
 	return h.Fulfilled(values[0])
 }
@@ -70,16 +70,16 @@ type ContentType struct {
 // Execute implements Check's Execute method.
 func (c ContentType) Execute(t *Test) error {
 	if t.Response.Response == nil || t.Response.Response.Header == nil {
-		return fmt.Errorf("no proper response available")
+		return fmt.Errorf("No proper response available")
 	}
 	ct := t.Response.Response.Header["Content-Type"]
 	if len(ct) == 0 {
-		return fmt.Errorf("no Content-Type header received")
+		return fmt.Errorf("No Content-Type header received")
 	}
 	if len(ct) > 1 {
 		// This is technically not a failure, but if someone sends
 		// multiple Content-Type headers something is a bit odd.
-		return fmt.Errorf("received %d Content-Type headers", len(ct))
+		return fmt.Errorf("Received %d Content-Type headers", len(ct))
 	}
 	parts := strings.Split(ct[0], ";")
 	got := strings.TrimSpace(parts[0])
@@ -93,12 +93,12 @@ func (c ContentType) Execute(t *Test) error {
 
 	if c.Charset != "" {
 		if len(parts) < 2 {
-			return fmt.Errorf("no charset in %s", ct[0])
+			return fmt.Errorf("No charset in %s", ct[0])
 		}
 		got := strings.TrimSpace(parts[1])
 		want := "charset=" + c.Charset
 		if got != want {
-			return fmt.Errorf("bad charset in %s", ct[0])
+			return fmt.Errorf("Bad charset in %s", ct[0])
 		}
 	}
 
@@ -116,7 +116,7 @@ type FinalURL Condition
 func (f FinalURL) Execute(t *Test) error {
 	if t.Response.Response == nil || t.Response.Response.Request == nil ||
 		t.Response.Response.Request.URL == nil {
-		return fmt.Errorf("no request URL to analyze")
+		return fmt.Errorf("No request URL to analyze")
 	}
 	return Condition(f).Fulfilled(t.Response.Response.Request.URL.String())
 }
@@ -154,25 +154,25 @@ func (r Redirect) Execute(t *Test) error {
 	err := ErrorList{}
 
 	if t.Response.Response == nil {
-		return errors.New("no response to check")
+		return errors.New("No response to check")
 	}
 
 	sc := t.Response.Response.StatusCode
 	if r.StatusCode > 0 {
 		if sc != r.StatusCode {
-			err = append(err, fmt.Errorf("got status code %d", sc))
+			err = append(err, fmt.Errorf("Got status code %d", sc))
 		}
 	} else {
 		if !(sc == 301 || sc == 302 || sc == 303 || sc == 307) {
-			err = append(err, fmt.Errorf("got status code %d", sc))
+			err = append(err, fmt.Errorf("Got status code %d", sc))
 		}
 	}
 
 	if location, ok := t.Response.Response.Header["Location"]; !ok {
-		err = append(err, fmt.Errorf("no Location header received"))
+		err = append(err, fmt.Errorf("No Location header received"))
 	} else {
 		if len(location) > 1 {
-			err = append(err, fmt.Errorf("got %d Location header", len(location)))
+			err = append(err, fmt.Errorf("Got %d Location header", len(location)))
 		}
 		loc := location[0]
 		if !dotMatch(loc, r.To) {
@@ -234,14 +234,14 @@ type RedirectChain struct {
 func (r RedirectChain) Execute(t *Test) error {
 	reds := t.Response.Redirections
 	if len(reds) == 0 {
-		return errors.New("no redirections at all")
+		return errors.New("No redirections at all")
 	}
 	j := 0
 	for i, via := range r.Via {
 		for ; j < len(reds) && !dotMatch(reds[j], via); j++ {
 		}
 		if j >= len(reds) {
-			return fmt.Errorf("redirect step %d (%s) not hit", i+1, via)
+			return fmt.Errorf("Redirect step %d (%s) not hit", i+1, via)
 		}
 		j++
 	}

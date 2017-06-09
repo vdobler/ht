@@ -149,7 +149,7 @@ func (c *SetCookie) Prepare() error {
 	}
 
 	if c.MinLifetime < 0 {
-		return fmt.Errorf("ht: illegal negative MinLifetime")
+		return fmt.Errorf("illegal negative MinLifetime")
 	}
 
 	c.Type = strings.ToLower(c.Type)
@@ -158,7 +158,7 @@ func (c *SetCookie) Prepare() error {
 		x = strings.TrimSpace(strings.Replace(x, t, "", -1))
 	}
 	if x != "" {
-		return fmt.Errorf("ht: unknown stuff in cookie type %q", x)
+		return fmt.Errorf("unknown stuff in cookie type %q", x)
 	}
 
 	if c.MinLifetime > 0 {
@@ -197,13 +197,13 @@ func (c DeleteCookie) Execute(t *Test) error {
 
 		// Check for deletion.
 		if cookie.MaxAge == 0 && cookie.Expires.IsZero() {
-			em := fmt.Sprintf("cookie (%s;%s;%s) not deleted",
+			em := fmt.Sprintf("Cookie (%s;%s;%s) not deleted",
 				c.Name, cookie.Path, cookie.Domain)
 			errors = append(errors, em)
 			continue
 		}
 		if cookie.MaxAge > 0 {
-			em := fmt.Sprintf("cookie (%s;%s;%s) not deleted,MaxAge=%d",
+			em := fmt.Sprintf("Cookie (%s;%s;%s) not deleted,MaxAge=%d",
 				c.Name, cookie.Path, cookie.Domain, cookie.MaxAge)
 			errors = append(errors, em)
 			continue
@@ -214,7 +214,7 @@ func (c DeleteCookie) Execute(t *Test) error {
 			// 90 seconds backdated Expires.
 			now := time.Now().Add(-90 * time.Second)
 			if cookie.Expires.After(now) {
-				em := fmt.Sprintf("cookie (%s;%s;%s) not deleted, Expires=%s",
+				em := fmt.Sprintf("Cookie (%s;%s;%s) not deleted, Expires=%s",
 					c.Name, cookie.Path, cookie.Domain, cookie.RawExpires)
 				errors = append(errors, em)
 				continue

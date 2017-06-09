@@ -37,17 +37,17 @@ var brokenHTML = `<html>
 `
 
 var expectedErrorsInBrokenHTML = []string{
-	"line 6: unescaped '<'",
-	"line 7: duplicate id 'foo'",
-	"line 8: duplicate attribute 'class'",
-	"line 10: unescaped '>'",
-	"line 11: unencoded space in URL",
-	"line 13: unescaped '&' or unknow entity",
-	"line 17: bad URL part '://example.org:3456/'",
-	"line 20: unescaped '&' or unknow entity",
-	"line 21: tag 'li' closed by 'div'",
-	"line 26: found 0 DOCTYPE",
-	"line 26: label references unknown id 'other'",
+	"Line 6: Unescaped '<'",
+	"Line 7: Duplicate id 'foo'",
+	"Line 8: Duplicate attribute 'class'",
+	"Line 10: Unescaped '>'",
+	"Line 11: Unencoded space in URL",
+	"Line 13: Unescaped '&' or unknow entity",
+	"Line 17: Bad URL part '://example.org:3456/'",
+	"Line 20: Unescaped '&' or unknow entity",
+	"Line 21: Tag 'li' closed by 'div'",
+	"Line 26: Found 0 DOCTYPE",
+	"Line 26: Label references unknown id 'other'",
 }
 
 var okayHTML = `<!DOCTYPE html><html>
@@ -162,8 +162,8 @@ func TestURLEscaping(t *testing.T) {
 		{"/all%20good", ""},
 		{"http://www.example.org/foo/bar?a=12", ""},
 		{"mailto:info@example.org", ""},
-		{"mailto:info.example-org", "not an email address"},
-		{"/with space", "unencoded space in URL"},
+		{"mailto:info.example-org", "Not an email address"},
+		{"/with space", "Unencoded space in URL"},
 	}
 
 	for i, tc := range testcases {
@@ -183,7 +183,7 @@ func TestURLEscaping(t *testing.T) {
 		} else if err != nil {
 			if tc.err == "" {
 				t.Errorf("%d. %q: unexpected error %s", i, tc.href, err)
-			} else if got := err.(ErrorList)[0].Error(); got != "line 1: "+tc.err {
+			} else if got := err.(ErrorList)[0].Error(); got != "Line 1: "+tc.err {
 				t.Errorf("%d. %q: got %q; want %q", i, tc.href, got, tc.err)
 			}
 		}

@@ -97,7 +97,7 @@ done:
 				// fmt.Printf("%s=%s ", key, val)
 				if _, ok := attrs[key]; ok {
 					if state.ignore&issueAttr == 0 {
-						state.err(fmt.Errorf("duplicate attribute '%s'", key))
+						state.err(fmt.Errorf("Duplicate attribute '%s'", key))
 					}
 				}
 				attrs[key] = val
@@ -128,13 +128,13 @@ done:
 	state.line++ // Global errors are reported "after the last line".
 	if state.ignore&issueDoctype == 0 {
 		if d := state.elementCount["DOCTYPE"]; d != 1 {
-			state.err(fmt.Errorf("found %d DOCTYPE", d))
+			state.err(fmt.Errorf("Found %d DOCTYPE", d))
 		}
 	}
 	if state.ignore&issueLabelRef == 0 {
 		for _, id := range state.labelFor {
 			if _, ok := state.seenIDs[id]; !ok {
-				state.err(fmt.Errorf("label references unknown id '%s'", id))
+				state.err(fmt.Errorf("Label references unknown id '%s'", id))
 			}
 		}
 	}
@@ -282,7 +282,7 @@ func (s *htmlState) count(tag string) {
 func (s *htmlState) checkID(id string) {
 	if s.ignore&issueUniqIDs == 0 {
 		if _, seen := s.seenIDs[id]; seen {
-			s.err(fmt.Errorf("duplicate id '%s'", id))
+			s.err(fmt.Errorf("Duplicate id '%s'", id))
 		}
 	}
 	s.seenIDs[id] = true
@@ -308,10 +308,10 @@ func (s *htmlState) checkEscaping(text string) {
 	}
 
 	if strings.Contains(text, "<") {
-		s.err(fmt.Errorf("unescaped '<'"))
+		s.err(fmt.Errorf("Unescaped '<'"))
 	}
 	if strings.Contains(text, ">") {
-		s.err(fmt.Errorf("unescaped '>'"))
+		s.err(fmt.Errorf("Unescaped '>'"))
 	}
 	for len(text) > 0 {
 		if i := strings.Index(text, "&"); i != -1 {
@@ -321,7 +321,7 @@ func (s *htmlState) checkEscaping(text string) {
 			} else {
 				ue := html.UnescapeString(text)
 				if strings.HasPrefix(ue, "&") {
-					s.err(fmt.Errorf("unescaped '&' or unknow entity"))
+					s.err(fmt.Errorf("Unescaped '&' or unknow entity"))
 					break
 				}
 				text = text[1:]
@@ -342,10 +342,10 @@ func (s *htmlState) checkLang(lang string) {
 	case nil:
 		// No error.
 	case language.ValueError:
-		s.err(fmt.Errorf("language tag '%s' has bad part %s", lang, e.Subtag()))
+		s.err(fmt.Errorf("Language tag '%s' has bad part %s", lang, e.Subtag()))
 	default:
 		// A syntax error.
-		s.err(fmt.Errorf("language tag '%s' is ill-formed", lang))
+		s.err(fmt.Errorf("Language tag '%s' is ill-formed", lang))
 	}
 }
 
@@ -358,23 +358,23 @@ func (s *htmlState) checkURL(raw string) {
 
 	if strings.HasPrefix(raw, "mailto:") {
 		if !strings.Contains(raw, "@") {
-			s.err(fmt.Errorf("not an email address"))
+			s.err(fmt.Errorf("Not an email address"))
 		}
 		return
 	}
 
 	u, err := url.Parse(raw)
 	if err != nil {
-		s.err(fmt.Errorf("bad URL '%s': %s", raw, err.Error()))
+		s.err(fmt.Errorf("Bad URL '%s': %s", raw, err.Error()))
 		return
 	}
 	if u.Opaque != "" {
-		s.err(fmt.Errorf("bad URL part '%s'", u.Opaque))
+		s.err(fmt.Errorf("Bad URL part '%s'", u.Opaque))
 		return
 	}
 
 	if strings.Contains(raw, " ") {
-		s.err(fmt.Errorf("unencoded space in URL"))
+		s.err(fmt.Errorf("Unencoded space in URL"))
 	}
 }
 
@@ -388,7 +388,7 @@ func (s *htmlState) pop(tag string) {
 	n := len(s.openTags)
 	if n == 0 {
 		if s.ignore&issueStructure == 0 {
-			s.err(fmt.Errorf("no open tags left to close %s", tag))
+			s.err(fmt.Errorf("No open tags left to close %s", tag))
 		}
 		return
 	}
@@ -398,7 +398,7 @@ func (s *htmlState) pop(tag string) {
 		return
 	}
 	if pop != tag && !s.badNesting { // report broken structure just once.
-		s.err(fmt.Errorf("tag '%s' closed by '%s'", pop, tag))
+		s.err(fmt.Errorf("Tag '%s' closed by '%s'", pop, tag))
 		s.badNesting = true
 	}
 }

@@ -25,7 +25,7 @@ func (e PosError) Error() string {
 		s = e.File + ":"
 	}
 	if e.Line > 0 {
-		s += fmt.Sprintf("line %d:", e.Line)
+		s += fmt.Sprintf("Line %d:", e.Line)
 	}
 	if e.Col > 0 {
 		s += fmt.Sprintf("col %d:", e.Col)

@@ -29,14 +29,14 @@ type StatusCode struct {
 func (c StatusCode) Execute(t *Test) error {
 	if c.Expect < 10 {
 		if t.Response.Response.StatusCode/100 != c.Expect {
-			return fmt.Errorf("got %d, want %dxx",
+			return fmt.Errorf("Got %d, want %dxx",
 				t.Response.Response.StatusCode, c.Expect)
 		}
 		return nil
 	}
 
 	if t.Response.Response.StatusCode != c.Expect {
-		return fmt.Errorf("got %d, want %d",
+		return fmt.Errorf("Got %d, want %d",
 			t.Response.Response.StatusCode, c.Expect)
 	}
 	return nil

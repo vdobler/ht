@@ -102,7 +102,7 @@ func (s *Sorted) Execute(t *Test) error {
 		bodySel := cascadia.MustCompile("body")
 		body := bodySel.MatchFirst(doc)
 		if body == nil {
-			return fmt.Errorf("no <body> tag found")
+			return fmt.Errorf("No <body> tag found")
 		}
 		bb = TextContent(body, false)
 	}
@@ -117,7 +117,7 @@ func (s *Sorted) Execute(t *Test) error {
 		bb = bb[idx+len(text):]
 	}
 	if len(misses) > s.AllowedMisses {
-		return fmt.Errorf("too many misses %q", misses)
+		return fmt.Errorf("Too many misses %q", misses)
 	}
 	return nil
 }
@@ -125,11 +125,11 @@ func (s *Sorted) Execute(t *Test) error {
 // Prepare implements Check's Prepare method.
 func (s *Sorted) Prepare() error {
 	if len(s.Text) < 2 {
-		return errors.New("not enough values to check sortedness")
+		return errors.New("Not enough values to check sortedness")
 	}
 
 	if s.AllowedMisses > len(s.Text)-2 {
-		return errors.New("more allowed misses than values to look for")
+		return errors.New("More allowed misses than values to look for")
 	}
 	return nil
 }

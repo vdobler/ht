@@ -54,18 +54,18 @@ func (i Image) Execute(t *Test) error {
 	failures := ErrorList{}
 	if i.Format != "" && format != i.Format {
 		failures = append(failures,
-			fmt.Errorf("got %s image, want %s", format, i.Format))
+			fmt.Errorf("Got %s image, want %s", format, i.Format))
 	}
 
 	bounds := img.Bounds()
 	if i.Width > 0 && i.Width != bounds.Dx() {
 		failures = append(failures,
-			fmt.Errorf("got %d px wide image, want %d", bounds.Dx(), i.Width))
+			fmt.Errorf("Got %d px wide image, want %d", bounds.Dx(), i.Width))
 
 	}
 	if i.Height > 0 && i.Height != bounds.Dy() {
 		failures = append(failures,
-			fmt.Errorf("got %d px heigh image, want %d", bounds.Dy(), i.Height))
+			fmt.Errorf("Got %d px heigh image, want %d", bounds.Dy(), i.Height))
 
 	}
 
@@ -73,7 +73,7 @@ func (i Image) Execute(t *Test) error {
 		targetBMV, _ := fingerprint.BMVHashFromString(i.Fingerprint)
 		imgBMV := fingerprint.NewBMVHash(img)
 		if d := fingerprint.BMVDelta(targetBMV, imgBMV); d > i.Threshold {
-			failures = append(failures, fmt.Errorf("got BMV of %s, want %s (delta=%.4f)",
+			failures = append(failures, fmt.Errorf("Got BMV of %s, want %s (delta=%.4f)",
 				imgBMV.String(), targetBMV.String(), d))
 		}
 
@@ -82,7 +82,7 @@ func (i Image) Execute(t *Test) error {
 		imgCH := fingerprint.NewColorHist(img)
 		if d := fingerprint.ColorHistDelta(targetCH, imgCH); d > i.Threshold {
 			failures = append(failures,
-				fmt.Errorf("got color histogram of %s, want %s (delta=%.4f)",
+				fmt.Errorf("Got color histogram of %s, want %s (delta=%.4f)",
 					imgCH.String(), targetCH.String(), d))
 		}
 	}
