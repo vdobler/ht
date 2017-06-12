@@ -6,6 +6,7 @@ package ht
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -31,23 +32,84 @@ var brokenHTML = `<html>
             <img src="/image?n=1&p=2" />
         </div>
     </li>
-    <a href="mailto:info-example_org>write us</a>
+    <a href="mailto:info-example_org">write us</a>
+    <a href="tel:+(0012)-345 67/89">call us</a>
 </body>
 </html>
 `
 
-var expectedErrorsInBrokenHTML = []string{
-	"Line 6: Unescaped '<'",
-	"Line 7: Duplicate id 'foo'",
-	"Line 8: Duplicate attribute 'class'",
-	"Line 10: Unescaped '>'",
-	"Line 11: Unencoded space in URL",
-	"Line 13: Unescaped '&' or unknow entity",
-	"Line 17: Bad URL part '://example.org:3456/'",
-	"Line 20: Unescaped '&' or unknow entity",
-	"Line 21: Tag 'li' closed by 'div'",
-	"Line 26: Found 0 DOCTYPE",
-	"Line 26: Label references unknown id 'other'",
+var expectedErrorsInBrokenHTML = []struct {
+	typ, err string
+}{
+	{"escaping", "Line 6: Unescaped '<'"},
+	{"uniqueids", "Line 7: Duplicate id 'foo'"},
+	{"attr", "Line 8: Duplicate attribute 'class'"},
+	{"escaping", "Line 10: Unescaped '>'"},
+	{"url", "Line 11: Unencoded space in URL"},
+	{"escaping", "Line 13: Unescaped '&' or unknow entity"},
+	{"url", "Line 17: Bad URL part '://example.org:3456/'"},
+	{"escaping", "Line 20: Unescaped '&' or unknow entity"},
+	{"structure", "Line 21: Tag 'li' closed by 'div'"},
+	{"url", "Line 23: Not an email address"},
+	{"url", "Line 24: Not a telephone number"},
+	{"doctype", "Line 27: Found 0 DOCTYPE"},
+	{"label", "Line 27: Label references unknown id 'other'"},
+}
+
+func TestValidHTMLBroken(t *testing.T) {
+	test := &Test{
+		Response: Response{BodyStr: brokenHTML},
+	}
+
+	for _, ignore := range []string{"", "doctype", "structure", "uniqueids", "lang", "attr", "escaping", "label", "url"} {
+		t.Run("ignore="+ignore, func(t *testing.T) {
+			check := ValidHTML{Ignore: ignore}
+			err := check.Prepare()
+			if err != nil {
+				t.Fatalf("Unexpected error: %#v", err)
+			}
+
+			err = check.Execute(test)
+			el, ok := err.(ErrorList)
+			if !ok {
+				t.Fatalf("Unexpected type %T of error %#v", err, err)
+			}
+
+			es := el.AsStrings()
+			fmt.Println("Ignoring", ignore, "errors:")
+			for i, k := range es {
+				fmt.Println("   ", i, k)
+			}
+			var got string
+			isIgnored := func(t string) bool {
+				if ignore == "" {
+					return false
+				}
+				for _, toIgnore := range strings.Split(t, " ") {
+					if toIgnore == ignore {
+						return true
+					}
+				}
+				return false
+			}
+			for _, expect := range expectedErrorsInBrokenHTML {
+				if isIgnored(expect.typ) {
+					continue
+				}
+				if len(es) == 0 {
+					t.Errorf("Ignoring %s: missing error %s", ignore, expect.err)
+					continue
+				}
+				got, es = es[0], es[1:]
+				if got != expect.err {
+					t.Errorf("Ignore %s: Got %s, want %s", ignore, got, expect.err)
+				}
+			}
+			if len(es) != 0 {
+				t.Errorf("Ignore %s: unexpected errors %v", ignore, es)
+			}
+		})
+	}
 }
 
 var okayHTML = `<!DOCTYPE html><html>
@@ -72,43 +134,15 @@ var okayHTML = `<!DOCTYPE html><html>
             <img src="/image?n=1&amp;p=2" />
         </li>
     </ul>
+    <span data-css: "h1 &gt; span"></span>
     <a href="mailto:info@example.org">write us</a>
+    <a href="tel:+0012-345-6789">call us</a>
     <script>
        if(a<b && c!="") { consol.log("foo"); }
     </script>
 </body>
 </html>
 `
-
-func TestValidHTMLBroken(t *testing.T) {
-	test := &Test{
-		Response: Response{BodyStr: brokenHTML},
-	}
-
-	check := ValidHTML{}
-	err := check.Prepare()
-	if err != nil {
-		t.Fatalf("Unexpected error: %#v", err)
-	}
-
-	err = check.Execute(test)
-	el, ok := err.(ErrorList)
-	if !ok {
-		t.Fatalf("Unexpected type %T of error %#v", err, err)
-	}
-
-	es := el.AsStrings()
-	for i, e := range es {
-		if *verboseTest {
-			fmt.Println(e)
-		}
-		if i >= len(expectedErrorsInBrokenHTML) {
-			t.Errorf("Unexpected extra error: %s", e)
-		} else if want := expectedErrorsInBrokenHTML[i]; e != want {
-			t.Errorf("Got %s, want %s", e, want)
-		}
-	}
-}
 
 func TestValidHTMLOkay(t *testing.T) {
 	test := &Test{
@@ -123,7 +157,11 @@ func TestValidHTMLOkay(t *testing.T) {
 
 	err = check.Execute(test)
 	if err != nil {
-		t.Fatalf("Unexpected error: %#v\n%s", err, err)
+		if el, ok := err.(ErrorList); !ok {
+			t.Fatalf("Unexpected error: %#v\n%s", err, err)
+		} else {
+			t.Fatalf("Unexpected error: %ss", el.AsStrings())
+		}
 	}
 
 }

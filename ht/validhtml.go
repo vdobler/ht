@@ -68,9 +68,10 @@ done:
 			}
 			return z.Err()
 		case html.TextToken:
-			// fmt.Printf(" %q\n", z.Text())
+			// fmt.Println("Text", string(z.Text()))
 			// fmt.Println()
 			if depth > 0 {
+				// fmt.Println("Checked Text", string(z.Raw()))
 				state.checkEscaping(string(z.Raw()))
 			}
 		case html.StartTagToken, html.SelfClosingTagToken:
@@ -87,13 +88,14 @@ done:
 				depth++
 			}
 			tag := string(tn)
-			// fmt.Printf(" %s  ", tag)
+			// fmt.Println("Tag", tag)
 			state.count(tag)
 			attrs := map[string]string{}
 			var bkey, bval []byte
 			for hasAttr {
 				bkey, bval, hasAttr = z.TagAttr()
 				key, val := string(bkey), string(bval)
+				// fmt.Printf("Attribute %q = %q\n", key, val)
 				// fmt.Printf("%s=%s ", key, val)
 				if _, ok := attrs[key]; ok {
 					if state.ignore&issueAttr == 0 {
@@ -115,7 +117,7 @@ done:
 			// fmt.Println()
 		case html.EndTagToken:
 			tn, _ := z.TagName()
-			// fmt.Println(" ", string(tn))
+			// fmt.Println(" End ", string(tn))
 			state.pop(string(tn))
 			depth--
 		case html.CommentToken:
@@ -203,7 +205,7 @@ const (
 func ignoreMask(s string) (htmlIssue, error) {
 	// what an ugly hack
 	const issueNames = "doctype  structureuniqueidslang     attr     escaping label    url      "
-	mask := htmlIssue(0)
+	mask := issueIgnoreNone
 	s = strings.ToLower(s)
 	for _, p := range strings.Split(s, " ") {
 		if p == "" {
