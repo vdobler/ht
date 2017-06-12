@@ -38,7 +38,7 @@ var htmlCheckTmpl = `{{define "CHECK"}}
     <div class="checkDetails">
       <div>Checking took {{niceduration .Check.Duration}}</div>
       <div><code>{{.Check.JSON}}</code></div>
-      {{if eq .Check.Status 3 5}}<pre class="description">{{.Check.Error.Error}}</pre>{{end}}
+      {{if eq .Check.Status 3 5}}<code>Error: {{errlist .Check.Error}}</code>{{end}}
     </div>
   </div>
 </div>
@@ -315,6 +315,8 @@ div.subsuite h1 { font-size: 1.2em; }
 div.subsuite h2 { font-size: 1.1em; }
 div.subsuite h3 { font-size: 1em; }
 
+ul.error-list { margin-top: 0; margin-bottom: 0; }
+
 </style>
 {{end}}`
 
@@ -473,6 +475,31 @@ func subsuite(dot interface{}) (*Suite, error) {
 	return ss, nil
 }
 
+var errorListTmpl = `<ul class="error-list">
+    {{range .}}<li>{{.Error}}</li>
+{{end}}
+</ul>
+`
+
+var errorListTemplate = htmltemplate.Must(htmltemplate.New("ERRLIST").Parse(errorListTmpl))
+
+// ErrorList renders err in HTML. It creates an <ul> if err is of
+// type ht.ErrorList (and has more than one entry).
+func ErrorList(list ht.ErrorList) htmltemplate.HTML {
+	if len(list) == 0 {
+		return htmltemplate.HTML("")
+	}
+	if len(list) == 1 {
+		msg := list[0].Error()
+		msg = htmltemplate.HTMLEscapeString(msg)
+		return htmltemplate.HTML(msg)
+	}
+
+	buf := &bytes.Buffer{}
+	errorListTemplate.Execute(buf, list)
+	return htmltemplate.HTML(buf.String())
+}
+
 func init() {
 	fm := make(template.FuncMap)
 	//fm["Underline"] = Underline
@@ -505,6 +532,7 @@ func init() {
 		"filename":     filename,
 		"fileext":      fileext,
 		"subsuite":     subsuite,
+		"errlist":      ErrorList,
 	})
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlDocumentTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
