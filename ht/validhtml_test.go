@@ -34,6 +34,7 @@ var brokenHTML = `<html>
     </li>
     <a href="mailto:info-example_org">write us</a>
     <a href="tel:+(0012)-345 67/89">call us</a>
+    <p data-selector="h1 > span"></p>
 </body>
 </html>
 `
@@ -48,12 +49,13 @@ var expectedErrorsInBrokenHTML = []struct {
 	{"url", "Line 11: Unencoded space in URL"},
 	{"escaping", "Line 13: Unescaped '&' or unknow entity"},
 	{"url", "Line 17: Bad URL part '://example.org:3456/'"},
-	{"escaping", "Line 20: Unescaped '&' or unknow entity"},
+	{"attresc escaping", "Line 20: Unescaped '&' or unknow entity"},
 	{"structure", "Line 21: Tag 'li' closed by 'div'"},
 	{"url", "Line 23: Not an email address"},
 	{"url", "Line 24: Not a telephone number"},
-	{"doctype", "Line 27: Found 0 DOCTYPE"},
-	{"label", "Line 27: Label references unknown id 'other'"},
+	{"attresc escaping", "Line 25: Unescaped '>'"},
+	{"doctype", "Line 28: Found 0 DOCTYPE"},
+	{"label", "Line 28: Label references unknown id 'other'"},
 }
 
 func TestValidHTMLBroken(t *testing.T) {
@@ -61,7 +63,7 @@ func TestValidHTMLBroken(t *testing.T) {
 		Response: Response{BodyStr: brokenHTML},
 	}
 
-	for _, ignore := range []string{"", "doctype", "structure", "uniqueids", "lang", "attr", "escaping", "label", "url"} {
+	for _, ignore := range []string{"", "doctype", "structure", "uniqueids", "lang", "attr", "escaping", "label", "url", "attresc"} {
 		t.Run("ignore="+ignore, func(t *testing.T) {
 			check := ValidHTML{Ignore: ignore}
 			err := check.Prepare()
@@ -76,10 +78,6 @@ func TestValidHTMLBroken(t *testing.T) {
 			}
 
 			es := el.AsStrings()
-			fmt.Println("Ignoring", ignore, "errors:")
-			for i, k := range es {
-				fmt.Println("   ", i, k)
-			}
 			var got string
 			isIgnored := func(t string) bool {
 				if ignore == "" {

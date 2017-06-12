@@ -27,9 +27,10 @@ func init() {
 //   * 'structure': ill-formed tag nesting / tag closing
 //   * 'uniqueids': uniqness of id attribute values
 //   * 'lang':      ill-formed lang attributes
-//   * 'attr':      dupplicate attributes
+//   * 'attr':  duplicate attributes
 //   * 'escaping':  unescaped &, < and > characters or unknown entities
-//   * 'label':     reference to nonexisting id in label tags
+//   * 'attresc':   like escaping but limited to attributes
+//   * 'label':     reference to nonexisting ids in a label tags
 //   * 'url':       malformed URLs
 //
 // Notes:
@@ -60,7 +61,7 @@ func (v ValidHTML) Execute(t *Test) error {
 done:
 	for {
 		tt := z.Next()
-		// fmt.Printf("%s%s: ", strings.Repeat("  ", depth), tt)
+		// fmt.Println(tt)
 		switch tt {
 		case html.ErrorToken:
 			if z.Err() == io.EOF {
@@ -76,7 +77,8 @@ done:
 			}
 		case html.StartTagToken, html.SelfClosingTagToken:
 			raw := string(z.Raw())
-			if len(raw) > 3 {
+			// <p class="foo">  ==> raw==`p class="foo"`
+			if len(raw) > 3 && state.ignore&issueAttrEsc == 0 {
 				state.checkEscaping(raw[1 : len(raw)-1])
 			}
 			tn, hasAttr := z.TagName()
@@ -200,11 +202,12 @@ const (
 	issueEscaping
 	issueLabelRef
 	issueURL
+	issueAttrEsc
 )
 
 func ignoreMask(s string) (htmlIssue, error) {
 	// what an ugly hack
-	const issueNames = "doctype  structureuniqueidslang     attr     escaping label    url      "
+	const issueNames = "doctype  structureuniqueidslang     attr     escaping label    url      attresc"
 	mask := issueIgnoreNone
 	s = strings.ToLower(s)
 	for _, p := range strings.Split(s, " ") {
@@ -297,6 +300,7 @@ func (s *htmlState) recordLabel(id string) {
 
 // checkEscaping of text
 func (s *htmlState) checkEscaping(text string) {
+	// fmt.Println("checkEscpaing of", text)
 	if s.ignore&issueEscaping != 0 {
 		return
 	}
