@@ -957,9 +957,18 @@ func (t *Test) ExecuteChecks() {
 			} else {
 				t.CheckResults[i].Status = Fail
 			}
-			if t.Error == nil {
-				t.Error = err
+			var errlist ErrorList
+			if el, ok := t.Error.(ErrorList); ok {
+				errlist = el
 			}
+			for _, pce := range t.CheckResults[i].Error {
+				errlist = append(errlist, fmt.Errorf("Check %s: %s",
+					t.CheckResults[i].Name, pce))
+			}
+			if len(errlist) != 0 {
+				t.Error = errlist
+			}
+
 			// Abort needles checking if all went wrong.
 			if i == 0 { // only first check is checked against StatusCode/200.
 				sc, ok := ck.(StatusCode)
