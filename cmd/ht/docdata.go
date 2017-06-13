@@ -112,7 +112,7 @@ var typeDoc = map[string]string{
 		"\t// See github.com/asaskevich/govalidator for a detailed description.\n" +
 		"\t//\n" +
 		"\t// The string \"OR\" is ignored an can be used to increase the\n" +
-		"\t// readability of this condition in sutiation like\n" +
+		"\t// readability of this condition in situations like\n" +
 		"\t//     Condition{Is: \"Hexcolor OR RGBColor OR MongoID\"}\n" +
 		"\tIs string \n" +
 		"\n" +
@@ -363,7 +363,7 @@ var typeDoc = map[string]string{
 		"\tCondition\n" +
 		"\n" +
 		"\t// Schema is the expected structure of the selected element.\n" +
-		"\tSchema string\n" +
+		"\tSchema string \n" +
 		"\n" +
 		"\t// Embedded is a JSON check applied to the value selected by\n" +
 		"\t// Element. Useful when JSON contains embedded, quoted JSON as\n" +
@@ -977,9 +977,10 @@ var typeDoc = map[string]string{
 		"    * 'structure': ill-formed tag nesting / tag closing\n" +
 		"    * 'uniqueids': uniqness of id attribute values\n" +
 		"    * 'lang':      ill-formed lang attributes\n" +
-		"    * 'attr':      dupplicate attributes\n" +
+		"    * 'attr':  duplicate attributes\n" +
 		"    * 'escaping':  unescaped &, < and > characters or unknown entities\n" +
-		"    * 'label':     reference to nonexisting id in label tags\n" +
+		"    * 'attresc':   like escaping but limited to attributes\n" +
+		"    * 'label':     reference to nonexisting ids in a label tags\n" +
 		"    * 'url':       malformed URLs\n" +
 		"\n" +
 		"    Notes:\n" +
