@@ -170,7 +170,6 @@ func (suite *Suite) Iterate(executor Executor) {
 		}
 
 		// Execute the test (if not bogus).
-		test.Execution.Verbosity = 9
 		exstat := executor(test)
 
 		if merr == nil {
