@@ -75,13 +75,13 @@ var DefaultTestTemplate = `{{define "TEST"}}{{ToUpper .Status.String}}: {{.Name}
 {{range $k, $v := .ExValues}}{{if $v.Error}}{{printf "    %s : %s\n" $k $v.Error}}{{else}}{{printf "    %s == %q\n" $k $v.Value}}{{end}}{{end}}{{end}}{{end}}`
 
 var ShortTestTemplate = `{{define "SHORTTEST"}}{{.Status.String}}: {{.Name}}{{if .Request.Request}}
-  {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{range .Response.Redirections}}
-  GET {{.}}{{end}}{{end}}{{if .Response.Response}}
-  {{.Response.Response.Proto}} {{.Response.Response.Status}}{{end}}{{if .Error}}
-  {{.Error}}{{end}}{{if gt .Status 2}}{{if .CheckResults}}{{range .CheckResults}}{{if eq .Status 3 5}}
-    {{printf "%-7s %-15s %s" .Status .Name .JSON}}{{range .Error}}
-      {{.Error}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .ExValues}}{{range $k, $v := .ExValues}}{{if $v.Error}}
-  {{printf "Extraction of %s : %s\n" $k $v.Error}}{{end}}{{end}}{{end}}
+    {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{range .Response.Redirections}}
+    GET {{.}}{{end}}{{end}}{{if .Response.Response}}
+    {{.Response.Response.Proto}} {{.Response.Response.Status}}{{end}}{{if gt .Status 3}}
+    Error: {{.Error}}{{end}}{{if gt .Status 2}}{{if .CheckResults}}{{range .CheckResults}}{{if gt .Status 2}}
+        {{.Status}} {{.Name}}{{range .Error}}
+            {{.Error}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .ExValues}}{{range $k, $v := .ExValues}}{{if $v.Error}}
+    {{printf "Extraction of %s : %s\n" $k $v.Error}}{{end}}{{end}}{{end}}
 {{end}}`
 
 var (
