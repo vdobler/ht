@@ -173,11 +173,7 @@ func logoHandler(w http.ResponseWriter, r *http.Request) {
 		"\x00\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82")
 }
 
-func tacHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", `attachment; filename="tac.pdf"`)
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, `%PDF-1.4
+var minimalPDFFile = `%PDF-1.4
 1 0 obj
 << /Type /Catalog
 /Outlines 2 0 R
@@ -242,7 +238,13 @@ trailer
 >>
 startxref
 625
-%%EOF`)
+%%EOF`
+
+func tacHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="tac.pdf"`)
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, minimalPDFFile)
 }
 
 func jsonHandler(w http.ResponseWriter, r *http.Request) {
