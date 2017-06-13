@@ -74,6 +74,8 @@ var (
 	skipTLSVerify    bool              // flag -skiptlsverify
 	phantomjs        string            // flag -phantomjs
 	v, vv, vvv, vvvv bool              // flag -v, -vv, -vvv, -vvvv
+	silent, ssilent  bool              // flag -s, -ss
+	mute             bool              // flage -mute
 	vardump          string            // flag -vardump
 	cookiedump       string            // flag -cookiedump
 	cookie           string            // flag -cookie
@@ -147,6 +149,9 @@ func addVerbosityFlag(fs *flag.FlagSet) {
 	fs.BoolVar(&vv, "vv", false, "increase verbosity by 2")
 	fs.BoolVar(&vvv, "vvv", false, "increase verbosity by 3")
 	fs.BoolVar(&vvvv, "vvvv", false, "increase verbosity by 4")
+	fs.BoolVar(&silent, "s", false, "make ht itself more silent")
+	fs.BoolVar(&ssilent, "ss", false, "make ht itself really silent")
+	fs.BoolVar(&mute, "mute", false, "disable result generation")
 }
 
 func addDumpFlag(fs *flag.FlagSet) {

@@ -70,6 +70,9 @@ func init() {
 }
 
 func runExecute(cmd *Command, suites []*suite.RawSuite) {
+	if ssilent {
+		silent = true
+	}
 	prepareHT()
 	jar := loadCookies()
 
@@ -78,15 +81,28 @@ func runExecute(cmd *Command, suites []*suite.RawSuite) {
 }
 
 func saveOutcome(outcome []*suite.Suite) {
-	if outputDir == "" {
-		outputDir = time.Now().Format("2006-01-02_15h04m05s")
-	}
-	os.MkdirAll(outputDir, 0766)
-	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
-	for _, s := range outcome {
-		s.PrintReport(os.Stdout)
+	if !mute {
+		if outputDir == "" {
+			outputDir = time.Now().Format("2006-01-02_15h04m05s")
+		}
+		os.MkdirAll(outputDir, 0766)
 	}
 
+	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
+	if !ssilent {
+		for _, s := range outcome {
+			var err error
+			if silent {
+				err = s.PrintShortReport(os.Stdout)
+				fmt.Println()
+			} else {
+				err = s.PrintReport(os.Stdout)
+			}
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
 	overallStatus := ht.NotRun
 	overallVars := make(map[string]string)
 	overallCookies := make(map[string]cookiejar.Entry)
@@ -110,6 +126,10 @@ func saveOutcome(outcome []*suite.Suite) {
 				totalBogus++
 			}
 			total++
+		}
+
+		if mute {
+			continue
 		}
 
 		dirname := outputDir + "/" + sanitize.Filename(s.Name)
@@ -157,48 +177,62 @@ func saveOutcome(outcome []*suite.Suite) {
 	}
 
 	// Save consolidated variables if required.
-	if vardump != "" {
+	if vardump != "" && !mute {
 		if err := saveVariables(overallVars, vardump); err != nil {
 			log.Panic(err)
 		}
 	}
 
 	// Save consolidated cookies if required.
-	if cookiedump != "" {
+	if cookiedump != "" && !mute {
 		if err := saveCookies(overallCookies, cookiedump); err != nil {
 			log.Panic(err)
 		}
 	}
 
 	// Save a overall report iff more than one suite was involved.
-	if len(outcome) > 1 {
+	if len(outcome) > 1 && !mute {
 		if err := saveOverallReport(outputDir, outcome); err != nil {
 			log.Panic(err)
 		}
 	}
 
-	fmt.Println()
-	fmt.Printf("Total %d,  Passed %d,  Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
-		total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
+	if !ssilent {
+		fmt.Println()
+		fmt.Printf("Total %d,  Passed %d,  Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
+			total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
+	}
 
 	switch overallStatus {
 	case ht.NotRun:
-		fmt.Println("NOTRUN")
+		if !ssilent {
+			fmt.Println("NOTRUN")
+		}
 		os.Exit(0)
 	case ht.Skipped:
-		fmt.Println("SKIPPED")
+		if !ssilent {
+			fmt.Println("SKIPPED")
+		}
 		os.Exit(0)
 	case ht.Pass:
-		fmt.Println("PASS")
+		if !ssilent {
+			fmt.Println("PASS")
+		}
 		os.Exit(0)
 	case ht.Fail:
-		fmt.Println("FAIL")
+		if !ssilent {
+			fmt.Println("FAIL")
+		}
 		os.Exit(1)
 	case ht.Error:
-		fmt.Println("ERROR")
+		if !ssilent {
+			fmt.Println("ERROR")
+		}
 		os.Exit(2)
 	case ht.Bogus:
-		fmt.Println("BOGUS")
+		if !ssilent {
+			fmt.Println("BOGUS")
+		}
 		os.Exit(3)
 	}
 	panic(fmt.Sprintf("Ooops: Unknown overall status %d", overallStatus))
@@ -285,27 +319,32 @@ func prepareHT() {
 	if randomSeed == 0 {
 		randomSeed = time.Now().UnixNano()
 	}
-	fmt.Printf("Seeding random number generator with %d.\n", randomSeed)
-	scope.Random = rand.New(rand.NewSource(randomSeed))
-	fmt.Printf("Resetting global counter to %d.\n", counterSeed)
 	scope.ResetCounter <- counterSeed
+	scope.Random = rand.New(rand.NewSource(randomSeed))
+	ht.PhantomJSExecutable = phantomjs
+	if !silent {
+		fmt.Printf("Seeding random number generator with %d.\n", randomSeed)
+		fmt.Printf("Resetting global counter to %d.\n", counterSeed)
+		fmt.Printf("Using %q as PhantomJS executable.\n", phantomjs)
+	}
 	if skipTLSVerify {
-		fmt.Println("Skipping verification of TLS certificates presented by any server.")
+		if !silent {
+			fmt.Println("Skipping verification of TLS certificates presented by any server.")
+		}
 		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
 	}
-	ht.PhantomJSExecutable = phantomjs
-	fmt.Printf("Using %q as PhantomJS executable.\n", phantomjs)
 
-	// Log variables and values sorted by variable name.
-	varnames := make([]string, 0, len(variablesFlag))
-	for v := range variablesFlag {
-		varnames = append(varnames, v)
+	if !silent {
+		// Log variables and values sorted by variable name.
+		varnames := make([]string, 0, len(variablesFlag))
+		for v := range variablesFlag {
+			varnames = append(varnames, v)
+		}
+		sort.Strings(varnames)
+		for _, v := range varnames {
+			fmt.Printf("Variable %s = %q\n", v, variablesFlag[v])
+		}
 	}
-	sort.Strings(varnames)
-	for _, v := range varnames {
-		fmt.Printf("Variable %s = %q\n", v, variablesFlag[v])
-	}
-
 }
 
 func loadCookies() *cookiejar.Jar {
@@ -339,7 +378,9 @@ func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *c
 
 	outcome := make([]*suite.Suite, len(suites))
 	for i, s := range suites {
-		logger.Println("Starting Suite", i+1, s.Name, s.File.Name)
+		if !ssilent {
+			logger.Println("Starting Suite", i+1, s.Name, s.File.Name)
+		}
 		outcome[i] = s.Execute(variables, jar, logger)
 		if carryVars {
 			variables = outcome[i].FinalVariables // carry over variables ???
