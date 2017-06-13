@@ -230,8 +230,8 @@ Started: {{.Started}}   Duration: {{niceduration .Duration}}
 {{end}}
 `
 
-var shortSuiteTmpl = `======  Result of {{.Name}} =======
-{{range .Tests}}{{template "SHORTTEST" .}}{{end}}{{printf "===> %s <=== %s" (ToUpper .Status.String) .Name}}
+var shortSuiteTmpl = `{{range .Tests}}{{template "SHORTTEST" .}}
+{{end}}{{printf "%s ==== Suite %s" (ToUpper .Status.String) .Name}}
 `
 
 var htmlStyleTmpl = `{{define "STYLE"}}
