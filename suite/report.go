@@ -75,7 +75,7 @@ var htmlTestTmpl = `{{define "TEST"}}
 	Full Duration: {{niceduration .FullDuration}} <br/>
         Number of tries: {{.Tries}} <br/>
         Request Duration: {{niceduration .Duration}} <br/>
-        {{if .Error}}<br/><strong>Error:</strong> {{.Error}}<br/>{{end}}
+        {{if .Error}}<br/><strong>Error:</strong> {{errlist .Error}}<br/>{{end}}
       </div>
       {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
       {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
@@ -484,11 +484,18 @@ var errorListTmpl = `<ul class="error-list">
 var errorListTemplate = htmltemplate.Must(htmltemplate.New("ERRLIST").Parse(errorListTmpl))
 
 // ErrorList renders err in HTML. It creates an <ul> if err is of
-// type ht.ErrorList (and has more than one entry).
-func ErrorList(list ht.ErrorList) htmltemplate.HTML {
-	if len(list) == 0 {
+// type ht.ErrorList and has more than one entry.
+func ErrorList(err error) htmltemplate.HTML {
+	if err == nil {
 		return htmltemplate.HTML("")
 	}
+	list, ok := err.(ht.ErrorList)
+	if !ok {
+		list = ht.ErrorList([]error{err})
+	} else if len(list) == 0 {
+		return htmltemplate.HTML("")
+	}
+
 	if len(list) == 1 {
 		msg := list[0].Error()
 		msg = htmltemplate.HTMLEscapeString(msg)
