@@ -300,13 +300,11 @@ func (c *JSON) Execute(t *Test) error {
 // very hard to use as a human, augmenting the error with a line number makes
 // debugging much simplier.
 func augmentJSONError(err error, jsonData []byte) error {
-	off := 0
-
 	se, ok := err.(*json.SyntaxError)
 	if !ok {
 		return err
 	}
-	off = int(se.Offset)
+	off := int(se.Offset)
 
 	lines := bytes.Split(jsonData, []byte("\n"))
 	total := 0
