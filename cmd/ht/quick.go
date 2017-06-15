@@ -118,8 +118,10 @@ func makeChecks(u string) ht.CheckList {
 }
 
 func runQuick(cmd *Command, urls []string) {
-	col := ht.Collection{}
+	prepareHT()
+	prepareOutputDir()
 
+	col := ht.Collection{}
 	for i, u := range urls {
 		test := &ht.Test{
 			Name:        u,
@@ -153,5 +155,8 @@ func runQuick(cmd *Command, urls []string) {
 	clip := s.Duration.Nanoseconds() % 1000000
 	s.Duration -= time.Duration(clip)
 
-	saveOutcome([]*suite.Suite{s})
+	accum := newAccumulator()
+	accum.update(s)
+	saveSingle(outputDir, s)
+	reportOverall(accum)
 }

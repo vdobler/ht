@@ -76,169 +76,147 @@ func runExecute(cmd *Command, suites []*suite.RawSuite) {
 	prepareHT()
 	jar := loadCookies()
 
-	outcome := executeSuites(suites, variablesFlag, jar)
-	saveOutcome(outcome)
+	prepareOutputDir()
+	var errors ht.ErrorList
+
+	outcome, err := executeSuites(suites, variablesFlag, jar)
+	errors = errors.Append(err)
+	err = reportOverall(outcome)
+	errors = errors.Append(err)
+	if errors.AsError() != nil {
+		fmt.Fprintln(os.Stderr, "Error encountered during execution:")
+		for _, msg := range errors.AsStrings() {
+			fmt.Fprintln(os.Stderr, msg)
+		}
+		os.Exit(7)
+	}
+
+	switch outcome.status {
+	case ht.NotRun, ht.Skipped, ht.Pass:
+		os.Exit(0)
+	case ht.Fail:
+		os.Exit(1)
+	case ht.Error:
+		os.Exit(2)
+	case ht.Bogus:
+		os.Exit(3)
+	}
+
 }
 
-func saveOutcome(outcome []*suite.Suite) {
+func prepareOutputDir() {
+	if outputDir == "/dev/null" {
+		mute = true
+	} else if outputDir == "" {
+		outputDir = time.Now().Format("2006-01-02_15h04m05s")
+	}
+
 	if !mute {
-		if outputDir == "" {
-			outputDir = time.Now().Format("2006-01-02_15h04m05s")
-		}
-		os.MkdirAll(outputDir, 0766)
-	}
-
-	total, totalPass, totalError, totalSkiped, totalFailed, totalBogus := 0, 0, 0, 0, 0, 0
-	if !ssilent {
-		for _, s := range outcome {
-			var err error
-			if silent {
-				err = s.PrintShortReport(os.Stdout)
-				fmt.Println()
-			} else {
-				err = s.PrintReport(os.Stdout)
-			}
-			if err != nil {
-				panic(err)
-			}
+		err := os.MkdirAll(outputDir, 0766)
+		if err != nil {
+			log.Panic(err)
 		}
 	}
-	overallStatus := ht.NotRun
-	overallVars := make(map[string]string)
-	overallCookies := make(map[string]cookiejar.Entry)
+}
 
-	for _, s := range outcome {
-		// Statistics
-		if s.Status > overallStatus {
-			overallStatus = s.Status
-		}
-		for _, r := range s.Tests {
-			switch r.Status {
-			case ht.Pass:
-				totalPass++
-			case ht.Error:
-				totalError++
-			case ht.Skipped:
-				totalSkiped++
-			case ht.Fail:
-				totalFailed++
-			case ht.Bogus:
-				totalBogus++
+// accumulator of several suites.
+type accumulator struct {
+	status  ht.Status
+	vars    map[string]string
+	cookies map[string]cookiejar.Entry
+
+	total, notrun, skip, pass, err, fail, bogus int
+
+	suites []struct {
+		Name, Path, Status string
+	}
+}
+
+func newAccumulator() *accumulator {
+	return &accumulator{
+		vars:    make(map[string]string),
+		cookies: make(map[string]cookiejar.Entry),
+	}
+}
+
+func (a *accumulator) update(s *suite.Suite) {
+	// Reporting
+	a.suites = append(a.suites, struct {
+		Name, Path, Status string
+	}{
+		s.Name,
+		sanitize.Filename(s.Name),
+		strings.ToUpper(s.Status.String()),
+	})
+
+	// Status
+	if s.Status > a.status {
+		a.status = s.Status
+	}
+
+	// Variables
+	for name, value := range s.FinalVariables {
+		a.vars[name] = value
+	}
+
+	// Cookies
+	if s.Jar != nil {
+		for _, tld := range s.Jar.ETLDsPlus1(nil) {
+			for _, cookie := range s.Jar.Entries(tld, nil) {
+				id := cookie.ID()
+				a.cookies[id] = cookie
 			}
-			total++
-		}
-
-		if mute {
-			continue
-		}
-
-		dirname := outputDir + "/" + sanitize.Filename(s.Name)
-		fmt.Printf("Saving result of suite %q to folder %q.\n", s.Name, dirname)
-		err := os.MkdirAll(dirname, 0766)
-		if err != nil {
-			log.Panic(err)
-		}
-		err = suite.HTMLReport(dirname, s)
-		if err != nil {
-			log.Panic(err)
-		}
-
-		cwd, err := os.Getwd()
-		if err == nil {
-			reportURL := "file://" + path.Join(cwd, dirname, "_Report_.html")
-			fmt.Printf("See %s\n", reportURL)
-		}
-		junit, err := s.JUnit4XML()
-		if err != nil {
-			log.Panic(err)
-		}
-		err = ioutil.WriteFile(dirname+"/junit-report.xml", []byte(junit), 0666)
-		if err != nil {
-			log.Panic(err)
-		}
-
-		// Consolidate all variables.
-		saveVariables(s.FinalVariables, path.Join(dirname, "variables.json"))
-		for name, value := range s.FinalVariables {
-			overallVars[name] = value
-		}
-		// Consolidate cookies.
-		if jar := s.Jar; jar != nil {
-			cookies := make(map[string]cookiejar.Entry)
-			for _, tld := range jar.ETLDsPlus1(nil) {
-				for _, cookie := range jar.Entries(tld, nil) {
-					id := cookie.ID()
-					overallCookies[id] = cookie
-					cookies[id] = cookie
-				}
-			}
-			saveCookies(cookies, path.Join(dirname, "cookies.json"))
 		}
 	}
 
+	for _, t := range s.Tests {
+		switch t.Status {
+		case ht.NotRun:
+			a.notrun++
+		case ht.Skipped:
+			a.skip++
+		case ht.Pass:
+			a.pass++
+		case ht.Error:
+			a.err++
+		case ht.Fail:
+			a.fail++
+		case ht.Bogus:
+			a.bogus++
+		}
+		a.total++
+	}
+}
+
+func reportOverall(a *accumulator) error {
+	var errors ht.ErrorList
+	var err error
 	// Save consolidated variables if required.
 	if vardump != "" && !mute {
-		if err := saveVariables(overallVars, vardump); err != nil {
-			log.Panic(err)
-		}
+		err = saveVariables(a.vars, vardump)
+		errors = errors.Append(err)
 	}
 
 	// Save consolidated cookies if required.
 	if cookiedump != "" && !mute {
-		if err := saveCookies(overallCookies, cookiedump); err != nil {
-			log.Panic(err)
-		}
-	}
-
-	// Save a overall report iff more than one suite was involved.
-	if len(outcome) > 1 && !mute {
-		if err := saveOverallReport(outputDir, outcome); err != nil {
-			log.Panic(err)
-		}
+		err = saveCookies(a.cookies, cookiedump)
+		errors = errors.Append(err)
 	}
 
 	if !ssilent {
 		fmt.Println()
 		fmt.Printf("Total %d,  Passed %d,  Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
-			total, totalPass, totalSkiped, totalError, totalFailed, totalBogus)
+			a.total, a.pass, a.skip, a.err, a.fail, a.bogus)
+		fmt.Println(strings.ToUpper(a.status.String()))
 	}
 
-	switch overallStatus {
-	case ht.NotRun:
-		if !ssilent {
-			fmt.Println("NOTRUN")
-		}
-		os.Exit(0)
-	case ht.Skipped:
-		if !ssilent {
-			fmt.Println("SKIPPED")
-		}
-		os.Exit(0)
-	case ht.Pass:
-		if !ssilent {
-			fmt.Println("PASS")
-		}
-		os.Exit(0)
-	case ht.Fail:
-		if !ssilent {
-			fmt.Println("FAIL")
-		}
-		os.Exit(1)
-	case ht.Error:
-		if !ssilent {
-			fmt.Println("ERROR")
-		}
-		os.Exit(2)
-	case ht.Bogus:
-		if !ssilent {
-			fmt.Println("BOGUS")
-		}
-		os.Exit(3)
-	}
-	panic(fmt.Sprintf("Ooops: Unknown overall status %d", overallStatus))
+	return errors.AsError()
 }
 
 func saveVariables(vars map[string]string, filename string) error {
+	if mute {
+		return nil
+	}
 	b, err := json.MarshalIndent(vars, "    ", "")
 	if err != nil {
 		return nil
@@ -246,7 +224,25 @@ func saveVariables(vars map[string]string, filename string) error {
 	return ioutil.WriteFile(filename, b, 0666)
 }
 
+func saveCookiesFromJar(jar *cookiejar.Jar, filename string) error {
+	if jar == nil {
+		return nil
+	}
+
+	cookies := make(map[string]cookiejar.Entry)
+	for _, tld := range jar.ETLDsPlus1(nil) {
+		for _, cookie := range jar.Entries(tld, nil) {
+			id := cookie.ID()
+			cookies[id] = cookie
+		}
+	}
+	return saveCookies(cookies, filename)
+}
+
 func saveCookies(cookies map[string]cookiejar.Entry, filename string) error {
+	if mute {
+		return nil
+	}
 	b, err := json.MarshalIndent(cookies, "    ", "")
 	if err != nil {
 		return nil
@@ -254,19 +250,12 @@ func saveCookies(cookies map[string]cookiejar.Entry, filename string) error {
 	return ioutil.WriteFile(filename, b, 0666)
 }
 
-func saveOverallReport(dirname string, outcome []*suite.Suite) error {
-	type Data struct {
-		Name, Path, Status string
+// TODO: handle errors, preparse template, cleanup mess, learn to program
+func saveOverallReport(dirname string, accum *accumulator) error {
+	if mute {
+		return nil
 	}
-	data := []Data{}
-	for _, s := range outcome {
-		data = append(data,
-			Data{
-				Name:   s.Name,
-				Path:   sanitize.Filename(s.Name),
-				Status: strings.ToUpper(s.Status.String()),
-			})
-	}
+
 	tmplSrc := `<!DOCTYPE html>
 <html>
 <head>
@@ -297,7 +286,7 @@ func saveOverallReport(dirname string, outcome []*suite.Suite) error {
 `
 	templ := template.Must(template.New("report").Parse(tmplSrc))
 	buf := &bytes.Buffer{}
-	err := templ.Execute(buf, data)
+	err := templ.Execute(buf, accum.suites)
 	if err != nil {
 		return err
 	}
@@ -371,21 +360,104 @@ func loadCookies() *cookiejar.Jar {
 	return jar
 }
 
-func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *cookiejar.Jar) []*suite.Suite {
+// execute suites one by one saving each suite to disk once finished.
+// Returns the accumulated overall result.
+func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *cookiejar.Jar) (*accumulator, error) {
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 256)
 	defer bufferedStdout.Flush()
 	logger := log.New(bufferedStdout, "", 0)
+	errors := ht.ErrorList{}
+	var err error
 
-	outcome := make([]*suite.Suite, len(suites))
+	if !mute {
+		if outputDir == "" {
+			outputDir = time.Now().Format("2006-01-02_15h04m05s")
+		}
+		err = os.MkdirAll(outputDir, 0766)
+		errors = errors.Append(err)
+	}
+
+	accum := newAccumulator()
 	for i, s := range suites {
 		if !ssilent {
 			logger.Println("Starting Suite", i+1, s.Name, s.File.Name)
 		}
-		outcome[i] = s.Execute(variables, jar, logger)
-		if carryVars {
-			variables = outcome[i].FinalVariables // carry over variables ???
-		}
+		outcome := s.Execute(variables, jar, logger)
 		bufferedStdout.Flush()
+
+		accum.update(outcome)
+
+		if carryVars {
+			variables = outcome.FinalVariables // carry over variables ???
+		}
+		if !silent {
+			err = outcome.PrintReport(os.Stdout)
+		} else if !ssilent {
+			err = outcome.PrintShortReport(os.Stdout)
+			fmt.Println()
+		}
+		errors = errors.Append(err)
+
+		err = saveSingle(outputDir, outcome)
+		errors = errors.Append(err)
+		if len(suites) > 1 {
+			err := saveOverallReport(outputDir, accum)
+			errors = errors.Append(err)
+		}
+
 	}
-	return outcome
+	return accum, errors.AsError()
+}
+
+// saveSingle takes care of dumping the suite s into a subfolder of
+// outputdir. It will produce:
+//   _Report_.html  with accomaning files for the response bodies
+//   junit-report.xml
+//   result.txt
+//   variables.json
+//   cookies.json
+func saveSingle(outputDir string, s *suite.Suite) error {
+	if mute || outputDir == "/dev/null" {
+		return nil
+	}
+
+	dirname := path.Join(outputDir, sanitize.Filename(s.Name))
+	fmt.Printf("Saving result of suite %q to folder %q.\n", s.Name, dirname)
+	err := os.MkdirAll(dirname, 0766)
+	if err != nil {
+		return err
+	}
+
+	errors := ht.ErrorList{}
+	err = suite.HTMLReport(dirname, s)
+	errors = errors.Append(err)
+
+	file, err := os.Create(path.Join(dirname, "result.txt"))
+	errors = errors.Append(err)
+	if err == nil {
+		err = s.PrintReport(file)
+		errors = errors.Append(err)
+		errors = errors.Append(file.Close())
+	}
+
+	cwd, err := os.Getwd()
+	errors = errors.Append(err)
+	reportURL := "file://" + path.Join(cwd, dirname, "_Report_.html")
+	fmt.Printf("See %s\n", reportURL)
+
+	junit, err := s.JUnit4XML()
+	errors = errors.Append(err)
+	if err == nil {
+		err = ioutil.WriteFile(path.Join(dirname, "junit-report.xml"),
+			[]byte(junit), 0666)
+		errors = errors.Append(err)
+	}
+
+	// TODO: handle errors
+	err = saveVariables(s.FinalVariables, path.Join(dirname, "variables.json"))
+	errors = errors.Append(err)
+	err = saveCookiesFromJar(s.Jar, path.Join(dirname, "cookies.json"))
+	errors = errors.Append(err)
+
+	return errors.AsError()
 }
