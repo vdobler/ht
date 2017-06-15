@@ -111,8 +111,8 @@ var mockSuiteResults = []struct {
 	status ht.Status
 	err    string
 }{
-	{ht.Fail, "Got 500, want 200\n"},
-	{ht.Fail, "Main test passed, but mock invocations failed: Unequal, was \"okay\"\n"},
+	{ht.Fail, "Check StatusCode: Got 500, want 200\n"},
+	{ht.Fail, "Main test passed, but mock invocations failed: Check Header: Unequal, was \"okay\"\n"},
 	{ht.Pass, "<nil>\n"},
 	{ht.Fail, "Main test passed, but mock invocations failed: mock \"Some other Mock\" was not called\n"},
 	{ht.Pass, "<nil>\n"},

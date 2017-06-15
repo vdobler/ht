@@ -66,9 +66,17 @@ func TestETag(t *testing.T) {
 		}
 
 		test.Run()
-		if test.Error != tc.err {
-			t.Errorf("%d %s: got error %v, want %v", i, tc.path,
-				test.Error, tc.err)
+		want := ""
+		if tc.err != nil {
+			want = "Check ETag: " + tc.err.Error()
+		}
+		got := ""
+		if test.Error != nil {
+			got = test.Error.Error()
+		}
+
+		if got != want {
+			t.Errorf("%d %s: got error %v, want %v", i, tc.path, got, want)
 		}
 	}
 }
