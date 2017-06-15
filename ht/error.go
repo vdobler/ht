@@ -40,9 +40,28 @@ func (e PosError) Error() string {
 // ErrorList is a collection of errors.
 type ErrorList []error
 
+// Append err to el.
+func (el ErrorList) Append(err error) ErrorList {
+	if err == nil {
+		return el
+	}
+	if list, ok := err.(ErrorList); ok {
+		return append(el, list...)
+	}
+	return append(el, err)
+}
+
 // Error implements the Error method of error.
 func (el ErrorList) Error() string {
 	return strings.Join(el.AsStrings(), "; \u2029")
+}
+
+// AsError returns el properly returning nil for a empty el.
+func (el ErrorList) AsError() error {
+	if len(el) == 0 {
+		return nil
+	}
+	return el
 }
 
 // AsStrings returns the error list as as string slice.
