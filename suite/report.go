@@ -608,43 +608,33 @@ func augmentMetadataAndDumpBody(s *Suite, dir string, prefix string) error {
 
 		if sub := test.GetMetadata("Subsuite"); sub != nil {
 			subsuite := sub.(*Suite)
-			augmentMetadataAndDumpBody(subsuite, dir, seqno+"_sub")
+			err := augmentMetadataAndDumpBody(subsuite, dir, seqno+"_sub")
+			errs = errs.Append(err)
 		}
 		fn := fmt.Sprintf("%s.ResponseBody.%s", seqno, extension)
 		name := path.Join(dir, fn)
 		err := ioutil.WriteFile(name, body, 0666)
-		if err != nil {
-			errs = append(errs, err)
-		}
+		errs = errs.Append(err)
+	}
 
-	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return errs
+	return errs.AsError()
 }
 
 // HTMLReport generates a report of the outcome of s to directory dir.
 func HTMLReport(dir string, s *Suite) error {
 	errs := ht.ErrorList{}
 
-	augmentMetadataAndDumpBody(s, dir, "")
+	err := augmentMetadataAndDumpBody(s, dir, "")
+	errs = errs.Append(err)
 
 	report, err := os.Create(path.Join(dir, "_Report_.html"))
-	if err != nil {
-		errs = append(errs, err)
-	} else {
+	errs = errs.Append(err)
+	if err == nil {
 		err = HtmlSuiteTmpl.Execute(report, s)
-		if err != nil {
-			errs = append(errs, err)
-		}
+		errs = errs.Append(err)
 	}
 
-	if len(errs) == 0 {
-		return nil
-	}
-
-	return errs
+	return errs.AsError()
 }
 
 // JUnit style output.
