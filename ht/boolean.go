@@ -34,16 +34,10 @@ func (a AnyOne) Prepare() error {
 	errs := ErrorList{}
 	for _, c := range a.Of {
 		if prep, ok := c.(Preparable); ok {
-			err := prep.Prepare()
-			if err != nil {
-				errs = append(errs, err)
-			}
+			errs = errs.Append(prep.Prepare())
 		}
 	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return errs
+	return errs.AsError()
 }
 
 // Execute implements Check's Execute method. It executes the underlying checks
@@ -56,9 +50,9 @@ func (a AnyOne) Execute(t *Test) error {
 		if err == nil {
 			return nil
 		}
-		errs = append(errs, err)
+		errs = errs.Append(err)
 	}
-	return errs
+	return errs.AsError()
 }
 
 // None checks that none Of the embedded checks passes.
@@ -82,16 +76,10 @@ func (n None) Prepare() error {
 	errs := ErrorList{}
 	for _, c := range n.Of {
 		if prep, ok := c.(Preparable); ok {
-			err := prep.Prepare()
-			if err != nil {
-				errs = append(errs, err)
-			}
+			errs = errs.Append(prep.Prepare())
 		}
 	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return errs
+	return errs.AsError()
 }
 
 // Execute implements Check's Execute method. It executes the underlying checks
@@ -99,8 +87,7 @@ func (n None) Prepare() error {
 // failures is returned.
 func (n None) Execute(t *Test) error {
 	for i, c := range n.Of {
-		err := c.Execute(t)
-		if err == nil {
+		if err := c.Execute(t); err == nil {
 			return fmt.Errorf("Check %d passed", i+1)
 		}
 	}

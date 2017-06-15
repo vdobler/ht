@@ -246,10 +246,7 @@ func (L *Latency) Execute(t *Test) error {
 			counters[Pass], counters[Fail], counters[Error]))
 	}
 
-	if len(errs) == 0 {
-		return nil
-	}
-	return errs
+	return errs.AsError()
 }
 
 type latencyResult struct {

@@ -605,10 +605,7 @@ func (r *RenderedHTML) Prepare() error {
 		}
 	}
 
-	if len(errs) != 0 {
-		return errs
-	}
-	return nil
+	return errs.AsError()
 }
 
 // Execute implements Check's Execute method.
@@ -656,10 +653,7 @@ func (r *RenderedHTML) Execute(t *Test) error {
 		}
 	}
 
-	if len(errs) != 0 {
-		return errs
-	}
-	return nil
+	return errs.AsError()
 }
 
 // content returns the page content after rendering (and evaluating JavaScript)
