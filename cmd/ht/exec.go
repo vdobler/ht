@@ -6,7 +6,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -261,35 +260,31 @@ func reportOverall(a *accumulator) error {
 	if !ssilent {
 		fmt.Println()
 		fmt.Printf("Total %d,  Passed %d,  Skipped %d,  Errored %d,  Failed %d,  Bogus %d\n",
-			a.total, a.pass, a.skip, a.err, a.fail, a.bogus)
-		fmt.Println(strings.ToUpper(a.status.String()))
+			a.Total, a.Pass, a.Skip, a.Err, a.Fail, a.Bogus)
+		fmt.Println(strings.ToUpper(a.Status.String()))
 	}
 
 	return errors.AsError()
 }
 
-// TODO: handle errors, preparse template, cleanup mess, learn to program
-func saveOverallReport(dirname string, accum *accumulator) error {
-	if mute {
-		return nil
-	}
-
-	tmplSrc := `<!DOCTYPE html>
+var overallReportTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
 <html>
 <head>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
   <style>
-   .PASS { color: green; }
-   .FAIL { color: red; }
-   .ERROR { color: magenta; }
-   .NOTRUN { color: grey; }
+   .PASS, .Pass { color: green; }
+   .FAIL, .Fail { color: red; }
+   .ERROR, .Error { color: magenta; }
+   .NOTRUN, .Notrun { color: grey; }
+   .SKIPPED, .Skipped { color: grey; }
+   .BOGUS, .Bogus { color: brown; }
   </style>
   <title>Overall Results</title>
 </head>
 <body>
-  <h1>Overall Result</h1>
+  <h1>Overall Result: <span class="{{.Status}}">{{.Status}}</span></h1>
   <ul>
-    {{range .}}
+    {{range .Suites}}
     <li>
       <h2>
         <a href="./{{.Path}}/_Report_.html" >
@@ -299,23 +294,46 @@ func saveOverallReport(dirname string, accum *accumulator) error {
     </li>
     {{end}}
   </ul>
+
+  <div>
+    <strong style="font-size: 2.5ex">
+      <code>
+        Total {{.Total}},
+        <span class="PASS">Passed {{.Pass}}</span>,
+        <span class="SKIPPED">Skipped {{.Skip}}</span>,
+        <span class="ERROR">Errored {{.Err}}</span>,
+        <span class="FAIL">Failed {{.Fail}}</span>,
+        <span class="BOGUS">Bogus {{.Bogus}}</span>
+      </code>
+    </strong>  
+  </div>
+
 </body>
 </html>
-`
-	templ := template.Must(template.New("report").Parse(tmplSrc))
-	buf := &bytes.Buffer{}
-	err := templ.Execute(buf, accum.suites)
+`))
+
+func saveOverallReport(dirname string, accum *accumulator) error {
+	if mute {
+		return nil
+	}
+
+	filename := path.Join(dirname, "_Report_.html")
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	err = overallReportTemplate.Execute(file, accum)
+	if err != nil {
+		return err
+	}
+	err = file.Close()
 	if err != nil {
 		return err
 	}
 
-	file := dirname + "/_Report_.html"
-	if err := ioutil.WriteFile(file, buf.Bytes(), 0666); err != nil {
-		log.Panicf("Failed to write file: %q with error %s", file, err)
-	}
 	cwd, err := os.Getwd()
 	if err == nil {
-		reportURL := "file://" + path.Join(cwd, file)
+		reportURL := "file://" + path.Join(cwd, filename)
 		fmt.Printf("Overall: %s\n", reportURL)
 	}
 	return err
@@ -332,7 +350,7 @@ func terminate(outcome *accumulator, errors ht.ErrorList) {
 		os.Exit(7)
 	}
 
-	switch outcome.status {
+	switch outcome.Status {
 	case ht.NotRun, ht.Skipped, ht.Pass:
 		os.Exit(0)
 	case ht.Fail:
@@ -413,13 +431,13 @@ func loadCookies() *cookiejar.Jar {
 // Accumulator of several suites to collect statistical summaries.
 
 type accumulator struct {
-	status  ht.Status
+	Status  ht.Status
 	vars    map[string]string
 	cookies map[string]cookiejar.Entry
 
-	total, notrun, skip, pass, err, fail, bogus int
+	Total, Notrun, Skip, Pass, Err, Fail, Bogus int
 
-	suites []struct {
+	Suites []struct {
 		Name, Path, Status string
 	}
 }
@@ -433,7 +451,7 @@ func newAccumulator() *accumulator {
 
 func (a *accumulator) update(s *suite.Suite) {
 	// Reporting
-	a.suites = append(a.suites, struct {
+	a.Suites = append(a.Suites, struct {
 		Name, Path, Status string
 	}{
 		s.Name,
@@ -442,8 +460,8 @@ func (a *accumulator) update(s *suite.Suite) {
 	})
 
 	// Status
-	if s.Status > a.status {
-		a.status = s.Status
+	if s.Status > a.Status {
+		a.Status = s.Status
 	}
 
 	// Variables
@@ -464,18 +482,18 @@ func (a *accumulator) update(s *suite.Suite) {
 	for _, t := range s.Tests {
 		switch t.Status {
 		case ht.NotRun:
-			a.notrun++
+			a.Notrun++
 		case ht.Skipped:
-			a.skip++
+			a.Skip++
 		case ht.Pass:
-			a.pass++
+			a.Pass++
 		case ht.Error:
-			a.err++
+			a.Err++
 		case ht.Fail:
-			a.fail++
+			a.Fail++
 		case ht.Bogus:
-			a.bogus++
+			a.Bogus++
 		}
-		a.total++
+		a.Total++
 	}
 }
