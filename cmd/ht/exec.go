@@ -174,7 +174,7 @@ func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *c
 		}
 		errors = errors.Append(err)
 
-		err = saveSingle(outputDir, outcome)
+		err = saveSingle(accum, outputDir, outcome)
 		errors = errors.Append(err)
 		if len(suites) > 1 {
 			err := saveOverallReport(outputDir, accum)
@@ -195,13 +195,14 @@ func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *c
 //     result.txt
 //     variables.json
 //     cookies.json
-func saveSingle(outputDir string, s *suite.Suite) error {
+func saveSingle(accum *accumulator, outputDir string, s *suite.Suite) error {
 	if mute || outputDir == "/dev/null" {
 		return nil
 	}
 
-	dirname := path.Join(outputDir, sanitize.Filename(s.Name))
-	fmt.Printf("Saving result of suite %q to folder %q.\n", s.Name, dirname)
+	num := len(accum.Suites)
+	dirname := path.Join(outputDir, accum.Suites[num-1].Dirname)
+	fmt.Printf("Saving result of %d. suite %q to folder %q.\n", num, s.Name, dirname)
 	err := os.MkdirAll(dirname, 0766)
 	if err != nil {
 		return err
@@ -247,13 +248,13 @@ func reportOverall(a *accumulator) error {
 	var err error
 	// Save consolidated variables if required.
 	if vardump != "" && !mute {
-		err = saveVariables(a.vars, vardump)
+		err = saveVariables(a.Vars, vardump)
 		errors = errors.Append(err)
 	}
 
 	// Save consolidated cookies if required.
 	if cookiedump != "" && !mute {
-		err = saveCookies(a.cookies, cookiedump)
+		err = saveCookies(a.Cookies, cookiedump)
 		errors = errors.Append(err)
 	}
 
@@ -272,12 +273,12 @@ var overallReportTemplate = template.Must(template.New("report").Parse(`<!DOCTYP
 <head>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
   <style>
-   .PASS, .Pass { color: green; }
-   .FAIL, .Fail { color: red; }
-   .ERROR, .Error { color: magenta; }
-   .NOTRUN, .Notrun { color: grey; }
-   .SKIPPED, .Skipped { color: grey; }
-   .BOGUS, .Bogus { color: brown; }
+   .Pass    { color: green;   }
+   .Fail    { color: red;     }
+   .Error   { color: magenta; }
+   .NotRun  { color: grey;    }
+   .Skipped { color: grey;    }
+   .Bogus   { color: brown;   }
   </style>
   <title>Overall Results</title>
 </head>
@@ -287,7 +288,7 @@ var overallReportTemplate = template.Must(template.New("report").Parse(`<!DOCTYP
     {{range .Suites}}
     <li>
       <h2>
-        <a href="./{{.Path}}/_Report_.html" >
+        <a href="./{{.Dirname}}/_Report_.html" >
           <span class="{{.Status}}">{{.Status}}</span> {{.Name}}
         </a>
       </h2>
@@ -299,11 +300,11 @@ var overallReportTemplate = template.Must(template.New("report").Parse(`<!DOCTYP
     <strong style="font-size: 2.5ex">
       <code>
         Total {{.Total}},
-        <span class="PASS">Passed {{.Pass}}</span>,
-        <span class="SKIPPED">Skipped {{.Skip}}</span>,
-        <span class="ERROR">Errored {{.Err}}</span>,
-        <span class="FAIL">Failed {{.Fail}}</span>,
-        <span class="BOGUS">Bogus {{.Bogus}}</span>
+        <span class="Pass">Passed {{.Pass}}</span>,
+        <span class="Skipped">Skipped {{.Skip}}</span>,
+        <span class="Error">Errored {{.Err}}</span>,
+        <span class="Fail">Failed {{.Fail}}</span>,
+        <span class="Bogus">Bogus {{.Bogus}}</span>
       </code>
     </strong>  
   </div>
@@ -432,31 +433,35 @@ func loadCookies() *cookiejar.Jar {
 
 type accumulator struct {
 	Status  ht.Status
-	vars    map[string]string
-	cookies map[string]cookiejar.Entry
+	Vars    map[string]string
+	Cookies map[string]cookiejar.Entry
 
 	Total, Notrun, Skip, Pass, Err, Fail, Bogus int
 
-	Suites []struct {
-		Name, Path, Status string
-	}
+	Suites []suiteInfo
+}
+
+type suiteInfo struct {
+	Name    string    // the Name field in the raw suite file
+	Dirname string    // directory of result ~ sanitized and uniqified name
+	Status  ht.Status // the status
 }
 
 func newAccumulator() *accumulator {
 	return &accumulator{
-		vars:    make(map[string]string),
-		cookies: make(map[string]cookiejar.Entry),
+		Vars:    make(map[string]string),
+		Cookies: make(map[string]cookiejar.Entry),
 	}
 }
 
 func (a *accumulator) update(s *suite.Suite) {
 	// Reporting
-	a.Suites = append(a.Suites, struct {
-		Name, Path, Status string
-	}{
-		s.Name,
-		sanitize.Filename(s.Name),
-		strings.ToUpper(s.Status.String()),
+	dirname := sanitize.Filename(s.Name)                     // sanitize ...
+	dirname = fmt.Sprintf("%d_%s", len(a.Suites)+1, dirname) // ... and make uniq
+	a.Suites = append(a.Suites, suiteInfo{
+		Name:    s.Name,
+		Dirname: dirname,
+		Status:  s.Status,
 	})
 
 	// Status
@@ -466,7 +471,7 @@ func (a *accumulator) update(s *suite.Suite) {
 
 	// Variables
 	for name, value := range s.FinalVariables {
-		a.vars[name] = value
+		a.Vars[name] = value
 	}
 
 	// Cookies
@@ -474,7 +479,7 @@ func (a *accumulator) update(s *suite.Suite) {
 		for _, tld := range s.Jar.ETLDsPlus1(nil) {
 			for _, cookie := range s.Jar.Entries(tld, nil) {
 				id := cookie.ID()
-				a.cookies[id] = cookie
+				a.Cookies[id] = cookie
 			}
 		}
 	}

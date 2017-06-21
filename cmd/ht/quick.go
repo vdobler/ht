@@ -157,6 +157,6 @@ func runQuick(cmd *Command, urls []string) {
 
 	accum := newAccumulator()
 	accum.update(s)
-	saveSingle(outputDir, s)
+	saveSingle(accum, outputDir, s)
 	reportOverall(accum)
 }
