@@ -298,7 +298,7 @@ func (c *JSON) Execute(t *Test) error {
 // augmentJSONError tries to augment err by a line/column number pointing into
 // jsonData. encoding/json.Unmarshal's error for syntax errors in the JSON is
 // very hard to use as a human, augmenting the error with a line number makes
-// debugging much simplier.
+// debugging much simpler.
 func augmentJSONError(err error, jsonData []byte) error {
 	se, ok := err.(*json.SyntaxError)
 	if !ok {

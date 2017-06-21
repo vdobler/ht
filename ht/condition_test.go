@@ -54,8 +54,8 @@ var conditionTests = []struct {
 	{"foobarfoobar", Condition{Contains: "oo", Count: 2}, ``},
 	{"foobarfoobar", Condition{Contains: "obarf", Count: 1}, ``},
 	{"foobarfoobar", Condition{Contains: "o", Count: 4}, ``},
-	{"foobarfoobar", Condition{Contains: "foo", Count: 1}, `Found 2 occurences of "foo", want 1`},
-	{"foobarfoobar", Condition{Contains: "foo", Count: 3}, `Found 2 occurences of "foo", want 3`},
+	{"foobarfoobar", Condition{Contains: "foo", Count: 1}, `Found 2 occurrences of "foo", want 1`},
+	{"foobarfoobar", Condition{Contains: "foo", Count: 3}, `Found 2 occurrences of "foo", want 3`},
 
 	// Regexp
 	{"foobarwu", Condition{Regexp: "[aeiou]."}, ``},

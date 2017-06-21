@@ -93,6 +93,7 @@ func isFilePath(s string) bool {
 	return is
 }
 
+// ValidationMap contains validations applicable via a Condition.Is.
 var ValidationMap = map[string]func(string) bool{
 	"Alpha":            govalidator.IsAlpha,
 	"Alphanumeric":     govalidator.IsAlphanumeric,
@@ -194,13 +195,13 @@ func (c Condition) Fulfilled(s string) error {
 			return fmt.Errorf("Found forbidden %q", c.Contains)
 		} else if c.Count > 0 {
 			if cnt := strings.Count(s, c.Contains); cnt != c.Count {
-				return fmt.Errorf("Found %d occurences of %q, want %d",
+				return fmt.Errorf("Found %d occurrences of %q, want %d",
 					cnt, c.Contains, c.Count)
 			}
 		}
 	}
 
-	// TODO: remove. All tests may rely on beeing prepared prior to execution.
+	// TODO: remove. All tests may rely on being prepared prior to execution.
 	if c.Regexp != "" && c.re == nil {
 		c.re = regexp.MustCompile(c.Regexp)
 	}

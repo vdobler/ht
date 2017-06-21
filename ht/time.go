@@ -43,6 +43,7 @@ func (c ResponseTime) Execute(t *Test) error {
 	return nil
 }
 
+// Prepare implements Preparable.Prepare.
 func (c ResponseTime) Prepare() error {
 	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
 		return fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)

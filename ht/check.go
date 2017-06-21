@@ -21,7 +21,7 @@ type Check interface {
 }
 
 // Preparable is the type a Check may implement to signal that it needs some
-// preperation work to be done before the HTTP request is made.
+// preparation work to be done before the HTTP request is made.
 type Preparable interface {
 	// Prepare is called to prepare the check, e.g. to compile
 	// regular expressions or that like.

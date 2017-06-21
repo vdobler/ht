@@ -604,6 +604,8 @@ func (t *Test) execute() {
 	}
 }
 
+// PrepareChecks call Prepare() on all preparbel checks and sets up t
+// for execution.
 func (t *Test) PrepareChecks() error {
 	// Compile the checks.
 	cel := ErrorList{}
@@ -933,7 +935,7 @@ done:
 	return err
 }
 
-// executeChecks applies the checks in t to the HTTP response received during
+// ExecuteChecks applies the checks in t to the HTTP response received during
 // executeRequest.
 //
 // Normally all checks in t.Checks are executed. If the first check in

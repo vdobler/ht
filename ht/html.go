@@ -158,7 +158,7 @@ type HTMLTag struct {
 
 // Execute implements Check's Execute method.
 func (c *HTMLTag) Execute(t *Test) error {
-	// TODO: remove. All checks may rely on beeing prepared befor executeion.
+	// TODO: remove. All checks may rely on being prepared befor execution.
 	if c.sel == nil {
 		if err := c.Prepare(); err != nil {
 			return err
@@ -182,7 +182,7 @@ func (c *HTMLTag) Execute(t *Test) error {
 		return fmt.Errorf("Cannot find %s", c.Selector)
 	case c.Count > 0:
 		if cnt := len(matches); cnt != c.Count {
-			return fmt.Errorf("Found %d occurences of %s, want %d",
+			return fmt.Errorf("Found %d occurrences of %s, want %d",
 				cnt, c.Selector, c.Count)
 		}
 	}
