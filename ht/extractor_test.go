@@ -349,7 +349,7 @@ VarEx: {
 	if foo, ok := em["Foo"]; !ok {
 		t.Errorf("missing Foo")
 	} else {
-		if htmlex, ok := foo.(*HTMLExtractor); !ok { // TODO: Why pointere here?
+		if htmlex, ok := foo.(*HTMLExtractor); !ok {
 			t.Errorf("wrong type for foo. %#v", foo)
 		} else {
 			if htmlex.Selector != "form input[type=password]" {
@@ -364,7 +364,7 @@ VarEx: {
 	if bar, ok := em["Bar"]; !ok {
 		t.Errorf("missing Bar")
 	} else {
-		if bodyex, ok := bar.(*BodyExtractor); !ok { // TODO: Why pointere here?
+		if bodyex, ok := bar.(*BodyExtractor); !ok {
 			t.Errorf("wrong type for bar. %#v", bar)
 		} else {
 			if bodyex.Regexp != "[A-Z]+[0-9]*[g-p]" {
