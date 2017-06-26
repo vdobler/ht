@@ -158,12 +158,6 @@ type HTMLTag struct {
 
 // Execute implements Check's Execute method.
 func (c *HTMLTag) Execute(t *Test) error {
-	// TODO: remove. All checks may rely on being prepared befor execution.
-	if c.sel == nil {
-		if err := c.Prepare(t); err != nil {
-			return err
-		}
-	}
 	if t.Response.BodyErr != nil {
 		return ErrBadBody
 	}

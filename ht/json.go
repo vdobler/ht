@@ -64,12 +64,6 @@ var _ Preparable = &JSONExpr{}
 
 // Execute implements Check's Execute method.
 func (c *JSONExpr) Execute(t *Test) error {
-	// TODO: remove. checks can rely on beeing prepared
-	if c.tt == nil {
-		if err := c.Prepare(t); err != nil {
-			return MalformedCheck{err}
-		}
-	}
 	if t.Response.BodyErr != nil {
 		return ErrBadBody
 	}

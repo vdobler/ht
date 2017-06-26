@@ -27,11 +27,6 @@ type ResponseTime struct {
 // Execute implements Check's Execute method.
 // TODO: fix spelling of unfullfillable.
 func (c ResponseTime) Execute(t *Test) error {
-	// TODO: remove as checks may rely on beeing pre-prepared
-	if err := c.Prepare(t); err != nil {
-		return MalformedCheck{err}
-	}
-
 	actual := t.Response.Duration
 	if c.Lower > 0 && c.Lower < actual {
 		return fmt.Errorf("Response took %s (allowed max %s).",

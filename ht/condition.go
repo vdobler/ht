@@ -201,11 +201,6 @@ func (c Condition) Fulfilled(s string) error {
 		}
 	}
 
-	// TODO: remove. All tests may rely on being prepared prior to execution.
-	if c.Regexp != "" && c.re == nil {
-		c.re = regexp.MustCompile(c.Regexp)
-	}
-
 	if c.re != nil {
 		if c.Count == 0 && c.re.FindStringIndex(s) == nil {
 			return fmt.Errorf("Cannot find match for regexp %q", c.re.String())
