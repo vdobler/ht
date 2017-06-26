@@ -190,7 +190,7 @@ var (
 )
 
 // Prepare implements Check's Prepare method.
-func (c Cache) Prepare() error {
+func (c Cache) Prepare(*Test) error {
 	if c.NoStore && (c.NoCache || c.AtLeast != 0 || c.AtMost != 0) {
 		return errNoStoreNoCache
 	}
@@ -201,3 +201,5 @@ func (c Cache) Prepare() error {
 
 	return nil
 }
+
+var _ Preparable = Cache{}

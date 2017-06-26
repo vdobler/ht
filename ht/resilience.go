@@ -590,7 +590,7 @@ func parameterType(s string) paramT {
 }
 
 // Prepare implements Check's Prepare method.
-func (r Resilience) Prepare() error {
+func (r Resilience) Prepare(*Test) error {
 	_, err := parseModifications(r.ModParam)
 	if err != nil {
 		return fmt.Errorf("cannot parse ModParam: %s", err)
@@ -602,3 +602,5 @@ func (r Resilience) Prepare() error {
 	}
 	return nil
 }
+
+var _ Preparable = Resilience{}

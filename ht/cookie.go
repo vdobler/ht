@@ -137,7 +137,7 @@ func (c *SetCookie) checkType(cookie *http.Cookie) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (c *SetCookie) Prepare() error {
+func (c *SetCookie) Prepare(*Test) error {
 	if err := c.Value.Compile(); err != nil {
 		return err
 	}
@@ -169,6 +169,8 @@ func (c *SetCookie) Prepare() error {
 
 	return nil
 }
+
+var _ Preparable = &SetCookie{}
 
 // ----------------------------------------------------------------------------
 // DeleteCookie

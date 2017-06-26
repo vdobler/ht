@@ -42,9 +42,6 @@ func (c StatusCode) Execute(t *Test) error {
 	return nil
 }
 
-// Prepare implements Check's Prepare method.
-func (StatusCode) Prepare() error { return nil }
-
 // ----------------------------------------------------------------------------
 // NoServerError
 

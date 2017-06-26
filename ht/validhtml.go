@@ -162,10 +162,12 @@ func isURLAttr(tag, attr string) bool {
 }
 
 // Prepare implements Check's Prepare method.
-func (v ValidHTML) Prepare() error {
+func (v ValidHTML) Prepare(*Test) error {
 	_, err := ignoreMask(v.Ignore)
 	return err
 }
+
+var _ Preparable = ValidHTML{}
 
 // emptyHTMLElement is the list of all HTML5 elements which are empty, that
 // is they are implecitely self-closing and can be written either in

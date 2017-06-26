@@ -141,7 +141,7 @@ func (f *Logfile) newRemoteFileData() ([]byte, error) {
 }
 
 // Prepare implements Check's Prepare method.
-func (f *Logfile) Prepare() error {
+func (f *Logfile) Prepare(*Test) error {
 	if f.Remote.Host == "" {
 		return f.localFileSize()
 	}
@@ -171,6 +171,8 @@ func (f *Logfile) Prepare() error {
 
 	return f.remoteFileSize()
 }
+
+var _ Preparable = &Logfile{}
 
 func quoteShellFilename(n string) string {
 	return strings.Replace(n, "'", "\\'", -1) // better than nothing

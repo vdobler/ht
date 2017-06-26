@@ -46,7 +46,7 @@ type CustomJS struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (s *CustomJS) Prepare() error {
+func (s *CustomJS) Prepare(*Test) error {
 	// Reading the script with fileData is a hack as it accepts
 	// the @vfile syntax but cannot do the variable replacements
 	// as Prepare is called on the already 'replaced' checked.
@@ -63,6 +63,8 @@ func (s *CustomJS) Prepare() error {
 	s.script, err = s.vm.Compile(basename, script)
 	return err
 }
+
+var _ Preparable = &CustomJS{}
 
 // Execute implements Check's Execute method.
 func (s *CustomJS) Execute(t *Test) error {

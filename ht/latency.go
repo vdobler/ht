@@ -278,7 +278,7 @@ func quantile(x []int, p float64) float64 {
 }
 
 // Prepare implements Check's Prepare method.
-func (L *Latency) Prepare() error {
+func (L *Latency) Prepare(*Test) error {
 	if L.N == 0 {
 		L.N = 50
 	}
@@ -299,6 +299,8 @@ func (L *Latency) Prepare() error {
 
 	return nil
 }
+
+var _ Preparable = &Latency{}
 
 func (L *Latency) parseLimit() error {
 	parts := strings.Split(L.Limits, ";")

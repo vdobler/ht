@@ -30,15 +30,17 @@ type AnyOne struct {
 
 // Prepare implements Checks' Prepare method by forwarding to
 // the underlying checks.
-func (a AnyOne) Prepare() error {
+func (a AnyOne) Prepare(t *Test) error {
 	errs := ErrorList{}
 	for _, c := range a.Of {
 		if prep, ok := c.(Preparable); ok {
-			errs = errs.Append(prep.Prepare())
+			errs = errs.Append(prep.Prepare(t))
 		}
 	}
 	return errs.AsError()
 }
+
+var _ Preparable = AnyOne{}
 
 // Execute implements Check's Execute method. It executes the underlying checks
 // until the first passes. If all underlying checks fail the whole list of
@@ -72,15 +74,17 @@ type None struct {
 
 // Prepare implements Checks' Prepare method by forwarding to
 // the underlying checks.
-func (n None) Prepare() error {
+func (n None) Prepare(t *Test) error {
 	errs := ErrorList{}
 	for _, c := range n.Of {
 		if prep, ok := c.(Preparable); ok {
-			errs = errs.Append(prep.Prepare())
+			errs = errs.Append(prep.Prepare(t))
 		}
 	}
 	return errs.AsError()
 }
+
+var _ Preparable = None{}
 
 // Execute implements Check's Execute method. It executes the underlying checks
 // until the first passes. If all underlying checks fail the whole list of

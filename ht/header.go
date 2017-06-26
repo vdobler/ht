@@ -50,9 +50,11 @@ func (h Header) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (h *Header) Prepare() error {
+func (h *Header) Prepare(*Test) error {
 	return h.Condition.Compile()
 }
+
+var _ Preparable = &Header{}
 
 // ----------------------------------------------------------------------------
 // ContentType
@@ -122,9 +124,11 @@ func (f FinalURL) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (f *FinalURL) Prepare() error {
+func (f *FinalURL) Prepare(*Test) error {
 	return ((*Condition)(f)).Compile()
 }
+
+var _ Preparable = &FinalURL{}
 
 // ----------------------------------------------------------------------------
 // Redirect
@@ -201,7 +205,7 @@ func dotMatch(got, want string) bool {
 }
 
 // Prepare implements Check's Prepare method.
-func (r Redirect) Prepare() error {
+func (r Redirect) Prepare(*Test) error {
 	if r.To == "" {
 		return fmt.Errorf("To must not be empty")
 	}
@@ -211,6 +215,8 @@ func (r Redirect) Prepare() error {
 	}
 	return nil
 }
+
+var _ Preparable = Redirect{}
 
 // ----------------------------------------------------------------------------
 // RedirectChain
@@ -250,9 +256,11 @@ func (r RedirectChain) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (r RedirectChain) Prepare() error {
+func (r RedirectChain) Prepare(*Test) error {
 	if len(r.Via) == 0 {
 		return fmt.Errorf("Via must not be empty")
 	}
 	return nil
 }
+
+var _ Preparable = RedirectChain{}

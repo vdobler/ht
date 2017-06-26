@@ -51,7 +51,7 @@ func (x *XML) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (x *XML) Prepare() error {
+func (x *XML) Prepare(*Test) error {
 	p, err := xmlpath.Compile(x.Path)
 	if err != nil {
 		return err
@@ -60,3 +60,5 @@ func (x *XML) Prepare() error {
 	x.path = p
 	return nil
 }
+
+var _ Preparable = &XML{}

@@ -239,7 +239,7 @@ func TestHTMLLinksExtraction(t *testing.T) {
 	} {
 
 		check := Links{Which: tc.which}
-		err = check.Prepare()
+		err = check.Prepare(test)
 		if err != nil {
 			t.Fatalf("%d: unexpected error: %#v", i, err)
 		}
@@ -296,7 +296,7 @@ func TestHTMLLinkFiltering(t *testing.T) {
 			{Contains: "skip"},
 		},
 	}
-	err = check.Prepare()
+	err = check.Prepare(test)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
@@ -334,7 +334,7 @@ func TestHTMLLinksNone(t *testing.T) {
 	}
 
 	check := Links{Which: "-none-"}
-	err = check.Prepare()
+	err = check.Prepare(test)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
@@ -380,7 +380,7 @@ func testHTMLLinks(t *testing.T, urls []string, max time.Duration, conc int) (ca
 	}
 
 	check := Links{Which: "a img link script -none-", Concurrency: conc, MaxTime: max}
-	err = check.Prepare()
+	err = check.Prepare(test)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
@@ -530,7 +530,7 @@ func TestLinksMixedContent(t *testing.T) {
 		}
 
 		check := &Links{Which: "img a", FailMixedContent: tc.mixed}
-		err := check.Prepare()
+		err := check.Prepare(test)
 		if err != nil {
 			t.Fatalf("%d: unexpected error: %#v", i, err)
 		}

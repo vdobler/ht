@@ -66,7 +66,7 @@ func TestValidHTMLBroken(t *testing.T) {
 	for _, ignore := range []string{"", "doctype", "structure", "uniqueids", "lang", "attr", "escaping", "label", "url", "attresc"} {
 		t.Run("ignore="+ignore, func(t *testing.T) {
 			check := ValidHTML{Ignore: ignore}
-			err := check.Prepare()
+			err := check.Prepare(test)
 			if err != nil {
 				t.Fatalf("Unexpected error: %#v", err)
 			}
@@ -148,7 +148,7 @@ func TestValidHTMLOkay(t *testing.T) {
 	}
 
 	check := ValidHTML{}
-	err := check.Prepare()
+	err := check.Prepare(test)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
@@ -213,7 +213,7 @@ func TestURLEscaping(t *testing.T) {
 		}}
 
 		check := ValidHTML{}
-		err := check.Prepare()
+		err := check.Prepare(test)
 		if err != nil {
 			t.Fatalf("Unexpected error: %#v", err)
 		}

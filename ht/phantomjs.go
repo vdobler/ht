@@ -299,7 +299,7 @@ type Screenshot struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (s *Screenshot) Prepare() error {
+func (s *Screenshot) Prepare(*Test) error {
 	err := s.Browser.prepare()
 	if err != nil {
 		return err
@@ -325,6 +325,8 @@ func (s *Screenshot) Prepare() error {
 
 	return nil
 }
+
+var _ Preparable = &Screenshot{}
 
 type geometry struct {
 	Width, Height int
@@ -584,7 +586,7 @@ type RenderedHTML struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (r *RenderedHTML) Prepare() error {
+func (r *RenderedHTML) Prepare(t *Test) error {
 	err := r.Browser.prepare()
 	if err != nil {
 		return err
@@ -598,7 +600,7 @@ func (r *RenderedHTML) Prepare() error {
 	errs := ErrorList{}
 	for i, check := range r.Checks {
 		if prep, ok := check.(Preparable); ok {
-			err := prep.Prepare()
+			err := prep.Prepare(t)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("%d. %s: %s", i, NameOf(check), err))
 			}
@@ -607,6 +609,8 @@ func (r *RenderedHTML) Prepare() error {
 
 	return errs.AsError()
 }
+
+var _ Preparable = &RenderedHTML{}
 
 // Execute implements Check's Execute method.
 func (r *RenderedHTML) Execute(t *Test) error {
@@ -716,9 +720,11 @@ type RenderingTime struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (d *RenderingTime) Prepare() error {
+func (d *RenderingTime) Prepare(*Test) error {
 	return d.Browser.prepare()
 }
+
+var _ Preparable = &RenderingTime{}
 
 var phantomjsInvocationOverhead time.Duration
 var phantomjsOnce sync.Once

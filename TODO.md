@@ -4,45 +4,6 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
-*  Prepare on Check is not that useful any more:
-   The Prepare() method of type Check serves two purposes
-     1. Fail early if a check is bogus, e.g. if a regular expression is
-        malformed or if a combination of flags is non-sensical or if
-        necessary values are missing.
-     2. Do expensive setup work before test execution, e.g. compile
-        regular expressions.
-   Especially 2. is not that useful any more: Actual Tests and actual
-   checks are often created dynamicaly from RawTests and RawChecks as
-   read from disk during Suite execution or load testing: The Tests
-   are not reused but recreated (with a different set of variables).
-   For normal Test execution the overhead of compiling a regular expression
-   is probably very small so 2 does no longer justifiy as a requirement
-   for Check to have a Prepare method.
-   Bailing out early in case of problems typically cannot be done until
-   the set of Variables are known as the Test itself is constructed on
-   the fly from a RawTest. And we probably would like the Test request
-   to be executed, even if a Check was Bogus, so this bailing out early
-   is not really "out" in a hard sense anyway.
-   The current Prepare() method does not take the Test as an argument
-   which makes it impossible to detect miss-used checks, e.g. a Check
-   which is unsuitable on a HEAD request.
-
-   Probably the most sensible thing to do would be:
-     - Strip the Prepare Method from type Check
-     - Introduce a new type ValidatableCheck (or Preparer?) with 
-       a method  Validate(*Test) error which does the validation
-       work.
-   While experimenting with a Prepare-less Check type it turned out that it's
-   not that simple: At least one check (Logfile) relies on the fact that its
-   Prepare method was called before the actual HTTP request is made. The
-   Logfile check compares the logfile before to the logfile after the request.
-   So the method should not be named "Validate" but be kept to "Prepare".
-   So the refactoring path could look like
-     1. Make Prepare a method of Preparable
-     2. Call Prepare only on Preparables
-     3. Delete dummy Prepare Methods
-     4. Add Test as argument to Prepare
-     5. Refactor MalformedCheck Error handling. 
 
 *  Several types of Checks would be very sensible:
      o Content Efficiency 
@@ -159,3 +120,45 @@ Resolved TODOs
    Meta["uuid"] = "1234-5678-9876" to a test, etc.
 
    --> Test gained a metadata map. Seems to work
+
+*  Prepare on Check is not that useful any more:
+   The Prepare() method of type Check serves two purposes
+     1. Fail early if a check is bogus, e.g. if a regular expression is
+        malformed or if a combination of flags is non-sensical or if
+        necessary values are missing.
+     2. Do expensive setup work before test execution, e.g. compile
+        regular expressions.
+   Especially 2. is not that useful any more: Actual Tests and actual
+   checks are often created dynamicaly from RawTests and RawChecks as
+   read from disk during Suite execution or load testing: The Tests
+   are not reused but recreated (with a different set of variables).
+   For normal Test execution the overhead of compiling a regular expression
+   is probably very small so 2 does no longer justifiy as a requirement
+   for Check to have a Prepare method.
+   Bailing out early in case of problems typically cannot be done until
+   the set of Variables are known as the Test itself is constructed on
+   the fly from a RawTest. And we probably would like the Test request
+   to be executed, even if a Check was Bogus, so this bailing out early
+   is not really "out" in a hard sense anyway.
+   The current Prepare() method does not take the Test as an argument
+   which makes it impossible to detect miss-used checks, e.g. a Check
+   which is unsuitable on a HEAD request.
+
+   Probably the most sensible thing to do would be:
+     - Strip the Prepare Method from type Check
+     - Introduce a new type ValidatableCheck (or Preparer?) with 
+       a method  Validate(*Test) error which does the validation
+       work.
+   While experimenting with a Prepare-less Check type it turned out that it's
+   not that simple: At least one check (Logfile) relies on the fact that its
+   Prepare method was called before the actual HTTP request is made. The
+   Logfile check compares the logfile before to the logfile after the request.
+   So the method should not be named "Validate" but be kept to "Prepare".
+   So the refactoring path could look like
+     1. Make Prepare a method of Preparable
+     2. Call Prepare only on Preparables
+     3. Delete dummy Prepare Methods
+     4. Add Test as argument to Prepare
+     5. Refactor MalformedCheck Error handling. 
+
+  --> Implemented the 5 step plan.

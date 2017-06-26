@@ -62,9 +62,11 @@ func (b Body) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (b *Body) Prepare() error {
+func (b *Body) Prepare(*Test) error {
 	return ((*Condition)(b)).Compile()
 }
+
+var _ Preparable = &Body{}
 
 // ----------------------------------------------------------------------------
 // Sorted
@@ -123,7 +125,7 @@ func (s *Sorted) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (s *Sorted) Prepare() error {
+func (s *Sorted) Prepare(*Test) error {
 	if len(s.Text) < 2 {
 		return errors.New("Not enough values to check sortedness")
 	}
@@ -133,3 +135,5 @@ func (s *Sorted) Prepare() error {
 	}
 	return nil
 }
+
+var _ Preparable = &Sorted{}

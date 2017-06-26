@@ -95,7 +95,7 @@ func (i Image) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (i Image) Prepare() error {
+func (i Image) Prepare(*Test) error {
 	switch len(i.Fingerprint) {
 	case 0:
 		return nil
@@ -114,3 +114,5 @@ func (i Image) Prepare() error {
 	}
 	return nil
 }
+
+var _ Preparable = Image{}

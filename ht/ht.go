@@ -611,7 +611,7 @@ func (t *Test) PrepareChecks() error {
 	cel := ErrorList{}
 	for i := range t.Checks {
 		if prep, ok := t.Checks[i].(Preparable); ok {
-			e := prep.Prepare()
+			e := prep.Prepare(t)
 			if e != nil {
 				cel = append(cel, e)
 				t.errorf("preparing check %d %q: %s",

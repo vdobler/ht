@@ -27,7 +27,7 @@ type Check interface {
 type Preparable interface {
 	// Prepare is called to prepare the check, e.g. to compile
 	// regular expressions or that like.
-	Prepare() error
+	Prepare(*Test) error
 }
 
 // NameOf returns the name of the type of inst.

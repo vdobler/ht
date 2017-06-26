@@ -27,7 +27,8 @@ type ResponseTime struct {
 // Execute implements Check's Execute method.
 // TODO: fix spelling of unfullfillable.
 func (c ResponseTime) Execute(t *Test) error {
-	if err := c.Prepare(); err != nil {
+	// TODO: remove as checks may rely on beeing pre-prepared
+	if err := c.Prepare(t); err != nil {
 		return MalformedCheck{err}
 	}
 
@@ -44,9 +45,11 @@ func (c ResponseTime) Execute(t *Test) error {
 }
 
 // Prepare implements Preparable.Prepare.
-func (c ResponseTime) Prepare() error {
+func (c ResponseTime) Prepare(*Test) error {
 	if c.Higher != 0 && c.Lower != 0 && c.Higher >= c.Lower {
 		return fmt.Errorf("%d<RT<%d unfullfillable", c.Higher, c.Lower)
 	}
 	return nil
 }
+
+var _ Preparable = ResponseTime{}

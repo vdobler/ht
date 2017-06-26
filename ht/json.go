@@ -47,7 +47,7 @@ type JSONExpr struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (c *JSONExpr) Prepare() (err error) {
+func (c *JSONExpr) Prepare(*Test) (err error) {
 	if c.Expression == "" {
 		return fmt.Errorf("Expression must not be empty")
 	}
@@ -60,10 +60,13 @@ func (c *JSONExpr) Prepare() (err error) {
 	return err
 }
 
+var _ Preparable = &JSONExpr{}
+
 // Execute implements Check's Execute method.
 func (c *JSONExpr) Execute(t *Test) error {
+	// TODO: remove. checks can rely on beeing prepared
 	if c.tt == nil {
-		if err := c.Prepare(); err != nil {
+		if err := c.Prepare(t); err != nil {
 			return MalformedCheck{err}
 		}
 	}
@@ -169,7 +172,7 @@ type JSON struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (c *JSON) Prepare() error {
+func (c *JSON) Prepare(t *Test) error {
 	err := c.Compile()
 	if err != nil {
 		return err
@@ -181,10 +184,12 @@ func (c *JSON) Prepare() error {
 		}
 	}
 	if c.Embedded != nil {
-		return c.Embedded.Prepare()
+		return c.Embedded.Prepare(t)
 	}
 	return nil
 }
+
+var _ Preparable = &JSON{}
 
 func findJSONelement(data []byte, element, sep string) ([]byte, error) {
 	path := strings.Split(element, sep)

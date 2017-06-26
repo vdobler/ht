@@ -88,7 +88,7 @@ const ms = 1e6
 func runTest(t *testing.T, i int, tc TC) {
 	fakeTest := Test{Response: tc.r}
 	if prep, ok := tc.c.(Preparable); ok {
-		if err := prep.Prepare(); err != nil {
+		if err := prep.Prepare(&fakeTest); err != nil {
 			if tc.e != errDuringPrepare {
 				t.Errorf("%d. %s %+v: unexpected error during Prepare %v",
 					i, NameOf(tc.c), tc.c, err)

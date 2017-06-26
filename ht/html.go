@@ -160,7 +160,7 @@ type HTMLTag struct {
 func (c *HTMLTag) Execute(t *Test) error {
 	// TODO: remove. All checks may rely on being prepared befor execution.
 	if c.sel == nil {
-		if err := c.Prepare(); err != nil {
+		if err := c.Prepare(t); err != nil {
 			return err
 		}
 	}
@@ -191,7 +191,7 @@ func (c *HTMLTag) Execute(t *Test) error {
 }
 
 // Prepare implements Check's Prepare method.
-func (c *HTMLTag) Prepare() (err error) {
+func (c *HTMLTag) Prepare(*Test) (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
 		c.sel = nil
@@ -199,6 +199,8 @@ func (c *HTMLTag) Prepare() (err error) {
 	}
 	return nil
 }
+
+var _ Preparable = &HTMLTag{}
 
 // ----------------------------------------------------------------------------
 // HTMLContains
@@ -246,7 +248,7 @@ type HTMLContains struct {
 // Execute implements Check's Execute method.
 func (c *HTMLContains) Execute(t *Test) error {
 	if c.sel == nil {
-		if err := c.Prepare(); err != nil {
+		if err := c.Prepare(t); err != nil {
 			return err
 		}
 	}
@@ -296,7 +298,7 @@ func (c *HTMLContains) Execute(t *Test) error {
 var errTagNotFound = fmt.Errorf("tag not found")
 
 // Prepare implements Check's Prepare method.
-func (c *HTMLContains) Prepare() (err error) {
+func (c *HTMLContains) Prepare(*Test) (err error) {
 	c.sel, err = cascadia.Compile(c.Selector)
 	if err != nil {
 		c.sel = nil
@@ -304,6 +306,8 @@ func (c *HTMLContains) Prepare() (err error) {
 	}
 	return nil
 }
+
+var _ Preparable = &HTMLContains{}
 
 // TextContent returns the full text content of n. With raw processing the
 // unprocessed content is returned. If raw==false then whitespace is
@@ -620,7 +624,7 @@ var linkURLattr = map[string]struct {
 }
 
 // Prepare implements Check's Prepare method.
-func (c *Links) Prepare() (err error) {
+func (c *Links) Prepare(*Test) (err error) {
 	c.tags = nil
 	which := strings.TrimSpace(c.Which)
 	if which == "" {
@@ -641,3 +645,5 @@ func (c *Links) Prepare() (err error) {
 	sort.Strings(c.tags) // Move a (if present) to front.
 	return nil
 }
+
+var _ Preparable = &Links{}

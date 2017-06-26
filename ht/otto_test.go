@@ -103,7 +103,7 @@ func TestCustomJS(t *testing.T) {
 
 	for i, tc := range customJSTests {
 		custom := &CustomJS{Script: tc.script}
-		err := custom.Prepare()
+		err := custom.Prepare(test)
 		if err != nil {
 			t.Errorf("%d. Unexpected error during Prepare: %s", i, err)
 			continue
