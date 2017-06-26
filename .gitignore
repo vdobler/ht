@@ -12,7 +12,7 @@ cmd/ht/ht_darwin
 cmd/ht/ht_windows.exe
 cmd/ht/Documentation.*
 *.bined.jpg
-2016_*
+2017_*
 ht/testdata/logfile
 cmd/ht/testdata/*.ht
 cmd/ht/testdata/*.suite
