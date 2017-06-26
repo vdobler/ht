@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
+	"strings"
 
 	"github.com/vdobler/ht/populate"
 )
@@ -139,7 +141,7 @@ func (cl *CheckList) Populate(src interface{}) error {
 
 	err := populate.Lax(&types, src)
 	if err != nil {
-		return fmt.Errorf("cannot determine type of check: %s", err)
+		return fmt.Errorf("ht: cannot determine type of check: %s", err)
 	}
 
 	raw := make([]map[string]interface{}, len(types))
@@ -162,7 +164,7 @@ func (cl *CheckList) Populate(src interface{}) error {
 		checkName := t.Check
 		typ, ok := CheckRegistry[checkName]
 		if !ok {
-			return fmt.Errorf("no such check %s", checkName)
+			return noSuchCheckError(checkName)
 		}
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
@@ -170,11 +172,119 @@ func (cl *CheckList) Populate(src interface{}) error {
 		rcheck := reflect.New(typ)
 		err = populate.Strict(rcheck.Interface(), raw[i])
 		if err != nil {
-			return fmt.Errorf("problems constructing check %d %s: %s",
+			return fmt.Errorf("ht: problems constructing check %d %s: %s",
 				i+1, checkName, err)
 		}
 		list[i] = rcheck.Interface().(Check)
 	}
 	*cl = list
 	return nil
+}
+
+// ----------------------------------------------------------------------------
+// Handling misspelled checks
+
+func noSuchCheckError(name string) error {
+	checkNames := make([]string, 0, len(CheckRegistry))
+	for cn := range CheckRegistry {
+		checkNames = append(checkNames, cn)
+	}
+	if suggestions := possibleNames(name, checkNames); len(suggestions) > 0 {
+		return fmt.Errorf("ht: no such check %s (did you mean %s?)", name,
+			strings.Join(suggestions, ", "))
+	}
+	return fmt.Errorf("ht: no such check %s", name)
+}
+
+// possibleNames returns a list of actual existing names from valid which
+// are similiar to orig. "Similiar" in the sense of
+// https://en.wikipedia.org/wiki/Damerau–Levenshtein_distance of the
+// upper cased names beeing at most 2.
+// 3 Seems large but the check names are pretty different.
+func possibleNames(orig string, valid []string) []string {
+	ORIG := strings.ToUpper(orig)
+	suggestions := []string{}
+	for _, name := range valid {
+		NAME := strings.ToUpper(name)
+		if damerauLevenshtein(NAME, ORIG) <= 2 {
+			suggestions = append(suggestions, name)
+		}
+	}
+	sort.Strings(suggestions)
+
+	return suggestions
+}
+
+// https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance#Distance_with_adjacent_transpositions
+func damerauLevenshtein(s1, s2 string) int {
+	a, b := []rune(s1), []rune(s2)
+	maxdist := len(a) + len(b)
+
+	// DL("", x) == DL(x, "") == len(x)
+	if len(a) == 0 {
+		return len(b)
+	} else if len(b) == 0 {
+		return len(a)
+	}
+
+	d := make([][]int, len(a)+2)
+	for i := range d {
+		d[i] = make([]int, len(b)+2)
+	}
+	seen := make(map[rune]int)
+
+	d[0][0] = maxdist
+	for i := 0; i <= len(a); i++ {
+		d[i+1][0] = maxdist
+		d[i+1][1] = i
+	}
+	for j := 0; j <= len(b); j++ {
+		d[0][j+1] = maxdist
+		d[1][j+1] = j
+	}
+
+	for i := 1; i <= len(a); i++ {
+		db := 0
+		for j := 1; j <= len(b); j++ {
+			k := seen[b[j-1]]
+			ℓ := db
+			cost := 0
+			if a[i-1] == b[j-1] {
+				db = j
+			} else {
+				cost = 1
+			}
+			d[i+1][j+1] = min4(
+				d[i][j]+cost,              // substitution
+				d[i+1][j]+1,               // insertion
+				d[i][j+1]+1,               // deletion
+				d[k][ℓ]+(i-k-1)+1+(j-ℓ-1), // transposition
+			)
+			seen[a[i-1]] = i
+		}
+	}
+
+	return d[len(a)+1][len(b)+1]
+}
+
+func min3(a, b, c int) int {
+	if a < b {
+		if c < a {
+			return c
+		}
+		return a
+	}
+
+	// b < a   (or equal)
+	if c < b {
+		return c
+	}
+	return b
+}
+
+func min4(a, b, c, d int) int {
+	if a < b {
+		return min3(a, c, d)
+	}
+	return min3(b, c, d)
 }

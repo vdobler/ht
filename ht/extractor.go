@@ -140,7 +140,7 @@ func (em *ExtractorMap) Populate(src interface{}) error {
 		exName := ex.Extractor
 		typ, ok := ExtractorRegistry[exName]
 		if !ok {
-			return fmt.Errorf("ht: no such extractor %s", exName)
+			return noSuchExtractorError(exName)
 		}
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
@@ -155,6 +155,18 @@ func (em *ExtractorMap) Populate(src interface{}) error {
 	}
 	*em = exes
 	return nil
+}
+
+func noSuchExtractorError(name string) error {
+	exNames := make([]string, 0, len(ExtractorRegistry))
+	for en := range ExtractorRegistry {
+		exNames = append(exNames, en)
+	}
+	if suggestions := possibleNames(name, exNames); len(suggestions) > 0 {
+		return fmt.Errorf("ht: no such extractor %s (did you mean %s?)", name,
+			strings.Join(suggestions, ", "))
+	}
+	return fmt.Errorf("ht: no such extractor %s", name)
 }
 
 // ----------------------------------------------------------------------------

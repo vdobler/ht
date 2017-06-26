@@ -7,6 +7,7 @@ package ht
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -112,6 +113,32 @@ func runTest(t *testing.T, i int, tc TC) {
 		if tc.e.Error() != got.Error() {
 			t.Errorf("%d. %s %+v:\n\tgot  %q  (of type %T)\n\twant %q  (of tyoe %T)",
 				i, NameOf(tc.c), tc.c, got, got, tc.e, tc.e)
+		}
+	}
+}
+
+func TestPossibleCheckNames(t *testing.T) {
+	valid := strings.Split("AnyOne Body Cache ContentType CustomJS "+
+		"DeleteCookie ETag FinalURL HTMLContains HTMLTag Header "+
+		"Identity Image JSON JSONExpr Latency Links Logfile "+
+		"NoServerError None Redirect RedirectChain RenderedHTML "+
+		"RenderingTime Resilience ResponseTime Screenshot SetCookie "+
+		"Sorted StatusCode UTF8Encoded ValidHTML W3CValidHTML XML", " ")
+
+	for _, tc := range []struct {
+		name, want string
+	}{
+		{"JSONEx", "JSON, JSONExpr"},
+		{"StatusCod", "StatusCode"},
+		{"Statuscode", "StatusCode"},
+		{"statscode", "StatusCode"},
+		{"HTML", "XML"},
+		{"Grblfmpf", ""},
+	} {
+		got := strings.Join(possibleNames(tc.name, valid), ", ")
+		if got != tc.want {
+			t.Errorf("possibleCheckNames(%q) = %q, want %q",
+				tc.name, got, tc.want)
 		}
 	}
 }
