@@ -86,7 +86,7 @@ func TestBinColor(t *testing.T) {
 		bined := image.NewRGBA(bounds)
 		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				bin := colorBin(img.At(x, y))
+				bin := colorBin(img.At(x, y), true)
 				if bin < 0 {
 					c = color.RGBA{0, 0, 0, 0}
 				} else {
@@ -300,4 +300,18 @@ func TestColorImageSpecial(t *testing.T) {
 	}
 
 	ch.Image(64, 64)
+}
+
+func TestColorHistTransparent(t *testing.T) {
+	transparentGreen := color.RGBA{0, 0xff, 0, 0}
+	transparent := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	for x := 0; x < 16; x++ {
+		for y := 0; y < 16; y++ {
+			transparent.SetRGBA(x, y, transparentGreen)
+		}
+	}
+	ch := NewColorHist(transparent)
+	if got := ch.String(); got != "0000000000000Z0000000000" {
+		t.Errorf("not green: %s", got)
+	}
 }

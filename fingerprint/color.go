@@ -43,20 +43,28 @@ func NewColorHist(img image.Image) ColorHist {
 
 	hist := [24]int{}
 	max := 0
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			bin := colorBin(img.At(x, y))
-			if bin < 0 {
-				continue
-			}
-			hist[bin]++
-			if hist[bin] > max {
-				max = hist[bin]
+	fillHist := func(ignoreTransparent bool) {
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			for x := bounds.Min.X; x < bounds.Max.X; x++ {
+				bin := colorBin(img.At(x, y), ignoreTransparent)
+				if bin < 0 {
+					continue
+				}
+				hist[bin]++
+				if hist[bin] > max {
+					max = hist[bin]
+				}
 			}
 		}
 	}
+	fillHist(true)
 
 	ch := ColorHist{}
+	if max == 0 {
+		// This image was "totaly transparent". Redo without
+		// ignoring transparent pixels.
+		fillHist(false)
+	}
 	for bin := 0; bin < 24; bin++ {
 		ch[bin] = byte(hist[bin] * 255 / max)
 	}
@@ -70,9 +78,9 @@ func NewColorHist(img image.Image) ColorHist {
 // https://www.compuphase.com/cmetric.htm which seems to be a
 // sensible and fast approximation. Given that we just have to choose
 // a color from a 24-color palette this seems really good enough.
-func colorBin(c color.Color) int {
+func colorBin(c color.Color, ignoreTransparent bool) int {
 	rr, gg, bb, aa := c.RGBA()
-	if int(aa>>8) < 64 {
+	if ignoreTransparent && int(aa>>8) < 64 {
 		return -1 // more than 75% transparency --> don't include in histogram
 	}
 	r := int(rr >> 8)
