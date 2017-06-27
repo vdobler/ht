@@ -484,9 +484,6 @@ func (t *Test) AsJSON() ([]byte, error) {
 // the checks are performed on the received response. This whole process
 // is repeated on failure or skipped entirely according to t.Execution.
 //
-// The given variables are subsituted into the relevant parts of the request
-// and the checks.
-//
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
@@ -701,7 +698,6 @@ func (t *Test) prepareRequest() error {
 		t.client = &http.Client{
 			Transport:     Transport,
 			CheckRedirect: cr,
-			Jar:           nil,
 			Timeout:       t.Request.Timeout,
 		}
 	} else {
@@ -812,7 +808,7 @@ func (t *Test) newRequest() (contentType string, err error) {
 }
 
 // FileData allows to reading file data to be used as the value for s.
-// Handled cases if s is of the form:
+// Handled cases of s are:
 //    @file:/path/to/thefile
 //               read in /path/to/thefile and use its content as s
 //               basename is thefile

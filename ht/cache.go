@@ -33,8 +33,9 @@ var (
 	errETagIgnored   = errors.New("ETag not honoured")
 )
 
-// ETag checks presence of a (stron) ETag header and that a subsequent request with a
-// If-None-Match header results in a 304 Not Modified response.
+// ETag checks for the presence of a (strong) ETag header and that a
+// subsequent request with a If-None-Match header results in a
+// 304 Not Modified response.
 type ETag struct{}
 
 // Execute implements Check's Execute method.

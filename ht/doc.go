@@ -8,8 +8,7 @@
 // performing various checks on the returned response. The type Test captures
 // this idea. Each Test may contain an arbitrary list of Checks which
 // perform the actual validation work. Tests can be grouped into Suites
-// which may provide a common cookie jar for their tests and may execute setup
-// and teardown actions.
+// which may provide a common cookie jar for their tests
 //
 // All elements like Checks, Request, Tests and Suites are organized in
 // a way to allow easy deserialisation from a text format. This allows to load
@@ -31,9 +30,11 @@
 // The following checks are provided
 //     * AnyOne          logical OR of several tests
 //     * Body            text in the response body
+//     * Cache           Cache-Control header
 //     * ContentType     Content-Type header
 //     * CustomJS        performed by your own JavaScript code
 //     * DeleteCookie    for proper deletion of cookies
+//     * ETag            presence of working ETag header
 //     * FinalURL        final URL after a redirect chain
 //     * Header          presence and values of received HTTP header
 //     * HTMLContains    text content of CSS-selected elements
@@ -84,5 +85,8 @@
 //   1. The test setup is malformed, such tests are called Bogus.
 //   2. The request itself fails, e.g. due to a timeout. This is called an Error.
 //   3. Any of the checks fail. This is called a Failure.
+// The other status of a Test are NotRun for a not jet executed test, Skipped
+// for a deliberately skipped test and Pass for a test passing all checks.
+//
 //
 package ht
