@@ -32,19 +32,11 @@ func init() {
 	RegisterCheck(&RenderingTime{})
 }
 
-// PhantomJSExecutable is command to run PhantomJS. Use an absolute path if
-// phantomjs is not on your PATH or you whish to use a special version.
-var PhantomJSExecutable = "phantomjs"
-
 // DefaultGeometry is the default screen size, viewport and zoom used in
 // browser based test if no geometry is explicitly set.
 // Its value represents a unscrolled (+0+=), desktop browser (1280x720)
 // at 100% zoom.
 var DefaultGeometry = "1280x720+0+0*100"
-
-// TODO: PhantomJS is something external which might not be available
-// Check via sync.Once and report PhantomJS based tests as bogus if not
-// available.
 
 const debugScreenshot = false
 const debugRenderedHTML = false
@@ -812,6 +804,13 @@ func calibratePhantomjsOverhead() {
 
 	os.Remove(name)
 }
+
+// ----------------------------------------------------------------------------
+// PhantomJS executable in proper version
+
+// PhantomJSExecutable is the command to run PhantomJS. Use an absolute path
+// if phantomjs is not on your PATH or you whish to use a special version.
+var PhantomJSExecutable = "phantomjs"
 
 var havePhantomJSOnce sync.Once // fills bool below once
 var havePhantomJS = false
