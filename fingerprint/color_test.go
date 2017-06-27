@@ -25,22 +25,22 @@ var stringTests = []struct {
 }{
 	{
 		ColorHist{255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		"z00000000000000000000000",
+		"Z00000000000000000000000",
 	},
 	{
 		ColorHist{0, 5, 6, 11, 12, 18, 19, 25, 26, 32, 33, 0, 255, 248,
 			247, 239, 238, 230, 229, 221, 220, 0, 102, 103},
-		"011223344550zyyxxwwvv0ff",
+		"022335577990ZXXVVTTRR0pq",
 	},
 	{
 		ColorHist{0, 11, 22, 33, 44, 56, 67, 78, 89, 100, 111, 122,
 			134, 145, 146, 167, 178, 189, 200, 211, 223, 234, 245, 255},
-		"023579acdfgiklloprsuvxyz",
+		"0369behjmpsux++EHJMPRUXZ",
 	},
 	{
 		ColorHist{0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44,
 			134, 145, 146, 167, 178, 189, 200, 211, 223, 234, 245, 255},
-		"001223445667klloprsuvxyz",
+		"012356789-abx++EHJMPRUXZ",
 	},
 }
 
@@ -125,9 +125,9 @@ func TestUniformColorHist(t *testing.T) {
 	gh := NewColorHist(green)
 	bh := NewColorHist(blue)
 
-	if rh.String() != "00000000000000z000000000" ||
-		gh.String() != "0000000000000z0000000000" ||
-		bh.String() != "000000000000z0000000000z" {
+	if rh.String() != "00000000000000Z000000000" ||
+		gh.String() != "0000000000000Z0000000000" ||
+		bh.String() != "000000000000Z0000000000Z" {
 		t.Fatalf("Got rh=%s gh=%s bh=%s", rh.String(), gh.String(), bh.String())
 	}
 

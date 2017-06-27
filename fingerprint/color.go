@@ -11,7 +11,7 @@ import (
 	"image/color"
 	"math"
 	"sort"
-	"strconv"
+	"strings"
 )
 
 // ----------------------------------------------------------------------------
@@ -29,10 +29,13 @@ type ColorHist [24]byte
 // gamma is the exponent used to rescale the histogram before en- and
 // decoding to a string. The value encoded is (original/265)^gamma
 // which prevents dropping colors used sparingly.
-const gamma = 0.9
+const gamma = 0.95
 
-// base of number system used to (de)serialize a ColorHist (from)to string
-const base = 36
+// digits are the digits used to encode in base 64 such that the
+// digit "0" encodes 0 and "Z" encodes 63 and all digits are harmless
+// printable charaters.
+const digits = "0123456789-abcdefghijklmnopqrstu" +
+	"vwxyz+ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // NewColorHist computest the color histogram of img.
 func NewColorHist(img image.Image) ColorHist {
@@ -193,16 +196,17 @@ func (h ColorHist) l1Norm(g ColorHist) float64 {
 // String produces a string representation by renormalizing the histogram
 // to 36 so that it can be encoded in 24  base-36 digits.
 func (h ColorHist) String() string {
-	buf := make([]byte, 0, 24)
-	for _, n := range h {
-		x := base * math.Pow(float64(n)/256, gamma)
-		v := int64(x)
+	buf := make([]byte, 24)
+	for i, n := range h {
+		x := math.Floor(0.5 + 63*math.Pow(float64(n)/255, gamma))
+		v := int(x)
+		// fmt.Println(n, x, v)
 		if v < 0 {
-			v = 0
-		} else if v > base {
-			v = base
+			panic(v)
+		} else if v >= 64 {
+			panic(v)
 		}
-		buf = strconv.AppendInt(buf, v, base)
+		buf[i] = digits[v]
 	}
 	return string(buf)
 }
@@ -220,17 +224,19 @@ func ColorHistFromString(s string) (ColorHist, error) {
 			continue
 		}
 
-		a, err := strconv.ParseUint(s[i:i+1], base, 64)
-		if err != nil {
-			return ch, err
+		digit := strings.Index(digits, s[i:i+1])
+		if digit < 0 {
+			return ColorHist{}, fmt.Errorf("fingerprint: bad character %q in color histogram string %q", s[i:i+1], s)
 		}
-		x := float64(a) + 0.5
-		n := 256 * math.Pow(x/base, 1/gamma)
+
+		x := float64(digit) + 0.5
+		n := 255 * math.Pow(x/63, 1/gamma)
 		m := int(n)
+		// fmt.Println(digit, x, n, m)
 		if m > 255 {
 			m = 255
 		} else if m < 0 {
-			m = 0
+			panic(m)
 		}
 		ch[i] = byte(m)
 	}
