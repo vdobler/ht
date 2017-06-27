@@ -10,6 +10,7 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"math"
 	"os"
 	"testing"
 )
@@ -77,6 +78,7 @@ func readImage(fn string) image.Image {
 }
 
 func TestBinColor(t *testing.T) {
+	var c color.RGBA
 	for _, file := range testfiles {
 		img := readImage("testdata/" + file)
 		bounds := img.Bounds()
@@ -84,8 +86,16 @@ func TestBinColor(t *testing.T) {
 		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 			for x := bounds.Min.X; x < bounds.Max.X; x++ {
 				bin := colorBin(img.At(x, y))
-				mb := macbeth[bin]
-				c := color.RGBA{uint8(mb[0]), uint8(mb[1]), uint8(mb[2]), 0xff}
+				if bin < 0 {
+					c = color.RGBA{0, 0, 0, 0}
+				} else {
+					mb := macbeth[bin]
+					c = color.RGBA{
+						uint8(mb[0]),
+						uint8(mb[1]),
+						uint8(mb[2]),
+						0xff}
+				}
 				bined.SetRGBA(x, y, c)
 			}
 		}
@@ -117,8 +127,12 @@ func TestUniformColorHist(t *testing.T) {
 	}
 	blue := image.NewRGBA(image.Rect(0, 0, 100, 100))
 	for x := 0; x < 100; x++ {
-		for y := 0; y < 50; y++ { // Only half filled!
-			blue.SetRGBA(x, y, color.RGBA{0, 0, 0xff, 0xff})
+		for y := 0; y < 100; y++ {
+			if y < 50 {
+				blue.SetRGBA(x, y, color.RGBA{0, 0, 0xff, 0xff})
+			} else {
+				blue.SetRGBA(x, y, color.RGBA{0, 0, 0xff, 0x10})
+			}
 		}
 	}
 	rh := NewColorHist(red)
@@ -127,23 +141,50 @@ func TestUniformColorHist(t *testing.T) {
 
 	if rh.String() != "00000000000000Z000000000" ||
 		gh.String() != "0000000000000Z0000000000" ||
-		bh.String() != "000000000000Z0000000000Z" {
+		bh.String() != "000000000000Z00000000000" {
 		t.Fatalf("Got rh=%s gh=%s bh=%s", rh.String(), gh.String(), bh.String())
 	}
 
-	rb, rg, bg := rh.l1Norm(bh), rh.l1Norm(gh), bh.l1Norm(gh)
-
+	rg := rh.l1Norm(gh)
 	// Two bins out of 24 differ completely
 	if rg < 2.0/24-1e-6 || rg > 2.0/24+1e-6 {
 		t.Errorf("Got %.6f, want 2/24=0.0833", rg)
 	}
+}
 
-	// One bin differs completely (f vs 0), two differ half (scaling!) (0 vs f/2)
-	if rb < 2.0/24-1e-6 || rb > 2.0/24+1e-6 {
-		t.Errorf("Got %.6f, want 2/24=0.0833", rb)
+func TestL1Norm(t *testing.T) {
+	ref, err := ColorHistFromString("0000000000000ZZ000000000")
+	if err != nil {
+		t.Fatalf("Unexpected error %s", err)
 	}
-	if bg < 2.0/24-1e-6 || bg > 2.0/24+1e-6 {
-		t.Errorf("Got %.6f, want 2/24=0.0833", bg)
+
+	for i, tc := range []struct {
+		in   string
+		want float64
+	}{
+		{"0000000000000ZZ000000000", 0.0 / 24},
+		{"00000000000000Z000000000", 1.0 / 24},
+		{"Z00000000000000000000000", 2.0 / 24},
+		{"Z0000000000000000000000Z", 4.0 / 24},
+		{"v000000000000Z000000000v", 2.0 / 24},
+	} {
+
+		ch, err := ColorHistFromString(tc.in)
+		if err != nil {
+			t.Fatalf("%d %q: Unexpected error %s", i, tc.in, err)
+			continue
+		}
+
+		diff := ref.l1Norm(ch)
+		ffid := ch.l1Norm(ref)
+		if diff != ffid {
+			t.Errorf("%d %q: l1 norm not symetric %f != %f",
+				i, tc.in, diff, ffid)
+		}
+		if math.Abs(diff-tc.want) > 5e-4 {
+			t.Errorf("%d %q: Got %.6f, want %.6f",
+				i, tc.in, diff, tc.want)
+		}
 	}
 }
 

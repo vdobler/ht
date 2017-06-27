@@ -46,6 +46,9 @@ func NewColorHist(img image.Image) ColorHist {
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			bin := colorBin(img.At(x, y))
+			if bin < 0 {
+				continue
+			}
 			hist[bin]++
 			if hist[bin] > max {
 				max = hist[bin]
@@ -61,19 +64,29 @@ func NewColorHist(img image.Image) ColorHist {
 	return ch
 }
 
-// colorBin returns the index of the nearest color in macbeth.
-// Using an euclidean distance in RGB space because I have not the slightest
-// understanding of color spaces and/or color perception.
+// colorBin returns the index of the nearest color in macbeth or -1 if the
+// input color is too transparent.
+// It uses a weighted metric in RGB space from
+// https://www.compuphase.com/cmetric.htm which seems to be a
+// sensible and fast approximation. Given that we just have to choose
+// a color from a 24-color palette this seems really good enough.
 func colorBin(c color.Color) int {
-	rr, gg, bb, _ := c.RGBA()
+	rr, gg, bb, aa := c.RGBA()
+	if int(aa>>8) < 64 {
+		return -1 // more than 75% transparency --> don't include in histogram
+	}
 	r := int(rr >> 8)
 	g := int(gg >> 8)
 	b := int(bb >> 8)
 
-	min, bin := 200000, -1 // 200000 > 196608 = 3 * 256²
+	min, bin := math.Inf(1), -1
 	for i, mb := range macbeth {
-		rd, gd, bd := r-mb[0], g-mb[1], b-mb[2]
-		d := rd*rd + gd*gd + bd*bd
+		rr := float64(r+mb[0]) / 2
+		dr, dg, db := float64(r-mb[0]), float64(g-mb[1]), float64(b-mb[2])
+		fr := 2 + rr/256
+		fg := 4.0
+		fb := 2 + (255-rr)/256
+		d := math.Sqrt(fr*dr*dr + fg*dg*dg + fb*db*db)
 		if d < min {
 			min, bin = d, i
 		}
