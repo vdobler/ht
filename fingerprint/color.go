@@ -22,8 +22,8 @@ import (
 // Springer-Verlag Berlin Heidelberg 2006
 // http://poseidon.csd.auth.gr/papers/PUBLISHED/CONFERENCE/pdf/Gavrielides06a.pdf
 
-// ColorHist is a normalized color histogram based on the
-// colors from the Greta Mecbeth Color Picker.
+// ColorHist is a normalized (i.e. the dominant color is represented as 255)
+// color histogram based on the colors from the Greta Mecbeth Color Picker.
 type ColorHist [24]byte
 
 // gamma is the exponent used to rescale the histogram before en- and
@@ -31,22 +31,55 @@ type ColorHist [24]byte
 // which prevents dropping colors used sparingly.
 const gamma = 0.9
 
-// String produces a string representation by renormalizing the histogram
-// to 16 so that it can be encoded in 24 hex digits.
-func (h ColorHist) String() string {
-	buf := make([]byte, 0, 24)
-	for _, n := range h {
-		x := 32 * math.Pow(float64(n)/256, gamma)
-		v := int64(x)
-		if v < 0 {
-			v = 0
-		} else if v > 32 {
-			v = 32
+// base of number system used to (de)serialize a ColorHist (from)to string
+const base = 36
+
+// NewColorHist computest the color histogram of img.
+func NewColorHist(img image.Image) ColorHist {
+	bounds := img.Bounds()
+
+	hist := [24]int{}
+	max := 0
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			bin := colorBin(img.At(x, y))
+			hist[bin]++
+			if hist[bin] > max {
+				max = hist[bin]
+			}
 		}
-		buf = strconv.AppendInt(buf, v, 32)
 	}
-	return string(buf)
+
+	ch := ColorHist{}
+	for bin := 0; bin < 24; bin++ {
+		ch[bin] = byte(hist[bin] * 255 / max)
+	}
+
+	return ch
 }
+
+// colorBin returns the index of the nearest color in macbeth.
+// Using an euclidean distance in RGB space because I have not the slightest
+// understanding of color spaces and/or color perception.
+func colorBin(c color.Color) int {
+	rr, gg, bb, _ := c.RGBA()
+	r := int(rr >> 8)
+	g := int(gg >> 8)
+	b := int(bb >> 8)
+
+	min, bin := 200000, -1 // 200000 > 196608 = 3 * 256²
+	for i, mb := range macbeth {
+		rd, gd, bd := r-mb[0], g-mb[1], b-mb[2]
+		d := rd*rd + gd*gd + bd*bd
+		if d < min {
+			min, bin = d, i
+		}
+	}
+	return bin
+}
+
+// ----------------------------------------------------------------------------
+// "Reconstruction" of an image from a Color Histogram
 
 // Image reconstructs the original image from the color histogram.
 func (h ColorHist) Image(width, height int) *image.RGBA {
@@ -154,7 +187,27 @@ func (h ColorHist) l1Norm(g ColorHist) float64 {
 	return sum / (24 * rg * rh)
 }
 
-// ColorHistFromString converts 24 hex digits to a ColorHist.
+// ----------------------------------------------------------------------------
+// Color Histogram from and to string representation
+
+// String produces a string representation by renormalizing the histogram
+// to 36 so that it can be encoded in 24  base-36 digits.
+func (h ColorHist) String() string {
+	buf := make([]byte, 0, 24)
+	for _, n := range h {
+		x := base * math.Pow(float64(n)/256, gamma)
+		v := int64(x)
+		if v < 0 {
+			v = 0
+		} else if v > base {
+			v = base
+		}
+		buf = strconv.AppendInt(buf, v, base)
+	}
+	return string(buf)
+}
+
+// ColorHistFromString converts 24 base36-digits to a ColorHist.
 func ColorHistFromString(s string) (ColorHist, error) {
 	ch := ColorHist{}
 	if len(s) != 24 {
@@ -167,12 +220,12 @@ func ColorHistFromString(s string) (ColorHist, error) {
 			continue
 		}
 
-		a, err := strconv.ParseUint(s[i:i+1], 32, 64)
+		a, err := strconv.ParseUint(s[i:i+1], base, 64)
 		if err != nil {
 			return ch, err
 		}
 		x := float64(a) + 0.5
-		n := 256 * math.Pow(x/32, 1/gamma)
+		n := 256 * math.Pow(x/base, 1/gamma)
 		m := int(n)
 		if m > 255 {
 			m = 255
@@ -184,50 +237,6 @@ func ColorHistFromString(s string) (ColorHist, error) {
 
 	return ch, nil
 
-}
-
-// NewColorHist computest the color histogram of img.
-func NewColorHist(img image.Image) ColorHist {
-	bounds := img.Bounds()
-
-	hist := [24]int{}
-	max := 0
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			bin := colorBin(img.At(x, y))
-			hist[bin]++
-			if hist[bin] > max {
-				max = hist[bin]
-			}
-		}
-	}
-
-	ch := ColorHist{}
-	for bin := 0; bin < 24; bin++ {
-		ch[bin] = byte(hist[bin] * 255 / max)
-	}
-
-	return ch
-}
-
-// colorBin returns the index of the nearest color in macbeth.
-// Using an euclidean distance in RGB space because I have not the slightest
-// understanding of color spaces and/or color perception.
-func colorBin(c color.Color) int {
-	rr, gg, bb, _ := c.RGBA()
-	r := int(rr >> 8)
-	g := int(gg >> 8)
-	b := int(bb >> 8)
-
-	min, bin := 200000, -1 // 200000 > 196608 = 3 * 256²
-	for i, mb := range macbeth {
-		rd, gd, bd := r-mb[0], g-mb[1], b-mb[2]
-		d := rd*rd + gd*gd + bd*bd
-		if d < min {
-			min, bin = d, i
-		}
-	}
-	return bin
 }
 
 // The 24 Macbeth colors from the ColorChecker as 8bit RGB values, taken from

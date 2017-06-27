@@ -19,31 +19,45 @@ var testfiles = []string{
 	"baboon.jpg", "pepper.jpg", "logo.png",
 }
 
+var stringTests = []struct {
+	ch   ColorHist
+	want string
+}{
+	{
+		ColorHist{255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		"z00000000000000000000000",
+	},
+	{
+		ColorHist{0, 5, 6, 11, 12, 18, 19, 25, 26, 32, 33, 0, 255, 248,
+			247, 239, 238, 230, 229, 221, 220, 0, 102, 103},
+		"011223344550zyyxxwwvv0ff",
+	},
+	{
+		ColorHist{0, 11, 22, 33, 44, 56, 67, 78, 89, 100, 111, 122,
+			134, 145, 146, 167, 178, 189, 200, 211, 223, 234, 245, 255},
+		"023579acdfgiklloprsuvxyz",
+	},
+	{
+		ColorHist{0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44,
+			134, 145, 146, 167, 178, 189, 200, 211, 223, 234, 245, 255},
+		"001223445667klloprsuvxyz",
+	},
+}
+
 func TestString(t *testing.T) {
-	ch := ColorHist{0, 5, // 0 0
-		6, 11, // 1 1
-		12, 18, // 2 2
-		19, 25, // 3 3
-		26, 32, // 4 4
-		33, 0, // 5 0
-		255, 248, // v v  step 7
-		247, 239, // u u  step 8
-		238, 230, // t t  step 8
-		229, 221, // s s  step 8
-		220, 0, // r r
-		102, 103, //
-	}
-	s := ch.String()
-	if s != "001122334450vvuuttssr0de" {
-		t.Errorf("got %s, want 001122334450vvuuttssr0de", s)
-	}
-	re, err := ColorHistFromString(s)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	r := re.String()
-	if s != r {
-		t.Errorf("r=%s, want %s", r, s)
+	for i, tc := range stringTests {
+		s := tc.ch.String()
+		if s != tc.want {
+			t.Errorf("%d: got %s, want %s", i, s, tc.want)
+		}
+		re, err := ColorHistFromString(s)
+		if err != nil {
+			t.Errorf("%d: unexpected error %q on %s", i, err, s)
+		}
+		r := re.String()
+		if r != s {
+			t.Errorf("%d: got %s, want %s", i, r, s)
+		}
 	}
 }
 
@@ -111,9 +125,9 @@ func TestUniformColorHist(t *testing.T) {
 	gh := NewColorHist(green)
 	bh := NewColorHist(blue)
 
-	if rh.String() != "00000000000000v000000000" ||
-		gh.String() != "0000000000000v0000000000" ||
-		bh.String() != "000000000000v0000000000v" {
+	if rh.String() != "00000000000000z000000000" ||
+		gh.String() != "0000000000000z0000000000" ||
+		bh.String() != "000000000000z0000000000z" {
 		t.Fatalf("Got rh=%s gh=%s bh=%s", rh.String(), gh.String(), bh.String())
 	}
 
