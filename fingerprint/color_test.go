@@ -12,11 +12,12 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"strings"
 	"testing"
 )
 
 var testfiles = []string{
-	"boat.jpg", "clock.jpg", "lena.jpg",
+	"boat.jpg", "clock.jpg", "lena.jpg", "lenamir.jpg", "lenablu.jpg",
 	"baboon.jpg", "pepper.jpg", "logo.png",
 }
 
@@ -212,6 +213,10 @@ func TestMaxDiffColorHist(t *testing.T) {
 	}
 }
 
+func basename(s string) string {
+	return s[:strings.LastIndex(s, ".")]
+}
+
 func TestNewColorHist(t *testing.T) {
 	hists := make(map[string]ColorHist)
 	bmvs := make(map[string]BMVHash)
@@ -228,30 +233,34 @@ func TestNewColorHist(t *testing.T) {
 		if chstr != ch2str {
 			t.Errorf("%s %s != %s", file, chstr, ch2str)
 		}
-		fmt.Printf("%12s: %s\n", file, chstr)
+		fmt.Printf("%8s: %s\n", basename(file), chstr)
 		hists[file] = ch
 		bmvs[file] = NewBMVHash(img)
 	}
+	fmt.Println()
 
-	fmt.Printf("              ")
+	fmt.Printf(" Δ ColorHist | ")
 	for _, a := range testfiles {
-		fmt.Printf("%-11s", a)
+		fmt.Printf("%-8s", basename(a))
 	}
 	fmt.Println()
+	fmt.Println(" Δ BMV       |  ")
+	fmt.Println("-------------+--------------------------------------------------------------")
 	for _, a := range testfiles {
 		h := hists[a]
-		fmt.Printf("%12s  ", a)
+		fmt.Printf(" %-11s | ", basename(a))
 		for _, b := range testfiles {
 			g := hists[b]
-			fmt.Printf("%.4f     ", ColorHistDelta(h, g))
+			fmt.Printf("%3.0f     ", 1000*ColorHistDelta(h, g))
 		}
 		fmt.Println()
-		fmt.Printf("              ")
+		fmt.Printf("             | ")
 		for _, b := range testfiles {
-			fmt.Printf("%.4f     ", BMVDelta(bmvs[a], bmvs[b]))
+			fmt.Printf("%3.0f     ", 1000*BMVDelta(bmvs[a], bmvs[b]))
 
 		}
 		fmt.Println()
+		fmt.Println("-------------+--------------------------------------------------------------")
 	}
 
 }
