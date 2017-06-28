@@ -20,7 +20,7 @@ import (
 var cmdMock = &Command{
 	RunArgs:     runMock,
 	Usage:       "mock <mock>...",
-	Description: "mock server",
+	Description: "run a mock server",
 	Flag:        flag.NewFlagSet("stat", flag.ContinueOnError),
 	Help: `
 Mock starts a HTTP server providing the given mocks.

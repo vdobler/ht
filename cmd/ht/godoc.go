@@ -8,10 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
-
-	"github.com/vdobler/ht/ht"
 )
 
 var cmdDoc = &Command{
@@ -39,7 +36,7 @@ func runDoc(cmd *Command, args []string) {
 	// Special case of list of checks/extractors.
 	if typ == "check" || typ == "checks" ||
 		typ == "extractor" || typ == "extractors" {
-		disaplayChecksOrExtractors(typ)
+		displayChecksOrExtractors(typ)
 	}
 
 	doc, ok := typeDoc[typ]
@@ -51,21 +48,5 @@ func runDoc(cmd *Command, args []string) {
 
 	fmt.Println(doc)
 
-	os.Exit(0)
-}
-
-func disaplayChecksOrExtractors(which string) {
-	names := []string{}
-	if which[0] == 'c' {
-		for name := range ht.CheckRegistry {
-			names = append(names, name)
-		}
-	} else {
-		for name := range ht.ExtractorRegistry {
-			names = append(names, name)
-		}
-	}
-	sort.Strings(names)
-	fmt.Println(strings.Join(names, "\n"))
 	os.Exit(0)
 }

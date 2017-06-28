@@ -84,7 +84,7 @@ func usage() {
 			cmd.Name(), cmd.Description)
 	}
 
-	fmt.Printf(`Ht is a tool to generate http request and test the response.
+	fmt.Printf(`ht is a tool to generate HTTP request and test the response.
 
 Usage:
 
@@ -97,31 +97,6 @@ Run  ht help <command> to display the usage of <command>.
 Tests IDs have the following format <suite>.<test> with <suite> and
 <test> the sequential numbers of the suite and the test inside the suite.
 <test> maybe a single number like "3" or a range like "3-7".
-
-Several commands accept archive files which combine everything into one
-large file, The following example demonstrates using this feature:
-
-    $ cat archive
-    # some.suite
-    {
-        Name: "Some Suite"
-        Main: [ {File: sometest.ht}, {File: other.ht} ]
-    }
-
-    # sometest.ht
-    {
-        Request: { URL: "http://localhost/foo" }
-        Checks: [ {Check: "StatusCode", Expect: 200} ]
-    }
-
-    # other.ht
-    {
-        Request: { URL: "http://localhost/foo" }
-        Checks: [ {Check: "StatusCode", Expect: 505} ]
-    }
-
-    $ ht exec some.suite@archive
-
 `, formatedCmdList)
 }
 
