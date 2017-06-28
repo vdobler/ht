@@ -92,11 +92,8 @@ Usage:
 
 The commands are:
 %s
-Run  ht help <command> to display the usage of <command>.
-
-Tests IDs have the following format <suite>.<test> with <suite> and
-<test> the sequential numbers of the suite and the test inside the suite.
-<test> maybe a single number like "3" or a range like "3-7".
+Run 'ht help <command>' to display the usage of <command> and
+run 'ht help help' to see what other help you can get.
 `, formatedCmdList)
 }
 

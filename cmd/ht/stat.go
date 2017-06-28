@@ -24,10 +24,11 @@ var cmdStat = &Command{
 	Flag:        flag.NewFlagSet("stat", flag.ContinueOnError),
 	Help: `
 Stat takes as input the live.csv output file of a load test (generated from
-executing ht load) and produces an augmented output file:
+executing 'ht load') and produces an augmented throughput.csv file:
  - sorted on start of the tests
  - added colum for actual request rate (QPS)
  - delay to previous request
+and displays some basic statistics of the request durations.
 `,
 }
 

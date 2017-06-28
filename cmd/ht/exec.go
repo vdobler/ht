@@ -34,12 +34,13 @@ var cmdExec = &Command{
 	Help: `
 Exec loads the given suites and executes them.
 Variables set with the -D flag overwrite variables read from file with -Dfile.
-The current variable assignment at the end of a suite carries over to the next
-suite. All suites (which keep cookies) share a common jar if cookies are
-loaded via -cookie flag; otherwise each suite has its own cookiejar.
+The current variable assignment at the end of a suite does not carrie over to
+the next suite except if turned on with the -carry flag.
+All suites (which keep cookies) share a common jar if cookies are loaded via
+the -cookie flag; otherwise each suite has its own cookiejar.
 
 As a convenience exec recognises the /... syntax of the go tool to load all
-*.ssuite files below dir: 'ht exec dir/...' is just syntactical suggar for
+*.suite files below dir: 'ht exec dir/...' is just syntactical suggar for
 'ht exec $(find dir -type f -name \*.suite | sort)'.
 
 The exit code is 3 if bogus tests or checks are found, 2 if test errors
@@ -51,6 +52,11 @@ A suite and the used tests may be given as an archive file like this:
 <entrypoint>@<archivefile>. Here <entrypoint> is the formal suite filename
 in the filesytem file <archivefile>. Archivefiles are collection of HJSON
 objects as described in the main help (run '$ ht help').
+
+The TestIDs used in the -only and -skip flags have the format <suite>.<test>
+with <suite> and <test> the sequential numbers of the suite and the test
+inside the suite.  <test> maybe a single number like "3" or a range like
+"3-7" and the "<suite>." part can be omited if only one suite is executed.
 `,
 }
 
