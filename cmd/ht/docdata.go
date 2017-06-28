@@ -177,8 +177,8 @@ var typeDoc = map[string]string{
 		"    matching Name, Path and Domain. Path and Domain are optional in which case\n" +
 		"    all cookies with the given Name are checked for deletion.",
 	"etag": "type ETag struct{}\n" +
-		"    ETag checks presence of a (stron) ETag header and that a subsequent request\n" +
-		"    with a If-None-Match header results in a 304 Not Modified response.",
+		"    ETag checks for the presence of a (strong) ETag header and that a subsequent\n" +
+		"    request with a If-None-Match header results in a 304 Not Modified response.",
 	"execution": "type Execution struct {\n" +
 		"\t// Tries is the maximum number of tries made for this test.\n" +
 		"\t// Both 0 and 1 mean: \"Just one try. No redo.\"\n" +
