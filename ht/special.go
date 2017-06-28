@@ -161,14 +161,17 @@ func (t *Test) executeBash() error {
 	return nil
 }
 
+// ----------------------------------------------------------------------------
+// sql:// pseudo requests
+
 type bogusSQLQuery string
 
 func (e bogusSQLQuery) Error() string { return string(e) }
 
 var (
-	errMissingDBDriver = bogusSQLQuery("ht: missing database driver name (host of URL) in sql pseudo query")
-	errMissingDSN      = bogusSQLQuery("sql:// missing Data-Source-Name in sql pseudo query")
-	errMissingSQL      = bogusSQLQuery("ht: missing query (request body) in sql pseudo query")
+	errMissingDBDriver = bogusSQLQuery("ht: missing database driver name (host of URL) in sql:// pseudo query")
+	errMissingDSN      = bogusSQLQuery("ht: missing Data-Source-Name in sql:// pseudo query")
+	errMissingSQL      = bogusSQLQuery("ht: missing query (request body) in sql:// pseudo query")
 )
 
 // executeSQL executes a SQL query:
@@ -180,6 +183,7 @@ func (t *Test) executeSQL() error {
 		t.Response.Duration = time.Since(start)
 	}()
 
+	// Is the pseudoquery formaly okay? All needed information available?
 	u := t.Request.Request.URL
 	if u.Host == "" {
 		return errMissingDBDriver
@@ -188,7 +192,6 @@ func (t *Test) executeSQL() error {
 	if dsn == "" {
 		return errMissingDSN
 	}
-
 	if t.Request.Body == "" {
 		return errMissingSQL
 	}
@@ -210,12 +213,12 @@ func (t *Test) executeSQL() error {
 		Trailer:    make(http.Header),
 		Request:    t.Request.Request,
 	}
-	// TODO: set content type to JSON
 
+	ct := "application/json" // Content-Type header
 	switch t.Request.Method {
 	case http.MethodGet:
 		accept := t.Request.Header.Get("Accept")
-		t.Response.BodyStr, err = sqlQuery(db, t.Request.Body, accept)
+		t.Response.BodyStr, ct, err = sqlQuery(db, t.Request.Body, accept)
 		if err != nil {
 			return err
 		}
@@ -224,11 +227,12 @@ func (t *Test) executeSQL() error {
 		if err != nil {
 			return err
 		}
-
 	default:
-		return bogusSQLQuery(fmt.Sprintf("ht: illegal method %s for sql pseuo query",
-			t.Request.Method))
+		return bogusSQLQuery(
+			fmt.Sprintf("ht: illegal method %s for sql:// pseudo query",
+				t.Request.Method))
 	}
+	t.Response.Response.Header.Set("Content-Type", ct)
 
 	return nil
 }
@@ -277,15 +281,22 @@ func sqlExecute(db *sql.DB, query string) (string, error) {
 	return string(body), nil
 }
 
-func sqlQuery(db *sql.DB, query string, accept string) (string, error) {
+// sqlQuery is invoked via GET requests and does a sql.DB.Query which
+// return a set of rows. These rows are encoded according to accept and
+// returned as a string.
+// Allowed values for accept are:
+//    application/json (default)
+//    text/plain
+//    text/csv
+func sqlQuery(db *sql.DB, query string, accept string) (body string, contentType string, err error) {
 	rows, err := db.Query(query)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer rows.Close()
 	columns, err := rows.Columns()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if accept == "" {
@@ -293,7 +304,7 @@ func sqlQuery(db *sql.DB, query string, accept string) (string, error) {
 	}
 	mediatype, params, err := mime.ParseMediaType(accept)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	showHeader := false
 	switch params["header"] {
@@ -326,13 +337,14 @@ func sqlQuery(db *sql.DB, query string, accept string) (string, error) {
 	for rows.Next() {
 		err = rows.Scan(ptrs...)
 		if err != nil {
-			return "", err
+			bodySoFar, _ := recorder.Close()
+			return bodySoFar, accept, err
 		}
 		recorder.WriteRecord(values)
 	}
 	err = rows.Err() // get any error encountered during iteration
-	body, _ := recorder.Close()
-	return body, err
+	body, _ = recorder.Close()
+	return body, accept, err
 }
 
 // ----------------------------------------------------------------------------

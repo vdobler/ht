@@ -279,6 +279,16 @@ func TestSQLPseudorequest(t *testing.T) {
 			if err := test.Run(); err != nil {
 				t.Fatalf("Unexpected error %s <%T>", err, err)
 			}
+			if *verboseTest {
+				fmt.Println("┌──────────────────────────────┐")
+				fmt.Println("Test:", test.Name)
+				fmt.Println("URL:", test.Request.Method, test.Request.URL)
+				fmt.Println("Body:")
+				fmt.Println(strings.TrimSpace(test.Request.Body))
+				fmt.Println("Result:", test.Response.Response.Header.Get("Content-Type"))
+				fmt.Println(test.Response.BodyStr)
+				fmt.Println("└──────────────────────────────┘")
+			}
 			if test.Status != Pass {
 				test.PrintReport(os.Stdout)
 				fmt.Println(test.Response.BodyStr)
