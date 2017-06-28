@@ -36,12 +36,14 @@ var symbols = []struct {
 	{0.95, ')'},
 }
 
+// Percentil represents a percentil value.
 type Percentil struct {
 	P float64 // Percentil in [0, 1]
 	V float64 // Value
-	S rune    // Symbol
+	S rune    // Symbol to display
 }
 
+// Data is a named list of integers.
 type Data struct {
 	Name   string
 	Values []int
@@ -70,16 +72,14 @@ func quantile(x []int, p float64) float64 {
 	return float64(xl) + (h-fh)*float64(xr-xl)
 }
 
-const MaxUint = ^uint(0)
-const MinUint = 0
-const MaxInt = int(MaxUint >> 1)
-const MinInt = -MaxInt - 1
+const maxInt = int(^uint(0) >> 1)
+const minInt = -maxInt - 1
 
 // Plot the given measurement to w. The full (labels+graph) plot has the given
 // width. If log than a logarithmic axis is used if possible.
 func Plot(w io.Writer, measurements []Data, unit string, log bool, width int) {
 	// Sort input data end determine overall data range.
-	min, max := MaxInt, MinInt
+	min, max := maxInt, minInt
 	labelLen := 0
 	for i := range measurements {
 		if k := len(measurements[i].Name); k > labelLen {

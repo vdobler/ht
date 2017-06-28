@@ -183,7 +183,7 @@ func (t *Test) executeSQL() error {
 		t.Response.Duration = time.Since(start)
 	}()
 
-	// Is the pseudoquery formaly okay? All needed information available?
+	// Is the pseudoquery formally okay? All needed information available?
 	u := t.Request.Request.URL
 	if u.Host == "" {
 		return errMissingDBDriver

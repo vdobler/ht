@@ -79,7 +79,7 @@
 // for a deliberately skipped test and Pass for a test passing all checks.
 //
 // Tests can be retried for a given maximum number of times. If all executions
-// fail the tests fails. This behaviour and detail timing can be controled with
+// fail the tests fails. This behaviour and detail timing can be controlled with
 // Test's Execution field.
 //
 // Sometimes a response provides information necessary for subsequent requests.

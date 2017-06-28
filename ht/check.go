@@ -197,9 +197,9 @@ func noSuchCheckError(name string) error {
 }
 
 // possibleNames returns a list of actual existing names from valid which
-// are similiar to orig. "Similiar" in the sense of
+// are similar to orig. "Similar" in the sense of
 // https://en.wikipedia.org/wiki/Damerau–Levenshtein_distance of the
-// upper cased names beeing at most 2.
+// upper cased names being at most 2.
 // 3 Seems large but the check names are pretty different.
 func possibleNames(orig string, valid []string) []string {
 	ORIG := strings.ToUpper(orig)
