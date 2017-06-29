@@ -1,0 +1,11 @@
+{
+    Name: Create or delete file
+    Request: {
+        # The operation PUT or DELETE (and the body = file content) is selected
+        # during the "call" from showcase.suite.
+        Method: "{{OP}}"   
+        URL:    "file:///tmp/ht.info.message"
+        Body:   "{{BODY}}"
+    }
+    # No checks. PUT and DELETE either pass or error.
+}

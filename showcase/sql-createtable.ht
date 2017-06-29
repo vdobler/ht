@@ -1,0 +1,30 @@
+{
+    Name: "SQL Create MySQL Products Table"
+    Description: '''
+       Creates a simple demo table. Make sure to have MySQL running, e.g. via
+       docker run --rm -d -e MYSQL_USER=test -e MYSQL_PASSWORD=test \
+       -e MYSQL_DATABASE=test -e MYSQL_ALLOW_EMPTY_PASSWORD=true \
+       -p 7799:3306 mysql:5.6
+    '''
+    Request: {
+        # POST request are done via sql.Execute and
+        # GET request are done via sql.Query
+        Method: "POST"          #  needed for CREATE TABLE (not a sql.Query)
+        URL:    "sql://mysql"   #  sql:// pseudo-query and database driver.
+        Header: {
+            # The data source name is passed as a header parameter.
+            Data-Source-Name: "test:test@tcp(127.0.0.1:7799)/test"
+        }
+        # SQL goes into the request body.
+        Body: '''
+            CREATE TABLE IF NOT EXISTS products (
+                id INT NOT NULL AUTO_INCREMENT UNIQUE PRIMARY KEY,
+                name VARCHAR(60),
+                price DECIMAL(4,2),
+                stock int
+            );
+        ''' 
+    }
+
+    Checks: [ {Check: "StatusCode", Expect: 200} ]  #  as usual: 200 == OK
+}

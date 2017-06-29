@@ -9,6 +9,9 @@
 
         // Initiate session and extract variables
         {File: "extract.ht"}
+
+        # SQL Pseudo Request to a MySQL database
+        {File: "sql-createtable.ht"}
     ],
 
     Main: [
@@ -41,11 +44,25 @@
         }
         {
             File: "search.ht"
-            Variables: {TERM: "tachyon", RESULTS: "no", COUNT: "1"}
+            Variables: {TERM: "tachyon", RESULTS: "no", COUNT: "1"} 
         }
 
         // Checking binary response bodies and HTTP headers.
-        {File: "pdf.ht"}       
+        {File: "pdf.ht"}
+
+        # File Pseudo Request: Tests accessing the local filesystem.
+        {File: "filereading.ht", Variables:{FILE: "/etc/issue"}}
+        {File: "filereading.ht", Variables:{FILE: "/var/lock/ht/major/maintenance"}}
+        {File: "filemodifying.ht", Variables:{OP: "PUT", Body: "Hello World"}}
+        {File: "filemodifying.ht", Variables:{OP: "DELETE", Body: ""}}
+
+        # Bash Pseudo Request: Execute a script and checks its output.
+        {File: "bash.ht"}
+        {File: "network-speed.ht"}
+
+        # SQL Pseudo Request to a MySQL database
+        {File: "sql-insert.ht"}
+        {File: "sql-select.ht"}
     ],
 
     Teardown: [

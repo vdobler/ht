@@ -1,0 +1,32 @@
+{
+    Name: "SQL Select"
+    Request: {
+        # POST request are done via sql.Execute and
+        # GET request are done via sql.Query
+        Method: "GET"          #  needed for CREATE TABLE (not a sql.Query)
+        URL:    "sql://mysql"   #  sql:// pseudo-query and database driver.
+        Header: {
+            # The data source name is passed as a header parameter.
+            Data-Source-Name: "test:test@tcp(127.0.0.1:7799)/test"
+        
+            # Output representation can be switched to CSV via Accept header.
+            Accept: "text/csv; header=present"
+        }
+        # SQL goes into the request body.
+        Body: '''
+            SELECT id AS ID, name AS Product, price
+            FROM products
+            WHERE stock>0
+            ORDER BY id;
+        '''
+    }
+
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        # POST request result in sql.Execute and always returns a JSON.
+        # Check that three values where inserted.
+        {Check: "Body", Prefix: '''ID,Product,price
+1,Badetuch,17.10
+3,Puzzle,9.70'''}
+    ]
+}

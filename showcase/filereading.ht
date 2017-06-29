@@ -1,0 +1,17 @@
+{
+    Name: Peek at {{FILE}} for maintenace mode
+    Description: "Demonstrate how to read a local file and inspect its content"
+    Request: {
+        Method: "GET"                #  GET --> read file
+        URL:    "file:///{{FILE}}"   #  which file
+    }
+
+    Checks: [
+        {Check: "AnyOne", Of: [
+            # It's okay if the file does not exist, or if it doesn't
+            # contain "Maintenance".
+            {Check: "StatusCode", Expect: 404}
+            {Check: "Body", Count: -1, Contains: "Maintenance"}
+        ]}
+    ]
+}

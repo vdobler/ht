@@ -1,0 +1,36 @@
+{
+    Name: "SQL Insert Test Products"
+    Request: {
+        # POST request are done via sql.Execute and
+        # GET request are done via sql.Query
+        Method: "POST"          #  needed for CREATE TABLE (not a sql.Query)
+        URL:    "sql://mysql"   #  sql:// pseudo-query and database driver.
+        Header: {
+            # The data source name is passed as a header parameter.
+            Data-Source-Name: "test:test@tcp(127.0.0.1:7799)/test"
+        }
+        # SQL goes into the request body.
+        Body: '''
+            INSERT INTO products (name,price, stock)
+            VALUES
+              ("Badetuch", 17.10, 5), 
+              ("Taschenmesser", 24.00, 0),
+              ("Puzzle", 9.70, 7)
+            ;
+        ''' 
+    }
+
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        # POST request result in sql.Execute and always returns a JSON.
+        # Check that three values where inserted.
+        {Check: "JSON", Element: "RowsAffected.Value", Equals: 3}
+    ]
+
+    # Variable Extraction (VarEx) allows to extract values from the response
+    # and store them in a (global) variable which can be used in a
+    # subsequent request.
+    VarEx: {
+        LAST_INSERT_ID: {Extractor: "JSONExtractor", Element: "LastInsertId.Value"}
+    }
+}

@@ -1,0 +1,14 @@
+{
+    Name: "Execute bash script and inspect its output"
+    Request: {
+        URL: "bash:///etc"  # Bash-pseudorequest and working directory
+        Body: '''
+                 cat passwd | wc -l
+              '''
+    }
+
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "Body", Regexp: "^[0-9]+\n$"}
+    ]
+}
