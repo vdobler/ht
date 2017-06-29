@@ -26,11 +26,12 @@ func TestFilePseudorequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	u := "file://" + wd + "/testdata/fileprotocol"
+	p := wd + "/testdata/fileprotocol"
+	u := "file://" + p
 
 	tests := []*Test{
 		{
-			Name: "PUT-Pass",
+			Name: "PUT_okay",
 			Request: Request{
 				URL:  u,
 				Body: "Tadadadaaa!",
@@ -38,103 +39,101 @@ func TestFilePseudorequest(t *testing.T) {
 			Checks: []Check{
 				StatusCode{Expect: 200},
 				&Body{Prefix: "Successfully wrote " + u},
-				&Header{Header: "Foo", Absent: true},
 			},
 		},
 		{
-			Name: "PUT-Error",
+			Name: "PUT_forbidden",
 			Request: Request{
 				URL:  u + "/iouer/cxxs/dlkfj",
 				Body: "Tadadadaaa!",
 			},
 			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfully wrote " + u},
-				&Header{Header: "Foo", Absent: true},
+				StatusCode{Expect: 403},
+				&Body{Contains: p},
+				&Body{Contains: "not a directory"},
 			},
 		},
 		{
-			Name: "GET-Pass",
+			Name: "GET_okay",
 			Request: Request{
 				URL: u,
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
 				&Body{Equals: "Tadadadaaa!"},
-				&Header{Header: "Foo", Absent: true},
 			},
 		},
 		{
-			Name: "GET-Fail",
+			Name: "GET_wrongdir",
 			Request: Request{
-				URL: u,
+				URL: u + "/slfer/mxcmdk",
 			},
 			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Equals: "something else"},
-				&Header{Header: "Foo", Absent: true},
+				StatusCode{Expect: 404},
+				&Body{Contains: p},
+				&Body{Contains: "not a directory"},
 			},
 		},
 		{
-			Name: "GET-Error",
+			Name: "GET_notfound",
 			Request: Request{
-				URL: u + "/slkdj/cxmvn",
+				URL: u + "dfkewirxym",
 			},
 			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Header{Header: "Foo", Absent: true},
+				StatusCode{Expect: 404},
+				&Body{Contains: p},
+				&Body{Contains: "no such file or directory"},
 			},
 		},
 		{
-			Name: "GET-Error",
-			Request: Request{
-				URL: "file://remote.host/some/path",
-			},
-			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Header{Header: "Foo", Absent: true},
-			},
-		},
-		{
-			Name: "DELETE-Pass",
+			Name: "DELETE_okay",
 			Request: Request{
 				URL: u,
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
 				&Body{Prefix: "Successfully deleted " + u},
-				&Header{Header: "Foo", Absent: true},
 			},
 		},
 		{
-			Name: "DELETE-Error",
+			Name: "DELETE_nonexisting",
 			Request: Request{
 				URL: u + "/sdjdfh/oieru",
 			},
 			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfully deleted " + u},
-				&Header{Header: "Foo", Absent: true},
+				StatusCode{Expect: 404},
+				&Body{Contains: "no such file or directory"},
+			},
+		},
+		{
+			Name: "DELETE_forbidden",
+			Request: Request{
+				URL: "file:///etc/passwd",
+			},
+			Checks: []Check{
+				StatusCode{Expect: 403},
+				&Body{Contains: "permission denied"},
 			},
 		},
 	}
 
 	for i, test := range tests {
-		p := strings.Index(test.Name, "-")
+		p := strings.Index(test.Name, "_")
 		if p == -1 {
-			t.Fatalf("Ooops: no '-' in %d. Name: %s", i, test.Name)
+			t.Fatalf("Ooops: no '_' in %d. Name: %s", i, test.Name)
 		}
+
 		t.Run(test.Name, func(t *testing.T) {
-			method, want := test.Name[:p], test.Name[p+1:]
-			test.Request.Method = method
+			test.Request.Method = test.Name[:p]
 			err = test.Run()
 			if err != nil {
 				t.Fatalf("Unexpected error: %s <%T>", err, err)
 			}
 
 			got := test.Status.String()
-			if got != want {
-				t.Errorf("Fot %s, want %s. (Error=%v)", got, want, test.Error)
+			if got != "Pass" {
+				t.Errorf("Got %s. (Error=%v)", got, test.Error)
+				fmt.Println("ReceivedBody == ", test.Response.BodyStr)
 			}
 		})
 	}

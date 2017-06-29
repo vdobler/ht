@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -23,6 +24,14 @@ import (
 // ----------------------------------------------------------------------------
 // file:// pseudo-request
 
+// execute a file:// pseudorequest. This method returns a non-nil error if
+// the Request.Method is non of GET, PUT or DELETE. The file operations
+// themself do not return an error but a status codes 404 or 403.
+// This behaviour is in the line of how a HTTP request works and allows e.g.
+// to check that a lock file is _not_ present.
+//
+// Once remote file operations via ssh are implemented a failer to connect
+// to the remote host can be returned as an error. Again in accorancde
 func (t *Test) executeFile() error {
 	t.infof("%s %q", t.Request.Request.Method, t.Request.Request.URL.String())
 
@@ -38,35 +47,6 @@ func (t *Test) executeFile() error {
 		}
 	}
 
-	switch t.Request.Method {
-	case http.MethodGet:
-		file, err := os.Open(u.Path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		body, err := ioutil.ReadAll(file)
-		t.Response.BodyStr = string(body)
-		t.Response.BodyErr = err
-	case "DELETE":
-		err := os.Remove(u.Path)
-		if err != nil {
-			return err
-		}
-		t.Response.BodyStr = fmt.Sprintf("Successfully deleted %s", u)
-		t.Response.BodyErr = nil
-	case "PUT":
-		err := ioutil.WriteFile(u.Path, []byte(t.Request.Body), 0666)
-		if err != nil {
-			return err
-		}
-		t.Response.BodyStr = fmt.Sprintf("Successfully wrote %s", u)
-		t.Response.BodyErr = nil
-
-	default:
-		return fmt.Errorf("method %s not supported on file:// URL", t.Request.Method)
-	}
-
 	// Fake a http.Response
 	t.Response.Response = &http.Response{
 		Status:     "200 OK",
@@ -80,7 +60,84 @@ func (t *Test) executeFile() error {
 		Request:    t.Request.Request,
 	}
 
+	switch t.Request.Method {
+	case http.MethodGet:
+		t.executeFileGET(u)
+	case "PUT":
+		t.executeFilePUT(u)
+	case "DELETE":
+		t.executeFileDELETE(u)
+	default:
+		return fmt.Errorf("method %s not supported on file:// URL", t.Request.Method)
+	}
+
 	return nil
+}
+
+//
+//  Successfully wrote /home/volker/code/src/github.com/vdobler/ht/ht/testdata/fileprotocol
+//  Successfully wrote
+//
+
+// file could be opened      --> 200
+// any problems opening file --> 404
+func (t *Test) executeFileGET(u *url.URL) {
+	filename := u.Path
+	file, err := os.Open(filename)
+	if err != nil {
+		t.Response.Response.Status = "404 Not Found"
+		t.Response.Response.StatusCode = 404
+		t.Response.BodyStr = err.Error()
+		return
+	}
+	defer file.Close()
+	body, err := ioutil.ReadAll(file)
+	t.Response.BodyStr = string(body)
+	t.Response.BodyErr = err
+}
+
+// properly created --> 200
+// any problems     --> 403
+func (t *Test) executeFilePUT(u *url.URL) {
+	filename := u.Path
+	err := ioutil.WriteFile(filename, []byte(t.Request.Body), 0666)
+	if err != nil {
+		t.Response.Response.Status = "403 Forbidden"
+		t.Response.Response.StatusCode = 403
+		t.Response.BodyStr = err.Error()
+		return
+	}
+	t.Response.Response.Status = "200 OK"
+	t.Response.Response.StatusCode = 200
+	t.Response.BodyStr = fmt.Sprintf("Successfully wrote %s", u)
+	t.Response.BodyErr = nil
+}
+
+// properly deleted     --> 200
+// filename nonexisting --> 404
+// unable to delete     --> 403
+func (t *Test) executeFileDELETE(u *url.URL) {
+	filename := u.Path
+	_, err := os.Stat(filename)
+	if err != nil {
+		t.Response.Response.Status = "404 Not Found"
+		t.Response.Response.StatusCode = 404
+		t.Response.BodyStr = err.Error()
+		return
+	}
+
+	err = os.Remove(filename)
+	if err != nil {
+		t.Response.Response.Status = "403 Forbidden"
+		t.Response.Response.StatusCode = 403
+		t.Response.BodyStr = err.Error()
+		return
+	}
+	t.Response.Response.Status = "200 OK"
+	t.Response.Response.StatusCode = 200
+	t.Response.BodyStr = fmt.Sprintf("Successfully deleted %s", u)
+	t.Response.BodyErr = nil
+
 }
 
 // ----------------------------------------------------------------------------
@@ -104,8 +161,8 @@ func (t *Test) executeBash() error {
 
 	workDir := t.Request.Request.URL.Path
 
-	// Save the request body to a temporary file in the working directory.
-	temp, err := ioutil.TempFile(workDir, "bashscript")
+	// Save the request body to a temporary file.
+	temp, err := ioutil.TempFile("", "bashscript")
 	if err != nil {
 		return err
 	}

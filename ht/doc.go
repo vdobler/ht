@@ -126,14 +126,20 @@
 //
 // File pseudo-requests are initiated with a file:// URL, the following rules
 // determine the behaviour:
-//   * The GET request method tries to read the file given by the URL.Path
+//   * GET request method tries to read the file given by the URL.Path
 //     and returns the content as the response body.
-//   * The PUT requets method tries to store the Request.Body under the
-//     path given by URL.Path.
-//   * The DELETE request method tries to delete the file given by the
-//     URL.Path.
-//   * The returned HTTP status code is 200 except if any file operation
-//     fails in which the Test has status Error.
+//     The StatusCode returned is:
+//       - 200 if the file was readable and
+//       - 404 otherwise
+//   * PUT requets method tries to store the Request.Body under the URL.Path.
+//     The StatusCode returned is:
+//       - 200 if the file was written and
+//       - 403 otherwise
+//   * DELETE request method tries to delete the file given by the URL.Path.
+//     The StatusCode returned is:
+//       - 200 if the file was deleted
+//       - 403 if it was not deleted
+//       - 404 if there was no such file in the first place
 //
 //
 // Bash Pseudo-Requests
@@ -165,10 +171,22 @@
 //    * The data source name is taken from Header["Data-Source-Name"]
 //    * The SQL query/statements is read from the Request.Body
 //    * For a POST method the SQL query is passed to sql.Execute
-//      and the response body is a JSON with LastInsertId and RowsAffected.
+//      and the response body is a JSON of the form:
+//          {
+//              "LastInsertId": {
+//                  "Value": 1234,
+//                  "Error": "message"
+//               },
+//              "RowsAffected": {
+//                  "Value": 0,
+//                  "Error": "something went wrong"
+//              }
+//           }
+//      The "Error" fields are omitted if the last insert id and the number of
+//      affected rows could be retrieved without error.
 //    * For a GET method the SQL query is passed to sql.Query
 //      and the resulting rows are returned as the response body.
-//    * The format of the response body is determined by the Accept header:
+//      The format of the response body is determined by the Accept header:
 //         - "application/json":         a JSON array with the rows as objects
 //         - "text/csv; header=present": as a csv file with column headers
 //         - "text/csv":                 as a csv file withput header
