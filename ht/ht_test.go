@@ -643,11 +643,12 @@ func TestFileSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	u := "file://" + wd + "/testdata/fileprotocol"
+	p := wd + "/testdata/fileprotocol"
+	u := "file://" + p
 
 	tests := []*Test{
 		{
-			Name: "PUT Pass",
+			Name: "PUT",
 			Request: Request{
 				URL:  u,
 				Body: "Tadadadaaa!",
@@ -655,30 +656,28 @@ func TestFileSchema(t *testing.T) {
 			Checks: []Check{
 				StatusCode{Expect: 200},
 				&Body{Prefix: "Successfully wrote " + u},
-				&Header{Header: "Foo", Absent: true},
 			},
 		},
 		{
-			Name: "PUT Error",
+			Name: "PUT",
 			Request: Request{
 				URL:  u + "/iouer/cxxs/dlkfj",
 				Body: "Tadadadaaa!",
 			},
 			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfully wrote " + u},
-				&Header{Header: "Foo", Absent: true},
+				StatusCode{Expect: 403},
+				&Body{Contains: p},
+				&Body{Contains: "not a directory"},
 			},
 		},
 		{
-			Name: "GET Pass",
+			Name: "GET",
 			Request: Request{
 				URL: u,
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
 				&Body{Equals: "Tadadadaaa!"},
-				&Header{Header: "Foo", Absent: true},
 			},
 		},
 		{
@@ -693,13 +692,14 @@ func TestFileSchema(t *testing.T) {
 			},
 		},
 		{
-			Name: "GET Error",
+			Name: "GET",
 			Request: Request{
 				URL: u + "/slkdj/cxmvn",
 			},
 			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Header{Header: "Foo", Absent: true},
+				StatusCode{Expect: 404},
+				&Body{Contains: "not a directory"},
+				&Body{Contains: p},
 			},
 		},
 		{
@@ -709,39 +709,37 @@ func TestFileSchema(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
-				&Header{Header: "Foo", Absent: true},
 			},
 		},
 		{
-			Name: "DELETE Pass",
+			Name: "DELETE",
 			Request: Request{
 				URL: u,
 			},
 			Checks: []Check{
 				StatusCode{Expect: 200},
 				&Body{Prefix: "Successfully deleted " + u},
-				&Header{Header: "Foo", Absent: true},
 			},
 		},
 		{
-			Name: "DELETE Error",
+			Name: "DELETE",
 			Request: Request{
 				URL: u + "/sdjdfh/oieru",
 			},
 			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfully deleted " + u},
-				&Header{Header: "Foo", Absent: true},
+				StatusCode{Expect: 404},
+				&Body{Contains: "no such file or directory"},
+				&Body{Contains: p},
 			},
 		},
 	}
 
 	for i, test := range tests {
+		method, want := test.Name, "Pass"
 		p := strings.Index(test.Name, " ")
-		if p == -1 {
-			t.Fatalf("Ooops: no space in %d. Name: %s", i, test.Name)
+		if p != -1 {
+			method, want = test.Name[:p], test.Name[p+1:]
 		}
-		method, want := test.Name[:p], test.Name[p+1:]
 		test.Request.Method = method
 		err = test.Run()
 		if err != nil {
@@ -750,8 +748,9 @@ func TestFileSchema(t *testing.T) {
 
 		got := test.Status.String()
 		if got != want {
-			t.Errorf("%d. %s: got %s, want %s. (Error=%v)",
-				i, test.Name, got, want, test.Error)
+			t.Errorf("%d. %s: got %s, want %s.\nError=%v\nBody=%q",
+				i, test.Name, got, want, test.Error, test.Response.BodyStr)
+
 		}
 	}
 }
