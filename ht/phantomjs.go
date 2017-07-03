@@ -172,8 +172,8 @@ phantom.addCookie({
 {{end}}
 
 {{with .Test.Request}}
-{{if .BasicAuthUser}}
-page.customHeaders={'Authorization': 'Basic '+btoa({{printf "%q" .BasicAuthUser}}+":"+{{printf "%q" .BasicAuthPass}})};
+{{if .Authorization.Basic.Username}}
+page.customHeaders={'Authorization': 'Basic '+btoa({{printf "%q" .Authorization.Basic.Username}}+":"+{{printf "%q" .Authorization.Basic.Password}})};
 {{end}}{{end}}
 
 // What to do once the content is set and the page loaded:
@@ -260,7 +260,7 @@ func (b Browser) writeScript(file io.WriteCloser, t *Test, ready, timeout string
 // PhantomJS against a golden record of the expected screenshot.
 //
 // Note that PhantomJS will make additional request to fetch all linked
-// resources in the HTML page. If the original request has BasicAuthUser
+// resources in the HTML page. If the original request has Authorization.Basic.Username
 // (and BasicAuthPass) set this credentials will be sent to all linked
 // resources of the page. Depending on where these resources are located
 // this might be a security issue.

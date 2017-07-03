@@ -112,12 +112,8 @@ type Request struct {
 	// redirects should be done.
 	FollowRedirects bool `json:",omitempty"`
 
-	// BasicAuthUser and BasicAuthPass contain optional username and
-	// password which will be sent in a Basic Authentication header.
-	// If following redirects the authentication header is also sent
-	// on subsequent requests to the same host.
-	BasicAuthUser string `json:",omitempty"`
-	BasicAuthPass string `json:",omitempty"`
+	// Authorization for this request.
+	Authorization Authorization
 
 	// Chunked turns of setting of the Content-Length header resulting
 	// in chunked transfer encoding of POST bodies.
@@ -129,6 +125,30 @@ type Request struct {
 	Request    *http.Request `json:"-"` // the 'real' request
 	SentBody   string        `json:"-"` // the 'real' body
 	SentParams url.Values    `json:"-"` // the 'real' parameters
+}
+
+// Authorization information for the request. The first struct containing
+// non-empty values determines the type of Authorization used.
+type Authorization struct {
+	// Basic contains username and password for Basic Authorization.
+	Basic struct {
+		Username, Password string
+	}
+
+	// OAuth1 contains data needed for Oauth1 Authorization.
+	OAuth1 struct {
+		ConsumerKey, ConsumerSecret, Token, TokenSecret string
+	}
+
+	// OAuth2 contains data needed for Oauth2 Authorization.
+	OAuth2 struct {
+		AccessToken string
+	}
+
+	// OAuth2 contains data needed for Oauth1 Authorization.
+	AWS struct {
+		AccessKey, SecretKey, Region, ServiceName string
+	}
 }
 
 // Response captures information about a http response.
@@ -354,10 +374,10 @@ outer:
 	m.FollowRedirects = r.FollowRedirects
 	m.Chunked = r.Chunked
 
-	if err := onlyOneMayBeNonempty(&(m.BasicAuthUser), r.BasicAuthUser); err != nil {
+	if err := onlyOneMayBeNonempty(&(m.Authorization.Basic.Username), r.Authorization.Basic.Username); err != nil {
 		return err
 	}
-	if err := onlyOneMayBeNonempty(&(m.BasicAuthPass), r.BasicAuthPass); err != nil {
+	if err := onlyOneMayBeNonempty(&(m.Authorization.Basic.Password), r.Authorization.Basic.Password); err != nil {
 		return err
 	}
 
@@ -673,8 +693,8 @@ func (t *Test) prepareRequest() error {
 		t.Request.Request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cookie.Value})
 	}
 	// Basic Auth
-	if t.Request.BasicAuthUser != "" {
-		t.Request.Request.SetBasicAuth(t.Request.BasicAuthUser, t.Request.BasicAuthPass)
+	if t.Request.Authorization.Basic.Username != "" {
+		t.Request.Request.SetBasicAuth(t.Request.Authorization.Basic.Username, t.Request.Authorization.Basic.Password)
 	}
 
 	if t.Request.Timeout <= 0 {
@@ -687,7 +707,7 @@ func (t *Test) prepareRequest() error {
 				return errors.New("stopped after 10 redirects")
 			}
 			if req.URL.Host == t.Request.Request.URL.Host &&
-				t.Request.BasicAuthUser != "" {
+				t.Request.Authorization.Basic.Username != "" {
 				if user, pass, ok := t.Request.Request.BasicAuth(); ok {
 					req.SetBasicAuth(user, pass)
 				}
@@ -1259,8 +1279,8 @@ func (t *Test) CurlCall() string {
 	}
 
 	// BasicAuth
-	if t.Request.BasicAuthUser != "" {
-		arg := fmt.Sprintf("%s:%s", t.Request.BasicAuthUser, t.Request.BasicAuthPass)
+	if t.Request.Authorization.Basic.Username != "" {
+		arg := fmt.Sprintf("%s:%s", t.Request.Authorization.Basic.Username, t.Request.Authorization.Basic.Password)
 		call += fmt.Sprintf(" -u %s", escapeForBash(arg))
 
 	}

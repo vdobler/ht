@@ -524,8 +524,7 @@ func (c *Links) Execute(t *Test) error {
 				Method:          method,
 				URL:             r,
 				FollowRedirects: true,
-				BasicAuthUser:   t.Request.BasicAuthUser,
-				BasicAuthPass:   t.Request.BasicAuthPass,
+				Authorization:   t.Request.Authorization,
 				Timeout:         timeout,
 			},
 			Checks: CheckList{
@@ -538,8 +537,7 @@ func (c *Links) Execute(t *Test) error {
 		test.PopulateCookies(t.Jar, t.Request.Request.URL)
 		if ru, err := url.Parse(r); err == nil &&
 			ru.Host == t.Request.Request.URL.Host {
-			test.Request.BasicAuthUser = t.Request.BasicAuthUser
-			test.Request.BasicAuthPass = t.Request.BasicAuthPass
+			test.Request.Authorization = t.Request.Authorization
 		}
 		suite.Tests = append(suite.Tests, test)
 	}

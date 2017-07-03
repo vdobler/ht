@@ -519,6 +519,10 @@ func TestMerge(t *testing.T) {
 		},
 	}
 
+	auth := Authorization{}
+	auth.Basic.Username = "foo.bar"
+	auth.Basic.Password = "secret"
+
 	b = &Test{
 		Name:        "B",
 		Description: "B does b in a very b-ish way.",
@@ -538,8 +542,7 @@ func TestMerge(t *testing.T) {
 			},
 			FollowRedirects: false,
 			Chunked:         true,
-			BasicAuthUser:   "foo.bar",
-			BasicAuthPass:   "secret",
+			Authorization:   auth,
 		},
 		Execution: Execution{
 			InterSleep: 300,
@@ -578,9 +581,9 @@ func TestMerge(t *testing.T) {
 		t.Errorf("Bad cookies. Got %#v", c.Request.Cookies)
 	}
 
-	if c.Request.BasicAuthUser != "foo.bar" || c.Request.BasicAuthPass != "secret" {
-		t.Errorf("Bad BasicAuth. Got %q : %q", c.Request.BasicAuthUser,
-			c.Request.BasicAuthPass)
+	if c.Request.Authorization.Basic.Username != "foo.bar" || c.Request.Authorization.Basic.Password != "secret" {
+		t.Errorf("Bad BasicAuth. Got %q : %q", c.Request.Authorization.Basic.Username,
+			c.Request.Authorization.Basic.Password)
 	}
 
 	if c.Request.FollowRedirects || !c.Request.Chunked {
@@ -792,6 +795,9 @@ func TestCurlCall(t *testing.T) {
 		return same
 	}
 
+	auth := Authorization{}
+	auth.Basic.Username, auth.Basic.Password = "root", "secret"
+
 	test := &Test{
 		Name: "Simple",
 		Request: Request{
@@ -809,8 +815,7 @@ func TestCurlCall(t *testing.T) {
 				"User-Agent": []string{"unknown"},
 				"X-Custom-A": []string{"go", "fast"},
 			},
-			BasicAuthUser: "root",
-			BasicAuthPass: "secret",
+			Authorization: auth,
 		},
 	}
 
