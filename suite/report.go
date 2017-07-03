@@ -396,14 +396,52 @@ func dict(args ...interface{}) (map[string]interface{}, error) {
 	return dict, nil
 }
 
+// cleanSentBody is used from the REQUEST template to render a representation
+// if the request body suitable for display via a <pre> tag in the HTML report.
+// The <pre> tag uses "paraphrasing content" (see
+// https://html.spec.whatwg.org/multipage/grouping-content.html#the-pre-element)
+// which displays "Text" nodes (from
+// https://html.spec.whatwg.org/multipage/dom.html#phrasing-content-2):
+//     Text nodes and attribute values must consist of scalar values,
+//     excluding noncharacters, and controls other than ASCII whitespace.
+// Noncharaters are (https://infra.spec.whatwg.org/#noncharacter):
+//     A noncharacter is a code point that is in the range U+FDD0 to U+FDEF, inclusive,
+//     or U+FFFE, U+FFFF, U+1FFFE, U+1FFFF, U+2FFFE, U+2FFFF, U+3FFFE, U+3FFFF,
+//     U+4FFFE, U+4FFFF, U+5FFFE, U+5FFFF, U+6FFFE, U+6FFFF, U+7FFFE, U+7FFFF,
+//     U+8FFFE, U+8FFFF, U+9FFFE, U+9FFFF, U+AFFFE, U+AFFFF, U+BFFFE, U+BFFFF,
+//     U+CFFFE, U+CFFFF, U+DFFFE, U+DFFFF, U+EFFFE, U+EFFFF, U+FFFFE, U+FFFFF,
+//     U+10FFFE, or U+10FFFF.
+// Controls are (https://infra.spec.whatwg.org/#control)
+//     A C0 control is a code point in the range U+0000 NULL to U+001F
+//     INFORMATION SEPARATOR ONE, inclusive.
+// ASCII whitespace are (https://infra.spec.whatwg.org/#ascii-whitespace)
+//     U+0009 TAB, U+000A LF, U+000C FF, U+000D CR, or U+0020 SPACE
 func cleanSentBody(s string) string {
 	runes := make([]rune, 0, 2000)
 	for i, r := range s {
-		if r < 0x1f || (r >= 0x7f && r <= 0x9f) {
+		if r < 0x1f {
+			// Control
+			if r == 0x09 || r == 0x0a || r == 0x0c || r == 0x0d {
+				// ASCII whitespace is okay in <pre>
+				runes = append(runes, r)
+			} else {
+				// Show controls as \x1e
+				s := fmt.Sprintf("\\x%x", r)
+				runes = append(runes, []rune(s)...)
+			}
+		} else if r >= 0x7f && r <= 0x9f {
+			// These should work. But somehow they dont.
+			// Show like controls \x8a
+			s := fmt.Sprintf("\\x%x", r)
+			runes = append(runes, []rune(s)...)
+		} else if m := r & 0xffff; m == 0xfffe || m == 0xffff {
 			runes = append(runes, '\uFFFD')
 		} else {
+			// This rune is okay.
 			runes = append(runes, r)
 		}
+
+		// 4k of output should be enough for debugging a request.
 		if i >= 4090 {
 			runes = append(runes, '\u2026')
 			break
