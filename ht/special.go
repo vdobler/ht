@@ -188,7 +188,6 @@ func (t *Test) executeBash() error {
 		}
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v[0]))
 	}
-	output, err := cmd.CombinedOutput()
 
 	// Fake a http.Response
 	t.Response.Response = &http.Response{
@@ -202,15 +201,37 @@ func (t *Test) executeBash() error {
 		Trailer:    make(http.Header),
 		Request:    t.Request.Request,
 	}
-	t.Response.BodyStr = string(output)
+
+	// Execute cmd.
+	b := bytes.Buffer{}
+	cmd.Stdout = &b
+	cmd.Stderr = &b
+	err = cmd.Start()
+	if err != nil {
+		// Something is fundamentally wrong if we cannot start the
+		// script at all (e.g. a nonexistent working directory).
+		// As the script won't run and thus won't produce any dignostic
+		// output this state is worth a test status of Error.
+		return err
+	}
+	err = cmd.Wait()
+	t.Response.BodyStr = string(b.Bytes())
 
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Response.Response.StatusCode = http.StatusRequestTimeout
 		t.Response.Response.Status = "408 Timeout" // TODO check!
 	} else if err != nil {
+		// With catching errors to start the script early this code
+		// path should become less likely.
 		t.Response.Response.Status = "500 Internal Server Error"
 		t.Response.Response.StatusCode = 500
-		t.Response.Response.Header.Set("Exit-Status", err.Error())
+		emsg := err.Error()
+		t.Response.Response.Header.Set("Exit-Status", emsg)
+		// Append error message to body too: Most likely we do not
+		// have any body anyway and "normal" HTTP request add the
+		// error message to the body. This hopefuly helps debugging
+		// too
+		//
 	} else {
 		t.Response.Response.Header.Set("Exit-Status", "exit status 0")
 	}

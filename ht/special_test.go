@@ -244,7 +244,9 @@ func testBashError(t *testing.T) {
 		t.Fatalf("Unexpected error %s <%T>", err, err)
 	}
 	if test.Status != Error {
-		t.Errorf("Got %s, want Error", test.Status)
+		t.Errorf("Got %s, want Error\nBody = %q\nHeader = %v",
+			test.Status, test.Response.BodyStr,
+			test.Response.Response.Header)
 		e := test.Error.Error()
 		if !strings.HasPrefix(e, "open /tmp/somehere-nonexisten/bashscript") ||
 			!strings.HasSuffix(e, "no such file or directory") {
