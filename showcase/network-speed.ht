@@ -1,0 +1,27 @@
+{
+    Name: "Measure network speed. Kinda."
+    Description: "Use ping to send 10 packets and awk to decide on average rtt."
+    Request: {
+        URL: "bash:///tmp"
+        Body: '''
+   ping -c 10 -w 11 localhost | \
+       awk '
+          {print;}
+          /rtt/ {
+                    split($4, a, "/");
+                    if(a[2]<0.1) {
+                        print "Fast enough.";
+                    } else {
+                        print "Too slow!";
+                    }
+                }'
+              '''
+        Timeout: "12s"  #  Bash script is canceld after Request.Timeout.
+    }
+
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "Body", Contains: "10 packets transmitted, 10 received, 0% packet loss,"}
+        {Check: "Body", Contains: "Fast enough."}
+    ]
+}
