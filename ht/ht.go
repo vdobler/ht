@@ -59,6 +59,9 @@ var Transport = &http.Transport{
 	ExpectContinueTimeout: 1 * time.Second,
 }
 
+// ----------------------------------------------------------------------------
+// Request
+
 // Request is a HTTP request.
 type Request struct {
 	// Method is the HTTP method to use.
@@ -127,29 +130,48 @@ type Request struct {
 	SentParams url.Values    `json:"-"` // the 'real' parameters
 }
 
-// Authorization information for the request. The first struct containing
+// Authorization information for the request. The first field containing
 // non-empty values determines the type of Authorization used.
 type Authorization struct {
-	// Basic contains username and password for Basic Authorization.
-	Basic struct {
-		Username, Password string
-	}
-
-	// OAuth1 contains data needed for Oauth1 Authorization.
-	OAuth1 struct {
-		ConsumerKey, ConsumerSecret, Token, TokenSecret string
-	}
-
-	// OAuth2 contains data needed for Oauth2 Authorization.
-	OAuth2 struct {
-		AccessToken string
-	}
-
-	// OAuth2 contains data needed for Oauth1 Authorization.
-	AWS struct {
-		AccessKey, SecretKey, Region, ServiceName string
-	}
+	Basic  BasicAuth // Basic for Basic Auth
+	OAuth1 OAuth1    // Oauth1 for Oauth1.0
+	OAuth2 OAuth2    // Oauth1 for Oauth2.0
+	AWS    AWSAuth   // AWS for AWS authorozation
 }
+
+// BasicAuth contains information for HTTP Basic Authorization.
+//    Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+type BasicAuth struct {
+	Username, Password string
+}
+
+// OAuth1 contains data for OAuth1.0 authorization.
+//    Authorization: OAuth oauth_consumer_key="5cb70c", oauth_nonce="waNSl", oauth_signature="uWX5CJDH", oauth_signature_method="HMAC-SHA1", oauth_timestamp="1499169105", oauth_token="e42052", oauth_version="1.0"
+type OAuth1 struct {
+	ConsumerKey, ConsumerSecret, Token, TokenSecret string
+}
+
+// OAuth2 contains data for OAuth2.0 authorization.
+//    Authorization: Bearer sdlkfj234ewioru498xcyxcm
+type OAuth2 struct {
+	AccessToken string
+}
+
+// AWSAuth contains data for AWS authorization.
+// See http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
+//     Authorization: AWS AKIAIOSFODNN7EXAMPLE:frJIUN8DYpKDtOLCwo//yllqDzg=
+type AWSAuth struct {
+	AccessKey, SecretKey, Region, ServiceName string
+}
+
+// Cookie is a HTTP cookie.
+type Cookie struct {
+	Name  string
+	Value string `json:",omitempty"`
+}
+
+// ----------------------------------------------------------------------------
+// Response and execution
 
 // Response captures information about a http response.
 type Response struct {
@@ -171,12 +193,6 @@ type Response struct {
 // Body returns a reader of the response body.
 func (resp *Response) Body() io.Reader {
 	return strings.NewReader(resp.BodyStr)
-}
-
-// Cookie is a HTTP cookie.
-type Cookie struct {
-	Name  string
-	Value string `json:",omitempty"`
 }
 
 // Execution contains parameters controlling the test execution.

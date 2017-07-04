@@ -202,14 +202,6 @@ func screenshotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var pstauth = Authorization{}
-var pstauthwrong = Authorization{}
-
-func init() {
-	pstauth.Basic.Username, pstauth.Basic.Password = "rt", "secret"
-	pstauthwrong.Basic.Username, pstauthwrong.Basic.Password = "rt", "wrong"
-}
-
 var passingScreenshotTests = []*Test{
 	// Plain screenshot of homepage.
 	{
@@ -275,8 +267,10 @@ var passingScreenshotTests = []*Test{
 	{
 		Name: "Greet RT user (lime bg)",
 		Request: Request{
-			URL:           "/greet?name=rt",
-			Authorization: pstauth,
+			URL: "/greet?name=rt",
+			Authorization: Authorization{
+				Basic: BasicAuth{"rt", "secret"},
+			},
 		},
 		Checks: []Check{
 			&Screenshot{
@@ -402,8 +396,10 @@ var failingScreenshotTests = []*Test{
 	{
 		Name: "Greet RT user with bad authentication",
 		Request: Request{
-			URL:           "/greet?name=rt",
-			Authorization: pstauthwrong,
+			URL: "/greet?name=rt",
+			Authorization: Authorization{
+				Basic: BasicAuth{"rt", "wrong"},
+			},
 		},
 		Checks: []Check{
 			&Screenshot{
