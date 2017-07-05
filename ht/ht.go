@@ -134,9 +134,26 @@ type Request struct {
 // non-empty values determines the type of Authorization used.
 type Authorization struct {
 	Basic  BasicAuth // Basic for Basic Auth
-	OAuth1 OAuth1    // Oauth1 for Oauth1.0
-	OAuth2 OAuth2    // Oauth1 for Oauth2.0
-	AWS    AWSAuth   // AWS for AWS authorozation
+	OAuth1 OAuth1    // OAuth1 for OAuth1.0
+	OAuth2 OAuth2    // OAuth1 for OAuth2.0
+	AWS    AWSAuth   // AWS for AWS authorization
+}
+
+func (a Authorization) set() uint {
+	b := uint(0)
+	if a.Basic.set() {
+		b |= 1
+	}
+	if a.OAuth1.set() {
+		b |= 2
+	}
+	if a.OAuth2.set() {
+		b |= 4
+	}
+	if a.AWS.set() {
+		b |= 8
+	}
+	return b
 }
 
 // BasicAuth contains information for HTTP Basic Authorization.
@@ -145,16 +162,31 @@ type BasicAuth struct {
 	Username, Password string
 }
 
+func (a BasicAuth) set() bool {
+	return a.Username != "" || a.Password != ""
+}
+
 // OAuth1 contains data for OAuth1.0 authorization.
 //    Authorization: OAuth oauth_consumer_key="5cb70c", oauth_nonce="waNSl", oauth_signature="uWX5CJDH", oauth_signature_method="HMAC-SHA1", oauth_timestamp="1499169105", oauth_token="e42052", oauth_version="1.0"
+// Token(Secret) retrieval has to be done prior to this OAuth1 authorization.
 type OAuth1 struct {
 	ConsumerKey, ConsumerSecret, Token, TokenSecret string
 }
 
+func (a OAuth1) set() bool {
+	return a.ConsumerKey != "" || a.ConsumerSecret != "" ||
+		a.Token != "" || a.TokenSecret != ""
+}
+
 // OAuth2 contains data for OAuth2.0 authorization.
 //    Authorization: Bearer sdlkfj234ewioru498xcyxcm
+// AccessToken retrieval has to be done prior to this OAuth1 authorization.
 type OAuth2 struct {
 	AccessToken string
+}
+
+func (a OAuth2) set() bool {
+	return a.AccessToken != ""
 }
 
 // AWSAuth contains data for AWS authorization.
@@ -162,6 +194,11 @@ type OAuth2 struct {
 //     Authorization: AWS AKIAIOSFODNN7EXAMPLE:frJIUN8DYpKDtOLCwo//yllqDzg=
 type AWSAuth struct {
 	AccessKey, SecretKey, Region, ServiceName string
+}
+
+func (a AWSAuth) set() bool {
+	return a.AccessKey != "" || a.SecretKey != "" ||
+		a.Region != "" || a.ServiceName != ""
 }
 
 // Cookie is a HTTP cookie.
@@ -329,154 +366,6 @@ type CheckResult struct {
 type Extraction struct {
 	Value string
 	Error error
-}
-
-// mergeRequest implements the merge strategy described in Merge for the Request.
-func mergeRequest(m *Request, r Request) error {
-	allNonemptyMustBeSame := func(m *string, s string) error {
-		if s != "" {
-			if *m != "" && *m != s {
-				return fmt.Errorf("Cannot merge %q into %q", s, *m)
-			}
-			*m = s
-		}
-		return nil
-	}
-	onlyOneMayBeNonempty := func(m *string, s string) error {
-		if s != "" {
-			if *m != "" {
-				return fmt.Errorf("Won't overwrite %q with %q", *m, s)
-			}
-			*m = s
-		}
-		return nil
-	}
-
-	if err := allNonemptyMustBeSame(&(m.Method), r.Method); err != nil {
-		return err
-	}
-
-	if err := onlyOneMayBeNonempty(&(m.URL), r.URL); err != nil {
-		return err
-	}
-
-	for k, v := range r.Params {
-		m.Params[k] = append(m.Params[k], v...)
-	}
-
-	if err := allNonemptyMustBeSame(&(m.ParamsAs), r.ParamsAs); err != nil {
-		return err
-	}
-
-	for k, v := range r.Header {
-		m.Header[k] = append(m.Header[k], v...)
-	}
-
-outer:
-	for _, rc := range r.Cookies {
-		for i := range m.Cookies {
-			if m.Cookies[i].Name == rc.Name {
-				m.Cookies[i].Value = rc.Value
-				continue outer
-			}
-		}
-		m.Cookies = append(m.Cookies, rc)
-	}
-
-	if err := onlyOneMayBeNonempty(&(m.Body), r.Body); err != nil {
-		return err
-	}
-
-	m.FollowRedirects = r.FollowRedirects
-	m.Chunked = r.Chunked
-
-	if err := onlyOneMayBeNonempty(&(m.Authorization.Basic.Username), r.Authorization.Basic.Username); err != nil {
-		return err
-	}
-	if err := onlyOneMayBeNonempty(&(m.Authorization.Basic.Password), r.Authorization.Basic.Password); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Merge merges all tests into one. The individual fields are merged in the
-// following way.
-//     Name         Join all names
-//     Description  Join all descriptions
-//     Request
-//       Method     All nonempty must be the same
-//       URL        Only one may be nonempty
-//       Params     Merge by key
-//       ParamsAs   All nonempty must be the same
-//       Header     Merge by key
-//       Cookies    Merge by cookie name
-//       Body       Only one may be nonempty
-//       FollowRdr  Last wins
-//       Chunked    Last wins
-//     Checks       Append all checks
-//     VarEx        Merge, same keys must have same value
-//     TestVars     Use values from first only.
-//     Poll
-//       Max        Use largest
-//       Sleep      Use largest
-//     Timeout      Use largets
-//     Verbosity    Use largets
-//     PreSleep     Summ of all;  same for InterSleep and PostSleep
-//     ClientPool   ignore
-func Merge(tests ...*Test) (*Test, error) {
-	m := Test{}
-
-	// Name and description
-	s := []string{}
-	for _, t := range tests {
-		s = append(s, t.Name)
-	}
-	m.Name = "Merge of " + strings.Join(s, ", ")
-	s = s[:0]
-	for _, t := range tests {
-		s = append(s, t.Description)
-	}
-	m.Description = strings.TrimSpace(strings.Join(s, "\n"))
-
-	m.Variables = make(map[string]string)
-	for n, v := range tests[0].Variables {
-		m.Variables[n] = v
-	}
-
-	m.Request.Params = make(url.Values)
-	m.Request.Header = make(http.Header)
-	m.VarEx = make(map[string]Extractor)
-	for _, t := range tests {
-		err := mergeRequest(&m.Request, t.Request)
-		if err != nil {
-			return &m, err
-		}
-		m.Checks = append(m.Checks, t.Checks...)
-		if t.Execution.Tries > m.Execution.Tries {
-			m.Execution.Tries = t.Execution.Tries
-		}
-		if t.Execution.Wait > m.Execution.Wait {
-			m.Execution.Wait = t.Execution.Wait
-		}
-		if t.Request.Timeout > m.Request.Timeout {
-			m.Request.Timeout = t.Request.Timeout
-		}
-		if t.Execution.Verbosity > m.Execution.Verbosity {
-			m.Execution.Verbosity = t.Execution.Verbosity
-		}
-		m.Execution.PreSleep += t.Execution.PreSleep
-		m.Execution.InterSleep += t.Execution.InterSleep
-		m.Execution.PostSleep += t.Execution.PostSleep
-		for name, value := range t.VarEx {
-			if old, ok := m.VarEx[name]; ok && old != value {
-				return &m, fmt.Errorf("wont overwrite extractor for %s", name)
-			}
-			m.VarEx[name] = value
-		}
-	}
-
-	return &m, nil
 }
 
 // PopulateCookies populates t.Request.Cookies with the those
