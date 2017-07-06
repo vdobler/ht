@@ -24,6 +24,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	awsauth "github.com/smartystreets/go-aws-auth"
 	"github.com/vdobler/ht/cookiejar"
 )
 
@@ -459,7 +460,7 @@ func (t *Test) Run() error {
 				time.Sleep(t.Execution.Wait)
 			}
 		}
-		t.resetRequest()
+		t.resetRequest() // TODO: should be inside "if try > 1", or?
 		// Clear status and error; is updated in executeChecks.
 		t.Status, t.Error = NotRun, nil
 		t.Response = Response{}
@@ -566,6 +567,8 @@ func (t *Test) resetRequest() {
 	}
 	body := ioutil.NopCloser(strings.NewReader(t.Request.SentBody))
 	t.Request.Request.Body = body
+
+	// TODO: Re-Authorize request here
 }
 
 // prepare the test for execution by crafting the underlying http request
@@ -597,10 +600,8 @@ func (t *Test) prepareRequest() error {
 	for _, cookie := range t.Request.Cookies {
 		t.Request.Request.AddCookie(&http.Cookie{Name: cookie.Name, Value: cookie.Value})
 	}
-	// Basic Auth
-	if t.Request.Authorization.Basic.Username != "" {
-		t.Request.Request.SetBasicAuth(t.Request.Authorization.Basic.Username, t.Request.Authorization.Basic.Password)
-	}
+
+	t.authorizeRequest()
 
 	if t.Request.Timeout <= 0 {
 		t.Request.Timeout = DefaultClientTimeout
@@ -635,6 +636,43 @@ func (t *Test) prepareRequest() error {
 	}
 	if t.Jar != nil {
 		t.client.Jar = t.Jar
+	}
+
+	return nil
+}
+
+func (t *Test) authorizeRequest() error {
+	auth := t.Request.Authorization
+	set := auth.set()
+	if set == 0 {
+		return nil // No Authorization header needed.
+	}
+	if set&(set-1) != 0 {
+		return fmt.Errorf("Cannot combine several types of authorizations in one request")
+	}
+
+	req := t.Request.Request
+
+	switch set {
+	case 1: // Basic Auth
+		req.SetBasicAuth(auth.Basic.Username, auth.Basic.Password)
+	case 2: // OAuth 1.0
+		// Implementation idea:
+		// pathc github.com/dghubble/authHeaderValue
+	case 4: // OAuth 2.0
+		req.Header.Set("Authorization", "Bearer "+auth.OAuth2.AccessToken)
+	case 8: // AWS
+
+		credentials := awsauth.Credentials{
+			AccessKeyID:     auth.AWS.AccessKey,
+			SecretAccessKey: auth.AWS.SecretKey,
+		}
+		awsauth.Sign(req, credentials)
+		// Copy authorization header back to allow debugging.
+		t.Request.Header.Set("Authorization",
+			req.Header.Get("Authorization"))
+	default:
+		panic(set)
 	}
 
 	return nil

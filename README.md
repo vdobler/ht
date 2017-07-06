@@ -283,4 +283,5 @@ Ht includes open source from the following sources:
 * Sourcemap. Copyright (c) 2016 The github.com/go-sourcemap/sourcemap Contributors. Licensed under the BSD 2-clasue license.
 * Go-MySQL-Driver. Copyright 2013 The Go-MySQL-Driver Authors. Licensed under the Mozilla Public License Version 2.0
 * Govalidator. Copyright (c) 2014 Alex Saskevich. Licensed under the MIT License.
-* Gorilla. Copyright (c) 2012 Rodrigo Moraes. Licensed under the New BSD License
+* Gorilla. Copyright (c) 2012 Rodrigo Moraes. Licensed under the New BSD License.
+* Go-AWS-Auth. Copyright (c) 2016 SmartyStreets. Licensed under the MIT License.
