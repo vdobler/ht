@@ -176,6 +176,7 @@ echo "FOO_VAR=$FOO_VAR"
 	}
 	if test.Status != Pass {
 		test.PrintReport(os.Stdout)
+		fmt.Printf("Response-Body=%q\n", test.Response.BodyStr)
 		t.Errorf("Got test status %s (want Pass)", test.Status)
 	}
 }
@@ -199,6 +200,7 @@ func testBashNonzeroExit(t *testing.T) {
 	}
 	if test.Status != Pass {
 		test.PrintReport(os.Stdout)
+		fmt.Printf("Response-Body=%q\n", test.Response.BodyStr)
 		t.Errorf("Got test status %s (want Pass)", test.Status)
 	}
 }
@@ -224,6 +226,7 @@ func testBashTimeout(t *testing.T) {
 	}
 	if test.Status != Pass {
 		t.Errorf("Got %s, want Pass", test.Status)
+		fmt.Printf("Response-Body=%q\n", test.Response.BodyStr)
 		test.PrintReport(os.Stdout)
 	}
 }
