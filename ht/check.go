@@ -128,7 +128,7 @@ func (cl CheckList) MarshalJSON() ([]byte, error) {
 		}
 	}
 	buf.WriteRune(']')
-	result := string(buf.Bytes())
+	result := buf.String()
 
 	return []byte(result), nil
 }

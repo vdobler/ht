@@ -342,7 +342,9 @@ func TestScreenshotPass(t *testing.T) {
 	jar, _ := cookiejar.New(nil)
 	suite.ExecuteConcurrent(1, jar)
 	if *verboseTest {
-		// suite.PrintReport(os.Stdout)
+		for _, test := range suite.Tests {
+			test.PrintReport(os.Stdout)
+		}
 	}
 
 	if suite.Status != Pass {
@@ -428,7 +430,9 @@ func TestScreenshotFail(t *testing.T) {
 	jar, _ := cookiejar.New(nil)
 	suite.ExecuteConcurrent(1, jar)
 	if *verboseTest {
-		// suite.PrintReport(os.Stdout)
+		for _, test := range suite.Tests {
+			test.PrintReport(os.Stdout)
+		}
 	}
 
 	if suite.Status != Fail {
@@ -510,7 +514,9 @@ func TestRenderedHTMLPassing(t *testing.T) {
 	jar, _ := cookiejar.New(nil)
 	suite.ExecuteConcurrent(1, jar)
 	if *verboseTest {
-		// suite.PrintReport(os.Stdout)
+		for _, test := range suite.Tests {
+			test.PrintReport(os.Stdout)
+		}
 	}
 
 	if suite.Status != Pass {
@@ -563,7 +569,9 @@ func TestRenderingTime(t *testing.T) {
 	jar, _ := cookiejar.New(nil)
 	suite.ExecuteConcurrent(1, jar)
 	if *verboseTest {
-		// suite.PrintReport(os.Stdout)
+		for _, test := range suite.Tests {
+			test.PrintReport(os.Stdout)
+		}
 	}
 
 	if test := suite.Tests[0]; test.Status != Fail {

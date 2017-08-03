@@ -215,7 +215,7 @@ func (t *Test) executeBash() error {
 		return err
 	}
 	err = cmd.Wait()
-	t.Response.BodyStr = string(b.Bytes())
+	t.Response.BodyStr = b.String()
 
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Response.Response.StatusCode = http.StatusRequestTimeout

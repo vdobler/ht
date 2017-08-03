@@ -246,24 +246,6 @@ func TestSendBody(t *testing.T) {
 // ----------------------------------------------------------------------------
 // Test Handlers
 
-// redirectHandler called with a path of /<n> will redirect to /<n-1> if n>0.
-// A path of /0 prints "Hello World" and any other path results in a 500 error.
-func redirectHandler(w http.ResponseWriter, r *http.Request) {
-	np := r.URL.Path[1:]
-	n, err := strconv.Atoi(np)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if n > 0 {
-		u := r.URL
-		u.Path = fmt.Sprintf("/%d", n-1)
-		http.Redirect(w, r, u.String(), http.StatusMovedPermanently)
-		return
-	}
-	http.Error(w, "Hello World!", http.StatusOK)
-}
-
 // parse the form value name as an int, defaulting to 0.
 func intFormValue(r *http.Request, name string) int {
 	s := r.FormValue(name)
@@ -324,52 +306,6 @@ var (
 	pollingHandlerFailCnt  = 0
 	pollingHandlerErrorCnt = 0
 )
-
-// cookieHandler
-func cookieHandler(w http.ResponseWriter, r *http.Request) {
-	name := r.FormValue("name")
-	value := r.FormValue("value")
-	httpOnly := r.FormValue("httponly") != ""
-	maxAge := intFormValue(r, "maxage")
-	if name != "" {
-		http.SetCookie(w, &http.Cookie{
-			Name: name, Value: value,
-			HttpOnly: httpOnly,
-			MaxAge:   maxAge,
-		})
-	}
-
-	fmt.Fprintf(w, `<!doctype html>
-<html>
-<head><title>Received Cookies</title></head>
-<body>
-<h1>Received Cookies</h1>
-<ul>`)
-	for _, cookie := range r.Cookies() {
-		fmt.Fprintf(w, "<li>Name=%q Value=%q</li>\n", cookie.Name, cookie.Value)
-	}
-	fmt.Fprintf(w, `</ul>
-</body>
-</html>
-`)
-}
-
-// expectCheckFailures checks that each check failed.
-func expectCheckFailures(t *testing.T, descr string, test Test) {
-	if test.Status != Fail {
-		t.Fatalf("%s: Expected Fail, got %s", descr, test.Status)
-	}
-	if len(test.CheckResults) != len(test.Checks) {
-		t.Fatalf("%s: Expected %d entries, got %d: %#v",
-			descr, len(test.Checks), len(test.CheckResults), test)
-	}
-
-	for i, r := range test.CheckResults {
-		if r.Status != Fail {
-			t.Errorf("%s check %d: Expect Fail, got %s", descr, i, r.Status)
-		}
-	}
-}
 
 // pollingHandler
 //     /?t=fail&n=7   returns a 500 for 6 times and a 200 on the 7th request

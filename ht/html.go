@@ -123,7 +123,6 @@ type ValidationIssue struct {
 
 var (
 	w3cValidatorErrSel   = cascadia.MustCompile("li.error")
-	w3cValidatorWarnSel  = cascadia.MustCompile("li.msg_warn")
 	w3cValidatorLocSel   = cascadia.MustCompile("p.location")
 	w3cValidatorMsgSel   = cascadia.MustCompile("p span")
 	w3cValidatorInputSel = cascadia.MustCompile("p.extract")

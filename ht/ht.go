@@ -1000,10 +1000,6 @@ func (t *Test) ExecuteChecks() {
 	}
 }
 
-func (t *Test) prepared() bool {
-	return t.Request.Request != nil
-}
-
 func (t *Test) errorf(format string, v ...interface{}) {
 	if t.Execution.Verbosity >= 0 && t.Log != nil {
 		format = "ERROR " + format + " [%q]"

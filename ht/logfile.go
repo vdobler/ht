@@ -7,6 +7,7 @@ package ht
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -110,7 +111,7 @@ func (f *Logfile) newLocalFileData() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	pos, err := file.Seek(f.pos, os.SEEK_SET)
+	pos, err := file.Seek(f.pos, io.SeekStart)
 	if err != nil {
 		return nil, err
 	}

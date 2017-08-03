@@ -93,7 +93,6 @@ var (
 	errMissingNoCache      = errors.New("missing no-cache")
 	errMissingPrivate      = errors.New("missing private")
 	errMissingMaxAge       = errors.New("missing max-age")
-	errMissingMaxAgeValue  = errors.New("missing max-age value")
 )
 
 // Cache allows to test for HTTP Cache-Control headers. The zero value checks
