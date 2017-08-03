@@ -140,8 +140,7 @@ func printStatistics(data []suite.TestData) {
 	sort.Strings(sortedNames)
 	for _, test := range sortedNames {
 		st := statsFor(perTest[test])
-		h := fmt.Sprintf("%s", test)
-		printStat(os.Stdout, h, nameLength, st)
+		printStat(os.Stdout, test, nameLength, st)
 		perTestData = append(perTestData,
 			asciistat.Data{Name: test, Values: st.data})
 	}
