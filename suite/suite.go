@@ -49,20 +49,6 @@ type Suite struct {
 	noneTeardownTest int
 }
 
-func shouldRun(t int, rs *RawSuite, s *Suite) bool {
-	if !rs.tests[t].IsEnabled() {
-		return false
-	}
-
-	// Stop execution on errors during setup
-	for i := 0; i < len(rs.Setup) && i < len(s.Tests); i++ {
-		if s.Tests[i].Status > ht.Pass {
-			return false
-		}
-	}
-	return true
-}
-
 // NewFromRaw sets up a new Suite from rs, read to be Iterated.
 func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
 	// Create cookie jar if needed.
@@ -120,8 +106,6 @@ var (
 	// ErrAbortExecution indicates that suite iteration should stop.
 	ErrAbortExecution = errors.New("Abort Execution")
 )
-
-var mockDelay = 50 * time.Millisecond
 
 // Iterate the suite through the given executor.
 func (suite *Suite) Iterate(executor Executor) {
@@ -248,18 +232,6 @@ func analyseMocks(test *ht.Test, ctrl mock.Control) {
 
 	// Now glue the subsuite as a metadata to the original Test.
 	test.SetMetadata("Subsuite", subsuite)
-}
-
-func logMock(suite *Suite, report *ht.Test) {
-	if suite.Verbosity <= 0 {
-		return
-	}
-	if suite.Verbosity < 3 {
-		suite.Log.Printf("Mock invoked %q: %s %s", report.Name,
-			report.Request.Method, report.Request.URL)
-	} else {
-		suite.Log.Printf("%s", mock.PrintReport(report))
-	}
 }
 
 func (suite *Suite) updateVariables(test *ht.Test) {

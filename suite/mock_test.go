@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -40,6 +41,9 @@ func pipeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	snJson, err := ioutil.ReadAll(snResp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
 	snResp.Body.Close()
 	var x struct {
 		Status   string `json:"status"`

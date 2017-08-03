@@ -10,7 +10,6 @@ import (
 	"log"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/vdobler/ht/cookiejar"
@@ -24,18 +23,6 @@ import (
 func pp(msg string, v interface{}) {
 	data, err := hjson.Marshal(v)
 	fmt.Println(msg, string(data), err)
-}
-
-func ppvars(msg string, vars map[string]string) {
-	keys := []string{}
-	for k := range vars {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	fmt.Println(msg)
-	for _, k := range keys {
-		fmt.Printf("  %s = %q\n", k, vars[k])
-	}
 }
 
 // ----------------------------------------------------------------------------
@@ -107,7 +94,7 @@ func (f *File) decodeLaxTo(x interface{}) error {
 	}
 	err = populate.Lax(x, m)
 	if err != nil {
-		return err // better error message here
+		return fmt.Errorf("error decoding file %s: %s", f.Name, err)
 	}
 
 	return nil
@@ -130,7 +117,7 @@ func (f *File) decodeStrictTo(x interface{}, drop []string) error {
 	}
 	err = populate.Strict(x, m)
 	if err != nil {
-		return err // better error message here
+		return fmt.Errorf("error decoding file %s: %s", f.Name, err)
 	}
 
 	return nil
@@ -149,15 +136,6 @@ func loadMixin(filename string, fs FileSystem) (*Mixin, error) {
 	file, err := fs.Load(filename)
 	if err != nil {
 		return nil, err
-	}
-
-	return &Mixin{File: file}, nil
-}
-
-func makeMixin(filename string, fs map[string]*File) (*Mixin, error) {
-	file, ok := fs[filename]
-	if !ok {
-		return nil, fmt.Errorf("cannot find mixin %s", filename)
 	}
 
 	return &Mixin{File: file}, nil

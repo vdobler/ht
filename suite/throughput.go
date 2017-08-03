@@ -183,7 +183,6 @@ func (p *pool) newThread(stop chan bool, logger *log.Logger) {
 			select {
 			case <-stop:
 				done = true
-				break
 			default:
 			}
 			if done {
@@ -693,13 +692,6 @@ func DataPrint(data []TestData, out io.Writer) {
 			d.ID, emsg)
 	}
 
-}
-
-// TODO: handle errors
-func splitID(id string) ([]string, []string) {
-	part := strings.SplitN(id, IDSep, 3)
-	nums := strings.SplitN(part[0], "/", 4)
-	return part, nums
 }
 
 // DataToCSV prints data as a CSV table to out after sorting data by Started.

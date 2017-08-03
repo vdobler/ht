@@ -479,8 +479,6 @@ func roundDuration(d time.Duration) time.Duration {
 		return round(d, 100*mu)
 	} else if d >= 1*ms {
 		return round(d, 10*mu)
-	} else if d >= 1*ms {
-		return round(d, 10*mu)
 	} else if d >= 100*mu {
 		return round(d, 1*mu)
 	} else if d >= 10*mu {
