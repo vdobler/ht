@@ -88,7 +88,7 @@ func setFloat(dst, src reflect.Value, elem string) error {
 		var err error
 		f, err = strconv.ParseFloat(s, 64)
 		if err != nil {
-			return fmt.Errorf("cannot set %s <%s> to %s", elem, dst.Kind(), s)
+			return fmt.Errorf("cannot set %s <%s> to %q", elem, dst.Kind(), s)
 		}
 	default:
 		return fmt.Errorf("cannot set %s <%s> to %v <%s>",
@@ -124,7 +124,7 @@ func setBool(dst, src reflect.Value, elem string) error {
 		case "false", "FALSE", "0", "no", "NO":
 			b = false
 		default:
-			return fmt.Errorf("cannot set %s <bool> to %s", elem, src.String())
+			return fmt.Errorf("cannot set %s <bool> to %q", elem, src.String())
 		}
 	default:
 		return fmt.Errorf("cannot set %s <%s> to %v <%s>",
@@ -158,7 +158,7 @@ func setInt(dst, src reflect.Value, elem string) error {
 		var err error
 		i, err = strconv.ParseInt(s, 10, 64)
 		if err != nil {
-			return fmt.Errorf("cannot set %s <%s> to %s", elem, dst.Kind(), s)
+			return fmt.Errorf("cannot set %s <%s> to %q", elem, dst.Kind(), s)
 		}
 	default:
 		return fmt.Errorf("cannot set %s <%s> to %v <%s>",
@@ -185,7 +185,7 @@ func setDuration(dst, src reflect.Value, elem string) error {
 	case reflect.String:
 		d, err := time.ParseDuration(src.String())
 		if err != nil {
-			return fmt.Errorf("cannot set %s <Duration> to %s", elem, src.String())
+			return fmt.Errorf("cannot set %s <Duration> to %q", elem, src.String())
 		}
 		dst.SetInt(int64(d))
 		return nil
