@@ -38,7 +38,7 @@ func TestLoadFile(t *testing.T) {
 	if got := raw.Name; got != "testdata/a.ht" {
 		t.Errorf("Bad Name, got %q want %q", got, "testdata/a.ht")
 	}
-	if strings.Index(raw.Data, "aaa.aaa.aaa") == -1 {
+	if !strings.Contains(raw.Data, "aaa.aaa.aaa") {
 		t.Errorf("Bad Data; got %q", raw.Data)
 	}
 }
@@ -522,4 +522,37 @@ func TestInlineTests(t *testing.T) {
 	s := rs.Execute(nil, nil, logger())
 	fmt.Println(s.Status)
 	fmt.Println(s.Tests[0].PrintReport(os.Stdout))
+}
+
+type MyX struct {
+	Foo int
+	Bar string
+}
+
+var decodeErrorTests = []struct {
+	data string
+	okay bool
+}{
+	{`{Foo: 12, Bar: "hello", Wuz: 3.141}`, true},
+	{`{{]]`, false},
+	{`2.7182818`, false},
+	{`{Foo: "", Bar: "hello", Wuz: 3.141}`, false},
+}
+
+func TestDecodeErrors(t *testing.T) {
+	for i, tc := range decodeErrorTests {
+		f := &File{
+			Name: "somefile.hjson",
+			Data: tc.data,
+		}
+
+		x := &MyX{}
+		err := f.decodeLaxTo(x)
+		if (err == nil) != tc.okay {
+			t.Errorf("%d: err=%s", i, err)
+		}
+		if testing.Verbose() {
+			t.Log("Testcase", i, ": Error =", err)
+		}
+	}
 }
