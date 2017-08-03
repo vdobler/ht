@@ -16,6 +16,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -579,8 +581,12 @@ func TestFileSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	p := wd + "/testdata/fileprotocol"
-	u := "file://" + p
+	p := filepath.ToSlash(wd) + "/testdata/fileprotocol"
+	u := "file://"
+	if runtime.GOOS == "windows" {
+		u += "/"
+	}
+	u += p
 
 	tests := []*Test{
 		{
@@ -603,7 +609,10 @@ func TestFileSchema(t *testing.T) {
 			Checks: []Check{
 				StatusCode{Expect: 403},
 				&Body{Contains: p},
-				&Body{Contains: "not a directory"},
+				AnyOne{Of: []Check{
+					&Body{Contains: "not a directory"},                // Linux
+					&Body{Contains: "cannot find the path specified"}, // Windows
+				}},
 			},
 		},
 		{
@@ -634,8 +643,11 @@ func TestFileSchema(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: 404},
-				&Body{Contains: "not a directory"},
 				&Body{Contains: p},
+				AnyOne{Of: []Check{
+					&Body{Contains: "not a directory"},                // Linux
+					&Body{Contains: "cannot find the path specified"}, // Windows
+				}},
 			},
 		},
 		{
@@ -664,8 +676,11 @@ func TestFileSchema(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: 404},
-				&Body{Contains: "no such file or directory"},
 				&Body{Contains: p},
+				AnyOne{Of: []Check{
+					&Body{Contains: "not a directory"},                // Linux
+					&Body{Contains: "cannot find the path specified"}, // Windows
+				}},
 			},
 		},
 	}
@@ -684,7 +699,7 @@ func TestFileSchema(t *testing.T) {
 
 		got := test.Status.String()
 		if got != want {
-			t.Errorf("%d. %s: got %s, want %s.\nError=%v\nBody=%q",
+			t.Errorf("%d. %s: got %s, want %s.\nError=%v\nBody=%q\n",
 				i, test.Name, got, want, test.Error, test.Response.BodyStr)
 
 		}

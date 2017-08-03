@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -74,6 +75,24 @@ func (t *Test) executeFile() error {
 	return nil
 }
 
+func isWindowsDriveLetter(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+func localFilename(p string) string {
+	if runtime.GOOS == "windows" {
+		// file: URLs on Windows have the form file:///D:/some/path
+		// so u.Path == "/D:/some/path". Unfortunately this leading /
+		// results in problems if u.Path is used as is.
+		// The following code does not handle the //host/share/path
+		// version of a file path. Oh how much I hate Windows.
+		if len(p) > 3 && p[0] == '/' && isWindowsDriveLetter(p[1]) && p[2] == ':' {
+			return p[1:]
+		}
+	}
+	return p
+}
+
 //
 //  Successfully wrote /home/volker/code/src/github.com/vdobler/ht/ht/testdata/fileprotocol
 //  Successfully wrote
@@ -82,7 +101,7 @@ func (t *Test) executeFile() error {
 // file could be opened      --> 200
 // any problems opening file --> 404
 func (t *Test) executeFileGET(u *url.URL) {
-	filename := u.Path
+	filename := localFilename(u.Path)
 	file, err := os.Open(filename)
 	if err != nil {
 		t.Response.Response.Status = "404 Not Found"
@@ -99,7 +118,7 @@ func (t *Test) executeFileGET(u *url.URL) {
 // properly created --> 200
 // any problems     --> 403
 func (t *Test) executeFilePUT(u *url.URL) {
-	filename := u.Path
+	filename := localFilename(u.Path)
 	err := ioutil.WriteFile(filename, []byte(t.Request.Body), 0666)
 	if err != nil {
 		t.Response.Response.Status = "403 Forbidden"
@@ -117,7 +136,7 @@ func (t *Test) executeFilePUT(u *url.URL) {
 // filename nonexisting --> 404
 // unable to delete     --> 403
 func (t *Test) executeFileDELETE(u *url.URL) {
-	filename := u.Path
+	filename := localFilename(u.Path)
 	_, err := os.Stat(filename)
 	if err != nil {
 		t.Response.Response.Status = "404 Not Found"

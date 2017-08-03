@@ -8,6 +8,8 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"path/filepath"
+	"runtime"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,9 +28,18 @@ func TestFilePseudorequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	p := wd + "/testdata/fileprotocol"
-	u := "file://" + p
+	p := filepath.ToSlash(wd) + "/testdata/fileprotocol"
+	u := "file://"
+	if runtime.GOOS == "windows" {
+		u += "/"
+	}
+	u += p
 
+	linuxOrWinNotFound := []Check{
+		&Body{Contains: "not a directory"},                // Linux
+		&Body{Contains: "system cannot find the"}, // Windows
+	}
+	
 	tests := []*Test{
 		{
 			Name: "PUT_okay",
@@ -50,7 +61,7 @@ func TestFilePseudorequest(t *testing.T) {
 			Checks: []Check{
 				StatusCode{Expect: 403},
 				&Body{Contains: p},
-				&Body{Contains: "not a directory"},
+				AnyOne{Of: linuxOrWinNotFound},
 			},
 		},
 		{
@@ -71,7 +82,7 @@ func TestFilePseudorequest(t *testing.T) {
 			Checks: []Check{
 				StatusCode{Expect: 404},
 				&Body{Contains: p},
-				&Body{Contains: "not a directory"},
+				AnyOne{Of: linuxOrWinNotFound},
 			},
 		},
 		{
@@ -82,7 +93,7 @@ func TestFilePseudorequest(t *testing.T) {
 			Checks: []Check{
 				StatusCode{Expect: 404},
 				&Body{Contains: p},
-				&Body{Contains: "no such file or directory"},
+				AnyOne{Of: linuxOrWinNotFound},
 			},
 		},
 		{
@@ -102,10 +113,12 @@ func TestFilePseudorequest(t *testing.T) {
 			},
 			Checks: []Check{
 				StatusCode{Expect: 404},
-				&Body{Contains: "no such file or directory"},
+				AnyOne{Of: linuxOrWinNotFound},
 			},
 		},
-		{
+	}
+	if runtime.GOOS != "windows" {
+		tests = append(tests, &Test{
 			Name: "DELETE_forbidden",
 			Request: Request{
 				URL: "file:///etc/passwd",
@@ -114,13 +127,17 @@ func TestFilePseudorequest(t *testing.T) {
 				StatusCode{Expect: 403},
 				&Body{Contains: "permission denied"},
 			},
-		},
+		})
 	}
 
 	for i, test := range tests {
 		p := strings.Index(test.Name, "_")
 		if p == -1 {
 			t.Fatalf("Ooops: no '_' in %d. Name: %s", i, test.Name)
+		}
+		expect := "Pass"
+		if test.Description != "" {
+			expect = test.Description
 		}
 
 		t.Run(test.Name, func(t *testing.T) {
@@ -131,9 +148,13 @@ func TestFilePseudorequest(t *testing.T) {
 			}
 
 			got := test.Status.String()
-			if got != "Pass" {
-				t.Errorf("Got %s. (Error=%v)", got, test.Error)
-				fmt.Println("ReceivedBody == ", test.Response.BodyStr)
+			if got != expect {
+				sc := 0
+				if test.Response.Response != nil {
+					sc = test.Response.Response.StatusCode
+				}
+				t.Errorf("Got %s, want %s.\nError=%v\nStatusCode=%d\nBody=%q\n",
+					got, expect, test.Error, sc, test.Response.BodyStr)
 			}
 		})
 	}
