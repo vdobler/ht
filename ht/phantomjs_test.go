@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -95,9 +96,13 @@ var screenshotHomeHTML = []byte(`<!doctype html>
   <head><title>Hello</title>
   <style>
     body { background-color: lightyellow; }
+    h1 {
+        font-family: Helvetica;  font-style: normal;
+        font-size: 25px;  font-weight: normal;  color: $000000;
+    }
   </style>
   <body>
-    <h1>Home</h1>
+    <h1>HO</h1>
   </body>
 </html>
 `)
@@ -312,7 +317,7 @@ var passingScreenshotTests = []*Test{
 
 	// White background (no cookie) but with name Bob. Allowing some pixels to differ.
 	{
-		Name:    "Greet Bob, tollerating difference",
+		Name:    "Greet Bob, tolerating difference",
 		Request: Request{URL: "/greet?name=Bob"},
 		Checks: []Check{
 			&Screenshot{
@@ -335,6 +340,12 @@ func TestScreenshotPass(t *testing.T) {
 	for i := range passingScreenshotTests {
 		u := ts.URL + "/screenshot" + passingScreenshotTests[i].Request.URL
 		passingScreenshotTests[i].Request.URL = u
+		if runtime.GOOS == "windows" {
+			for _, c := range passingScreenshotTests[i].Checks {
+				ss := c.(*Screenshot)
+				ss.AllowedDifference = 450
+			}
+		}
 	}
 	suite := Collection{
 		Tests: passingScreenshotTests,
