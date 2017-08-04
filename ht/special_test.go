@@ -35,9 +35,13 @@ func TestFilePseudorequest(t *testing.T) {
 	}
 	u += p
 
-	linuxOrWinNotFound := []Check{
+	linuxOrWinNotADir := []Check{
 		&Body{Contains: "not a directory"},        // Linux
 		&Body{Contains: "system cannot find the"}, // Windows
+	}
+	linuxOrWinNotFound := []Check{
+		&Body{Contains: "no such file or directory"}, // Linux
+		&Body{Contains: "system cannot find the"},    // Windows
 	}
 
 	tests := []*Test{
@@ -61,7 +65,7 @@ func TestFilePseudorequest(t *testing.T) {
 			Checks: []Check{
 				StatusCode{Expect: 403},
 				&Body{Contains: p},
-				AnyOne{Of: linuxOrWinNotFound},
+				AnyOne{Of: linuxOrWinNotADir},
 			},
 		},
 		{
@@ -82,7 +86,7 @@ func TestFilePseudorequest(t *testing.T) {
 			Checks: []Check{
 				StatusCode{Expect: 404},
 				&Body{Contains: p},
-				AnyOne{Of: linuxOrWinNotFound},
+				AnyOne{Of: linuxOrWinNotADir},
 			},
 		},
 		{
