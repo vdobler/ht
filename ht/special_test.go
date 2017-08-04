@@ -200,13 +200,13 @@ func testBashOkay(t *testing.T) {
 			},
 			Body: `
 echo "Hello from your friendly bash script!"
-echo "Today is $(date), we are in $(pwd)"
+echo "Today is $(date), $(pwd) we are in"
 echo "FOO_VAR=$FOO_VAR"
 `,
 		},
 		Checks: CheckList{
 			&StatusCode{Expect: 200},
-			&Body{Contains: "we are in /tmp"},
+			&Body{Contains: "/tmp we are in"},
 			&Body{Contains: "wuz baz"},
 			&Header{Header: "Exit-Status", Condition: Condition{Equals: "exit status 0"}},
 		},
