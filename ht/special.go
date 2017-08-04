@@ -198,7 +198,7 @@ func (t *Test) executeBash() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), t.Request.Timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "/bin/bash", name)
+	cmd := exec.CommandContext(ctx, "bash", name)
 	cmd.Dir = workDir
 	for k, v := range t.Request.Params {
 		if strings.Contains(k, "=") {
