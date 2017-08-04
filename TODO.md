@@ -4,6 +4,9 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  The tests for phantomjs screenshots fail on Windows because the font (or its
+   properties) used differs. Maybe forcing a certain font and fixing height and
+   weight via CSS could overcome this.
 
 *  Several types of Checks would be very sensible:
      o Content Efficiency 
