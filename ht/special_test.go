@@ -8,11 +8,11 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"path/filepath"
-	"runtime"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -36,10 +36,10 @@ func TestFilePseudorequest(t *testing.T) {
 	u += p
 
 	linuxOrWinNotFound := []Check{
-		&Body{Contains: "not a directory"},                // Linux
+		&Body{Contains: "not a directory"},        // Linux
 		&Body{Contains: "system cannot find the"}, // Windows
 	}
-	
+
 	tests := []*Test{
 		{
 			Name: "PUT_okay",
@@ -94,6 +94,26 @@ func TestFilePseudorequest(t *testing.T) {
 				StatusCode{Expect: 404},
 				&Body{Contains: p},
 				AnyOne{Of: linuxOrWinNotFound},
+			},
+		},
+		{
+			Name: "GET_fail", Description: "Fail",
+			Request: Request{
+				URL: u,
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
+				&Body{Equals: "something else"},
+				&Header{Header: "Foo", Absent: true},
+			},
+		},
+		{
+			Name: "GET_error", Description: "Error",
+			Request: Request{
+				URL: "file://remote.host/some/path",
+			},
+			Checks: []Check{
+				StatusCode{Expect: 200},
 			},
 		},
 		{
