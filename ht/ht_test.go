@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -567,126 +566,6 @@ func TestReadBody(t *testing.T) {
 		if test.Response.BodyErr != nil {
 			t.Errorf("Path %q: Unexpected problem reading body: %#v",
 				path, test.Response.BodyErr)
-		}
-	}
-}
-
-// ----------------------------------------------------------------------------
-// file://
-
-func TestFileSchema(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-	p := wd + "/testdata/fileprotocol"
-	u := "file://" + p
-
-	tests := []*Test{
-		{
-			Name: "PUT",
-			Request: Request{
-				URL:  u,
-				Body: "Tadadadaaa!",
-			},
-			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfully wrote " + u},
-			},
-		},
-		{
-			Name: "PUT",
-			Request: Request{
-				URL:  u + "/iouer/cxxs/dlkfj",
-				Body: "Tadadadaaa!",
-			},
-			Checks: []Check{
-				StatusCode{Expect: 403},
-				&Body{Contains: p},
-				&Body{Contains: "not a directory"},
-			},
-		},
-		{
-			Name: "GET",
-			Request: Request{
-				URL: u,
-			},
-			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Equals: "Tadadadaaa!"},
-			},
-		},
-		{
-			Name: "GET Fail",
-			Request: Request{
-				URL: u,
-			},
-			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Equals: "something else"},
-				&Header{Header: "Foo", Absent: true},
-			},
-		},
-		{
-			Name: "GET",
-			Request: Request{
-				URL: u + "/slkdj/cxmvn",
-			},
-			Checks: []Check{
-				StatusCode{Expect: 404},
-				&Body{Contains: "not a directory"},
-				&Body{Contains: p},
-			},
-		},
-		{
-			Name: "GET Error",
-			Request: Request{
-				URL: "file://remote.host/some/path",
-			},
-			Checks: []Check{
-				StatusCode{Expect: 200},
-			},
-		},
-		{
-			Name: "DELETE",
-			Request: Request{
-				URL: u,
-			},
-			Checks: []Check{
-				StatusCode{Expect: 200},
-				&Body{Prefix: "Successfully deleted " + u},
-			},
-		},
-		{
-			Name: "DELETE",
-			Request: Request{
-				URL: u + "/sdjdfh/oieru",
-			},
-			Checks: []Check{
-				StatusCode{Expect: 404},
-				&Body{Contains: "no such file or directory"},
-				&Body{Contains: p},
-			},
-		},
-	}
-
-	for i, test := range tests {
-		method, want := test.Name, "Pass"
-		p := strings.Index(test.Name, " ")
-		if p != -1 {
-			method, want = test.Name[:p], test.Name[p+1:]
-		}
-		test.Request.Method = method
-		err = test.Run()
-		if err != nil {
-			t.Fatalf("%d. %s: Unexpected error: ", i, err)
-		}
-
-		got := test.Status.String()
-		if got != want {
-			t.Errorf("%d. %s: got %s, want %s.\nError=%v\nBody=%q",
-				i, test.Name, got, want, test.Error, test.Response.BodyStr)
-
 		}
 	}
 }
