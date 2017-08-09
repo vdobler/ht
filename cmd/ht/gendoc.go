@@ -119,7 +119,7 @@ func documentation(typ string) ([]string, error) {
 		[]byte("`json:\"-\"`"), []byte(""),
 		-1)
 
-	// This is inefficient, but okay direktly befor a os.Exit.
+	// This is inefficient, but okay directly before an os.Exit.
 	buf := []string{}
 	for _, line := range bytes.Split(output, []byte("\n")) {
 		if bytes.HasPrefix(line, []byte("func ")) {
