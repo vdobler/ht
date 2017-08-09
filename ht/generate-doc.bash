@@ -1,8 +1,12 @@
 #! /bin/bash
 
-checks=$(guru -scope  . implements "check.go:#332" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]")
+set -eu
 
-extractors=$(guru -scope  . implements "extractor.go:#501" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]")
+checks=$(guru -scope  . implements "check.go:#350" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]" | sort)
+
+extractors=$(guru -scope  . implements "extractor.go:#458" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]" | sort)
+
+
 
 godoc2html() {
     echo "<pre>"
@@ -10,6 +14,19 @@ godoc2html() {
 	| sed -e "s/&/\\&amp;/g; s/</\\&lt;/g; s/>/\\&gt;/g" \
 	| grep -v -E "^func " | sed -e "s/\t/        /; s/^    //; s/^}$/}\n/"
     echo "</pre>"
+}
+
+table() {
+    r=0
+    echo "<table>"
+    for c in $*; do
+	if [[ $(($r%6)) == 0 ]]; then
+	    echo "  <tr>"
+	fi
+	echo "    <td>$c &nbsp; &nbsp; &nbsp;  &nbsp; <//td>"
+	r=$(($r+1))
+    done
+    echo "</table>"
 }
 
 {
@@ -22,13 +39,13 @@ echo "<p>ht version $(git describe)</p>"
 echo "<h2>Test</h2>"
 godoc2html Test
 
-echo "<h3>Request</h2>"
-godoc2html Request
-
-echo "<h3>Execution</h2>"
-godoc2html Execution
+for t in Request Execution Cookie CheckList ExtractorMap; do
+    echo "<h3>$t</h2>"
+    godoc2html "$t"
+done
 
 echo "<h2>Checks</h2>"
+table $checks
 for c in $checks; do
     [[ -n "$c" ]] || continue
     echo "<h3>$c</h3>"
@@ -41,11 +58,25 @@ echo "   in checks that it is worth describing here.</p>"
 godoc2html "Condition"
 
 echo "<h2>Variable Extractors</h2>"
+table $extractors
 for e in $extractors; do
     [[ -n "$e" ]] || continue
     echo "<h3>$e</h3>"
     godoc2html "$e"
 done 
+
+echo "<h2>Hjson Types</h2>"
+for t in RawTest RawSuite RawElement RawScenario RawLoadTest RawMock; do
+    echo "<h3>$t</h2>"
+    godoc2html "github.com/vdobler/ht/suite.$t"
+done
+
+echo "<h2>Mocking</h2>"
+for t in Mock Mapping; do
+    echo "<h3>$t</h2>"
+    godoc2html "github.com/vdobler/ht/mock.$t"
+done
+
 
 
 echo "</body></html>"
