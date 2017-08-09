@@ -26,6 +26,7 @@ push: tag
 	&& v="$${v#v}" \
 	&& docker login \
 	&& docker push vodo/ht:latest \
+	&& docker push "vodo/ht:$$v" \
 	&& v="$$(echo "$$v" | sed "s/\.[0-9]\+$$//")" \
 	&& docker push vodo/ht:$$v \
 	&& v="$$(echo "$$v" | sed "s/\.[0-9]\+$$//")" \
