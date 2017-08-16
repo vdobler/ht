@@ -1,0 +1,402 @@
+    <style>
+body {
+  margin: 40px;
+}
+
+textarea {
+  vertical-align: text-top;
+}
+
+.indented {
+  margin-left: 8.6em;
+}
+
+legend.Pass {
+  color: darkgreen;
+}
+
+legend.Fail {
+  color: darkred;
+}
+
+.Pass {
+  color: darkgreen;
+}
+.Fail {
+  color: red;
+}
+
+pre {
+  margin: 4px;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 600px;
+    background-color: #202020;
+    color: #ffffff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 6px;
+
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+
+input[type="text"] {
+    width: 400px;
+}
+
+label {
+  display: inline-block;
+  width: 7em;
+  text-align: right;
+  vertical-align: text-top;
+}​
+    </style>
+</head>
+<body>
+  <h1>Check Builder</h1>
+
+
+  <form action="/execute" method="post">
+    <!--  R E Q U E S T  --> 
+    <fieldset>
+      <legend>Request:</legend>
+      <div>
+	<label>Method:</label>
+	<select name="Request.Method">
+          <option>HEAD</option>
+          <option>GET</option>
+          <option selected>POST</option>
+          <option>PUT</option>
+          <option>DELETE</option>
+          <option>PATCH</option>
+	</select>
+      </div>
+      <div>
+	<label>URL:</label>
+	<input type="text" name="Request.URL" value="http://foo.bar/path" />
+      </div>
+    </fieldset>
+
+    <!--  R E S P O N S E  -->
+    <fieldset>
+      <legend>Response:</legend>
+      <div>
+	<label>ResponseTime:</label>
+	<input type="hidden" name="Response.Duration.__TYPE__" value="duration" />
+	<input type="text" name="Response.Duration" value="123ms" />
+      </div>
+      <div>
+	<label>Status Code:</label>
+	<input type="hidden" name="Response.Response.StatusCode.__TYPE__" value="int" />
+	<input type="text" name="Response.Response.StatusCode" value="200" />
+      </div>
+      <div>
+	<label>Body:</label>
+	<input type="hidden" name="Response.BodyStr.__TYPE__" value="string" />
+	<textarea name="Response.BodyStr" cols="120" rows="15" />{
+  "foo": 123,
+  "bar": true
+}</textarea>
+      </div>
+      <div>
+	<fieldset>
+	  <legend>Header:</legend>
+	  <input type="hidden" name="Response.Response.__TYPE__" value="object" />
+	  <input type="hidden" name="Response.Response.Header.__TYPE__" value="object" />
+	  <div>
+	    <label>ContentType:</label>
+	    <input type="hidden" name="Response.Response.Header.ContentType.__TYPE__" value="array" />
+	    <input type="hidden" name="Response.Response.Header.ContentType.0.__TYPE__" value="string" />
+	    <input type="text" name="Response.Response.Header.Content-Type.0" value="text/json" />
+            <button name="Response.Response.Header.Content-Type.0.__OP__" value="Remove">Delete</button>
+	    <br />
+            <button class="indented" name="Response.Response.Header.Content-Type.1" value="">Add</button>
+	    <input type="hidden" name="Response.Response.Header.ContentType.1.__TYPE__" value="string" />
+	  </div>
+	  <div>
+	    <label>Set-Cookie:</label>
+	    <input type="text" name="Response.Response.Header.Set-Cookie.0" value="session=deadbeef; path=/" />
+	    <input type="submit" name="Response.Response.Header.Set-Cookie.0.__OP__" value="Remove" />
+	    <br />
+	    <input class="indented" type="text" name="Response.Response.Header.Set-Cookie.1" value="track=dkjfeiru34" />
+	    <input type="submit" name="Response.Response.Header.Set-Cookie.1.__OP__" value="Remove" />
+	    <br />
+	    <input type="submit" class="indented" name="Response.Response.Header.Set-Cookie.__OP__" value="Add" />
+	  </div>
+	  <input type="text" name="Response.Response.Header.__KEY__" value="" style="width: 100px;"/>
+          <button name="Response.Response.Header.__OP__" value="Add">Add</button>
+	</fieldset>
+      </div>
+    </fieldset>
+
+    <div>&nbsp;</div>
+
+    <fieldset>
+      <input type="hidden" name="Checks.0.Check" value="StatusCode" />
+      <legend  class="Pass tooltip">Check: StatusCode<span class="tooltiptext"><pre>
+StatusCode checks the HTTP statuscode.</pre></span></legend>
+      <div>
+	<label class="tooltip">Expect:<span class="tooltiptext"><pre>
+Expect is the value to expect, e.g. 302.
+
+If Expect <= 9 it matches a whole range of status codes, e.g.
+with Expect==4 any of the 4xx status codes would fulfill this check.</pre></span></label>
+	<input type="text" name="Checks.0.Expect" value="200" />
+      </div>
+      <div class="Pass">Pass</div>
+    </fieldset>
+
+    <div>&nbsp;</div>
+
+    <fieldset>
+      <input type="hidden" name="Checks.1.Check" value="ContentType" />
+      <legend class="Fail tooltip">Check: ContentType<span class="tooltiptext"><pre>
+ContentType checks the Content-Type header.</pre></span></legend>
+      <div>
+	<label class="tooltip">Is:<span class="tooltiptext"><pre>
+Is is the wanted content type. It may be abrevated, e.g.
+"json" would match "application/json"</pre></span></label>
+	<input type="text" name="Checks.1.Is" value="json" />
+      </div>
+      <div>
+	<label class="tooltip">Charset:<span class="tooltiptext"><pre>
+	      Charset is an optional charset</pre></span></label>
+	<input type="text" name="Checks.1.Charset" value="utf-16" />
+      </div>
+      <div class="Fail">Fail: Charset was ""</div>
+    </fieldset>
+
+
+    <div>&nbsp;</div>
+
+    <fieldset>
+      <input type="hidden" name="Checks.2.Check" value="AnyOne" />
+      <legend  class="Pass tooltip">Check: AnyOne<span class="tooltiptext"><pre>
+	    AnyOne checks that at least one Of the embedded checks passes. It is the
+	    short circuiting boolean OR of the underlying checks. Check execution stops
+	    once the first passing check is found. Example (in JSON5 notation) to check
+	    status code for '202 OR 404':
+
+	    {
+	    Check: "AnyOne", Of: [
+            {Check: "StatusCode", Expect: 202},
+            {Check: "StatusCode", Expect: 404},
+	    ]
+	    }</pre></span></legend>
+      <div>
+	<label class="tooltip">Of:<span class="tooltiptext"><pre>
+	      Of is the list of checks to execute.</pre></span></label>
+        <div class="indented">
+	  <fieldset>
+	    <input type="hidden" name="Checks.2.Of.0.Check" value="StatusCode" />
+	    <legend  class="Pass tooltip">Check: StatusCode<span class="tooltiptext"><pre>
+StatusCode checks the HTTP statuscode.</pre></span></legend>
+	    <div>
+	      <label class="tooltip">Expect:<span class="tooltiptext"><pre>
+Expect is the value to expect, e.g. 302.
+
+If Expect <= 9 it matches a whole range of status codes, e.g.
+with Expect==4 any of the 4xx status codes would fulfill this check.</pre></span></label>
+	     <input type="text" name="Checks.2.Of.0.Expect" value="200" />
+	    </div>
+	    <div class="Pass">Pass</div>
+	  </fieldset>
+
+	  <div>&nbsp;</div>
+
+	  <fieldset>
+	    <input type="hidden" name="Checks.2.Of.1.Check" value="ContentType" />
+	    <legend class="Fail">Check: ContentType</legend>
+	    <div>
+	      <label class="tooltip">Is:<span class="tooltiptext"><pre>
+		    Is is the wanted content type. It may be abrevated, e.g.
+		    "json" would match "application/json"</pre></span></label>
+	      <input type="text" name="Checks.2.Of.1.Is" value="json" />
+	    </div>
+	    <div>
+	      <label class="tooltip">Charset:<span class="tooltiptext"><pre>
+		    Charset is an optional charset</pre></span></label>
+	      <input type="text" name="Checks.2.Of.1.Charset" value="utf-16" />
+	    </div>
+	    <div class="Fail">Fail: Charset was ""</div>
+	  </fieldset>
+
+	  <div>&nbsp;</div>
+
+	  <fieldset>
+	    <input type="hidden" name="Checks.2.Of.3.Check" value="JSON" />
+	    <legend class="Fail tooltip">Check: JSON<span class="tooltiptext"><pre>
+JSON allow to check an element in a JSON document against a Condition and to
+validate the structur of the document against a schema.
+
+The element of the JSON document is selected by its "path". Example: In the
+JSON document
+
+{
+  "foo": 5,
+  "bar": [ 1, "qux" ,3 ],
+  "waz": true,
+  "maa": { "muh": 3.141, "mee": 0 },
+  "nil": null
+}
+
+the following table shows several element paths and their value:
+
+foo       5
+bar       [ 1, "qux" ,3 ]
+bar.0     1
+bar.1     "qux"
+bar.2     3
+waz       true
+maa       { "muh": 3.141, "mee": 0 }
+maa.muh   3.141
+maa.mee   0
+nil       null
+
+Note that the value for "bar" is the raw string and contains the original
+white space characters as present in the original JSON document.
+
+A schema is an example JSON document with the same structure where each
+leave element just determines the expected type. The JSON document from
+above would conform to the schema:
+
+{
+  "foo": 0, "bar": [0,"",1], "waz": false,
+  "maa": { "muh": 0.0, "mee": 0 },
+}
+
+Contrary to standard JSON this check allows to distinguish floats from ints
+with the rule that an integer is a valid value for a float in a schema. So
+any string in a schema forces a string value, any int in a schema forces an
+integer value, any float in a schema forces either an int or a float. Null
+values in schemas act as wildcards: any value (int, bool, float, string or
+null) is valid. This is useful if you want to skip validation of e.g. the
+first two array elements.
+
+It is typically not useful to combine schema validation with checking a
+condition.
+</pre></span></legend>
+	    <div>
+	      <label class="tooltip">Element:<span class="tooltiptext"><pre>
+Element in the flattened JSON map to apply the Condition to.
+E.g.  "foo.2" in "{foo: [4,5,6,7]}" would be 6.
+The whole JSON can be selected by Sep, typically ".".
+An empty value result in just a check for 'wellformedness' of
+the JSON.</pre></span></label>
+	      <input type="text" name="Checks.2.Of.3.Element" value="maa.muh" />
+	    </div>
+	    <div>
+	      <label class="tooltip">Prefix:<span class="tooltiptext"><pre>
+Prefix is the required prefix</pre></span></label>
+	      <input type="text" name="Checks.2.Of.3.Prefix" value="" />
+	    </div>
+	    <div>
+	      <label class="tooltip">Contains:<span class="tooltiptext"><pre>
+Contains must be contained in the string.</pre></span></label>
+	      <input type="text" name="Checks.2.Of.3.Contains" value="important" />
+	    </div>
+	    <div>
+	      <label class="tooltip">Is:<span class="tooltiptext"><pre>
+Is checks whether the string under test matches one of a given
+list of given types. Double quotes are trimmed from the string
+before validation its type.
+
+The following types are available:
+    Alpha          Alphanumeric  ASCII             Base64
+    CIDR           CreditCard    DataURI           DialString
+    DNSName        Email         FilePath          Float
+    FullWidth      HalfWidth     Hexadecimal       Hexcolor
+    Host           Int           IP                IPv4
+    IPv6           ISBN10        ISBN13            ISO3166Alpha2
+    ISO3166Alpha3  JSON          Latitude          Longitude
+    LowerCase      MAC           MongoID           Multibyte
+    Null           Numeric       Port              PrintableASCII
+    RequestURI     RequestURL    RFC3339           RGBcolor
+    Semver         SSN           UpperCase         URL
+    UTFDigit       UTFLetter     UTFLetterNumeric  UTFNumeric
+    UUID           UUIDv3        UUIDv4            UUIDv5
+    VariableWidth
+See github.com/asaskevich/govalidator for a detailed description.
+
+The string "OR" is ignored an can be used to increase the
+readability of this condition in situations like
+    Condition{Is: "Hexcolor OR RGBColor OR MongoID"}
+	      </pre></span></label>
+	      <input type="text" name="Checks.2.Of.3.Is" value="json" />
+	    </div>
+	    <div>
+	      <label class="tooltip">Embeded:<span class="tooltiptext"><pre>
+Embedded is a JSON check applied to the value selected by
+Element. Useful when JSON contains embedded, quoted JSON as
+a string and checking via Condition is not practical.
+(It seems this nested JSON is common nowadays. I'm getting old.)</pre></span></label>
+	      <input type="submit" name="Checks.2.Of.3.Embeded.__OP__" value="Add" />
+	    </div>
+
+	  </fieldset>
+	  <div>&nbsp;</div>
+        
+          <table cellspacing="5" cellpadding="5" border="0">
+	    <tr>
+	      <td>
+		<button name="Checks.2.Of.4.Check" value="Body">
+		  <span class="tooltip">Add Body Check<span class="tooltiptext"><pre>
+Body checks the HTTP body.</pre></span></span>
+		</button>
+	      </td>
+	      <td>
+		<button name="Checks.2.Of.4.Check" value="JSON">
+		  <span class="tooltip">Add JSON Check<span class="tooltiptext"><pre>
+Check JSON documenta.</pre></span></span>
+		</button>
+	      </td>
+            </tr>
+	    <tr>
+	      <td>
+		<button name="Checks.2.Of.4.Check" value="Screenshot">
+		  <span class="tooltip">Add Screenshot Check<span class="tooltiptext"><pre>
+Render screenshot of page and compare to reference</pre></span>
+		  </span>
+		</button>
+	      </td>
+	    </tr>
+	  </table>
+
+        </div>
+      </div>
+      <div class="Pass">Pass</div>
+    </fieldset>
+
+    <div>
+      Add new check: <select name="Newcheck">
+	<option>---</option>
+	<option>Body</option>
+	<option>Identity</option>
+	<option>Screenshot</option>
+	<option>XML</option>
+      </select>
+      <input type="submit" name="AddCheck" value=" + " />
+    </div>
+
+    <div>&nbsp;</div>
+
+    
+    <input type="submit" name="Execute" value=" Execute " />
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <input type="submit" name="Dump" value=" Dump " />
+  </form>
+
+</body>
