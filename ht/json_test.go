@@ -13,7 +13,7 @@ import (
 
 var jr = Response{BodyStr: `{"foo": 5, "bar": [1,2,3]}`}
 var ar = Response{BodyStr: `["jo nesbo",["jo nesbo","jo nesbo harry hole","jo nesbo sohn","jo nesbo koma","jo nesbo hörbuch","jo nesbo headhunter","jo nesbo pupspulver","jo nesbo leopard","jo nesbo schneemann","jo nesbo the son"],[{"nodes":[{"name":"Bücher","alias":"stripbooks"},{"name":"Trade-In","alias":"tradein-aps"},{"name":"Kindle-Shop","alias":"digital-text"}]},{}],[]]`}
-var jre = Response{BodyStr: `{"foo": 5, "bar": [1,"qux",3], "waz": true, "nil": null, "uuid": "ad09b43c-6538-11e6-8b77-86f30ca893d3", "pi": 3.141}`}
+var jre = Response{BodyStr: `{"foo": 5, "bar": [1,"qux",3], "waz": true, "nil": null, "uuid": "ad09b43c-6538-11e6-8b77-86f30ca893d3", "pi": 3.141, "name": "Henry \"Indiana\" Jones"}`}
 var jrx = Response{BodyStr: `{"foo": 5, "blub...`}
 var jrs = Response{BodyStr: `"foo"`}
 var jri = Response{BodyStr: `123`}
@@ -59,6 +59,8 @@ var jsonConditionTests = []TC{
 	{jre, &JSON{Element: "waz", Condition: Condition{Equals: `true`}}, nil},
 	{jre, &JSON{Element: "nil", Condition: Condition{Equals: `null`}}, nil},
 	{jre, &JSON{Element: "nil", Condition: Condition{Prefix: `"`}}, errCheck},
+	{jre, &JSON{Element: "name", Condition: Condition{Contains: `Indiana`}}, nil},
+	{jre, &JSON{Element: "name", Condition: Condition{Equals: `"Henry \"Indiana\" Jones"`}}, nil},
 	{jre, &JSON{Element: "uuid", Condition: Condition{
 		Regexp: `^"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"$`}}, nil},
 

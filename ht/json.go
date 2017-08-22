@@ -261,10 +261,13 @@ func (c *JSON) Execute(t *Test) error {
 	}
 
 	if c.Embedded != nil {
-		unquoted, err := strconv.Unquote(string(raw))
+		unquoted := ""
+		err := json.Unmarshal(raw, &unquoted)
 		if err != nil {
-			return fmt.Errorf("element %s: %s", c.Element, err)
+			return fmt.Errorf("element %s == %q is not properly quoted: %s",
+				c.Element, LimitString(string(raw)), err)
 		}
+
 		etest := &Test{Response: Response{BodyStr: unquoted}}
 		eerr := c.Embedded.Execute(etest)
 		if eerr != nil {
