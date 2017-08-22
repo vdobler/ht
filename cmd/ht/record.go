@@ -31,6 +31,10 @@ var cmdRecord = &Command{
 Record acts as a reverse proxy to <remote-target> capturing requests and
 responses. It allows to filter which request/response pairs get captured.
 Tests can be generated for the captured reqest/response pairs.
+
+To see which request have been captured, to rename or delete some and
+to dump appropriate test stubs to disk use the web gui reachable under
+http://<value-of-local-flag>/-ADMIN-
 `,
 }
 
@@ -69,6 +73,11 @@ func runRecord(cmd *Command, args []string) {
 		os.Exit(1)
 	}
 
+	recorderPort = ":80"
+	if i := strings.Index(recorderLocal, ":"); i != -1 {
+		recorderPort = recorderLocal[i:]
+	}
+
 	templ = template.Must(template.New("admin").Parse(adminTemplate))
 	registerAdminHandlers()
 
@@ -83,12 +92,6 @@ func runRecord(cmd *Command, args []string) {
 	}
 	if recorderIgnCT != "" {
 		opts.IgnoredContentType = regexp.MustCompile(recorderIgnCT)
-	}
-
-	if i := strings.Index(recorderLocal, ":"); i != -1 {
-		recorderPort = recorderLocal[i:]
-	} else {
-		recorderPort = ":80"
 	}
 
 	err = recorder.StartReverseProxy(recorderPort, remote, opts)
