@@ -268,3 +268,39 @@ func TestEmbedding(t *testing.T) {
 		t.Errorf("v.A=%d, want 124", v.A)
 	}
 }
+
+// ----------------------------------------------------------------------------
+// Test for
+//     panic: reflect: call of reflect.Value.Interface on zero Value
+// during
+//   return fmt.Errorf("cannot set %s <map[%s]%s> to %v <%s>",
+//		elem, mt.Key().Kind(), mt.Elem().Kind(), src.Interface(), src.Kind())
+
+func TestNullHandling(t *testing.T) {
+	data := `{
+        "S": null
+        "M": null
+}`
+	var raw interface{}
+	err := hjson.Unmarshal([]byte(data), &raw)
+	if err != nil {
+		t.Fatalf("Error: %s", err)
+	}
+
+	type TD struct {
+		S []string
+		M map[string]string
+	}
+
+	v := TD{}
+	err = Strict(&v, raw)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+
+	got := fmt.Sprintf("%#v", v)
+	want := "populate.TD{S:[]string(nil), M:map[string]string(nil)}"
+	if got != want {
+		t.Errorf("got/want\n%s\n%s", got, want)
+	}
+}

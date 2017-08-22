@@ -200,6 +200,12 @@ func setUint(dst, src reflect.Value, elem string) error {
 }
 
 func setSlice(dst, src reflect.Value, elem string, strict bool) error {
+	if !src.IsValid() {
+		// Src is a zero Value slice.
+		dst.Set(reflect.Zero(dst.Type()))
+		return nil
+	}
+
 	if src.Kind() == reflect.Slice {
 		n := src.Len()
 		dst.Set(reflect.MakeSlice(dst.Type(), n, n))
@@ -219,6 +225,12 @@ func setSlice(dst, src reflect.Value, elem string, strict bool) error {
 }
 
 func setMap(dst, src reflect.Value, elem string, strict bool) error {
+	if !src.IsValid() {
+		// Src is a zero Value of a map.
+		dst.Set(reflect.Zero(dst.Type()))
+		return nil
+	}
+
 	switch src.Kind() {
 	case reflect.Map:
 		dst.Set(reflect.MakeMap(dst.Type()))
@@ -239,7 +251,6 @@ func setMap(dst, src reflect.Value, elem string, strict bool) error {
 	mt := dst.Type()
 	return fmt.Errorf("cannot set %s <map[%s]%s> to %v <%s>",
 		elem, mt.Key().Kind(), mt.Elem().Kind(), src.Interface(), src.Kind())
-
 }
 
 func setStruct(dst, src reflect.Value, elem string, strict bool) error {
