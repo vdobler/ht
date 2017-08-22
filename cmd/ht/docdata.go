@@ -455,6 +455,18 @@ var typeDoc = map[string]string{
 		"\t// Sep is the separator in the element path.\n" +
 		"\t// A zero value is equivalent to \".\"\n" +
 		"\tSep string \n" +
+		"\n" +
+		"\t// Embedded parses the nonempty string selected by Element as a new\n" +
+		"\t// JSON document and applies the extraction to this embedded JSON.\n" +
+		"\t// E.g. if the overal JSON is\n" +
+		"\t//     {\"data\": \"[123,456,789]\"}\n" +
+		"\t// the value if \"data\" is a string which itself is a JSON document.\n" +
+		"\t// to extract its second array element you can use\n" +
+		"\t//     JSONExtractor{\n" +
+		"\t//         Element: \"data\",\n" +
+		"\t//         Embeded: &JSONExtractor{Element: 1},\n" +
+		"\t//     }\n" +
+		"\tEmbedded *JSONExtractor\n" +
 		"}\n" +
 		"    JSONExtractor extracts a value from a JSON response body.\n" +
 		"\n" +
@@ -462,7 +474,7 @@ var typeDoc = map[string]string{
 		"    path) with two differences:\n" +
 		"\n" +
 		"    * null values are extracted as the empty string \"\"\n" +
-		"    * strings are stripped of their quotes\n" +
+		"    * strings are unquoted\n" +
 		"\n" +
 		"    Non-leaf elements can be extraced and will be returned verbatim. E.g.\n" +
 		"    extarcting element Foo from\n" +
