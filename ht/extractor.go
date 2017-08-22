@@ -274,13 +274,12 @@ func (e BodyExtractor) Extract(t *Test) (string, error) {
 // JSONExtractor works like the JSON check (i.e. elements are selected by their
 // path) with two differences:
 //   * null values are extracted as the empty string ""
-//   * strings are stripped of their quotes
+//   * strings are unquoted
 // Non-leaf elements can be extraced and will be returned verbatim. E.g. extarcting
 // element Foo from
 //     {"Foo": [ 1 , 2,3]  }
 // will extract the following string with verbatim spaces in the array:
 //     "[ 1 , 2,3]"
-//
 type JSONExtractor struct {
 	// Element path to extract.
 	Element string `json:",omitempty"`
@@ -288,6 +287,18 @@ type JSONExtractor struct {
 	// Sep is the separator in the element path.
 	// A zero value is equivalent to "."
 	Sep string `json:",omitempty"`
+
+	// Embedded parses the nonempty string selected by Element as a new
+	// JSON document and applies the extraction to this embedded JSON.
+	// E.g. if the overal JSON is
+	//     {"data": "[123,456,789]"}
+	// the value if "data" is a string which itself is a JSON document.
+	// to extract its second array element you can use
+	//     JSONExtractor{
+	//         Element: "data",
+	//         Embeded: &JSONExtractor{Element: 1},
+	//     }
+	Embedded *JSONExtractor
 }
 
 // Extract implements Extractor's Extract method.
@@ -309,13 +320,29 @@ func (e JSONExtractor) Extract(t *Test) (string, error) {
 
 	// Report null as empty string.
 	if s == "null" {
+		if e.Embedded != nil {
+			return "", fmt.Errorf("Cannot extract embedded from null")
+		}
 		return "", nil
 	}
 
-	// Strip quotes from strings.
+	// Unquotes strings.
 	if strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) && len(s) >= 2 {
-		s = s[1 : len(s)-1]
+		unquoted := ""
+		err := json.Unmarshal([]byte(s), &unquoted)
+		if err != nil {
+			return "", fmt.Errorf("element %s == %q is not properly quoted: %s",
+				e.Element, LimitString(s), err)
+		}
+		s = unquoted
 	}
+
+	if e.Embedded != nil {
+		fakeTest := &Test{Response: Response{BodyStr: s}}
+		sub, err := e.Embedded.Extract(fakeTest)
+		return sub, err
+	}
+
 	return s, nil
 }
 

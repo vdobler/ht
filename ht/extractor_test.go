@@ -140,6 +140,55 @@ func TestJSONExtractor(t *testing.T) {
 	}
 }
 
+func TestEmbeddedJSONExtractor(t *testing.T) {
+	original := `{
+  "array":  "[123,-789,true,\"wuz\", null]",
+  "object": "{\"a\": -44, \"b\": \"foo\", \"c\": true}",
+  "quote":  "\u005b 11, \"22\", \"Henry \\\"Indiana\\\" Jones\" \u002c null \u005d"
+}`
+	test := &Test{Response: Response{BodyStr: original}}
+
+	embeddedJsonExtractorTests := []struct {
+		outer, inner string
+		want         string
+		err          error
+	}{
+		{"array", "0", "123", nil},
+		{"array", "1", "-789", nil},
+		{"array", "2", "true", nil},
+		{"array", "3", "wuz", nil},
+		{"array", "4", "", nil},
+		{"object", "a", "-44", nil},
+		{"object", "b", "foo", nil},
+		{"object", "c", "true", nil},
+		{"quote", "0", "11", nil},
+		{"quote", "1", "22", nil},
+		{"quote", "2", `Henry "Indiana" Jones`, nil},
+		{"quote", "3", "", nil},
+	}
+
+	for _, tc := range embeddedJsonExtractorTests {
+		t.Run(fmt.Sprintf("%s.%s", tc.outer, tc.inner), func(t *testing.T) {
+			ex := JSONExtractor{
+				Element:  tc.outer,
+				Embedded: &JSONExtractor{Element: tc.inner},
+			}
+			got, err := ex.Extract(test)
+			if err != nil {
+				if tc.err == nil {
+					t.Errorf("unexpected error %v", err)
+					return
+				}
+				return // TODO check type and message
+			}
+			if got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+
+		})
+	}
+}
+
 var cookieExtractorTests = []struct {
 	name string
 	want string
