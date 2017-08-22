@@ -226,7 +226,7 @@ func StartReverseProxy(port string, remoteURL *url.URL, opts Options) error {
 	proxy := newSingleHostReverseProxy(remoteURL)
 	http.HandleFunc("/", handler(proxy, requests, opts.Rewrite))
 	log.Println("Staring reverse proxy")
-	log.Printf("Proxying from http://recorder.ht%s to %s", port, remote)
+	log.Printf("Proxying from http://localhost%s to %s", port, remote)
 	return http.ListenAndServe(port, nil)
 }
 
@@ -366,18 +366,20 @@ func printHeader(which string, header http.Header) {
 // Test is a reduced version of ht.Test suitable for serialization to JSON.
 type Test struct {
 	Name        string
-	Description string   `json:",omitempty"`
-	BasedOn     []string `json:",omitempty"`
+	Description string
+	Mixin       []string
 	Request     ht.Request
-	Checks      ht.CheckList `json:",omitempty"`
+	Checks      ht.CheckList
 }
 
 // Suite is a reduced version of ht.Suite suitable to serialization to JSON.
 type Suite struct {
 	Name        string
-	Description string `json:",omitempty"`
-	Tests       []string
-	Variables   map[string]string
+	Description string
+	Main        []struct {
+		File string
+	}
+	Variables map[string]string
 }
 
 // DumpEvents writes events to directory, it extracts common request headers.
@@ -440,7 +442,9 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 				params = bodyParams
 			}
 		}
-
+		if params == nil {
+			params = make(url.Values)
+		}
 		urlString := e.Request.URL.String()
 		urlString = strings.Replace(urlString, "H.O.S.T.N.A.M.E", "{{HOSTNAME}}", 1)
 
@@ -451,7 +455,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 		test := &Test{
 			Name:        e.Name,
 			Description: fmt.Sprintf("Recorded from %s on %s", host, time.Now()),
-			BasedOn:     []string{commonHeadersName},
+			Mixin:       []string{commonHeadersName},
 			Request: ht.Request{
 				Method:   e.Request.Method,
 				URL:      urlString,
@@ -465,7 +469,7 @@ func DumpEvents(events []Event, directory string, suitename string) error {
 		}
 
 		name := sanitize.Filename(e.Name) + ".ht"
-		suite.Tests = append(suite.Tests, name)
+		suite.Main = append(suite.Main, struct{ File string }{name})
 		filename := path.Join(directory, name)
 		err = writeTest(test, filename)
 		if err != nil {
@@ -528,6 +532,7 @@ func scanRequestBody(e *Event) (body string, params url.Values, as string) {
 
 func writeTest(test *Test, filename string) error {
 	data, err := json.MarshalIndent(test, "", "    ")
+	// data, err := hjson.Marshal(test)
 	if err != nil {
 		return err
 	}
@@ -630,7 +635,7 @@ func extractHTMLChecks(e Event) ht.CheckList {
 		Head:        true,
 		Which:       "a img link script",
 		Concurrency: 4,
-		Timeout:     20 * time.Second,
+		Timeout:     10, // will be serialized as 10 which is 10s in Hjson
 		IgnoredLinks: []ht.Condition{
 			{Contains: "www.facebook.com/"},
 			{Contains: "www.twitter.com/"},
