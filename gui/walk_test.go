@@ -367,3 +367,51 @@ func TestWalkNilPtr(t *testing.T) {
 		t.Fatal(cpy)
 	}
 }
+
+func TestWalkNamedTypes(t *testing.T) {
+	type MyBool bool
+	type MyInt int
+	type MyString string
+	type MyFloat float64
+
+	type MyType struct {
+		A MyBool
+		B MyInt
+		C MyString
+		D MyFloat
+	}
+	mt := MyType{A: MyBool(true), B: MyInt(5), C: MyString("foo"), D: MyFloat(3.141)}
+
+	form := make(url.Values)
+
+	// Without update.
+	cpy, err := walkStruct(form, "mt", reflect.ValueOf(mt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cpy.Kind() != reflect.Struct {
+		t.Fatal(cpy.Kind().String())
+	}
+	c := cpy.Interface().(MyType)
+	if got := fmt.Sprintf("%v", c); got != "{true 5 foo 3.141}" {
+		t.Fatal(got)
+	}
+
+	// With update.
+	form.Set("mt.A", "false")
+	form.Set("mt.B", "-12")
+	form.Set("mt.C", "xyz")
+	form.Set("mt.D", "2.718")
+	cpy, err = walkStruct(form, "mt", reflect.ValueOf(mt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cpy.Kind() != reflect.Struct {
+		t.Fatal(cpy.Kind().String())
+	}
+	c = cpy.Interface().(MyType)
+	if got := fmt.Sprintf("%v", c); got != "{false -12 xyz 2.718}" {
+		t.Fatal(got)
+	}
+
+}

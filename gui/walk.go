@@ -78,7 +78,7 @@ func walk(form url.Values, path string, val reflect.Value) (reflect.Value, error
 // Primitive Types
 
 func walkBool(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
-	cpy := reflect.New(reflect.TypeOf(false)).Elem()
+	cpy := reflect.New(val.Type()).Elem()
 	cpy.SetBool(val.Bool())
 
 	if newVals, ok := form[path]; ok {
@@ -91,7 +91,7 @@ func walkBool(form url.Values, path string, val reflect.Value) (reflect.Value, e
 }
 
 func walkString(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
-	cpy := reflect.New(reflect.TypeOf("")).Elem()
+	cpy := reflect.New(val.Type()).Elem()
 	cpy.SetString(val.String())
 
 	if newVals, ok := form[path]; ok {
@@ -104,7 +104,7 @@ func walkString(form url.Values, path string, val reflect.Value) (reflect.Value,
 }
 
 func walkDuration(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
-	cpy := reflect.New(reflect.TypeOf(time.Duration(0))).Elem()
+	cpy := reflect.New(val.Type()).Elem()
 	cpy.SetInt(val.Int())
 
 	if newVals, ok := form[path]; ok {
@@ -120,7 +120,7 @@ func walkDuration(form url.Values, path string, val reflect.Value) (reflect.Valu
 }
 
 func walkInt(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
-	cpy := reflect.New(reflect.TypeOf(0)).Elem()
+	cpy := reflect.New(val.Type()).Elem()
 	cpy.SetInt(val.Int())
 
 	if newVals, ok := form[path]; ok {
@@ -136,7 +136,7 @@ func walkInt(form url.Values, path string, val reflect.Value) (reflect.Value, er
 }
 
 func walkFloat64(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
-	cpy := reflect.New(reflect.TypeOf(float64(0.0))).Elem()
+	cpy := reflect.New(val.Type()).Elem()
 	cpy.SetFloat(val.Float())
 
 	if newVals, ok := form[path]; ok {
