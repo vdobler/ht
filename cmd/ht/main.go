@@ -72,6 +72,7 @@ func init() {
 		cmdLoad,
 		cmdStat,
 		cmdMock,
+		cmdGUI,
 	}
 }
 
