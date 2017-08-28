@@ -218,15 +218,28 @@ func walkNonNilInterface(form url.Values, path string, val reflect.Value) (refle
 func walkNilInterface(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
 	op := path + ".__TYPE__"
 	if name := form.Get(op); name != "" {
+		fmt.Println(")()()(  ", name)
 		delete(form, op)
 		delete(form, path)
 		for _, implementor := range Implements[val.Type()] {
-			if implementor.Name() == name {
+			ptr := implementor.Kind() == reflect.Ptr
+			implName := implementor.Name()
+			if ptr {
+				implName = implementor.Elem().Name()
+			}
+			fmt.Println("  ", implName)
+			if implName == name {
 				elem := reflect.New(implementor).Elem()
-				elem.Set(reflect.Zero(implementor))
+				if ptr {
+					elem.Set(reflect.New(implementor.Elem()))
+				} else {
+					elem.Set(reflect.Zero(implementor))
+				}
 				return elem, nil
 			}
 		}
+		return reflect.Zero(val.Type()),
+			newValueErrorList(path, fmt.Errorf("No such type %s", name))
 	}
 
 	return reflect.Zero(val.Type()), nil

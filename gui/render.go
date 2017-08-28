@@ -206,6 +206,9 @@ func (v *Value) renderNonNilInterface(path string, depth int, val reflect.Value)
 func (v *Value) renderNilInterface(path string, depth int, val reflect.Value) error {
 	op := path + ".__TYPE__"
 	for _, typ := range Implements[val.Type()] {
+		if typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
+		}
 		name, tooltip := v.typeinfo(typ)
 		hname := template.HTMLEscapeString(name)
 

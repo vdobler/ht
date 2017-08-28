@@ -30,6 +30,13 @@ type XyzWriter struct{ Count int }
 
 func (XyzWriter) Write() {}
 
+type PtrWriter struct {
+	Full     bool
+	Fraction float64
+}
+
+func (*PtrWriter) Write() {}
+
 // ----------------------------------------------------------------------------
 // Test is a demo structure
 
@@ -116,6 +123,14 @@ func registerTestTypes() {
 		},
 	})
 
+	RegisterType(PtrWriter{}, Typeinfo{
+		Doc: "PtrWriter: Only *PtrWriter are Writers",
+		Field: map[string]Fieldinfo{
+			"Full":     Fieldinfo{Doc: "Full check"},
+			"Fraction": Fieldinfo{Doc: "0 <= Fraction <=1"},
+		},
+	})
+
 }
 
 var test Test
@@ -134,6 +149,7 @@ func TestGUI(t *testing.T) {
 	Implements = make(map[reflect.Type][]reflect.Type)
 	RegisterImplementation((*Writer)(nil), AbcWriter{})
 	RegisterImplementation((*Writer)(nil), XyzWriter{})
+	RegisterImplementation((*Writer)(nil), &PtrWriter{})
 
 	// Fill initial values of a Test.
 	test = Test{}
@@ -153,7 +169,7 @@ func TestGUI(t *testing.T) {
 		"katze": []string{"schlau"},
 	}
 	test.Writer = AbcWriter{"Heinz"}
-	test.Writers = []Writer{XyzWriter{8}, AbcWriter{"Anna"}}
+	test.Writers = []Writer{XyzWriter{8}, AbcWriter{"Anna"}, &PtrWriter{}}
 
 	value := NewValue(test, "Test")
 
