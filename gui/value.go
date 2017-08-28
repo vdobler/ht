@@ -48,7 +48,7 @@ func NewValue(val interface{}, path string) *Value {
 func (v *Value) Render() ([]byte, error) {
 	val := reflect.ValueOf(v.Current)
 	v.buf.Reset()
-	err := v.render(v.Path, 0, val)
+	err := v.render(v.Path, 0, false, val) // TODO: type based readonly
 	return v.buf.Bytes(), err
 }
 
@@ -70,7 +70,6 @@ func (v *Value) Update(form url.Values) (string, errorlist.List) {
 				if firstErrorPath == "" {
 					firstErrorPath = ve.path
 				}
-				fmt.Println(ve.path, ve.err)
 				v.errors[ve.path] = ve.err
 			}
 		}

@@ -35,36 +35,37 @@ func (v *Value) renderError(path string, depth int) {
 
 // render down val, emitting HTML to buf.
 // Path is the prefix to the current input name.
-func (v *Value) render(path string, depth int, val reflect.Value) error {
+func (v *Value) render(path string, depth int, readonly bool, val reflect.Value) error {
 	switch val.Kind() {
 	case reflect.Bool:
-		return v.renderBool(path, depth, val)
+		return v.renderBool(path, depth, readonly, val)
 	case reflect.String:
-		return v.renderString(path, depth, val)
+		return v.renderString(path, depth, readonly, val)
 	case reflect.Int64:
 		if isDuration(val) {
-			return v.renderDuration(path, depth, val)
+			return v.renderDuration(path, depth, readonly, val)
 		}
 		fallthrough
-	case reflect.Int:
-		return v.renderInt(path, depth, val)
-	case reflect.Float64:
-		return v.renderFloat64(path, depth, val)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
+		return v.renderInt(path, depth, readonly, val)
+	case reflect.Float32, reflect.Float64:
+		return v.renderFloat64(path, depth, readonly, val)
 	case reflect.Struct:
-		return v.renderStruct(path, depth, val)
+		return v.renderStruct(path, depth, readonly, val)
 	case reflect.Map:
-		return v.renderMap(path, depth, val)
+		return v.renderMap(path, depth, readonly, val)
 	case reflect.Slice:
-		return v.renderSlice(path, depth, val)
+		return v.renderSlice(path, depth, readonly, val)
 	case reflect.Ptr:
-		return v.renderPtr(path, depth, val)
+		return v.renderPtr(path, depth, readonly, val)
 	case reflect.Interface:
-		return v.renderInterface(path, depth, val)
-	default:
-		panic("Unimplemented: " + val.Kind().String())
+		return v.renderInterface(path, depth, readonly, val)
 	}
+
+	fmt.Println("gui: won't render", val.Kind().String(), "in", path)
+
 	return nil
-	panic("bad")
 }
 
 func isDuration(v reflect.Value) bool {
@@ -76,27 +77,53 @@ func isDuration(v reflect.Value) bool {
 // ----------------------------------------------------------------------------
 // Primitive Types
 
-func (v *Value) renderBool(path string, depth int, val reflect.Value) error {
+func (v *Value) renderBool(path string, depth int, readonly bool, val reflect.Value) error {
 	v.renderError(path, depth)
+	v.printf("%s", indent(depth))
+
+	if readonly {
+		if val.Bool() {
+			v.printf("&#x2611;") // ☑
+		} else {
+			v.printf("&#x2610;") // ☐
+		}
+		return nil
+	}
+
 	checked := ""
 	if val.Bool() {
 		checked = " checked"
 	}
-	v.printf("%s<input type=\"checkbox\" name=\"%s\" value=\"true\" %s/>\n",
-		indent(depth),
+	v.printf("<input type=\"checkbox\" name=\"%s\" value=\"true\" %s/>\n",
 		template.HTMLEscapeString(path),
 		checked)
 
 	return nil
 }
 
-func (v *Value) renderString(path string, depth int, val reflect.Value) error {
+func (v *Value) renderString(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderError(path, depth)
 	v.printf("%s", indent(depth))
 
-	if v.nextfieldinfo.Multiline {
+	isMultiline := strings.Contains(val.String(), "\n")
+	escVal := template.HTMLEscapeString(val.String())
+	if readonly {
+		if isMultiline {
+			v.printf("<pre>")
+			for _, line := range strings.Split(val.String(), "\n") {
+				v.printf("%s\n", template.HTMLEscapeString(line))
+			}
+			v.printf("</pre>")
+		} else {
+			v.printf("<code>%s</code>", escVal)
+		}
+		return nil
+	}
+
+	if v.nextfieldinfo.Multiline || isMultiline {
 		v.printf("<textarea cols=\"82\" rows=\"5\" name=\"%s\">%s</textarea>\n",
 			template.HTMLEscapeString(path),
-			template.HTMLEscapeString(val.String()))
+			escVal)
 
 	} else if len(v.nextfieldinfo.Only) > 0 {
 		v.printf("<select name=\"%s\">\n", template.HTMLEscapeString(path))
@@ -115,35 +142,57 @@ func (v *Value) renderString(path string, depth int, val reflect.Value) error {
 	} else {
 		v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
 			template.HTMLEscapeString(path),
-			template.HTMLEscapeString(val.String()))
+			escVal)
 	}
 	return nil
 }
 
-func (v *Value) renderDuration(path string, depth int, val reflect.Value) error {
+func (v *Value) renderDuration(path string, depth int, readonly bool, val reflect.Value) error {
 	v.renderError(path, depth)
+	v.printf("%s", indent(depth))
+
 	dv := val.Convert(reflect.TypeOf(time.Duration(0)))
 	d := dv.Interface().(time.Duration)
-	v.printf("%s<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
-		indent(depth),
+	escDuration := template.HTMLEscapeString(d.String())
+
+	if readonly {
+		v.printf("%s", escDuration)
+		return nil
+	}
+
+	v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
 		template.HTMLEscapeString(path),
-		d.String())
+		escDuration)
 
 	return nil
 }
 
-func (v *Value) renderInt(path string, depth int, val reflect.Value) error {
-	v.printf("%s<input type=\"number\" name=\"%s\" value=\"%d\" />\n",
-		indent(depth),
+func (v *Value) renderInt(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderError(path, depth)
+	v.printf("%s", indent(depth))
+
+	if readonly {
+		v.printf("%d", val.Int())
+		return nil
+	}
+
+	v.printf("<input type=\"number\" name=\"%s\" value=\"%d\" />\n",
 		template.HTMLEscapeString(path),
 		val.Int())
 
 	return nil
 }
 
-func (v *Value) renderFloat64(path string, depth int, val reflect.Value) error {
-	v.printf("%s<input type=\"number\" name=\"%s\" value=\"%f\" step=\"any\"/>\n",
-		indent(depth),
+func (v *Value) renderFloat64(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderError(path, depth)
+	v.printf("%s", indent(depth))
+
+	if readonly {
+		v.printf("%f", val.Float())
+		return nil
+	}
+
+	v.printf("<input type=\"number\" name=\"%s\" value=\"%f\" step=\"any\"/>\n",
 		template.HTMLEscapeString(path),
 		val.Float())
 
@@ -153,26 +202,33 @@ func (v *Value) renderFloat64(path string, depth int, val reflect.Value) error {
 // ----------------------------------------------------------------------------
 // Pointers
 
-func (v *Value) renderPtr(path string, depth int, val reflect.Value) error {
+func (v *Value) renderPtr(path string, depth int, readonly bool, val reflect.Value) error {
 	if val.IsNil() {
-		return v.renderNilPtr(path, depth, val)
+		return v.renderNilPtr(path, depth, readonly, val)
 	}
-	return v.renderNonNilPtr(path, depth, val)
+	return v.renderNonNilPtr(path, depth, readonly, val)
 
 }
 
-func (v *Value) renderNonNilPtr(path string, depth int, val reflect.Value) error {
-	op := path + ".__OP__"
+func (v *Value) renderNonNilPtr(path string, depth int, readonly bool, val reflect.Value) error {
 
-	v.printf("%s<button name=\"%s\" value=\"Remove\">-</button>\n",
-		indent(depth),
-		template.HTMLEscapeString(op),
-	)
+	if !readonly {
+		op := path + ".__OP__"
 
-	return v.render(path, depth, val.Elem())
+		v.printf("%s<button name=\"%s\" value=\"Remove\">-</button>\n",
+			indent(depth),
+			template.HTMLEscapeString(op),
+		)
+	}
+
+	return v.render(path, depth, readonly, val.Elem())
 }
 
-func (v *Value) renderNilPtr(path string, depth int, val reflect.Value) error {
+func (v *Value) renderNilPtr(path string, depth int, readonly bool, val reflect.Value) error {
+	if readonly {
+		return nil
+	}
+
 	op := path + ".__OP__"
 	v.printf("%s<button name=\"%s\" value=\"Add\">+</button>\n",
 		indent(depth),
@@ -184,26 +240,32 @@ func (v *Value) renderNilPtr(path string, depth int, val reflect.Value) error {
 // ----------------------------------------------------------------------------
 // Interface
 
-func (v *Value) renderInterface(path string, depth int, val reflect.Value) error {
+func (v *Value) renderInterface(path string, depth int, readonly bool, val reflect.Value) error {
 	if val.IsNil() {
-		return v.renderNilInterface(path, depth, val)
+		return v.renderNilInterface(path, depth, readonly, val)
 	}
-	return v.renderNonNilInterface(path, depth, val)
+	return v.renderNonNilInterface(path, depth, readonly, val)
 
 }
 
-func (v *Value) renderNonNilInterface(path string, depth int, val reflect.Value) error {
-	op := path + ".__OP__"
+func (v *Value) renderNonNilInterface(path string, depth int, readonly bool, val reflect.Value) error {
+	if !readonly {
+		op := path + ".__OP__"
 
-	v.printf("%s<button name=\"%s\" value=\"Remove\">-</button>\n",
-		indent(depth),
-		template.HTMLEscapeString(op),
-	)
+		v.printf("%s<button name=\"%s\" value=\"Remove\">-</button>\n",
+			indent(depth),
+			template.HTMLEscapeString(op),
+		)
+	}
 
-	return v.render(path, depth, val.Elem())
+	return v.render(path, depth, readonly, val.Elem())
 }
 
-func (v *Value) renderNilInterface(path string, depth int, val reflect.Value) error {
+func (v *Value) renderNilInterface(path string, depth int, readonly bool, val reflect.Value) error {
+	if readonly {
+		return nil
+	}
+
 	op := path + ".__TYPE__"
 	for _, typ := range Implements[val.Type()] {
 		if typ.Kind() == reflect.Ptr {
@@ -225,7 +287,7 @@ func (v *Value) renderNilInterface(path string, depth int, val reflect.Value) er
 // ----------------------------------------------------------------------------
 // Slices
 
-func (v *Value) renderSlice(path string, depth int, val reflect.Value) error {
+func (v *Value) renderSlice(path string, depth int, readonly bool, val reflect.Value) error {
 	v.printf("%s<table>\n", indent(depth))
 	var err error
 	for i := 0; i < val.Len(); i++ {
@@ -236,17 +298,19 @@ func (v *Value) renderSlice(path string, depth int, val reflect.Value) error {
 
 		// Index number and controls.
 		v.printf("%s<td>%d:</td>\n", indent(depth+2), i)
-		v.printf("%s<td><button name=\"%s\" value=\"Remove\">-</button></td>\n",
-			indent(depth+2),
-			template.HTMLEscapeString(fieldPath+".__OP__"),
-		)
-		if false && i > 0 {
-			v.printf("<button>↑</button> ")
+		if !readonly {
+			v.printf("%s<td><button name=\"%s\" value=\"Remove\">-</button></td>\n",
+				indent(depth+2),
+				template.HTMLEscapeString(fieldPath+".__OP__"),
+			)
+			if false && i > 0 {
+				v.printf("<button>↑</button> ")
+			}
 		}
 
 		// The field itself.
 		v.printf("%s<td>\n", indent(depth+2))
-		e := v.render(fieldPath, depth+3, field)
+		e := v.render(fieldPath, depth+3, readonly, field)
 		if e != nil {
 			err = e
 		}
@@ -255,10 +319,12 @@ func (v *Value) renderSlice(path string, depth int, val reflect.Value) error {
 		v.printf("%s</tr>\n", indent(depth+1))
 	}
 	v.printf("%s<tr>\n", indent(depth+1))
-	v.printf("%s<td><button name=\"%s\" value=\"Add\">+</button></td>\n",
-		indent(depth+2),
-		template.HTMLEscapeString(path+".__OP__"),
-	)
+	if !readonly {
+		v.printf("%s<td><button name=\"%s\" value=\"Add\">+</button></td>\n",
+			indent(depth+2),
+			template.HTMLEscapeString(path+".__OP__"),
+		)
+	}
 	v.printf("%s</tr>\n", indent(depth+1))
 	v.printf("%s</table>\n", indent(depth))
 
@@ -269,7 +335,7 @@ func (v *Value) renderSlice(path string, depth int, val reflect.Value) error {
 // Structures
 
 // Structs are easy: all fields are fixed, nothing to add or delete.
-func (v *Value) renderStruct(path string, depth int, val reflect.Value) error {
+func (v *Value) renderStruct(path string, depth int, readonly bool, val reflect.Value) error {
 	var err error
 
 	typename, tooltip := v.typeinfo(val)
@@ -285,7 +351,7 @@ func (v *Value) renderStruct(path string, depth int, val reflect.Value) error {
 	v.printf("%s<table>\n", indent(depth))
 	for i := 0; i < val.NumField(); i++ {
 		name, finfo := v.fieldinfo(val, i)
-		if unexported(name) {
+		if unexported(name) || finfo.Omit || unwalkable(val.Field(i)) {
 			continue
 		}
 
@@ -299,7 +365,7 @@ func (v *Value) renderStruct(path string, depth int, val reflect.Value) error {
 
 		v.printf("%s<td>\n", indent(depth+2))
 		v.nextfieldinfo = finfo
-		e := v.render(path+"."+name, depth+3, field)
+		e := v.render(path+"."+name, depth+3, readonly || finfo.Const, field)
 		v.nextfieldinfo = Fieldinfo{}
 		if e != nil {
 			err = e
@@ -323,13 +389,22 @@ func unexported(name string) bool {
 	return !unicode.IsUpper(r)
 }
 
+func unwalkable(val reflect.Value) bool {
+	switch val.Kind() {
+	case reflect.Invalid, reflect.Array, reflect.Chan, reflect.Func,
+		reflect.Complex64, reflect.Complex128, reflect.UnsafePointer:
+		return true
+	}
+	return false
+}
+
 // ----------------------------------------------------------------------------
 // Maps
 
 // Major problem with maps: Its elements are not addressable and thus
 // not setable.
 
-func (v *Value) renderMap(path string, depth int, val reflect.Value) error {
+func (v *Value) renderMap(path string, depth int, readonly bool, val reflect.Value) error {
 	v.printf("%s<table class=\"map\">\n", indent(depth))
 	var err error
 	keys := val.MapKeys()
@@ -342,14 +417,15 @@ func (v *Value) renderMap(path string, depth int, val reflect.Value) error {
 		v.printf("%s<tr>\n", indent(depth+1))
 
 		elemPath := path + "." + mangleKey(name)
-		v.printf("%s<td><button name=\"%s\" value=\"Remove\">-</button></td>\n",
-			indent(depth+2), elemPath)
-
+		if !readonly {
+			v.printf("%s<td><button name=\"%s\" value=\"Remove\">-</button></td>\n",
+				indent(depth+2), elemPath)
+		}
 		v.printf("%s<th>%s</th>\n", indent(depth+2),
 			template.HTMLEscapeString(name))
 
 		v.printf("%s<td>\n", indent(depth+2))
-		e := v.render(elemPath, depth+3, mv)
+		e := v.render(elemPath, depth+3, readonly, mv)
 		if e != nil {
 			err = e
 		}
@@ -359,18 +435,20 @@ func (v *Value) renderMap(path string, depth int, val reflect.Value) error {
 	}
 
 	// New entries
-	v.printf("%s<tr>\n", indent(depth+1))
+	if !readonly {
+		v.printf("%s<tr>\n", indent(depth+1))
 
-	v.printf("%s<td colspan=\"2\">\n", indent(depth+2))
-	v.printf("%s<input type=\"text\" name=\"%s.__NEW__\" style=\"width: 75px;\"/>\n",
-		indent(depth+3), path)
-	v.printf("%s</td>\n", indent(depth+2))
-	v.printf("%s<td>\n", indent(depth+2))
-	v.printf("%s<button name=\"%s.__OP__\" value=\"Add\">+</button>\n",
-		indent(depth+3), path)
-	v.printf("%s</td>\n", indent(depth+2))
+		v.printf("%s<td colspan=\"2\">\n", indent(depth+2))
+		v.printf("%s<input type=\"text\" name=\"%s.__NEW__\" style=\"width: 75px;\"/>\n",
+			indent(depth+3), path)
+		v.printf("%s</td>\n", indent(depth+2))
+		v.printf("%s<td>\n", indent(depth+2))
+		v.printf("%s<button name=\"%s.__OP__\" value=\"Add\">+</button>\n",
+			indent(depth+3), path)
+		v.printf("%s</td>\n", indent(depth+2))
 
-	v.printf("%s</tr>\n", indent(depth+1))
+		v.printf("%s</tr>\n", indent(depth+1))
+	}
 
 	v.printf("%s</table>\n", indent(depth))
 

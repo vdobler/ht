@@ -7,7 +7,6 @@ package gui
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"reflect"
@@ -44,13 +43,27 @@ type Test struct {
 	Name        string
 	Description string
 	Primes      []int
+	Output      string
+	Chan        chan string
+	Func        func(int) bool
 	Options     Options
 	Execution   Execution
+	Result      Result
 	Pointer     *int
 	NilPointer  *int
 	Fancy       map[string][]string
 	Writer      Writer
 	Writers     []Writer
+}
+
+type Result struct {
+	Okay    bool
+	Count   int
+	State   string
+	Frac    float64
+	Details []string
+	Options *Options
+	Vars    map[string]string
 }
 
 type Options struct {
@@ -77,6 +90,8 @@ func registerTestTypes() {
 		Field: map[string]Fieldinfo{
 			"Name":        Fieldinfo{Doc: "Must be unique."},
 			"Description": Fieldinfo{Multiline: true},
+			"Output":      Fieldinfo{Const: true},
+			"Result":      Fieldinfo{Const: true},
 		},
 	})
 
@@ -107,6 +122,10 @@ func registerTestTypes() {
 			"Advanced": Fieldinfo{Doc: "Advanced contains admin options."},
 			"Complex":  Fieldinfo{Doc: "Complex allows fancy customisations."},
 		},
+	})
+
+	RegisterType(Result{}, Typeinfo{
+		Doc: "Result of the Test",
 	})
 
 	RegisterType(AbcWriter{}, Typeinfo{
@@ -154,6 +173,7 @@ func TestGUI(t *testing.T) {
 	// Fill initial values of a Test.
 	test = Test{}
 	test.Name = "Hello World"
+	test.Output = "Outcome of the Test is 'good'.\nNext run maybe too..."
 	test.Primes = []int{2, 3, 5}
 	test.Execution.Tries = 3
 	test.Execution.unexported = -99
@@ -170,6 +190,13 @@ func TestGUI(t *testing.T) {
 	}
 	test.Writer = AbcWriter{"Heinz"}
 	test.Writers = []Writer{XyzWriter{8}, AbcWriter{"Anna"}, &PtrWriter{}}
+	test.Result.Okay = true
+	test.Result.Count = 137
+	test.Result.State = "Passed"
+	test.Result.Frac = 0.75
+	test.Result.Details = []string{"Executed", "Worked\nas intended", "<<super>>"}
+	test.Result.Options = nil
+	test.Result.Vars = map[string]string{"DE": "Deutsch", "FR": "Français"}
 
 	value := NewValue(test, "Test")
 
@@ -201,15 +228,11 @@ func updateHandler(val *Value) func(w http.ResponseWriter, req *http.Request) {
 		req.ParseForm()
 		_, errlist := val.Update(req.Form)
 
-		fmt.Printf("updatehandler: err=%v <%T>\n", errlist, errlist)
-
 		if len(errlist) == 0 {
 			w.Header().Set("Location", "/display")
 			w.WriteHeader(303)
 			return
 		}
-
-		fmt.Println(errlist)
 
 		buf := &bytes.Buffer{}
 		writePreamble(buf, "Bad input")

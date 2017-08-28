@@ -67,11 +67,11 @@ func walk(form url.Values, path string, val reflect.Value) (reflect.Value, error
 		return walkInterface(form, path, val)
 	case reflect.Ptr:
 		return walkPtr(form, path, val)
-	default:
-		panic("Unimplemented: " + val.Kind().String())
 	}
+
+	fmt.Println("gui: won't walk over", val.Kind().String(), "in", path)
+
 	return reflect.Value{}, nil
-	panic("bad")
 }
 
 // ----------------------------------------------------------------------------
@@ -218,7 +218,6 @@ func walkNonNilInterface(form url.Values, path string, val reflect.Value) (refle
 func walkNilInterface(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
 	op := path + ".__TYPE__"
 	if name := form.Get(op); name != "" {
-		fmt.Println(")()()(  ", name)
 		delete(form, op)
 		delete(form, path)
 		for _, implementor := range Implements[val.Type()] {
@@ -227,7 +226,6 @@ func walkNilInterface(form url.Values, path string, val reflect.Value) (reflect.
 			if ptr {
 				implName = implementor.Elem().Name()
 			}
-			fmt.Println("  ", implName)
 			if implName == name {
 				elem := reflect.New(implementor).Elem()
 				if ptr {
@@ -258,7 +256,7 @@ func walkStruct(form url.Values, path string, val reflect.Value) (reflect.Value,
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		name := val.Type().Field(i).Name
-		if unexported(name) {
+		if unexported(name) || unwalkable(field) {
 			continue
 		}
 
