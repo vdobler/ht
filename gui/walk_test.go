@@ -13,6 +13,39 @@ import (
 	"testing"
 )
 
+func TestWalkBool(t *testing.T) {
+	form := make(url.Values)
+	s := true
+
+	// Without update.
+	cpy, err := walkBool(form, "s", reflect.ValueOf(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cpy.Bool(); got != s {
+		t.Fatalf("got %t, want %t", got, s)
+	}
+
+	// With update.
+	form.Set("s", "")
+	cpy, err = walkBool(form, "s", reflect.ValueOf(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cpy.Bool() != false {
+		t.Fatal("bad value")
+	}
+
+	form.Set("s", "true")
+	cpy, err = walkBool(form, "s", reflect.ValueOf(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cpy.Bool() != true {
+		t.Fatal("bad value")
+	}
+}
+
 func TestWalkString(t *testing.T) {
 	form := make(url.Values)
 	s := "Hello"
@@ -35,6 +68,31 @@ func TestWalkString(t *testing.T) {
 	}
 	if got := cpy.String(); got != n {
 		t.Fatalf("got %q, want %s", got, n)
+	}
+}
+
+func TestWalkFloat64(t *testing.T) {
+	form := make(url.Values)
+	s := 3.141
+
+	// Without update.
+	cpy, err := walkFloat64(form, "s", reflect.ValueOf(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cpy.Float(); got != s {
+		t.Fatalf("got %f, want %f", got, s)
+	}
+
+	// With update.
+	n := "2.718"
+	form.Set("s", n)
+	cpy, err = walkFloat64(form, "s", reflect.ValueOf(s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cpy.Float(); got != 2.718 {
+		t.Fatalf("got %f, want %f", got, n)
 	}
 }
 
