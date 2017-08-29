@@ -52,6 +52,9 @@ func (v *Value) render(path string, depth int, readonly bool, val reflect.Value)
 	case reflect.Float32, reflect.Float64:
 		return v.renderFloat64(path, depth, readonly, val)
 	case reflect.Struct:
+		if isTime(val) {
+			return v.renderTime(path, depth, readonly, val)
+		}
 		return v.renderStruct(path, depth, readonly, val)
 	case reflect.Map:
 		return v.renderMap(path, depth, readonly, val)
@@ -68,10 +71,17 @@ func (v *Value) render(path string, depth int, readonly bool, val reflect.Value)
 	return nil
 }
 
+// TODO: should is{Duration,Time} should check for convertible-to-time.Time ?
+
 func isDuration(v reflect.Value) bool {
 	t := v.Type()
 	return (t.PkgPath() == "time" && t.Name() == "Duration") ||
 		(t.PkgPath() == "github.com/vdobler/ht/ht" && t.Name() == "Duration")
+}
+
+func isTime(v reflect.Value) bool {
+	t := v.Type()
+	return t.PkgPath() == "time" && t.Name() == "Time"
 }
 
 // ----------------------------------------------------------------------------
@@ -83,9 +93,9 @@ func (v *Value) renderBool(path string, depth int, readonly bool, val reflect.Va
 
 	if readonly {
 		if val.Bool() {
-			v.printf("&#x2611;") // ☑
+			v.printf("&#x2611;\n") // ☑
 		} else {
-			v.printf("&#x2610;") // ☐
+			v.printf("&#x2610;\n") // ☐
 		}
 		return nil
 	}
@@ -113,9 +123,9 @@ func (v *Value) renderString(path string, depth int, readonly bool, val reflect.
 			for _, line := range strings.Split(val.String(), "\n") {
 				v.printf("%s\n", template.HTMLEscapeString(line))
 			}
-			v.printf("</pre>")
+			v.printf("</pre>\n")
 		} else {
-			v.printf("<code>%s</code>", escVal)
+			v.printf("<code>%s</code>\n", escVal)
 		}
 		return nil
 	}
@@ -144,6 +154,26 @@ func (v *Value) renderString(path string, depth int, readonly bool, val reflect.
 			template.HTMLEscapeString(path),
 			escVal)
 	}
+	return nil
+}
+
+const timeFormat = "2006-01-02T15:04:05.999Z07:00" // Milliseconds is enough.
+
+func (v *Value) renderTime(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderError(path, depth)
+	v.printf("%s", indent(depth))
+
+	t := val.Convert(reflect.TypeOf(time.Time{})).Interface().(time.Time)
+
+	escVal := template.HTMLEscapeString(t.Format(timeFormat))
+	if readonly {
+		v.printf("<code>%s</code>\n", escVal)
+		return nil
+	}
+
+	v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
+		template.HTMLEscapeString(path),
+		escVal)
 	return nil
 }
 

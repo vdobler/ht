@@ -58,6 +58,9 @@ func walk(form url.Values, path string, val reflect.Value) (reflect.Value, error
 	case reflect.Float64:
 		return walkFloat64(form, path, val)
 	case reflect.Struct:
+		if isTime(val) {
+			return walkTime(form, path, val)
+		}
 		return walkStruct(form, path, val)
 	case reflect.Map:
 		return walkMap(form, path, val)
@@ -114,6 +117,22 @@ func walkDuration(form url.Values, path string, val reflect.Value) (reflect.Valu
 			return cpy, newValueErrorList(path, err)
 		}
 		cpy.SetInt(int64(newval))
+	}
+
+	return cpy, nil
+}
+
+func walkTime(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
+	cpy := reflect.New(val.Type()).Elem()
+	cpy.Set(val)
+
+	if newVals, ok := form[path]; ok {
+		delete(form, path)
+		newval, err := time.Parse(timeFormat, newVals[0])
+		if err != nil {
+			return cpy, newValueErrorList(path, err)
+		}
+		cpy.Set(reflect.ValueOf(newval))
 	}
 
 	return cpy, nil
@@ -251,7 +270,7 @@ func walkStruct(form url.Values, path string, val reflect.Value) (reflect.Value,
 	var el errorlist.List
 
 	cpy := reflect.New(val.Type()).Elem()
-	cpy.Set(reflect.Zero(val.Type()))
+	cpy.Set(reflect.Zero(val.Type())) // TODO: why not cpy.Set(val)?
 
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)

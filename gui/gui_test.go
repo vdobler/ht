@@ -57,13 +57,15 @@ type Test struct {
 }
 
 type Result struct {
-	Okay    bool
-	Count   int
-	State   string
-	Frac    float64
-	Details []string
-	Options *Options
-	Vars    map[string]string
+	Okay     bool
+	Count    int
+	State    string
+	Frac     float64
+	Details  []string
+	Options  *Options
+	Vars     map[string]string
+	Duration time.Duration
+	Time     time.Time
 }
 
 type Options struct {
@@ -73,6 +75,7 @@ type Options struct {
 		Foo string
 		Bar string
 	}
+	Started time.Time
 }
 
 type Execution struct {
@@ -178,6 +181,7 @@ func TestGUI(t *testing.T) {
 	test.Execution.Tries = 3
 	test.Execution.unexported = -99
 	test.Options.Advanced = 150 * time.Millisecond
+	test.Options.Started = time.Now()
 	test.Execution.Env = map[string]string{
 		"Hello": "World",
 		"ABC":   "XYZ",
@@ -197,6 +201,8 @@ func TestGUI(t *testing.T) {
 	test.Result.Details = []string{"Executed", "Worked\nas intended", "<<super>>"}
 	test.Result.Options = nil
 	test.Result.Vars = map[string]string{"DE": "Deutsch", "FR": "Français"}
+	test.Result.Duration = 137 * time.Millisecond
+	test.Result.Time = time.Now()
 
 	value := NewValue(test, "Test")
 
