@@ -13,6 +13,11 @@ import (
 	"github.com/vdobler/ht/errorlist"
 )
 
+type Message struct {
+	Type string
+	Text string
+}
+
 // ----------------------------------------------------------------------------
 // Value
 
@@ -27,8 +32,11 @@ type Value struct {
 	// Path is the path prefix applied to this value.
 	Path string
 
-	buf    *bytes.Buffer
-	errors map[string]error // Test.Request.Timeout => "500zs: unknown duration"
+	// Messages contains messages to be rendered for paths. E.g.:
+	//   Test.Request.Timeout => Message{typ:error, txt=wrong}
+	Messages map[string][]Message
+
+	buf *bytes.Buffer
 
 	nextfieldinfo Fieldinfo
 }
@@ -36,10 +44,10 @@ type Value struct {
 // NewValue creates a new Value from val.
 func NewValue(val interface{}, path string) *Value {
 	return &Value{
-		Current: val,
-		Path:    path,
-		buf:     &bytes.Buffer{},
-		errors:  make(map[string]error),
+		Current:  val,
+		Path:     path,
+		Messages: make(map[string][]Message),
+		buf:      &bytes.Buffer{},
 	}
 }
 
@@ -56,7 +64,7 @@ func (v *Value) Render() ([]byte, error) {
 // most prominent field (TODO: explain better).
 func (v *Value) Update(form url.Values) (string, errorlist.List) {
 	val := reflect.ValueOf(v.Current)
-	v.errors = make(map[string]error) // clear errors
+	v.Messages = make(map[string][]Message) // clear errors // TODO: really automaticall here?
 	firstErrorPath := ""
 
 	updated, err := walk(form, v.Path, val)
@@ -70,7 +78,10 @@ func (v *Value) Update(form url.Values) (string, errorlist.List) {
 				if firstErrorPath == "" {
 					firstErrorPath = ve.path
 				}
-				v.errors[ve.path] = ve.err
+				v.Messages[ve.path] = []Message{{
+					Type: "error",
+					Text: ve.err.Error(),
+				}}
 			}
 		}
 	}

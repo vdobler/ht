@@ -77,10 +77,38 @@ textarea {
 .Bogus { color: magenta; }
 .Error { color: magenta; }
 
-p.error {
-  color: red;
-  margin: 0px;
+p.msg-bogus {
+  color: fuchsia;
+  font-weigth: bold;
+  margin: 2px 0px 2px 10px;
 }
+
+p.msg-error {
+  color: red;
+  font-weigth: bold;
+  margin: 2px 0px 2px 10px;
+}
+
+p.msg-fail {
+  color: tomato;
+  margin: 2px 0px 2px 10px;
+}
+
+p.msg-pass {
+  color: green;
+  margin: 2px 0px 2px 10px;
+}
+
+p.msg-skipped {
+  color: dim-grey;
+  margin: 2px 0px 2px 10px;
+}
+
+p.msg-skipped {
+  color: light-grey;
+  margin: 2px 0px 2px 10px;
+}
+
 
 table {
   border-collapse: collapse;

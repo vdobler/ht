@@ -19,15 +19,18 @@ func indent(depth int) string {
 	return strings.Repeat("    ", depth)
 }
 
-func (v *Value) renderError(path string, depth int) {
-	err := v.errors[path]
-	if err == nil {
+func (v *Value) renderMessages(path string, depth int) {
+	msgs := v.Messages[path]
+	if len(msgs) == 0 {
 		return
 	}
 
-	v.printf("%s<p class=\"error\">%s</p>\n",
-		indent(depth),
-		template.HTMLEscapeString(err.Error()))
+	for _, m := range msgs {
+		v.printf("%s<p class=\"msg-%s\">%s</p>\n",
+			indent(depth),
+			template.HTMLEscapeString(m.Type),
+			template.HTMLEscapeString(m.Text))
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -66,6 +69,9 @@ func (v *Value) render(path string, depth int, readonly bool, val reflect.Value)
 	case reflect.Ptr:
 		return v.renderPtr(path, depth, readonly, val)
 	case reflect.Interface:
+		if val.Type() == errorType {
+			return v.renderError(path, depth, readonly, val)
+		}
 		return v.renderInterface(path, depth, readonly, val)
 	}
 
@@ -73,6 +79,8 @@ func (v *Value) render(path string, depth int, readonly bool, val reflect.Value)
 
 	return nil
 }
+
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 // TODO: should is{Duration,Time} should check for convertible-to-time.Time ?
 
@@ -91,7 +99,7 @@ func isTime(v reflect.Value) bool {
 // Primitive Types
 
 func (v *Value) renderBool(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderError(path, depth)
+	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
 	if readonly {
@@ -115,7 +123,7 @@ func (v *Value) renderBool(path string, depth int, readonly bool, val reflect.Va
 }
 
 func (v *Value) renderString(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderError(path, depth)
+	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
 	isMultiline := strings.Contains(val.String(), "\n")
@@ -163,7 +171,7 @@ func (v *Value) renderString(path string, depth int, readonly bool, val reflect.
 const timeFormat = "2006-01-02T15:04:05.999Z07:00" // Milliseconds is enough.
 
 func (v *Value) renderTime(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderError(path, depth)
+	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
 	t := val.Convert(reflect.TypeOf(time.Time{})).Interface().(time.Time)
@@ -181,7 +189,7 @@ func (v *Value) renderTime(path string, depth int, readonly bool, val reflect.Va
 }
 
 func (v *Value) renderDuration(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderError(path, depth)
+	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
 	dv := val.Convert(reflect.TypeOf(time.Duration(0)))
@@ -201,7 +209,7 @@ func (v *Value) renderDuration(path string, depth int, readonly bool, val reflec
 }
 
 func (v *Value) renderInt(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderError(path, depth)
+	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
 	if readonly {
@@ -217,7 +225,7 @@ func (v *Value) renderInt(path string, depth int, readonly bool, val reflect.Val
 }
 
 func (v *Value) renderUint(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderError(path, depth)
+	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
 	if readonly {
@@ -233,7 +241,7 @@ func (v *Value) renderUint(path string, depth int, readonly bool, val reflect.Va
 }
 
 func (v *Value) renderFloat64(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderError(path, depth)
+	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
 	if readonly {
@@ -245,6 +253,20 @@ func (v *Value) renderFloat64(path string, depth int, readonly bool, val reflect
 		template.HTMLEscapeString(path),
 		val.Float())
 
+	return nil
+}
+
+func (v *Value) renderError(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderMessages(path, depth)
+	if val.IsNil() {
+		return nil
+	}
+
+	v.printf("%s", indent(depth))
+	err := val.Interface().(error)
+	// TODO: handle non-readonly errors?
+	escVal := template.HTMLEscapeString(err.Error())
+	v.printf("<code>%s</code>\n", escVal)
 	return nil
 }
 
@@ -337,6 +359,7 @@ func (v *Value) renderNilInterface(path string, depth int, readonly bool, val re
 // Slices
 
 func (v *Value) renderSlice(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderMessages(path, depth)
 	v.printf("%s<table>\n", indent(depth))
 	var err error
 	for i := 0; i < val.Len(); i++ {
@@ -385,6 +408,7 @@ func (v *Value) renderSlice(path string, depth int, readonly bool, val reflect.V
 
 // Structs are easy: all fields are fixed, nothing to add or delete.
 func (v *Value) renderStruct(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderMessages(path, depth)
 	var err error
 
 	typename, tooltip := v.typeinfo(val)
@@ -454,6 +478,7 @@ func unwalkable(val reflect.Value) bool {
 // not setable.
 
 func (v *Value) renderMap(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderMessages(path, depth)
 	v.printf("%s<table class=\"map\">\n", indent(depth))
 	var err error
 	keys := val.MapKeys()
