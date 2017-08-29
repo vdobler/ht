@@ -515,7 +515,7 @@ func (v *Value) renderMap(path string, depth int, readonly bool, val reflect.Val
 
 	sortMapKeys(keys)
 
-	for _, k := range val.MapKeys() {
+	for _, k := range keys {
 		mv := val.MapIndex(k)
 		name := k.String() // BUG: panics if map is indexed by anything else than strings
 		v.printf("%s<tr>\n", indent(depth+1))
