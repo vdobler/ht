@@ -457,8 +457,9 @@ func (v *Value) renderStruct(path string, depth int, readonly bool, val reflect.
 		if unexported(name) || finfo.Omit || unwalkable(val.Field(i)) {
 			continue
 		}
+		fieldpath := path + "." + name
 
-		v.printf("%s<tr>\n", indent(depth+1))
+		v.printf("%s<tr id=\"%s\">\n", indent(depth+1), fieldpath)
 		tooltip := finfo.Doc
 		v.printf(`%s<th class="tooltip">%s:<span class="tooltiptext"><pre>%s</pre></span></th>`+"\n",
 			indent(depth+2),
@@ -468,7 +469,7 @@ func (v *Value) renderStruct(path string, depth int, readonly bool, val reflect.
 
 		v.printf("%s<td>\n", indent(depth+2))
 		v.nextfieldinfo = finfo
-		e := v.render(path+"."+name, depth+3, readonly || finfo.Const, field)
+		e := v.render(fieldpath, depth+3, readonly || finfo.Const, field)
 		v.nextfieldinfo = Fieldinfo{}
 		if e != nil {
 			err = e

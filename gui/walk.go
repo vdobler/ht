@@ -17,27 +17,27 @@ import (
 
 // valueError is an error from invalid form input, e.g. "foo" to an
 // time.Duration field.
-type valueError struct {
-	path string // path of field
-	err  error  // original error
+type ValueError struct {
+	Path string // path of field
+	Err  error  // original error
 }
 
-func (ve valueError) Error() string {
-	return fmt.Sprintf("field %s: %s", ve.path, ve.err.Error())
+func (ve ValueError) Error() string {
+	return fmt.Sprintf("field %s: %s", ve.Path, ve.Err.Error())
 }
 
 func newValueError(path string, err error) error {
 	if err == nil {
 		return nil
 	}
-	return valueError{path: path, err: err}
+	return ValueError{Path: path, Err: err}
 }
 
 func newValueErrorList(path string, err error) errorlist.List {
 	if err == nil {
 		return nil
 	}
-	return errorlist.List{valueError{path: path, err: err}}
+	return errorlist.List{ValueError{Path: path, Err: err}}
 }
 
 // walk val recursively, producing a copy with updates from form applied.

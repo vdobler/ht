@@ -74,13 +74,13 @@ func (v *Value) Update(form url.Values) (string, errorlist.List) {
 	} else {
 		// Process validation errors
 		for _, e := range err {
-			if ve, ok := e.(valueError); ok {
+			if ve, ok := e.(ValueError); ok {
 				if firstErrorPath == "" {
-					firstErrorPath = ve.path
+					firstErrorPath = ve.Path
 				}
-				v.Messages[ve.path] = []Message{{
+				v.Messages[ve.Path] = []Message{{
 					Type: "error",
-					Text: ve.err.Error(),
+					Text: ve.Err.Error(),
 				}}
 			}
 		}
