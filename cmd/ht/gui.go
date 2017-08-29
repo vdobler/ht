@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/vdobler/ht/gui"
 	"github.com/vdobler/ht/ht"
@@ -74,6 +75,10 @@ func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Reques
 	return func(w http.ResponseWriter, req *http.Request) {
 		buf := &bytes.Buffer{}
 		writePreamble(buf, "Test")
+		for p, m := range val.Messages {
+			fmt.Println("DH:  ", p, " ==> ", m)
+		}
+
 		data, err := val.Render()
 		buf.Write(data)
 		writeEpilogue(buf)
@@ -95,14 +100,7 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		if len(errlist) == 0 {
 			switch req.Form.Get("action") {
 			case "execute":
-				val.Last = append(val.Last, val.Current)
-				test := val.Current.(ht.Test)
-				test.Run()
-				if test.Response.Response != nil {
-					test.Response.Response.Request = nil
-					test.Response.Response.TLS = nil
-				}
-				val.Current = test
+				executeTest(val)
 			case "runchecks":
 			}
 			w.Header().Set("Location", "/display")
@@ -121,6 +119,34 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		w.WriteHeader(400)
 		w.Write(buf.Bytes())
 	}
+}
+
+func executeTest(val *gui.Value) {
+	val.Last = append(val.Last, val.Current)
+	test := val.Current.(ht.Test)
+	test.Run()
+	if test.Response.Response != nil {
+		test.Response.Response.Request = nil
+		test.Response.Response.TLS = nil
+	}
+	for i, cr := range test.CheckResults {
+		path := fmt.Sprintf("Test.Checks.%d", i)
+		status := strings.ToLower(cr.Status.String())
+		text := cr.Status.String()
+		if cr.Error != nil {
+			text = cr.Error.Error()
+		}
+		val.Messages[path] = []gui.Message{{
+			Type: status,
+			Text: text,
+		}}
+	}
+
+	for p, m := range val.Messages {
+		fmt.Println("ET:  ", p, " ==> ", m)
+	}
+
+	val.Current = test
 }
 
 func writePreamble(buf *bytes.Buffer, title string) {
