@@ -271,7 +271,16 @@ func writePreamble(buf *bytes.Buffer, title string) {
 
 func writeEpilogue(buf *bytes.Buffer) {
 	buf.WriteString(`
-<p>&nbsp;</p><input type="submit" />
+    <div style="position: fixed; top:2%; right:2%;">
+      </p>
+        <button class="actionbutton" name="action" value="execute" style="background-color: #DDA0DD;"> Execute Test </button>
+      </p>
+      <p>
+        <button class="actionbutton" name="action" value="runchecks" style="background-color: #FF8C00;"> Try Checks </button>
+      <p>
+        <button class="actionbutton" name="action" value="update"> Update Values </button>
+      </p>
+    </div>
   </form>
 </body>
 </html>
