@@ -603,6 +603,9 @@ func (t *Test) execute() {
 
 // PrepareChecks call Prepare() on all preparbel checks and sets up t
 // for execution.
+//
+// TODO: clear CheckResults before Prepare
+// TODO: identify Nr of unpreparable check.
 func (t *Test) PrepareChecks() error {
 	// Compile the checks.
 	cel := ErrorList{}
