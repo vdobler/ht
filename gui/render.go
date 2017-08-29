@@ -7,12 +7,15 @@ package gui
 import (
 	"fmt"
 	"html/template"
+	"net/url"
 	"reflect"
 	"sort"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/vdobler/ht/ht"
 )
 
 func indent(depth int) string {
@@ -40,6 +43,13 @@ func (v *Value) renderMessages(path string, depth int) {
 // Path is the prefix to the current input name.
 func (v *Value) render(path string, depth int, readonly bool, val reflect.Value) error {
 	fmt.Println("Render", path, val.Kind())
+
+	// Display-only types:
+	switch val.Type() {
+	case urlURLType, htStatusType:
+		return v.renderDisplayString(path, depth, readonly, val)
+	}
+
 	switch val.Kind() {
 	case reflect.Bool:
 		return v.renderBool(path, depth, readonly, val)
@@ -58,7 +68,8 @@ func (v *Value) render(path string, depth int, readonly bool, val reflect.Value)
 	case reflect.Float32, reflect.Float64:
 		return v.renderFloat64(path, depth, readonly, val)
 	case reflect.Struct:
-		if isTime(val) {
+		switch val.Type() {
+		case timeTimeType:
 			return v.renderTime(path, depth, readonly, val)
 		}
 		return v.renderStruct(path, depth, readonly, val)
@@ -80,7 +91,12 @@ func (v *Value) render(path string, depth int, readonly bool, val reflect.Value)
 	return nil
 }
 
-var errorType = reflect.TypeOf((*error)(nil)).Elem()
+var (
+	errorType    = reflect.TypeOf((*error)(nil)).Elem()
+	urlURLType   = reflect.TypeOf(&url.URL{})
+	timeTimeType = reflect.TypeOf(time.Time{})
+	htStatusType = reflect.TypeOf(ht.Status(0))
+)
 
 // TODO: should is{Duration,Time} should check for convertible-to-time.Time ?
 
@@ -266,6 +282,20 @@ func (v *Value) renderError(path string, depth int, readonly bool, val reflect.V
 	err := val.Interface().(error)
 	// TODO: handle non-readonly errors?
 	escVal := template.HTMLEscapeString(err.Error())
+	v.printf("<code>%s</code>\n", escVal)
+	return nil
+}
+
+// ----------------------------------------------------------------------------
+// Stuff that gets displayed by its String() method
+
+func (v *Value) renderDisplayString(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderMessages(path, depth)
+	v.printf("%s", indent(depth))
+
+	strMethod := val.MethodByName("String")
+	out := strMethod.Call(nil)
+	escVal := template.HTMLEscapeString(out[0].String())
 	v.printf("<code>%s</code>\n", escVal)
 	return nil
 }
