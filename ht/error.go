@@ -68,6 +68,9 @@ func (el ErrorList) AsError() error {
 func (el ErrorList) AsStrings() []string {
 	s := []string{}
 	for _, e := range el {
+		if e == nil {
+			continue // TODO: this should never happen
+		}
 		if nel, ok := e.(ErrorList); ok {
 			s = append(s, nel.AsStrings()...)
 		} else {
