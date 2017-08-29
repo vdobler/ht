@@ -36,6 +36,7 @@ func (v *Value) renderError(path string, depth int) {
 // render down val, emitting HTML to buf.
 // Path is the prefix to the current input name.
 func (v *Value) render(path string, depth int, readonly bool, val reflect.Value) error {
+	fmt.Println("Render", path, val.Kind())
 	switch val.Kind() {
 	case reflect.Bool:
 		return v.renderBool(path, depth, readonly, val)
@@ -46,9 +47,11 @@ func (v *Value) render(path string, depth int, readonly bool, val reflect.Value)
 			return v.renderDuration(path, depth, readonly, val)
 		}
 		fallthrough
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
 		return v.renderInt(path, depth, readonly, val)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
+		reflect.Uint64:
+		return v.renderUint(path, depth, readonly, val)
 	case reflect.Float32, reflect.Float64:
 		return v.renderFloat64(path, depth, readonly, val)
 	case reflect.Struct:
@@ -209,6 +212,22 @@ func (v *Value) renderInt(path string, depth int, readonly bool, val reflect.Val
 	v.printf("<input type=\"number\" name=\"%s\" value=\"%d\" />\n",
 		template.HTMLEscapeString(path),
 		val.Int())
+
+	return nil
+}
+
+func (v *Value) renderUint(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderError(path, depth)
+	v.printf("%s", indent(depth))
+
+	if readonly {
+		v.printf("%d", val.Uint())
+		return nil
+	}
+
+	v.printf("<input type=\"number\" name=\"%s\" value=\"%d\" />\n",
+		template.HTMLEscapeString(path),
+		val.Uint())
 
 	return nil
 }
