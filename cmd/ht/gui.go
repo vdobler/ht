@@ -92,8 +92,6 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		req.ParseForm()
 		_, errlist := val.Update(req.Form)
 
-		fmt.Printf("updatehandler: err=%v <%T>\n", errlist, errlist)
-
 		if len(errlist) == 0 {
 			w.Header().Set("Location", "/display")
 			w.WriteHeader(303)
@@ -123,18 +121,33 @@ func writePreamble(buf *bytes.Buffer, title string) {
  `)
 	buf.WriteString(gui.CSS)
 	buf.WriteString(`
+.valueform {
+  margin-right: 240px;
+}
     </style>
 </head>
 <body>
   <h1>` + title + `</h1>
+  <div class="valueform">
   <form action="/update" method="post">
 `)
 }
 
 func writeEpilogue(buf *bytes.Buffer) {
 	buf.WriteString(`
-<p>&nbsp;</p><input type="submit" />
+    <div style="position: fixed; top:2%; right:2%;">
+      </p>
+        <button class="actionbutton" name="action" value="execute" style="background-color: #DDA0DD;"> Execute Test </button>
+      </p>
+      <p>
+        <button class="actionbutton" name="action" value="runchecks" style="background-color: #FF8C00;"> Try Checks </button>
+      <p>
+        <button class="actionbutton" name="action" value="update"> Update Values </button>
+      </p>
+    </div>
+
   </form>
+  </div>
 </body>
 </html>
 `)
