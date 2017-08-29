@@ -170,17 +170,18 @@ label {
 }
 
 .actionbutton {
-    background-color: #4CAF50;
-    border: none;
-    color: black;
-    padding: 15px 32px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 18px;
-    font-family: "Arial Black", Gadget, sans-serif;
-    margin: 4px 2px;
-    cursor: pointer;
+  background-color: #4CAF50;
+  border: none;
+  color: black;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  width: 200px;
+  font-size: 18px;
+  font-family: "Arial Black", Gadget, sans-serif;
+  margin: 4px 2px;
+  cursor: pointer;
 }
 `
 
