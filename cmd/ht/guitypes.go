@@ -120,6 +120,19 @@ var httpResponse = map[string]gui.Fieldinfo{
 	"TLS":     gui.Fieldinfo{Omit: true},
 }
 
+var httpRequest = map[string]gui.Fieldinfo{
+	"ProtoMajor":    gui.Fieldinfo{Omit: true},
+	"ProtoMinor":    gui.Fieldinfo{Omit: true},
+	"Body":          gui.Fieldinfo{Omit: true},
+	"Close":         gui.Fieldinfo{Omit: true},
+	"Form":          gui.Fieldinfo{Omit: true},
+	"PostForm":      gui.Fieldinfo{Omit: true},
+	"MultipartForm": gui.Fieldinfo{Omit: true},
+	"Trailer":       gui.Fieldinfo{Omit: true},
+	"TLS":           gui.Fieldinfo{Omit: true},
+	"Response":      gui.Fieldinfo{Omit: true},
+}
+
 func registerGUITypes() {
 	gui.RegisterType(ht.Test{}, gui.Typeinfo{
 		Doc:   "The Test",
@@ -139,6 +152,11 @@ func registerGUITypes() {
 	gui.RegisterType(http.Response{}, gui.Typeinfo{
 		Doc:   "The HTTP response.",
 		Field: httpResponse,
+	})
+
+	gui.RegisterType(http.Request{}, gui.Typeinfo{
+		Doc:   "The HTTP request.",
+		Field: httpRequest,
 	})
 
 	registerCheckAndExtractorTypes()
