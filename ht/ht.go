@@ -185,16 +185,28 @@ type Execution struct {
 // Test is a single logical test which does one HTTP request and checks
 // a number of Checks on the received Response.
 type Test struct {
-	Name        string
+	// Name of the test.
+	Name string
+
+	// Description what this test's intentions are.
 	Description string `json:",omitempty"`
 
 	// Request is the HTTP request.
 	Request Request
 
+	// Response to the Request
+	Response Response `json:",omitempty"`
+
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
-	// Execution controls the test execution
+	// VarEx may be used to popultate variables from the response. TODO: Rename.
+	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
+
+	// ExValues contains the result of the extractions.
+	ExValues map[string]Extraction `json:",omitempty"`
+
+	// Execution controls the test execution.
 	Execution Execution `json:",omitempty"`
 
 	// Jar is the cookie jar to use
@@ -206,7 +218,6 @@ type Test struct {
 
 	// The following results are filled during Run.
 	// This should be collected into something like struct TestResult{...}.
-	Response     Response      `json:",omitempty"`
 	Status       Status        `json:"-"`
 	Started      time.Time     `json:"-"`
 	Error        error         `json:"-"`
@@ -214,12 +225,6 @@ type Test struct {
 	FullDuration time.Duration `json:"-"`
 	Tries        int           `json:"-"`
 	CheckResults []CheckResult `json:"-"` // The individual checks.
-
-	// VarEx may be used to popultate variables from the response. TODO: Rename.
-	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
-
-	// ExValues contains the result of the extractions.
-	ExValues map[string]Extraction `json:",omitempty"`
 
 	// Log is the logger to use.
 	Log interface {
