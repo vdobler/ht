@@ -5,6 +5,7 @@
 package main
 
 import (
+	"net/http"
 	"reflect"
 	"strings"
 
@@ -111,6 +112,13 @@ in chunked transfer encoding of POST bodies`,
 	"SentParams": gui.Fieldinfo{Doc: `The actual sent parameters`, Const: true},
 }
 
+var httpResponse = map[string]gui.Fieldinfo{
+	"Body":    gui.Fieldinfo{Omit: true},
+	"Close":   gui.Fieldinfo{Omit: true},
+	"Request": gui.Fieldinfo{Omit: true},
+	"TLS":     gui.Fieldinfo{Omit: true},
+}
+
 func registerGUITypes() {
 	gui.RegisterType(ht.Test{}, gui.Typeinfo{
 		Doc:   "The Test",
@@ -125,6 +133,11 @@ func registerGUITypes() {
 	gui.RegisterType(ht.Request{}, gui.Typeinfo{
 		Doc:   "The HTTP request.",
 		Field: htRequest,
+	})
+
+	gui.RegisterType(http.Response{}, gui.Typeinfo{
+		Doc:   "The HTTP response.",
+		Field: httpResponse,
 	})
 
 	registerCheckAndExtractorTypes()

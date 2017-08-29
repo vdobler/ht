@@ -59,7 +59,7 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 		test.SetMetadata("Filename", rt.File.Name)
 	}
 
-	testValue := gui.NewValue(test, "Test")
+	testValue := gui.NewValue(*test, "Test")
 
 	http.HandleFunc("/favicon.ico", faviconHandler)
 	http.HandleFunc("/display", displayHandler(testValue))
@@ -93,6 +93,18 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		_, errlist := val.Update(req.Form)
 
 		if len(errlist) == 0 {
+			switch req.Form.Get("action") {
+			case "execute":
+				val.Last = append(val.Last, val.Current)
+				test := val.Current.(ht.Test)
+				test.Run()
+				if test.Response.Response != nil {
+					test.Response.Response.Request = nil
+					test.Response.Response.TLS = nil
+				}
+				val.Current = test
+			case "runchecks":
+			}
 			w.Header().Set("Location", "/display")
 			w.WriteHeader(303)
 			return
