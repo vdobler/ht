@@ -120,7 +120,23 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 }
 
 func executeChecks(val *gui.Value) {
+	val.Last = append(val.Last, val.Current)
+	test := val.Current.(ht.Test)
+	prepErr := test.PrepareChecks()
+	if prepErr != nil {
+		// TODO: find out which check failed
+		val.Messages["Test.Checks"] = []gui.Message{{
+			Type: "bogus",
+			Text: prepErr.Error(),
+		}}
+		val.Current = test
+		return
+	}
 
+	test.ExecuteChecks()
+	augmentMessages(&test, val)
+
+	val.Current = test
 }
 
 func extractVars(val *gui.Value) {
@@ -138,6 +154,11 @@ func executeTest(val *gui.Value) {
 		test.Response.Response.Request = nil
 		test.Response.Response.TLS = nil
 	}
+	augmentMessages(&test, val)
+	val.Current = test
+}
+
+func augmentMessages(test *ht.Test, val *gui.Value) {
 	for i, cr := range test.CheckResults {
 		path := fmt.Sprintf("Test.Checks.%d", i)
 		status := strings.ToLower(cr.Status.String())
@@ -150,12 +171,6 @@ func executeTest(val *gui.Value) {
 			Text: text,
 		}}
 	}
-
-	for p, m := range val.Messages {
-		fmt.Println("ET:  ", p, " ==> ", m)
-	}
-
-	val.Current = test
 }
 
 func writePreamble(buf *bytes.Buffer, title string) {
