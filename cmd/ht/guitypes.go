@@ -7,6 +7,7 @@ package main
 import (
 	"net/http"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/vdobler/ht/gui"
@@ -165,10 +166,25 @@ func registerCheckAndExtractorTypes() {
 }
 
 func registerGUIImplements() {
-	for _, typ := range ht.CheckRegistry {
-		gui.RegisterImplementation((*ht.Check)(nil), reflect.Zero(typ).Interface())
+	names := []string{}
+	for name := range ht.CheckRegistry {
+		names = append(names, name)
 	}
-	for _, typ := range ht.ExtractorRegistry {
-		gui.RegisterImplementation((*ht.Extractor)(nil), reflect.Zero(typ).Interface())
+	sort.Strings(names)
+	for _, name := range names {
+		typ := ht.CheckRegistry[name]
+		gui.RegisterImplementation(
+			(*ht.Check)(nil), reflect.Zero(typ).Interface())
+	}
+
+	names = names[:0]
+	for name := range ht.ExtractorRegistry {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		typ := ht.ExtractorRegistry[name]
+		gui.RegisterImplementation(
+			(*ht.Extractor)(nil), reflect.Zero(typ).Interface())
 	}
 }

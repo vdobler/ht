@@ -345,7 +345,7 @@ func (v *Value) renderNilInterface(path string, depth int, readonly bool, val re
 		name, tooltip := v.typeinfo(typ)
 		hname := template.HTMLEscapeString(name)
 
-		v.printf("%s<button name=\"%s\" value=\"%s\" class=\"tooltip\">%s<span class=\"tooltiptext\"><pre>%s</pre></span></button> &nbsp; \n",
+		v.printf("%s<button name=\"%s\" value=\"%s\" style=\"margin-top: 2px; margin-bottom: 2px;\" class=\"tooltip\">%s<span class=\"tooltiptext\"><pre>%s</pre></span></button> &nbsp; \n",
 			indent(depth),
 			template.HTMLEscapeString(op),
 			hname, hname,
