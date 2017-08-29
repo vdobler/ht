@@ -75,9 +75,6 @@ func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Reques
 	return func(w http.ResponseWriter, req *http.Request) {
 		buf := &bytes.Buffer{}
 		writePreamble(buf, "Test")
-		for p, m := range val.Messages {
-			fmt.Println("DH:  ", p, " ==> ", m)
-		}
 
 		data, err := val.Render()
 		buf.Write(data)
@@ -96,29 +93,41 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 	return func(w http.ResponseWriter, req *http.Request) {
 		req.ParseForm()
 		_, errlist := val.Update(req.Form)
+		fragment := ""
 
-		if len(errlist) == 0 {
-			switch req.Form.Get("action") {
-			case "execute":
-				executeTest(val)
-			case "runchecks":
-			}
-			w.Header().Set("Location", "/display")
-			w.WriteHeader(303)
-			return
+		switch req.Form.Get("action") {
+		case "execute":
+			executeTest(val)
+			extractVars(val)
+			fragment = "#Test.Response"
+		case "runchecks":
+			executeChecks(val)
+			fragment = "#Test.Checks"
+		case "extractvars":
+			extractVars(val)
+			fragment = "#Test.VarEx"
 		}
 
-		fmt.Println(errlist)
+		for _, err := range errlist {
+			if ve, ok := err.(gui.ValueError); ok {
+				fragment = "#" + ve.Path
+			}
+		}
 
-		buf := &bytes.Buffer{}
-		writePreamble(buf, "Bad input")
-		data, _ := val.Render()
-		buf.Write(data)
-		writeEpilogue(buf)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(400)
-		w.Write(buf.Bytes())
+		w.Header().Set("Location", "/display"+fragment)
+		w.WriteHeader(303)
 	}
+}
+
+func executeChecks(val *gui.Value) {
+
+}
+
+func extractVars(val *gui.Value) {
+	val.Last = append(val.Last, val.Current)
+	test := val.Current.(ht.Test)
+	test.Extract()
+	val.Current = test
 }
 
 func executeTest(val *gui.Value) {
@@ -179,6 +188,10 @@ func writeEpilogue(buf *bytes.Buffer) {
       </p>
       <p>
         <button class="actionbutton" name="action" value="runchecks" style="background-color: #FF8C00;"> Try Checks </button>
+      </p>
+      <p>
+        <button class="actionbutton" name="action" value="extractvars" style="background-color: #87CEEB;"> Extract Vars </button>
+      </p>
       <p>
         <button class="actionbutton" name="action" value="update"> Update Values </button>
       </p>
