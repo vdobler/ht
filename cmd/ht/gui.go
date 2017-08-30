@@ -16,6 +16,7 @@ import (
 
 	"github.com/vdobler/ht/gui"
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/scope"
 	"github.com/vdobler/ht/suite"
 )
@@ -27,13 +28,27 @@ var cmdGUI = &Command{
 	Flag:        flag.NewFlagSet("gui", flag.ContinueOnError),
 	Help: `
 Gui provides a HTML GUI to create, edit and modifiy test.
+
+To work on a test.ht which is the fifth test in suite.suite execute the
+first four test in the suite storing variable and cookie state like this
+
+    $ ht exec -only 1-4 -vardump vars -cookiedump cookies suite.suite
+
+and open the GUI reading in this state:
+
+    $ ht gui -Dfile vars -cookies cookies test.ht
+
+Please note that the exported tests are not suitable for direct execution:
+All durations are in nanoseconds you have to change these manually,
+variables have been replaced unconditionaly during loading of the test
+and have to be reintroduced.
 	`,
 }
 
 func init() {
 	addOutputFlag(cmdGUI.Flag)
 	addVarsFlags(cmdGUI.Flag)
-
+	addCookieFlag(cmdGUI.Flag)
 	registerGUITypes()
 	registerGUIImplements()
 }
@@ -43,9 +58,11 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 	test := &ht.Test{}
 
 	if len(tests) > 1 {
-		log.Println("Only one suite allowed for gui.")
+		log.Println("Only one test file allowed for gui.")
 		os.Exit(9)
 	}
+
+	jar := loadCookies()
 
 	if len(tests) == 1 {
 		rt := tests[0]
@@ -59,6 +76,7 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 			os.Exit(9)
 		}
 		test.SetMetadata("Filename", rt.File.Name)
+		test.Jar = jar
 	}
 
 	testValue := gui.NewValue(*test, "Test")
@@ -95,12 +113,38 @@ func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Reques
 func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		data, err := json.MarshalIndent(val.Current, "", "    ")
+
+		// Clear stuff from test whcih is not part of a Hjson test definition.
+		test := val.Current.(ht.Test)
+		test.Response = ht.Response{}
+		test.ExValues = make(map[string]ht.Extraction)
+		test.CheckResults = nil
+
+		// Serialize to JSON as this honours json:",omitempty" and uses
+		// custom marshallers for CheckList (and ExtractorMap ???)
+		data, err := json.Marshal(test)
 		if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
+			fmt.Fprintf(w, "Cannot marshal to JSON: %s", err)
 			return
 		}
+
+		var soup interface{}
+		err = hjson.Unmarshal(data, &soup)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Cannot unmarshal to Hjson soup: %s", err)
+			return
+		}
+		delete(soup.(map[string]interface{}), "Response")
+
+		data, err = hjson.Marshal(soup)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Cannot marshal to Hjson: %s", err)
+			return
+		}
+
 		w.WriteHeader(200)
 		w.Write(data)
 	}
