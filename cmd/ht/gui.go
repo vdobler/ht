@@ -177,30 +177,27 @@ func binaryHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		req.ParseForm()
-		_, errlist := val.Update(req.Form)
-		fragment := ""
+		fragment, _ := val.Update(req.Form)
 
 		switch req.Form.Get("action") {
 		case "execute":
 			executeTest(val)
 			extractVars(val)
-			fragment = "#Test.Response"
+			fragment = "Test.Response"
 		case "runchecks":
 			executeChecks(val)
-			fragment = "#Test.Checks"
+			fragment = "Test.Checks"
 		case "extractvars":
 			extractVars(val)
-			fragment = "#Test.VarEx"
+			fragment = "Test.VarEx"
 		case "export":
 			w.Header().Set("Location", "/export")
 			w.WriteHeader(303)
 			return
 		}
 
-		for _, err := range errlist {
-			if ve, ok := err.(gui.ValueError); ok {
-				fragment = "#" + ve.Path
-			}
+		if fragment != "" {
+			fragment = "#" + fragment
 		}
 
 		w.Header().Set("Location", "/display"+fragment)
