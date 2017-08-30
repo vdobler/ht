@@ -67,6 +67,7 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 	http.HandleFunc("/display", displayHandler(testValue))
 	http.HandleFunc("/update", updateHandler(testValue))
 	http.HandleFunc("/export", exportHandler(testValue))
+	http.HandleFunc("/binary", binaryHandler(testValue))
 	fmt.Println("Open GUI on http://localhost:8888/display")
 	log.Fatal(http.ListenAndServe(":8888", nil))
 
@@ -100,6 +101,30 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 			w.Write([]byte(err.Error()))
 			return
 		}
+		w.WriteHeader(200)
+		w.Write(data)
+	}
+}
+
+func binaryHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		req.ParseForm()
+		path := req.Form.Get("path")
+		if path == "" {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(500)
+			w.Write([]byte("Missing path parameter"))
+			return
+		}
+
+		data, err := val.BinaryData(path)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
 		w.WriteHeader(200)
 		w.Write(data)
 	}
