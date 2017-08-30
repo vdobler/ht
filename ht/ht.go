@@ -229,7 +229,7 @@ type Test struct {
 	// Log is the logger to use.
 	Log interface {
 		Printf(format string, a ...interface{})
-	}
+	} `json:"-"`
 
 	client *http.Client
 
