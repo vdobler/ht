@@ -482,7 +482,9 @@ func (v *Value) renderSlice(path string, depth int, readonly bool, val reflect.V
 		field := val.Index(i)
 		fieldPath := fmt.Sprintf("%s.%d", path, i)
 
-		v.printf("%s<tr>\n", indent(depth+1))
+		v.printf("%s<tr id=\"%s\">\n",
+			indent(depth+1),
+			template.HTMLEscapeString(fieldPath))
 
 		// Index number and controls.
 		v.printf("%s<td>%d:</td>\n", indent(depth+2), i)
@@ -605,9 +607,10 @@ func (v *Value) renderMap(path string, depth int, readonly bool, val reflect.Val
 	for _, k := range keys {
 		mv := val.MapIndex(k)
 		name := k.String() // BUG: panics if map is indexed by anything else than strings
-		v.printf("%s<tr>\n", indent(depth+1))
-
 		elemPath := path + "." + mangleKey(name)
+		v.printf("%s<tr id=\"%s\">\n",
+			indent(depth+1), template.HTMLEscapeString(elemPath))
+
 		if !readonly {
 			v.printf("%s<td><button name=\"%s\" value=\"Remove\">-</button></td>\n",
 				indent(depth+2), elemPath)
