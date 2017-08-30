@@ -82,11 +82,11 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 	testValue := gui.NewValue(*test, "Test")
 
 	http.HandleFunc("/favicon.ico", faviconHandler)
-	http.HandleFunc("/display", displayHandler(testValue))
 	http.HandleFunc("/update", updateHandler(testValue))
 	http.HandleFunc("/export", exportHandler(testValue))
 	http.HandleFunc("/binary", binaryHandler(testValue))
-	fmt.Println("Open GUI on http://localhost:8888/display")
+	http.HandleFunc("/", displayHandler(testValue))
+	fmt.Println("Open GUI on http://localhost:8888/")
 	log.Fatal(http.ListenAndServe(":8888", nil))
 
 	os.Exit(0)
@@ -95,7 +95,7 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		buf := &bytes.Buffer{}
-		writePreamble(buf, "Test")
+		writePreamble(buf, "Test Builder")
 
 		data, err := val.Render()
 		buf.Write(data)
@@ -185,11 +185,21 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 			extractVars(val)
 			fragment = "Test.Response"
 		case "runchecks":
+			if val.Current.(ht.Test).Response.Response == nil {
+				w.WriteHeader(400)
+				w.Write([]byte("Missing Response.Response"))
+				return
+			}
 			executeChecks(val)
 			fragment = "Test.Checks"
 		case "extractvars":
+			if val.Current.(ht.Test).Response.Response == nil {
+				w.WriteHeader(400)
+				w.Write([]byte("Missing Response.Response"))
+				return
+			}
 			extractVars(val)
-			fragment = "Test.VarEx"
+			fragment = "Test.ExValues"
 		case "export":
 			w.Header().Set("Location", "/export")
 			w.WriteHeader(303)
@@ -200,7 +210,7 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 			fragment = "#" + fragment
 		}
 
-		w.Header().Set("Location", "/display"+fragment)
+		w.Header().Set("Location", "/"+fragment)
 		w.WriteHeader(303)
 	}
 }
@@ -264,7 +274,7 @@ func writePreamble(buf *bytes.Buffer, title string) {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Check Builder</title>
+    <title>Test Builder</title>
     <style>
  `)
 	buf.WriteString(gui.CSS)
@@ -300,6 +310,8 @@ func writeEpilogue(buf *bytes.Buffer) {
         <button class="actionbutton" name="action" value="export" style="background-color: #FFE4B5;"> Export Test </button>
       </p>
     </div>
+
+    <div style="height: 600px"> &nbsp; </div>
 
   </form>
   </div>
