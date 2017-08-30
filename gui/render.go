@@ -45,8 +45,6 @@ func (v *Value) renderMessages(path string, depth int) {
 // render down val, emitting HTML to buf.
 // Path is the prefix to the current input name.
 func (v *Value) render(path string, depth int, readonly bool, val reflect.Value) error {
-	fmt.Println("Render", path, val.Kind())
-
 	// Display-only types:
 	switch val.Type() {
 	case urlURLType, htStatusType:

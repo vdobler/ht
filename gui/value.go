@@ -90,7 +90,6 @@ func (v *Value) Update(form url.Values) (string, errorlist.List) {
 
 	v.Current = updated.Interface()
 
-	fmt.Printf("Value.Update(): err=%v <%T>\n", err, err)
 	return firstErrorPath, err
 }
 
