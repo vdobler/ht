@@ -76,7 +76,9 @@ func (v *Value) Update(form url.Values) (string, errorlist.List) {
 	} else {
 		// Process validation errors
 		for _, e := range err {
-			if ve, ok := e.(ValueError); ok {
+			fmt.Println(e)
+			switch ve := e.(type) {
+			case ValueError:
 				if firstErrorPath == "" {
 					firstErrorPath = ve.Path
 				}
@@ -84,6 +86,8 @@ func (v *Value) Update(form url.Values) (string, errorlist.List) {
 					Type: "error",
 					Text: ve.Err.Error(),
 				}}
+			case addNoticeError:
+				firstErrorPath = string(ve)
 			}
 		}
 	}

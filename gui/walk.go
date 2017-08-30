@@ -40,6 +40,12 @@ func newValueErrorList(path string, err error) errorlist.List {
 	return errorlist.List{ValueError{Path: path, Err: err}}
 }
 
+// addNoticeError is a dead ugly hack to report from walk that an element
+// was added.
+type addNoticeError string
+
+func (addNoticeError) Error() string { return "-- all is fine --" }
+
 // walk val recursively, producing a copy with updates from form applied.
 // Path is the prefix to the current input name.
 func walk(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
@@ -320,6 +326,9 @@ func walkSlice(form url.Values, path string, val reflect.Value) (reflect.Value, 
 		delete(form, op)
 		newElem := reflect.Zero(val.Type().Elem())
 		cpy.Set(reflect.Append(cpy, newElem))
+		ap := fmt.Sprintf("%s.%d", path, cpy.Len()-1)
+		fmt.Println("New element", ap)
+		err = err.Append(addNoticeError(ap))
 	}
 
 	return cpy, err
