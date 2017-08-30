@@ -7,6 +7,7 @@ package gui
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"reflect"
@@ -246,22 +247,18 @@ func displayHandler(val *Value) func(w http.ResponseWriter, req *http.Request) {
 func updateHandler(val *Value) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		req.ParseForm()
-		_, errlist := val.Update(req.Form)
+		fragment, errlist := val.Update(req.Form)
 
-		if len(errlist) == 0 {
-			w.Header().Set("Location", "/display")
-			w.WriteHeader(303)
-			return
+		for _, e := range errlist {
+			fmt.Println(e)
 		}
 
-		buf := &bytes.Buffer{}
-		writePreamble(buf, "Bad input")
-		data, _ := val.Render()
-		buf.Write(data)
-		writeEpilogue(buf)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(400)
-		w.Write(buf.Bytes())
+		if fragment != "" {
+			fragment = "#" + fragment
+		}
+		w.Header().Set("Location", "/display"+fragment)
+		w.WriteHeader(303)
+		return
 	}
 }
 

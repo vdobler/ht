@@ -59,9 +59,11 @@ func walk(form url.Values, path string, val reflect.Value) (reflect.Value, error
 			return walkDuration(form, path, val)
 		}
 		fallthrough
-	case reflect.Int:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
 		return walkInt(form, path, val)
-	case reflect.Float64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
+		return walkUint(form, path, val)
+	case reflect.Float64, reflect.Float32:
 		return walkFloat64(form, path, val)
 	case reflect.Struct:
 		if isTime(val) {
@@ -155,6 +157,22 @@ func walkInt(form url.Values, path string, val reflect.Value) (reflect.Value, er
 			return cpy, newValueErrorList(path, err)
 		}
 		cpy.SetInt(newVal)
+	}
+
+	return cpy, nil
+}
+
+func walkUint(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
+	cpy := reflect.New(val.Type()).Elem()
+	cpy.SetUint(val.Uint())
+
+	if newVals, ok := form[path]; ok {
+		delete(form, path)
+		newVal, err := strconv.ParseInt(newVals[0], 10, 64)
+		if err != nil {
+			return cpy, newValueErrorList(path, err)
+		}
+		cpy.SetUint(uint64(newVal)) // BUG mightoverflow
 	}
 
 	return cpy, nil
@@ -327,7 +345,6 @@ func walkSlice(form url.Values, path string, val reflect.Value) (reflect.Value, 
 		newElem := reflect.Zero(val.Type().Elem())
 		cpy.Set(reflect.Append(cpy, newElem))
 		ap := fmt.Sprintf("%s.%d", path, cpy.Len()-1)
-		fmt.Println("New element", ap)
 		err = err.Append(addNoticeError(ap))
 	}
 
