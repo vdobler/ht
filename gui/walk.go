@@ -227,7 +227,8 @@ func walkNilPtr(form url.Values, path string, val reflect.Value) (reflect.Value,
 		elemTyp := val.Type().Elem()
 		elem := reflect.New(elemTyp).Elem()
 		elem.Set(reflect.Zero(elemTyp))
-		return elem.Addr(), nil
+		err := addNoticeError(path)
+		return elem.Addr(), errorlist.List{err}
 	}
 
 	return reflect.Zero(val.Type()), nil
@@ -276,7 +277,8 @@ func walkNilInterface(form url.Values, path string, val reflect.Value) (reflect.
 				} else {
 					elem.Set(reflect.Zero(implementor))
 				}
-				return elem, nil
+				err := addNoticeError(path)
+				return elem, errorlist.List{err}
 			}
 		}
 		return reflect.Zero(val.Type()),
@@ -388,6 +390,8 @@ func walkMap(form url.Values, path string, val reflect.Value) (reflect.Value, er
 			newKey := reflect.ValueOf(key) // Bug, works only for string keys
 			newElem := reflect.Zero(val.Type().Elem())
 			cpy.SetMapIndex(newKey, newElem)
+			ap := fmt.Sprintf("%s.%s", path, mangleKey(key))
+			err = err.Append(addNoticeError(ap))
 		}
 	}
 
