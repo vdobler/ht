@@ -135,9 +135,13 @@ func TestWalkIntSliceAdd(t *testing.T) {
 
 	form.Set("s.__OP__", "Add")
 	cpy, err := walkSlice(form, "s", reflect.ValueOf(s))
-	if err != nil {
+	if len(err) != 1 {
 		t.Fatal(err)
 	}
+	if path, ok := err[0].(addNoticeError); !ok || path != "s.4" {
+		t.Fatal(path, ok)
+	}
+
 	if cpy.Kind() != reflect.Slice {
 		t.Fatal(cpy.Kind().String())
 	}
@@ -293,9 +297,13 @@ func TestWalkMap(t *testing.T) {
 	form.Set("s.__NEW__", "WUZ")
 	form.Set("s.BAR", "+++")
 	cpy, err = walkMap(form, "s", reflect.ValueOf(s))
-	if err != nil {
+	if len(err) != 1 {
 		t.Fatal(err)
 	}
+	if path, ok := err[0].(addNoticeError); !ok || path != "s.WUZ" {
+		t.Fatal(string(path), ok)
+	}
+
 	if cpy.Kind() != reflect.Map {
 		t.Fatal(cpy.Kind().String())
 	}
@@ -355,9 +363,13 @@ func TestWalkNilPtr(t *testing.T) {
 	// With update.
 	form.Set("s.__OP__", "Add")
 	cpy, err = walkPtr(form, "s", reflect.ValueOf(s))
-	if err != nil {
+	if len(err) != 1 {
 		t.Fatal(err)
 	}
+	if path, ok := err[0].(addNoticeError); !ok || path != "s" {
+		t.Fatal(string(path), ok)
+	}
+
 	if cpy.Kind() != reflect.Ptr {
 		t.Fatal(cpy.Kind().String())
 	}
