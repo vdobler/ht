@@ -301,6 +301,13 @@ func (v *Value) renderBinaryData(path string, depth int, readonly bool, data []b
 	}
 
 	v.printf("%s<pre>%s</pre>%s\n", indent(depth), hexdump, clipped)
+
+	q := url.QueryEscape(path)
+	v.printf("%s<a target=\"_blank\" href=\"/binary?path=%s\">Open</a>\n",
+		indent(depth), q)
+
+	// TODO handle non-readonly binaries, e.g. via file upload.
+
 	return nil
 }
 

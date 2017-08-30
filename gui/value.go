@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/vdobler/ht/errorlist"
 )
@@ -90,6 +92,68 @@ func (v *Value) Update(form url.Values) (string, errorlist.List) {
 
 	fmt.Printf("Value.Update(): err=%v <%T>\n", err, err)
 	return firstErrorPath, err
+}
+
+// BinaryData returns the string or byte slice addressed by path.
+func (v *Value) BinaryData(path string) ([]byte, error) {
+	if !strings.HasPrefix(path, v.Path) {
+		return nil, fmt.Errorf("gui: bad path") // TODO error message
+	}
+
+	path = path[len(v.Path)+1:]
+	return binData(path, reflect.ValueOf(v.Current))
+}
+
+func binData(path string, val reflect.Value) ([]byte, error) {
+	if path == "" {
+		switch val.Kind() {
+		case reflect.String:
+			return []byte(val.String()), nil
+		case reflect.Slice:
+			elKind := val.Type().Elem().Kind()
+			if elKind == reflect.Uint8 {
+				return val.Bytes(), nil
+			}
+			return nil, fmt.Errorf("gui: bin data of %s slice", elKind.String())
+		}
+	}
+	part := strings.SplitN(path, ".", 2)
+	if len(part) == 1 {
+		part = append(part, "")
+	}
+	switch val.Kind() {
+	case reflect.Struct:
+		field := val.FieldByName(part[0])
+		if !field.IsValid() {
+			return nil, fmt.Errorf("gui: no such field %s", part[0])
+		}
+		return binData(part[1], field)
+	case reflect.Map:
+		name := demangleKey(part[0])
+		key := reflect.ValueOf(name)
+		// TODO handel maps index by other stuff han strings
+		v := val.MapIndex(key)
+		if !v.IsValid() {
+			return nil, fmt.Errorf("gui: no such key %s", part[0])
+		}
+
+		return binData(part[1], v)
+	case reflect.Slice:
+		i, err := strconv.Atoi(part[0])
+		if err != nil {
+			return nil, fmt.Errorf("gui: bad index: %s", err)
+		}
+		if i < 0 || i > val.Len() {
+			return nil, fmt.Errorf("gui: index %d out of range", i)
+		}
+		return binData(part[1], val.Index(i))
+	case reflect.Interface, reflect.Ptr:
+		if val.IsNil() {
+			return nil, fmt.Errorf("gui: cannot traverse nil ptr/interface")
+		}
+		return binData(part[1], val.Elem())
+	}
+	return nil, fmt.Errorf("gui: cannot traverse %s in %s", val.Kind().String(), path)
 }
 
 // ----------------------------------------------------------------------------

@@ -183,7 +183,18 @@ func TestGUI(t *testing.T) {
 	test.Execution.unexported = -99
 	test.Options.Advanced = 150 * time.Millisecond
 	test.Options.Started = time.Now()
-	test.Options.Data = []byte("Hello World\r\nGutenTag\f\x00\x01\x02")
+	test.Options.Data = []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00,
+		0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x10,
+		0x00, 0x00, 0x00, 0x10, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+		0x91, 0x68, 0x36, 0x00, 0x00, 0x00, 0x2E, 0x49, 0x44, 0x41,
+		0x54, 0x28, 0xCF, 0x63, 0x60, 0x18, 0x74, 0x80, 0x71, 0x9A,
+		0x97, 0x17, 0x49, 0x1A, 0x98, 0x48, 0xB5, 0x81, 0x64, 0x0D,
+		0x2C, 0x99, 0x7C, 0x7C, 0x83, 0xCC, 0x49, 0x8C, 0x26, 0x31,
+		0xEF, 0xB1, 0x4A, 0x48, 0xD8, 0x78, 0x0C, 0x90, 0x93, 0x86,
+		0x83, 0x06, 0x00, 0xC6, 0x09, 0x03, 0xE5, 0x67, 0xDA, 0x39,
+		0xCE, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+		0x42, 0x60, 0x82}
 	test.Execution.Env = map[string]string{
 		"Hello": "World",
 		"ABC":   "XYZ",
@@ -211,6 +222,7 @@ func TestGUI(t *testing.T) {
 	http.HandleFunc("/favicon.ico", faviconHandler)
 	http.HandleFunc("/display", displayHandler(value))
 	http.HandleFunc("/update", updateHandler(value))
+	http.HandleFunc("/binary", binaryHandler(value))
 	log.Fatal(http.ListenAndServe(":8888", nil))
 }
 
@@ -250,6 +262,30 @@ func updateHandler(val *Value) func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(400)
 		w.Write(buf.Bytes())
+	}
+}
+
+func binaryHandler(val *Value) func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		req.ParseForm()
+		path := req.Form.Get("path")
+		if path == "" {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(500)
+			w.Write([]byte("Missing path parameter"))
+			return
+		}
+
+		data, err := val.BinaryData(path)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Disposition", "inline")
+		w.WriteHeader(200)
+		w.Write(data)
 	}
 }
 

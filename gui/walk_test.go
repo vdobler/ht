@@ -415,3 +415,44 @@ func TestWalkNamedTypes(t *testing.T) {
 	}
 
 }
+
+func TestBinData(t *testing.T) {
+	type MyType struct {
+		S string
+		B []byte
+		X struct {
+			T string
+		}
+		Y []string
+		Z map[string]string
+	}
+
+	mt := MyType{
+		S: "foo",
+		B: []byte("bar"),
+		X: struct{ T string }{T: "wuz"},
+		Y: []string{"abc", "xyz"},
+		Z: map[string]string{"key": "val"},
+	}
+
+	v := NewValue(mt, "Object")
+
+	for i, tc := range []struct {
+		path, want string
+	}{
+		{"Object.S", "foo"},
+		{"Object.B", "bar"},
+		{"Object.X.T", "wuz"},
+		{"Object.Y.0", "abc"},
+		{"Object.Y.1", "xyz"},
+		{"Object.Z.key", "val"},
+	} {
+		data, err := v.BinaryData(tc.path)
+		if err != nil {
+			t.Errorf("%d. %s: unexpected error %s", i, tc.path, err)
+		} else if got := string(data); got != tc.want {
+			t.Errorf("%d. %s: got %q, want %q",
+				i, tc.path, got, tc.want)
+		}
+	}
+}
