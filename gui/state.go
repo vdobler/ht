@@ -76,6 +76,7 @@ textarea {
 .Fail { color: red; }
 .Bogus { color: magenta; }
 .Error { color: magenta; }
+.error { colro: darkred; }
 
 p.msg-bogus {
   color: fuchsia;
@@ -104,7 +105,7 @@ p.msg-skipped {
   margin: 2px 0px 2px 10px;
 }
 
-p.msg-skipped {
+p.msg-notrun {
   color: light-grey;
   margin: 2px 0px 2px 10px;
 }
