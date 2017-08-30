@@ -193,13 +193,12 @@ func (v *Value) renderFloat64(path string, depth int, readonly bool, val reflect
 // Strings
 
 func (v *Value) renderString(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderMessages(path, depth)
-
 	str := val.String()
 	if data := binaryString(str); data != nil {
 		return v.renderBinaryData(path, depth, readonly, data)
 	}
 
+	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
 	isMultiline := strings.Contains(val.String(), "\n")
@@ -285,6 +284,8 @@ func binaryString(str string) []byte {
 }
 
 func (v *Value) renderBinaryData(path string, depth int, readonly bool, data []byte) error {
+	v.renderMessages(path, depth)
+
 	hexdump := hex.Dump(data)
 	lines := 0
 	clipped := ""
@@ -299,7 +300,7 @@ func (v *Value) renderBinaryData(path string, depth int, readonly bool, data []b
 		}
 	}
 
-	v.printf("<pre>%s</pre>%s\n", hexdump, clipped)
+	v.printf("%s<pre>%s</pre>%s\n", indent(depth), hexdump, clipped)
 	return nil
 }
 
@@ -463,6 +464,12 @@ func (v *Value) renderNilInterface(path string, depth int, readonly bool, val re
 // Slices
 
 func (v *Value) renderSlice(path string, depth int, readonly bool, val reflect.Value) error {
+	if val.Type().Elem().Kind() == reflect.Uint8 {
+		// Treat byte slices as binary data, not as a slice.
+		data := val.Bytes()
+		return v.renderBinaryData(path, depth, readonly, data)
+	}
+
 	v.renderMessages(path, depth)
 	v.printf("%s<table>\n", indent(depth))
 	var err error

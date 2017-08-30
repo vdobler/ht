@@ -76,6 +76,7 @@ type Options struct {
 		Bar string
 	}
 	Started time.Time
+	Data    []byte
 }
 
 type Execution struct {
@@ -182,6 +183,7 @@ func TestGUI(t *testing.T) {
 	test.Execution.unexported = -99
 	test.Options.Advanced = 150 * time.Millisecond
 	test.Options.Started = time.Now()
+	test.Options.Data = []byte("Hello World\r\nGutenTag\f\x00\x01\x02")
 	test.Execution.Env = map[string]string{
 		"Hello": "World",
 		"ABC":   "XYZ",
