@@ -93,7 +93,7 @@ func TestWalkFloat64(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := cpy.Float(); got != 2.718 {
-		t.Fatalf("got %f, want %f", got, n)
+		t.Fatalf("got %f, want %s", got, n)
 	}
 }
 
