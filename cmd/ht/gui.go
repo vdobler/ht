@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -65,6 +66,7 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 	http.HandleFunc("/favicon.ico", faviconHandler)
 	http.HandleFunc("/display", displayHandler(testValue))
 	http.HandleFunc("/update", updateHandler(testValue))
+	http.HandleFunc("/export", exportHandler(testValue))
 	fmt.Println("Open GUI on http://localhost:8888/display")
 	log.Fatal(http.ListenAndServe(":8888", nil))
 
@@ -89,6 +91,20 @@ func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Reques
 	}
 }
 
+func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		data, err := json.MarshalIndent(val.Current, "", "    ")
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.WriteHeader(200)
+		w.Write(data)
+	}
+}
+
 func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		req.ParseForm()
@@ -106,6 +122,10 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		case "extractvars":
 			extractVars(val)
 			fragment = "#Test.VarEx"
+		case "export":
+			w.Header().Set("Location", "/export")
+			w.WriteHeader(303)
+			return
 		}
 
 		for _, err := range errlist {
@@ -209,6 +229,9 @@ func writeEpilogue(buf *bytes.Buffer) {
       </p>
       <p>
         <button class="actionbutton" name="action" value="update"> Update Values </button>
+      </p>
+      <p>
+        <button class="actionbutton" name="action" value="export" style="background-color: #FFE4B5;"> Export Test </button>
       </p>
     </div>
 
