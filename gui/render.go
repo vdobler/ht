@@ -5,8 +5,11 @@
 package gui
 
 import (
+	"encoding/hex"
 	"fmt"
 	"html/template"
+	"mime"
+	"net/http"
 	"net/url"
 	"reflect"
 	"sort"
@@ -138,92 +141,6 @@ func (v *Value) renderBool(path string, depth int, readonly bool, val reflect.Va
 	return nil
 }
 
-func (v *Value) renderString(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderMessages(path, depth)
-	v.printf("%s", indent(depth))
-
-	isMultiline := strings.Contains(val.String(), "\n")
-	escVal := template.HTMLEscapeString(val.String())
-	if readonly {
-		if isMultiline {
-			v.printf("<pre>")
-			for _, line := range strings.Split(val.String(), "\n") {
-				v.printf("%s\n", template.HTMLEscapeString(line))
-			}
-			v.printf("</pre>\n")
-		} else {
-			v.printf("<code>%s</code>\n", escVal)
-		}
-		return nil
-	}
-
-	if v.nextfieldinfo.Multiline || isMultiline {
-		v.printf("<textarea cols=\"82\" rows=\"5\" name=\"%s\">%s</textarea>\n",
-			template.HTMLEscapeString(path),
-			escVal)
-
-	} else if len(v.nextfieldinfo.Only) > 0 {
-		v.printf("<select name=\"%s\">\n", template.HTMLEscapeString(path))
-		current := val.String()
-		for _, only := range v.nextfieldinfo.Only {
-			selected := ""
-			if current == only {
-				selected = ` selected="selected"`
-			}
-			v.printf("%s<option%s>%s</option>\n",
-				indent(depth+1),
-				selected,
-				template.HTMLEscapeString(only))
-		}
-		v.printf("%s</select>\n", indent(depth))
-	} else {
-		v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
-			template.HTMLEscapeString(path),
-			escVal)
-	}
-	return nil
-}
-
-const timeFormat = "2006-01-02T15:04:05.999Z07:00" // Milliseconds is enough.
-
-func (v *Value) renderTime(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderMessages(path, depth)
-	v.printf("%s", indent(depth))
-
-	t := val.Convert(reflect.TypeOf(time.Time{})).Interface().(time.Time)
-
-	escVal := template.HTMLEscapeString(t.Format(timeFormat))
-	if readonly {
-		v.printf("<code>%s</code>\n", escVal)
-		return nil
-	}
-
-	v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
-		template.HTMLEscapeString(path),
-		escVal)
-	return nil
-}
-
-func (v *Value) renderDuration(path string, depth int, readonly bool, val reflect.Value) error {
-	v.renderMessages(path, depth)
-	v.printf("%s", indent(depth))
-
-	dv := val.Convert(reflect.TypeOf(time.Duration(0)))
-	d := dv.Interface().(time.Duration)
-	escDuration := template.HTMLEscapeString(d.String())
-
-	if readonly {
-		v.printf("%s", escDuration)
-		return nil
-	}
-
-	v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
-		template.HTMLEscapeString(path),
-		escDuration)
-
-	return nil
-}
-
 func (v *Value) renderInt(path string, depth int, readonly bool, val reflect.Value) error {
 	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
@@ -272,6 +189,163 @@ func (v *Value) renderFloat64(path string, depth int, readonly bool, val reflect
 	return nil
 }
 
+// ----------------------------------------------------------------------------
+// Strings
+
+func (v *Value) renderString(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderMessages(path, depth)
+
+	str := val.String()
+	if data := binaryString(str); data != nil {
+		return v.renderBinaryData(path, depth, readonly, data)
+	}
+
+	v.printf("%s", indent(depth))
+
+	isMultiline := strings.Contains(val.String(), "\n")
+	escVal := template.HTMLEscapeString(val.String())
+	if readonly {
+		if isMultiline {
+			v.printf("<pre>")
+			for _, line := range strings.Split(val.String(), "\n") {
+				v.printf("%s\n", template.HTMLEscapeString(line))
+			}
+			v.printf("</pre>\n")
+		} else {
+			v.printf("<code>%s</code>\n", escVal)
+		}
+		return nil
+	}
+
+	if v.nextfieldinfo.Multiline || isMultiline {
+		v.printf("<textarea cols=\"82\" rows=\"5\" name=\"%s\">%s</textarea>\n",
+			template.HTMLEscapeString(path),
+			escVal)
+
+	} else if len(v.nextfieldinfo.Only) > 0 {
+		v.printf("<select name=\"%s\">\n", template.HTMLEscapeString(path))
+		current := val.String()
+		for _, only := range v.nextfieldinfo.Only {
+			selected := ""
+			if current == only {
+				selected = ` selected="selected"`
+			}
+			v.printf("%s<option%s>%s</option>\n",
+				indent(depth+1),
+				selected,
+				template.HTMLEscapeString(only))
+		}
+		v.printf("%s</select>\n", indent(depth))
+	} else {
+		v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
+			template.HTMLEscapeString(path),
+			escVal)
+	}
+	return nil
+}
+
+// binaryString returns a non-nil byte slice if str is not suitable for
+// rendering into HTML, that is if non-UTF-8, contains invalid characters
+// or is some non-text format.
+func binaryString(str string) []byte {
+	data := []byte(str)
+
+	// Make sure s is valid UTF-8 and valid HTML text as defined in
+	// https://www.w3.org/TR/html51/dom.html#text
+	s := data
+	for len(s) > 0 {
+		r, size := utf8.DecodeRune(s)
+		s = s[size:]
+		if r == utf8.RuneError {
+			return data // Invalid UTF-8
+		}
+		if r == 0 || r == 0xFEFF { // I hate BOMs
+			return data
+		}
+		if r == ' ' || r == '\t' || r == '\n' || r == '\f' || r == '\r' {
+			// Space is okay. See
+			// https://www.w3.org/TR/html51/infrastructure.html#space-characters
+			continue
+		}
+		if (r >= 0 && r <= 0xD7FF16) || (r >= 0xE00016 && r <= 0x10FFFF) {
+			// Scalar values are okay. See
+			// https://www.w3.org/TR/html51/infrastructure.html#unicode-character
+			// http://unicode.org/glossary/#unicode_scalar_value
+			continue
+		}
+		return data
+	}
+	ct := http.DetectContentType(data)
+	mt, _, _ := mime.ParseMediaType(ct)
+
+	if strings.HasPrefix(mt, "text/") {
+		return nil
+	}
+	return data
+}
+
+func (v *Value) renderBinaryData(path string, depth int, readonly bool, data []byte) error {
+	hexdump := hex.Dump(data)
+	lines := 0
+	clipped := ""
+	for i := 0; i < len(hexdump); i++ {
+		if hexdump[i] == '\n' {
+			lines++
+		}
+		if lines == 65 { // a bit more than 1k
+			hexdump = hexdump[:i]
+			clipped = "<br/>[Clipped]"
+			break
+		}
+	}
+
+	v.printf("<pre>%s</pre>%s\n", hexdump, clipped)
+	return nil
+}
+
+// ----------------------------------------------------------------------------
+// Special Types
+
+const timeFormat = "2006-01-02T15:04:05.999Z07:00" // Milliseconds is enough.
+
+func (v *Value) renderTime(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderMessages(path, depth)
+	v.printf("%s", indent(depth))
+
+	t := val.Convert(reflect.TypeOf(time.Time{})).Interface().(time.Time)
+
+	escVal := template.HTMLEscapeString(t.Format(timeFormat))
+	if readonly {
+		v.printf("<code>%s</code>\n", escVal)
+		return nil
+	}
+
+	v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
+		template.HTMLEscapeString(path),
+		escVal)
+	return nil
+}
+
+func (v *Value) renderDuration(path string, depth int, readonly bool, val reflect.Value) error {
+	v.renderMessages(path, depth)
+	v.printf("%s", indent(depth))
+
+	dv := val.Convert(reflect.TypeOf(time.Duration(0)))
+	d := dv.Interface().(time.Duration)
+	escDuration := template.HTMLEscapeString(d.String())
+
+	if readonly {
+		v.printf("%s", escDuration)
+		return nil
+	}
+
+	v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
+		template.HTMLEscapeString(path),
+		escDuration)
+
+	return nil
+}
+
 func (v *Value) renderError(path string, depth int, readonly bool, val reflect.Value) error {
 	v.renderMessages(path, depth)
 	if val.IsNil() {
@@ -282,7 +356,7 @@ func (v *Value) renderError(path string, depth int, readonly bool, val reflect.V
 	err := val.Interface().(error)
 	// TODO: handle non-readonly errors?
 	escVal := template.HTMLEscapeString(err.Error())
-	v.printf("<code>%s</code>\n", escVal)
+	v.printf("<strong class=\"error\"><code>%s</code><strong>\n", escVal)
 	return nil
 }
 
