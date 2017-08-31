@@ -225,11 +225,18 @@ func executeChecks(val *gui.Value) {
 	test := val.Current.(ht.Test)
 	prepErr := test.PrepareChecks()
 	if prepErr != nil {
-		// TODO: find out which check failed
-		val.Messages["Test.Checks"] = []gui.Message{{
-			Type: "bogus",
-			Text: prepErr.Error(),
-		}}
+		if el, ok := prepErr.(ht.ErrorList); ok {
+			for _, err := range el {
+				if pe, ok := err.(ht.ErrCheckPrepare); ok {
+					path := fmt.Sprintf("Test.Checks.%d", pe.Nr)
+					val.Messages[path] = []gui.Message{{
+						Type: "bogus",
+						Text: pe.Error(),
+					}}
+				}
+			}
+		}
+
 		val.Current = test
 		return
 	}
@@ -264,7 +271,7 @@ func augmentMessages(test *ht.Test, val *gui.Value) {
 		path := fmt.Sprintf("Test.Checks.%d", i)
 		status := strings.ToLower(cr.Status.String())
 		text := cr.Status.String()
-		if cr.Error != nil {
+		if len(cr.Error) != 0 {
 			text = cr.Error.Error()
 		}
 		val.Messages[path] = []gui.Message{{
