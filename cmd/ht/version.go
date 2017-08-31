@@ -19,7 +19,7 @@ var cmdVersion = &Command{
 }
 
 var (
-	version = "4.5.0"
+	version = "4.6.0-beta"
 )
 
 func runVersion(cmd *Command, _ []string) {
