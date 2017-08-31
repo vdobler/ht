@@ -606,19 +606,32 @@ func (t *Test) execute() {
 	}
 }
 
+// ErrCheckPrepare wraps the Err encountered during preparing Check Nr.
+type ErrCheckPrepare struct {
+	Nr  int
+	Err error
+}
+
+func (e ErrCheckPrepare) Error() string {
+	return e.Err.Error()
+}
+
 // PrepareChecks call Prepare() on all preparbel checks and sets up t
 // for execution.
 //
 // TODO: clear CheckResults before Prepare
-// TODO: identify Nr of unpreparable check.
 func (t *Test) PrepareChecks() error {
 	// Compile the checks.
-	cel := ErrorList{}
+	var cel ErrorList
 	for i := range t.Checks {
 		if prep, ok := t.Checks[i].(Preparable); ok {
 			e := prep.Prepare(t)
+			// TODO: use ErrorList.Append
 			if e != nil {
-				cel = append(cel, e)
+				cel = cel.Append(ErrCheckPrepare{
+					Nr:  i,
+					Err: e,
+				})
 				t.errorf("preparing check %d %q: %s",
 					i, NameOf(t.Checks[i]), e.Error())
 			}
