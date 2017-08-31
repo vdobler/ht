@@ -304,19 +304,19 @@ func writeEpilogue(buf *bytes.Buffer) {
 	buf.WriteString(`
     <div style="position: fixed; top:2%; right:2%;">
       </p>
-        <button class="actionbutton" name="action" value="execute" style="background-color: #DDA0DD;"> Execute Test </button>
+        <button class="actionbutton" name="action" value="execute" style="background-color: #DDA0DD;" title="Execute the HTTP request, capture the response and execute the Checks."> Execute Test </button>
       </p>
       <p>
-        <button class="actionbutton" name="action" value="runchecks" style="background-color: #FF8C00;"> Try Checks </button>
+        <button class="actionbutton" name="action" value="runchecks" style="background-color: #FF8C00;" title="Execute the Checks. Requires a valid response."> Try Checks </button>
       </p>
       <p>
-        <button class="actionbutton" name="action" value="extractvars" style="background-color: #87CEEB;"> Extract Vars </button>
+        <button class="actionbutton" name="action" value="extractvars" style="background-color: #87CEEB;" title="Extract variables from Response. Requires a valid response."> Extract Vars </button>
       </p>
       <p>
-        <button class="actionbutton" name="action" value="update"> Update Values </button>
+        <button class="actionbutton" name="action" value="update" title="Save"> Update Values </button>
       </p>
       <p>
-        <button class="actionbutton" name="action" value="export" style="background-color: #FFE4B5;"> Export Test </button>
+        <button class="actionbutton" name="action" value="export" style="background-color: #FFE4B5;" title="Export current Test as Hjson. Needs manual rework!"> Export Test </button>
       </p>
     </div>
 
