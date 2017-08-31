@@ -225,18 +225,7 @@ func executeChecks(val *gui.Value) {
 	test := val.Current.(ht.Test)
 	prepErr := test.PrepareChecks()
 	if prepErr != nil {
-		if el, ok := prepErr.(ht.ErrorList); ok {
-			for _, err := range el {
-				if pe, ok := err.(ht.ErrCheckPrepare); ok {
-					path := fmt.Sprintf("Test.Checks.%d", pe.Nr)
-					val.Messages[path] = []gui.Message{{
-						Type: "bogus",
-						Text: pe.Error(),
-					}}
-				}
-			}
-		}
-
+		augmentPrepareMessages(prepErr, val)
 		val.Current = test
 		return
 	}
@@ -267,6 +256,20 @@ func executeTest(val *gui.Value) {
 }
 
 func augmentMessages(test *ht.Test, val *gui.Value) {
+	// Error and Status
+	status := strings.ToLower(test.Status.String())
+	text := test.Status.String()
+	if test.Error != nil {
+		text += ": " + test.Error.Error()
+	}
+	msg := []gui.Message{{
+		Type: status,
+		Text: text,
+	}}
+	val.Messages["Test"] = msg
+	val.Messages["Test.Response"] = msg // because this is in focus after Execute
+
+	// Checks from CheckResults
 	for i, cr := range test.CheckResults {
 		path := fmt.Sprintf("Test.Checks.%d", i)
 		status := strings.ToLower(cr.Status.String())
@@ -278,6 +281,28 @@ func augmentMessages(test *ht.Test, val *gui.Value) {
 			Type: status,
 			Text: text,
 		}}
+	}
+
+	augmentPrepareMessages(test.Error, val)
+}
+
+func augmentPrepareMessages(err error, val *gui.Value) {
+	if err == nil {
+		return
+	}
+	el, ok := err.(ht.ErrorList)
+	if !ok {
+		return
+	}
+
+	for _, err := range el {
+		if pe, ok := err.(ht.ErrCheckPrepare); ok {
+			path := fmt.Sprintf("Test.Checks.%d", pe.Nr)
+			val.Messages[path] = []gui.Message{{
+				Type: "bogus",
+				Text: pe.Error(),
+			}}
+		}
 	}
 }
 
