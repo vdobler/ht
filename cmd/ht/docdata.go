@@ -928,16 +928,28 @@ var typeDoc = map[string]string{
 		"}\n" +
 		"    StatusCode checks the HTTP statuscode.",
 	"test": "type Test struct {\n" +
-		"\tName        string\n" +
+		"\t// Name of the test.\n" +
+		"\tName string\n" +
+		"\n" +
+		"\t// Description what this test's intentions are.\n" +
 		"\tDescription string \n" +
 		"\n" +
 		"\t// Request is the HTTP request.\n" +
 		"\tRequest Request\n" +
 		"\n" +
+		"\t// Response to the Request\n" +
+		"\tResponse Response \n" +
+		"\n" +
 		"\t// Checks contains all checks to perform on the response to the HTTP request.\n" +
 		"\tChecks CheckList\n" +
 		"\n" +
-		"\t// Execution controls the test execution\n" +
+		"\t// VarEx may be used to popultate variables from the response. TODO: Rename.\n" +
+		"\tVarEx ExtractorMap // map[string]Extractor \n" +
+		"\n" +
+		"\t// ExValues contains the result of the extractions.\n" +
+		"\tExValues map[string]Extraction \n" +
+		"\n" +
+		"\t// Execution controls the test execution.\n" +
 		"\tExecution Execution \n" +
 		"\n" +
 		"\t// Jar is the cookie jar to use\n" +
@@ -949,7 +961,6 @@ var typeDoc = map[string]string{
 		"\n" +
 		"\t// The following results are filled during Run.\n" +
 		"\t// This should be collected into something like struct TestResult{...}.\n" +
-		"\tResponse     Response      \n" +
 		"\tStatus       Status        \n" +
 		"\tStarted      time.Time     \n" +
 		"\tError        error         \n" +
@@ -958,16 +969,10 @@ var typeDoc = map[string]string{
 		"\tTries        int           \n" +
 		"\tCheckResults []CheckResult  // The individual checks.\n" +
 		"\n" +
-		"\t// VarEx may be used to popultate variables from the response. TODO: Rename.\n" +
-		"\tVarEx ExtractorMap // map[string]Extractor \n" +
-		"\n" +
-		"\t// ExValues contains the result of the extractions.\n" +
-		"\tExValues map[string]Extraction \n" +
-		"\n" +
 		"\t// Log is the logger to use.\n" +
 		"\tLog interface {\n" +
 		"\t\tPrintf(format string, a ...interface{})\n" +
-		"\t}\n" +
+		"\t} \n" +
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
