@@ -4,6 +4,20 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  Export in the GUI does not produce valid Hjson tests:
+     - At least time.Duration fields are off by a factor of 10^9 (ns vs s).
+       Could be fixed by traversing the Hjson soup and chaning any suspicious
+       int64 like 500000000 to a string like "500ms".
+     - Variables have been substituted during loading of the test. To roundtrip
+       from/to disk it would be nice if the exported test could contain the
+       unexpanded Variables. Same solution: traverse the hjson soup and replace
+       current values with {{name}}.
+   Both "solutions" are just heuristics.
+
+*  The type and field documentation for the GUI needs to be automated.
+
+*  Error handling in the GUI is not good. 
+
 *  The tests for phantomjs screenshots fail on Windows because the font (or its
    properties) used differs. Maybe forcing a certain font and fixing height and
    weight via CSS could overcome this.
