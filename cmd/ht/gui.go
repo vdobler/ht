@@ -30,11 +30,11 @@ var cmdGUI = &Command{
 Gui provides a HTML GUI to create, edit and modifiy test.
 
 To work on a test.ht which is the fifth test in suite.suite execute the
-first four test in the suite storing variable and cookie state like this
+first four test in the suite storing variable and cookie state like this:
 
     $ ht exec -only 1-4 -vardump vars -cookiedump cookies suite.suite
 
-and open the GUI reading in this state:
+Then open the GUI for the fith test reading in this state:
 
     $ ht gui -Dfile vars -cookies cookies test.ht
 
@@ -46,21 +46,27 @@ and have to be reintroduced.
 }
 
 func init() {
-	addOutputFlag(cmdGUI.Flag)
+	addPortFlag(cmdGUI.Flag)
 	addVarsFlags(cmdGUI.Flag)
 	addCookieFlag(cmdGUI.Flag)
+	addSeedFlag(cmdGUI.Flag)
+	addCounterFlag(cmdGUI.Flag)
+	addSkiptlsverifyFlag(cmdGUI.Flag)
+	addPhantomJSFlag(cmdGUI.Flag)
+
 	registerGUITypes()
 	registerGUIImplements()
 }
 
 func runGUI(cmd *Command, tests []*suite.RawTest) {
-
-	test := &ht.Test{}
+	test := &ht.Test{Name: "New Test"}
 
 	if len(tests) > 1 {
 		log.Println("Only one test file allowed for gui.")
 		os.Exit(9)
 	}
+
+	prepareHT()
 
 	jar := loadCookies()
 
@@ -86,8 +92,8 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 	http.HandleFunc("/export", exportHandler(testValue))
 	http.HandleFunc("/binary", binaryHandler(testValue))
 	http.HandleFunc("/", displayHandler(testValue))
-	fmt.Println("Open GUI on http://localhost:8888/")
-	log.Fatal(http.ListenAndServe(":8888", nil))
+	fmt.Printf("Open GUI on http://localhost%s/\n", port)
+	log.Fatal(http.ListenAndServe(port, nil))
 
 	os.Exit(0)
 }
@@ -281,6 +287,10 @@ func writePreamble(buf *bytes.Buffer, title string) {
 	buf.WriteString(`
 .valueform {
   margin-right: 240px;
+}
+
+h1 {
+  margin-top: 0px;
 }
     </style>
 </head>

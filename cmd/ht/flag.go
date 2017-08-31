@@ -44,6 +44,8 @@ var (
 	vardump          string          // flag -vardump
 	cookiedump       string          // flag -cookiedump
 	cookie           string          // flag -cookie
+	port             string          // flag -port
+
 )
 
 func addVarsFlags(fs *flag.FlagSet) {
@@ -125,4 +127,8 @@ func addCookieFlag(fs *flag.FlagSet) {
 		"save cookies of all suites to `cookies.json`")
 	fs.StringVar(&cookie, "cookies", "",
 		"read initial cookies for each suite from `cookies.json`")
+}
+
+func addPortFlag(fs *flag.FlagSet) {
+	fs.StringVar(&port, "port", ":8888", "http service address, e.g. ")
 }
