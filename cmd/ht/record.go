@@ -27,7 +27,8 @@ var cmdRecord = &Command{
 	Usage:       "record [flags] <remote-target>",
 	Description: "run reverse proxy to record tests",
 	Flag:        flag.NewFlagSet("record", flag.ContinueOnError),
-	Help: `
+	Help: `Record request to target and create suitable tests based on the response.
+
 Record acts as a reverse proxy to <remote-target> capturing requests and
 responses. It allows to filter which request/response pairs get captured.
 Tests can be generated for the captured reqest/response pairs.

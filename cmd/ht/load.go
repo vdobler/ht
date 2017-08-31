@@ -26,8 +26,8 @@ var cmdLoad = &Command{
 	Usage:       "load [options] <loadtest>",
 	Description: "perform a load/throughput test",
 	Flag:        flag.NewFlagSet("load", flag.ContinueOnError),
-	Help: `
-Execute a throughput test.
+	Help: `Load executes a throughput load test.
+
 The length of the throuput test can be set with the 'duration' command line
 flag. The desired target rate of requests/seconds (QPS) is set with the
 'rate' command line flag.

@@ -31,8 +31,8 @@ var cmdExec = &Command{
 	Usage:       "exec [options] <suite>...",
 	Description: "generate request and test response",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
-	Help: `
-Exec loads the given suites and executes them.
+	Help: `Exec loads the given suites and executes them.
+
 Variables set with the -D flag overwrite variables read from file with -Dfile.
 The current variable assignment at the end of a suite does not carrie over to
 the next suite except if turned on with the -carry flag.

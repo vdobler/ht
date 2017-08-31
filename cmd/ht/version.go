@@ -14,9 +14,8 @@ var cmdVersion = &Command{
 	Usage:       "version",
 	Description: "print version information",
 	Flag:        flag.NewFlagSet("version", flag.ContinueOnError),
-	Help: `
-Version prints version information about ht.
-	`,
+	Help: `Version prints version information about ht.
+`,
 }
 
 var (

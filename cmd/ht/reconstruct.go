@@ -19,9 +19,10 @@ var cmdReconstruct = &Command{
 	Usage:       "reconstruct [-width w] [-height h] <hash>",
 	Description: "reconstruct image from hash",
 	Flag:        flag.NewFlagSet("reconstruct", flag.ContinueOnError),
-	Help: `
-Reconstruct produces an image from the given <hash> which may be a 12-byte
-color histogram hash or a 8-byte block mean value hash as 24 or 16 hex digits.
+	Help: `Reconstruct produces an image from the given hash.
+
+The <hash> may be a 12-bytecolor histogram hash or a 8-byte block mean value
+hash and is given as 24 or 16 hex digits.
 The resulting image reconstruction will be <width> x <height> pixel
 (defaulting to 64x64) and is written to stdout as a PNG file.
 `,

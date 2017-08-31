@@ -18,10 +18,9 @@ var cmdList = &Command{
 	Usage:       "list [flags] <suite>...",
 	Description: "list tests in suits",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
-	Help: `
-List loads the given suites, unrolls the tests, prepares
-the tests and prints the list of tests. List recognises the /... syntax
-described in exec.
+	Help: `List the tests in a suite.
+
+List recognises the /... syntax described in exec.
 	`,
 }
 

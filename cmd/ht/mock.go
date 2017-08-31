@@ -22,8 +22,7 @@ var cmdMock = &Command{
 	Usage:       "mock <mock>...",
 	Description: "run a mock server",
 	Flag:        flag.NewFlagSet("stat", flag.ContinueOnError),
-	Help: `
-Mock starts a HTTP server providing the given mocks.
+	Help: `Mock starts a HTTP server providing the given mocks.
 `,
 }
 

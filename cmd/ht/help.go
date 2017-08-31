@@ -19,9 +19,9 @@ var cmdHelp = &Command{
 	Usage:       "help [command | topic]",
 	Description: "print help information",
 	Flag:        flag.NewFlagSet("help", flag.ContinueOnError),
-	Help: `
-Help shows help for ht as well as for the different commands and selected
-topics. The available help topics are:
+	Help: `Help shows help for ht its subcommands and selected topics.
+
+The available help topics are:
     checks       displays the list of builtin checks
     extractors   displays the builtin variable extractors
     archive      explain archive files

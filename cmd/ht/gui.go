@@ -26,8 +26,7 @@ var cmdGUI = &Command{
 	Usage:       "gui [<test>]",
 	Description: "Edit and debug a test in a GUI",
 	Flag:        flag.NewFlagSet("gui", flag.ContinueOnError),
-	Help: `
-Gui provides a HTML GUI to create, edit and modifiy test.
+	Help: `Gui provides a HTML GUI to create, edit and modifiy test.
 
 To work on a test.ht which is the fifth test in suite.suite execute the
 first four test in the suite storing variable and cookie state like this:

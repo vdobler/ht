@@ -22,10 +22,11 @@ var cmdQuick = &Command{
 	Usage:       "quick <URL>...",
 	Description: "do quick checking of HTML pages",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
-	Help: `
-Quick performs a set of standard checks on the given URLs which must
-be HTML pages (and not images, JSON files, scripts or that like).
-	`,
+	Help: `Quick performs a standard test on URL.
+
+Quick's standard test is useful for HTML pages only (and not images, JSON
+files, scripts or that like).
+`,
 }
 
 var defaultHeader = http.Header{}

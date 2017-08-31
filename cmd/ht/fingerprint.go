@@ -21,8 +21,8 @@ var cmdFingerprint = &Command{
 	Usage:       "fingerprint <fileOrURL>...",
 	Description: "calculate image fingerprints",
 	Flag:        flag.NewFlagSet("fingerprint", flag.ContinueOnError),
-	Help: `
-Fingerprint calculates image fingerprints for the given arguments.
+	Help: `Fingerprint calculates image fingerprints for the given arguments.
+
 If an argument start with 'http://' or 'https://' it is treated as
 an URL otherwise as a filename.
 The files or URLs are loaded and the two image fingerprints are

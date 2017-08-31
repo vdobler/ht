@@ -16,8 +16,8 @@ var cmdDoc = &Command{
 	Usage:       "doc <type>",
 	Description: "print godoc of type",
 	Flag:        flag.NewFlagSet("doc", flag.ContinueOnError),
-	Help: `
-Doc displays detail information of types used in for writing tests.
+	Help: `Doc displays detail information for types used in writing tests.
+
 Only the most relevant type documentation is available. The doc
 subcommand outputs the list of checks and extractors if called with
 argument 'checks' or 'extractors'.

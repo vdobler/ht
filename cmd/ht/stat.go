@@ -22,7 +22,8 @@ var cmdStat = &Command{
 	Usage:       "stat <live.csv>",
 	Description: "statistical analysis of a load test result",
 	Flag:        flag.NewFlagSet("stat", flag.ContinueOnError),
-	Help: `
+	Help: `Stat analyses load test output genered via ht load.
+
 Stat takes as input the live.csv output file of a load test (generated from
 executing 'ht load') and produces an augmented throughput.csv file:
  - sorted on start of the tests

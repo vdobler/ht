@@ -47,8 +47,11 @@ func (c *Command) Name() string {
 }
 
 func (c *Command) usage() {
-	fmt.Fprintf(os.Stderr, "usage: %s\n\n", c.Usage)
-	fmt.Fprintf(os.Stderr, "%s\n", c.Help)
+	eol := strings.Index(c.Help, "\n")
+	fmt.Fprintf(os.Stderr, "%s\n\n", c.Help[:eol])
+	fmt.Fprintf(os.Stderr, "Usage:\n\n")
+	fmt.Fprintf(os.Stderr, "    ht %s\n", c.Usage)
+	fmt.Fprintf(os.Stderr, "%s\n", c.Help[eol+1:])
 }
 
 // Commands lists the available commands and help topics.
@@ -89,7 +92,7 @@ func usage() {
 
 Usage:
 
-    ht <command> [flags...] <suite>...
+    ht <command> [flags...] <args depending on command>...
 
 The commands are:
 %s
@@ -116,6 +119,10 @@ func main() {
 		cmd.Flag.Usage = func() { cmd.usage() }
 		err := cmd.Flag.Parse(args[1:])
 		if err != nil {
+			if err == flag.ErrHelp {
+				cmd.Flag.PrintDefaults()
+				os.Exit(0)
+			}
 			os.Exit(9)
 		}
 		fillVariablesFlagFrom(variablesFile)
