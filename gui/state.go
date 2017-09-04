@@ -141,7 +141,7 @@ pre {
 
 .tooltip .tooltiptext {
   visibility: hidden;
-  width: 600px;
+  width: 640px;
   background-color: #404040;
   color: #eeeeee;
   text-align: left;
