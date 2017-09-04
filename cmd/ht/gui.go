@@ -53,11 +53,12 @@ func init() {
 	addSkiptlsverifyFlag(cmdGUI.Flag)
 	addPhantomJSFlag(cmdGUI.Flag)
 
-	registerGUITypes()
 	registerGUIImplements()
 }
 
 func runGUI(cmd *Command, tests []*suite.RawTest) {
+	registerGUITypes()
+
 	test := &ht.Test{Name: "New Test"}
 
 	if len(tests) > 1 {
