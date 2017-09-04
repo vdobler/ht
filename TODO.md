@@ -4,6 +4,9 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  Generating and storing the type doc twice is overkill. The GUI data could be
+   used to generate the `go doc` output.
+
 *  Export in the GUI does not produce valid Hjson tests:
      - At least time.Duration fields are off by a factor of 10^9 (ns vs s).
        Could be fixed by traversing the Hjson soup and chaning any suspicious
@@ -13,8 +16,6 @@ Open Issues
        unexpanded Variables. Same solution: traverse the hjson soup and replace
        current values with {{name}}.
    Both "solutions" are just heuristics.
-
-*  The type and field documentation for the GUI needs to be automated.
 
 *  Error handling in the GUI is not good. 
 
@@ -182,3 +183,6 @@ Resolved TODOs
    --> Ignoring pixels with alpha < 64. So normal logos which are totaly
        opaque logo on totaly transparent background work as expected, at
        least for color histogram fingerprinting.
+
+*  The type and field documentation for the GUI needs to be automated.
+   --> Automated via gengui.go
