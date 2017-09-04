@@ -26,13 +26,6 @@ func (ve ValueError) Error() string {
 	return fmt.Sprintf("field %s: %s", ve.Path, ve.Err.Error())
 }
 
-func newValueError(path string, err error) error {
-	if err == nil {
-		return nil
-	}
-	return ValueError{Path: path, Err: err}
-}
-
 func newValueErrorList(path string, err error) errorlist.List {
 	if err == nil {
 		return nil

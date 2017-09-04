@@ -141,6 +141,9 @@ func infoFor(importPath, symbol string) gui.Typeinfo {
 	pkgDoc, ok := godoc[importPath]
 	if !ok {
 		pkg, err := build.Import(importPath, "", build.ImportComment)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		fs := token.NewFileSet()
 		include := func(info os.FileInfo) bool {

@@ -159,7 +159,6 @@ func registerTestTypes() {
 
 var test Test
 var testgui = flag.Bool("gui", false, "actually serve a GUI under :8888")
-var globalRenderer Value
 
 func TestGUI(t *testing.T) {
 	if !*testgui {
@@ -258,7 +257,6 @@ func updateHandler(val *Value) func(w http.ResponseWriter, req *http.Request) {
 		}
 		w.Header().Set("Location", "/display"+fragment)
 		w.WriteHeader(303)
-		return
 	}
 }
 
