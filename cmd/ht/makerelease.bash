@@ -9,6 +9,9 @@ echo "### Using $($GO version)"
 echo "### Generating godoc data"
 go run gendoc.go
 
+echo "### Generating gui data"
+go run gengui.go
+
 version=$(git describe)
 export GO15VENDOREXPERIMENT="1" 
 rm -f ht*

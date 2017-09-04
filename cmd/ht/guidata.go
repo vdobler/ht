@@ -10,24 +10,237 @@ import (
 )
 
 func init() {
+	gui.RegisterType(ht.AnyOne{}, gui.Typeinfo{
+		Doc: "AnyOne checks that at least one Of the embedded checks passes. It is the short\ncircuiting boolean OR of the underlying checks. Check execution stops once the\nfirst passing check is found. Example (in JSON5 notation) to check status code\nfor '202 OR 404':\n\n    {\n        Check: \"AnyOne\", Of: [\n            {Check: \"StatusCode\", Expect: 202},\n            {Check: \"StatusCode\", Expect: 404},\n        ]\n    }\n",
+		Field: map[string]gui.Fieldinfo{
+			"Of": gui.Fieldinfo{
+				Doc: "Of is the list of checks to execute.\n",
+			}}})
+
+	gui.RegisterType(ht.Body{}, gui.Typeinfo{
+		Doc:   "Body provides simple condition checks on the response body.\n",
+		Field: map[string]gui.Fieldinfo{}})
+
+	gui.RegisterType(ht.Cache{}, gui.Typeinfo{
+		Doc: "Cache allows to test for HTTP Cache-Control headers. The zero value checks for\nthe existence of a Cache-Control header only. Note that not all combinations are\nsensible.\n",
+		Field: map[string]gui.Fieldinfo{
+			"AtLeast": gui.Fieldinfo{
+				Doc: "AtLeast checks for the presence of a \"max-age\" directive with a value at least\nas long.\n",
+			},
+			"AtMost": gui.Fieldinfo{
+				Doc: "AtMost checks for the presence of a \"max-age\" directive with a value at most as\nlong.\n",
+			},
+			"NoCache": gui.Fieldinfo{
+				Doc: "NoCache checks for the \"no-cache\" directive.\n",
+			},
+			"NoStore": gui.Fieldinfo{
+				Doc: "NoStore checks for the \"no-store\" directive.\n",
+			},
+			"Private": gui.Fieldinfo{
+				Doc: "Private checks for the \"private\" directive\n",
+			}}})
+
+	gui.RegisterType(ht.ContentType{}, gui.Typeinfo{
+		Doc: "ContentType checks the Content-Type header.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Charset": gui.Fieldinfo{
+				Doc: "Charset is an optional charset\n",
+			},
+			"Is": gui.Fieldinfo{
+				Doc: "Is is the wanted content type. It may be abrevated, e.g. \"json\" would match\n\"application/json\"\n",
+			}}})
+
+	gui.RegisterType(ht.CustomJS{}, gui.Typeinfo{
+		Doc: "CustomJS executes the provided JavaScript.\n\nThe current Test is present in the JavaScript VM via binding the name \"Test\" at\ntop-level to the current Test being checked.\n\nThe Script's last value indicates success or failure:\n\n    - Success: true, 0, \"\"\n    - Failure: false, any number != 0, any string != \"\"\n\nCustomJS can be useful to log an excerpt of response (or the request) via\nconsole.log.\n\nThe JavaScript code is interpreted by otto. See the documentation at\nhttps://godoc.org/github.com/robertkrimen/otto for details.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Script": gui.Fieldinfo{
+				Doc: "Script is JavaScript code to be evaluated.\n\nThe script may be read from disk with the following syntax:\n\n    @file:/path/to/script\n",
+			}}})
+
+	gui.RegisterType(ht.DeleteCookie{}, gui.Typeinfo{
+		Doc: "DeleteCookie checks that the HTTP response properly deletes all cookies matching\nName, Path and Domain. Path and Domain are optional in which case all cookies\nwith the given Name are checked for deletion.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Domain": gui.Fieldinfo{
+				Doc: "",
+			},
+			"Name": gui.Fieldinfo{
+				Doc: "",
+			},
+			"Path": gui.Fieldinfo{
+				Doc: "",
+			}}})
+
+	gui.RegisterType(ht.ETag{}, gui.Typeinfo{
+		Doc:   "ETag checks for the presence of a (strong) ETag header and that a subsequent\nrequest with a If-None-Match header results in a 304 Not Modified response.\n",
+		Field: map[string]gui.Fieldinfo{}})
+
+	gui.RegisterType(ht.FinalURL{}, gui.Typeinfo{
+		Doc:   "FinalURL checks the last URL after following all redirects. This check is useful\nonly for tests with Request.FollowRedirects=true\n",
+		Field: map[string]gui.Fieldinfo{}})
+
+	gui.RegisterType(ht.HTMLContains{}, gui.Typeinfo{
+		Doc: "HTMLContains checks the text content (and optionally the order) of HTML elements\nselected by a CSS rule.\n\nThe text content found in the HTML document is normalized by roughly the\nfollowing procedure:\n\n    1.  Newlines are inserted around HTML block elements\n        (i.e. any non-inline element)\n    2.  Newlines and tabs are replaced by spaces.\n    3.  Multiple spaces are replaced by one space.\n    4.  Leading and trailing spaces are trimmed of.\n\nAs an example consider the following HTML:\n\n    <html><body>\n      <ul class=\"fancy\"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>\n    </body></html>\n\nThe normalized text selected by a Selector of \"ul.fancy\" would be\n\n    \"One Second Three\"\n",
+		Field: map[string]gui.Fieldinfo{
+			"Complete": gui.Fieldinfo{
+				Doc: "Complete makes sure that no excess HTML elements are found: If true the\nlen(Text) must be equal to the number of HTML elements selected for the check to\nsucceed.\n",
+			},
+			"InOrder": gui.Fieldinfo{
+				Doc: "InOrder makes the check fail if the selected HTML elements have a different\norder than given in Text.\n",
+			},
+			"Raw": gui.Fieldinfo{
+				Doc: "Raw turns of white space normalization and will check the unprocessed text\ncontent.\n",
+			},
+			"Selector": gui.Fieldinfo{
+				Doc: "Selector is the CSS selector of the HTML elements.\n",
+			},
+			"Text": gui.Fieldinfo{
+				Doc: "Text contains the expected plain text content of the HTML elements selected\nthrough the given selector.\n",
+			}}})
+
+	gui.RegisterType(ht.HTMLTag{}, gui.Typeinfo{
+		Doc: "HTMLTag checks for the existens of HTML elements selected by CSS selectors.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Count": gui.Fieldinfo{
+				Doc: "Count determines the number of occurrences to check for:\n\n     < 0: no occurrence\n    == 0: one ore more occurrences\n     > 0: exactly that many occurrences\n",
+			},
+			"Selector": gui.Fieldinfo{
+				Doc: "Selector is the CSS selector of the HTML elements.\n",
+			}}})
+
+	gui.RegisterType(ht.Header{}, gui.Typeinfo{
+		Doc: "Header provides a textual test of single-valued HTTP headers.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Absent": gui.Fieldinfo{
+				Doc: "Absent indicates that no header Header shall be part of the response.\n",
+			},
+			"Condition": gui.Fieldinfo{
+				Doc: "Condition is applied to the first header value. A zero value checks for the\nexistence of the given Header only.\n",
+			},
+			"Header": gui.Fieldinfo{
+				Doc: "Header is the HTTP header to check.\n",
+			}}})
+
+	gui.RegisterType(ht.Identity{}, gui.Typeinfo{
+		Doc: "Identity checks the value of the response body by comparing its SHA1 hash to the\nexpected SHA1 value.\n",
+		Field: map[string]gui.Fieldinfo{
+			"SHA1": gui.Fieldinfo{
+				Doc: "SHA1 is the expected hash as shown by sha1sum of the whole body. E.g.\n2ef7bde608ce5404e97d5f042f95f89f1c232871 for a \"Hello World!\" body (no newline).\n",
+			}}})
+
 	gui.RegisterType(ht.Image{}, gui.Typeinfo{
 		Doc: "Image checks image format, size and fingerprint. As usual a zero value of a\nfield skips the check of that property. Image fingerprinting is done via\ngithub.com/vdobler/ht/fingerprint. Only one of BMV or ColorHist should be used\nas there is just one threshold.\n",
 		Field: map[string]gui.Fieldinfo{
+			"Fingerprint": gui.Fieldinfo{
+				Doc: "Fingerprint is either the 16 hex digit long Block Mean Value hash or the 24 hex\ndigit long Color Histogram hash of the image.\n",
+			},
 			"Format": gui.Fieldinfo{
 				Doc: "Format is the format of the image as registered in package image.\n",
-			},
-			"Width": gui.Fieldinfo{
-				Doc: "If > 0 check width or height of image.\n",
 			},
 			"Height": gui.Fieldinfo{
 				Doc: "If > 0 check width or height of image.\n",
 			},
-			"Fingerprint": gui.Fieldinfo{
-				Doc: "Fingerprint is either the 16 hex digit long Block Mean Value hash or the 24 hex\ndigit long Color Histogram hash of the image.\n",
-			},
 			"Threshold": gui.Fieldinfo{
 				Doc: "Threshold is the limit up to which the received image may differ from the given\nBMV or ColorHist fingerprint.\n",
+			},
+			"Width": gui.Fieldinfo{
+				Doc: "If > 0 check width or height of image.\n",
 			}}})
+
+	gui.RegisterType(ht.JSON{}, gui.Typeinfo{
+		Doc: "JSON allow to check an element in a JSON document against a Condition and to\nvalidate the structur of the document against a schema.\n\nThe element of the JSON document is selected by its \"path\". Example: In the JSON\ndocument\n\n    {\n      \"foo\": 5,\n      \"bar\": [ 1, \"qux\" ,3 ],\n      \"waz\": true,\n      \"maa\": { \"muh\": 3.141, \"mee\": 0 },\n      \"nil\": null\n    }\n\nthe following table shows several element paths and their value:\n\n    foo       5\n    bar       [ 1, \"qux\" ,3 ]\n    bar.0     1\n    bar.1     \"qux\"\n    bar.2     3\n    waz       true\n    maa       { \"muh\": 3.141, \"mee\": 0 }\n    maa.muh   3.141\n    maa.mee   0\n    nil       null\n\nNote that the value for \"bar\" is the raw string and contains the original white\nspace characters as present in the original JSON document.\n\nA schema is an example JSON document with the same structure where each leave\nelement just determines the expected type. The JSON document from above would\nconform to the schema:\n\n    {\n      \"foo\": 0, \"bar\": [0,\"\",1], \"waz\": false,\n      \"maa\": { \"muh\": 0.0, \"mee\": 0 },\n    }\n\nContrary to standard JSON this check allows to distinguish floats from ints with\nthe rule that an integer is a valid value for a float in a schema. So any string\nin a schema forces a string value, any int in a schema forces an integer value,\nany float in a schema forces either an int or a float. Null values in schemas\nact as wildcards: any value (int, bool, float, string or null) is valid. This is\nuseful if you want to skip validation of e.g. the first two array elements.\n\nIt is typically not useful to combine schema validation with checking a\ncondition.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Condition": gui.Fieldinfo{
+				Doc: "Condition to apply to the value selected by Element. If Condition is the zero\nvalue then only the existence of a JSON element selected by Element is checked.\nNote that Condition is checked against the actual raw value of the JSON document\nand will contain quotation marks for strings.\n",
+			},
+			"Element": gui.Fieldinfo{
+				Doc: "Element in the flattened JSON map to apply the Condition to. E.g. \"foo.2\" in\n\"{foo: [4,5,6,7]}\" would be 6. The whole JSON can be selected by Sep, typically\n\".\". An empty value result in just a check for 'wellformedness' of the JSON.\n",
+			},
+			"Embedded": gui.Fieldinfo{
+				Doc: "Embedded is a JSON check applied to the value selected by Element. Useful when\nJSON contains embedded, quoted JSON as a string and checking via Condition is\nnot practical. (It seems this nested JSON is common nowadays. I'm getting old.)\n",
+			},
+			"Schema": gui.Fieldinfo{
+				Doc: "Schema is the expected structure of the selected element.\n",
+			},
+			"Sep": gui.Fieldinfo{
+				Doc: "Sep is the separator in Element when checking the Condition. A zero value is\nequivalent to \".\"\n",
+			}}})
+
+	gui.RegisterType(ht.JSONExpr{}, gui.Typeinfo{
+		Doc: "JSONExpr allows checking JSON documents via gojee expressions. See\ngithub.com/nytlabs/gojee (or the vendored version) for details.\n\nConsider this JSON:\n\n    { \"foo\": 5, \"bar\": [ 1, 2, 3 ] }\n\nThe follwing expression have these truth values:\n\n    .foo == 5                    true\n    $len(.bar) > 2               true as $len(.bar)==3\n    .bar[1] == 2                 true\n    (.foo == 9) || (.bar[0]<7)   true as .bar[0]==1\n    $max(.bar) == 3              true\n    $has(.bar, 7)                false as bar has no 7\n",
+		Field: map[string]gui.Fieldinfo{
+			"Expression": gui.Fieldinfo{
+				Doc: "Expression is a boolean gojee expression which must evaluate to true for the\ncheck to pass.\n",
+			}}})
+
+	gui.RegisterType(ht.Latency{}, gui.Typeinfo{
+		Doc: "Latency provides checks against percentils of the response time latency.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Concurrent": gui.Fieldinfo{
+				Doc: "Concurrent is the number of concurrent requests in flight. Defaults to 2.\n",
+			},
+			"DumpTo": gui.Fieldinfo{
+				Doc: "DumpTo is the filename where the latencies are reported. The special values\n\"stdout\" and \"stderr\" are recognized.\n",
+			},
+			"IndividualSessions": gui.Fieldinfo{
+				Doc: "IndividualSessions tries to run the concurrent requests in individual sessions:\nA new one for each of the Concurrent many requests (not N many sessions). This\nis done by using a fresh cookiejar so it won't work if the request requires\nprior login.\n",
+			},
+			"Limits": gui.Fieldinfo{
+				Doc: "Limits is a string of the following form:\n\n    \"50% ≤ 150ms; 80% ≤ 200ms; 95% ≤ 250ms; 0.9995 ≤ 0.9s\"\n\nThe limits above would require the median of the response times to be <= 150 ms\nand would allow only 1 request in 2000 to exced 900ms. Note that it must be the\n≤ sign (U+2264), a plain < or a <= is not recognized.\n",
+			},
+			"N": gui.Fieldinfo{
+				Doc: "N is the number if request to measure. It should be much larger than Concurrent.\nDefault is 50.\n",
+			},
+			"SkipChecks": gui.Fieldinfo{
+				Doc: "If SkipChecks is true no checks are performed i.e. only the requests are\nexecuted.\n",
+			}}})
+
+	gui.RegisterType(ht.Links{}, gui.Typeinfo{
+		Doc: "Links checks links and references in HTML pages for availability.\n\nIt can reports mixed content as a failure by setting FailMixedContent. (See\nhttps://w3c.github.io/webappsec-mixed-content/). Links will upgrade any\nnon-anchor links if the original reqesponse contains\n\n    Content-Security-Policy: upgrade-insecure-requests\n\nin the HTTP header.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Concurrency": gui.Fieldinfo{
+				Doc: "Concurrency determines how many of the found links are checked concurrently. A\nzero value indicates sequential checking.\n",
+			},
+			"FailMixedContent": gui.Fieldinfo{
+				Doc: "FailMixedContent will report a failure for any mixed content, i.e. resources\nretrieved via http for a https HTML page.\n",
+			},
+			"Head": gui.Fieldinfo{
+				Doc: "Head triggers HEAD requests instead of GET requests.\n",
+			},
+			"IgnoredLinks": gui.Fieldinfo{
+				Doc: "OnlyLinks and IgnoredLinks can be used to select only a subset of all links.\n",
+			},
+			"MaxTime": gui.Fieldinfo{
+				Doc: "MaxTime is the maximum duration allowed to retrieve all the linked resources. A\nzero value means unlimited time allowed.\n",
+			},
+			"OnlyLinks": gui.Fieldinfo{
+				Doc: "OnlyLinks and IgnoredLinks can be used to select only a subset of all links.\n",
+			},
+			"Timeout": gui.Fieldinfo{
+				Doc: "Timeout is the client timeout if different from main test.\n",
+			},
+			"Which": gui.Fieldinfo{
+				Doc: "Which links to test; a space separated list of tag tag names:\n\n    'a',   'link',  'img',  'script', 'video', 'audio' or 'source'\n\nE.g. use \"a img\" to check the href attribute of all a-tags and the src attribute\nof all img-tags. The special value '-none-' can be used and is ignored: It will\nnot check any links.\n",
+			}}})
+
+	gui.RegisterType(ht.Logfile{}, gui.Typeinfo{
+		Doc: "Logfile provides checks on a file (i.e. it ignores the HTTP response).\n\nDuring preparation the current size of the file identified by Path is\ndetermined. When the check executes it seeks to that position and examines\nanything written to the file since the preparation of the check.\n\nLogfile on remote (Unix) machines may be accessed via ssh (experimental).\n",
+		Field: map[string]gui.Fieldinfo{
+			"Condition": gui.Fieldinfo{
+				Doc: "Condition the newly written stuff must fulfill.\n",
+			},
+			"Disallow": gui.Fieldinfo{
+				Doc: "Disallow states what is forbidden in the written log.\n",
+			},
+			"Path": gui.Fieldinfo{
+				Doc: "Path is the file system path to the logfile.\n",
+			},
+			"Remote": gui.Fieldinfo{
+				Doc: "Remote contains access data for a foreign (Unix) server which is contacted via\nssh.\n",
+			}}})
+
+	gui.RegisterType(ht.NoServerError{}, gui.Typeinfo{
+		Doc:   "NoServerError checks the HTTP status code for not being a 5xx server error and\nthat the body could be read without errors or timeouts.\n",
+		Field: map[string]gui.Fieldinfo{}})
 
 	gui.RegisterType(ht.None{}, gui.Typeinfo{
 		Doc: "None checks that none Of the embedded checks passes. It is the NOT of the short\ncircuiting boolean AND of the underlying checks. Check execution stops once the\nfirst passing check is found. It Example (in JSON5 notation) to check for\nnon-occurrence of 'foo' in body:\n\n    {\n        Check: \"None\", Of: [\n            {Check: \"Body\", Contains: \"foo\"},\n        ]\n    }\n",
@@ -36,164 +249,21 @@ func init() {
 				Doc: "Of is the list of checks to execute.\n",
 			}}})
 
-	gui.RegisterType(ht.Cache{}, gui.Typeinfo{
-		Doc: "Cache allows to test for HTTP Cache-Control headers. The zero value checks for\nthe existence of a Cache-Control header only. Note that not all combinations are\nsensible.\n",
-		Field: map[string]gui.Fieldinfo{
-			"NoStore": gui.Fieldinfo{
-				Doc: "NoStore checks for the \"no-store\" directive.\n",
-			},
-			"NoCache": gui.Fieldinfo{
-				Doc: "NoCache checks for the \"no-cache\" directive.\n",
-			},
-			"Private": gui.Fieldinfo{
-				Doc: "Private checks for the \"private\" directive\n",
-			},
-			"AtLeast": gui.Fieldinfo{
-				Doc: "AtLeast checks for the presence of a \"max-age\" directive with a value at least\nas long.\n",
-			},
-			"AtMost": gui.Fieldinfo{
-				Doc: "AtMost checks for the presence of a \"max-age\" directive with a value at most as\nlong.\n",
-			}}})
-
-	gui.RegisterType(ht.HTMLTag{}, gui.Typeinfo{
-		Doc: "HTMLTag checks for the existens of HTML elements selected by CSS selectors.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Selector": gui.Fieldinfo{
-				Doc: "Selector is the CSS selector of the HTML elements.\n",
-			},
-			"Count": gui.Fieldinfo{
-				Doc: "Count determines the number of occurrences to check for:\n\n     < 0: no occurrence\n    == 0: one ore more occurrences\n     > 0: exactly that many occurrences\n",
-			}}})
-
-	gui.RegisterType(ht.W3CValidHTML{}, gui.Typeinfo{
-		Doc: "W3CValidHTML checks for valid HTML but checking the response body via the online\nchecker from W3C which is very strict.\n",
-		Field: map[string]gui.Fieldinfo{
-			"AllowedErrors": gui.Fieldinfo{
-				Doc: "AllowedErrors is the number of allowed errors (after ignoring errors).\n",
-			},
-			"IgnoredErrors": gui.Fieldinfo{
-				Doc: "IgnoredErrros is a list of error messages to be ignored completely.\n",
-			}}})
-
-	gui.RegisterType(ht.Links{}, gui.Typeinfo{
-		Doc: "Links checks links and references in HTML pages for availability.\n\nIt can reports mixed content as a failure by setting FailMixedContent. (See\nhttps://w3c.github.io/webappsec-mixed-content/). Links will upgrade any\nnon-anchor links if the original reqesponse contains\n\n    Content-Security-Policy: upgrade-insecure-requests\n\nin the HTTP header.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Which": gui.Fieldinfo{
-				Doc: "Which links to test; a space separated list of tag tag names:\n\n    'a',   'link',  'img',  'script', 'video', 'audio' or 'source'\n\nE.g. use \"a img\" to check the href attribute of all a-tags and the src attribute\nof all img-tags. The special value '-none-' can be used and is ignored: It will\nnot check any links.\n",
-			},
-			"Head": gui.Fieldinfo{
-				Doc: "Head triggers HEAD requests instead of GET requests.\n",
-			},
-			"Concurrency": gui.Fieldinfo{
-				Doc: "Concurrency determines how many of the found links are checked concurrently. A\nzero value indicates sequential checking.\n",
-			},
-			"Timeout": gui.Fieldinfo{
-				Doc: "Timeout is the client timeout if different from main test.\n",
-			},
-			"OnlyLinks": gui.Fieldinfo{
-				Doc: "OnlyLinks and IgnoredLinks can be used to select only a subset of all links.\n",
-			},
-			"IgnoredLinks": gui.Fieldinfo{
-				Doc: "OnlyLinks and IgnoredLinks can be used to select only a subset of all links.\n",
-			},
-			"FailMixedContent": gui.Fieldinfo{
-				Doc: "FailMixedContent will report a failure for any mixed content, i.e. resources\nretrieved via http for a https HTML page.\n",
-			},
-			"MaxTime": gui.Fieldinfo{
-				Doc: "MaxTime is the maximum duration allowed to retrieve all the linked resources. A\nzero value means unlimited time allowed.\n",
-			}}})
-
-	gui.RegisterType(ht.SetCookie{}, gui.Typeinfo{
-		Doc: "SetCookie checks for cookies being properly set. Note that the Path and Domain\nconditions are checked on the received Path and/or Domain and not on the\ninterpreted values according to RFC 6265.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Name": gui.Fieldinfo{
-				Doc: "// Name is the cookie name.",
-			},
-			"Value": gui.Fieldinfo{
-				Doc: "// Value is applied to the cookie value",
-			},
-			"Path": gui.Fieldinfo{
-				Doc: "// Path is applied to the path value",
-			},
-			"Domain": gui.Fieldinfo{
-				Doc: "// Domain is applied to the domain value",
-			},
-			"MinLifetime": gui.Fieldinfo{
-				Doc: "MinLifetime is the expectetd minimum lifetime of the cookie. A positive value\nenforces a persistent cookie. Negative values are illegal (use DelteCookie\ninstead).\n",
-			},
-			"Absent": gui.Fieldinfo{
-				Doc: "Absent indicates that the cookie with the given Name must not be received.\n",
-			},
-			"Type": gui.Fieldinfo{
-				Doc: "Type is the type of the cookie. It is a space separated string of the following\n(case-insensitive) keywords:\n\n    - \"session\": a session cookie\n    - \"persistent\": a persistent cookie\n    - \"secure\": a secure cookie, to be sont over https only\n    - \"unsafe\", aka insecure; to be sent also over http\n    - \"httpOnly\": not accesible from JavaScript\n    - \"exposed\": accesible from JavaScript, Flash, etc.\n",
-			}}})
-
-	gui.RegisterType(ht.ResponseTime{}, gui.Typeinfo{
-		Doc: "ResponseTime checks the response time.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Lower": gui.Fieldinfo{
-				Doc: "",
-			},
-			"Higher": gui.Fieldinfo{
-				Doc: "",
-			}}})
-
-	gui.RegisterType(ht.ContentType{}, gui.Typeinfo{
-		Doc: "ContentType checks the Content-Type header.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Is": gui.Fieldinfo{
-				Doc: "Is is the wanted content type. It may be abrevated, e.g. \"json\" would match\n\"application/json\"\n",
-			},
-			"Charset": gui.Fieldinfo{
-				Doc: "Charset is an optional charset\n",
-			}}})
-
 	gui.RegisterType(ht.Redirect{}, gui.Typeinfo{
 		Doc: "Redirect checks for a singe HTTP redirection.\n\nNote that this check cannot be used on tests with\n\n    Request.FollowRedirects = true\n\nas Redirect checks only the final response which will not be a redirection if\nredirections are followed automatically.\n",
 		Field: map[string]gui.Fieldinfo{
-			"To": gui.Fieldinfo{
-				Doc: "To is matched against the Location header. It may begin with, end with or\ncontain three dots \"...\" which indicate that To should match the end, the start\nor both ends of the Location header value. (Note that only one occurrence of\n\"...\" is supported.\"\n",
-			},
 			"StatusCode": gui.Fieldinfo{
 				Doc: "If StatusCode is greater zero it is the required HTTP status code expected in\nthis response. If zero, the valid status codes are 301 (Moved Permanently), 302\n(Found), 303 (See Other) and 307 (Temporary Redirect)\n",
+			},
+			"To": gui.Fieldinfo{
+				Doc: "To is matched against the Location header. It may begin with, end with or\ncontain three dots \"...\" which indicate that To should match the end, the start\nor both ends of the Location header value. (Note that only one occurrence of\n\"...\" is supported.\"\n",
 			}}})
 
-	gui.RegisterType(ht.Latency{}, gui.Typeinfo{
-		Doc: "Latency provides checks against percentils of the response time latency.\n",
+	gui.RegisterType(ht.RedirectChain{}, gui.Typeinfo{
+		Doc: "RedirectChain checks steps in a redirect chain. The check passes if all stations\nin Via have been accessed in order; the actual redirect chain may hit additional\nstations.\n\nNote that this check can be used on tests with\n\n    Request.FollowRedirects = true\n",
 		Field: map[string]gui.Fieldinfo{
-			"SkipChecks": gui.Fieldinfo{
-				Doc: "If SkipChecks is true no checks are performed i.e. only the requests are\nexecuted.\n",
-			},
-			"DumpTo": gui.Fieldinfo{
-				Doc: "DumpTo is the filename where the latencies are reported. The special values\n\"stdout\" and \"stderr\" are recognized.\n",
-			},
-			"N": gui.Fieldinfo{
-				Doc: "N is the number if request to measure. It should be much larger than Concurrent.\nDefault is 50.\n",
-			},
-			"Concurrent": gui.Fieldinfo{
-				Doc: "Concurrent is the number of concurrent requests in flight. Defaults to 2.\n",
-			},
-			"Limits": gui.Fieldinfo{
-				Doc: "Limits is a string of the following form:\n\n    \"50% ≤ 150ms; 80% ≤ 200ms; 95% ≤ 250ms; 0.9995 ≤ 0.9s\"\n\nThe limits above would require the median of the response times to be <= 150 ms\nand would allow only 1 request in 2000 to exced 900ms. Note that it must be the\n≤ sign (U+2264), a plain < or a <= is not recognized.\n",
-			},
-			"IndividualSessions": gui.Fieldinfo{
-				Doc: "IndividualSessions tries to run the concurrent requests in individual sessions:\nA new one for each of the Concurrent many requests (not N many sessions). This\nis done by using a fresh cookiejar so it won't work if the request requires\nprior login.\n",
-			}}})
-
-	gui.RegisterType(ht.Logfile{}, gui.Typeinfo{
-		Doc: "Logfile provides checks on a file (i.e. it ignores the HTTP response).\n\nDuring preparation the current size of the file identified by Path is\ndetermined. When the check executes it seeks to that position and examines\nanything written to the file since the preparation of the check.\n\nLogfile on remote (Unix) machines may be accessed via ssh (experimental).\n",
-		Field: map[string]gui.Fieldinfo{
-			"Path": gui.Fieldinfo{
-				Doc: "Path is the file system path to the logfile.\n",
-			},
-			"Condition": gui.Fieldinfo{
-				Doc: "Condition the newly written stuff must fulfill.\n",
-			},
-			"Disallow": gui.Fieldinfo{
-				Doc: "Disallow states what is forbidden in the written log.\n",
-			},
-			"Remote": gui.Fieldinfo{
-				Doc: "Remote contains access data for a foreign (Unix) server which is contacted via\nssh.\n",
+			"Via": gui.Fieldinfo{
+				Doc: "Via contains the necessary URLs accessed during a redirect chain.\n\nAny URL may start with, end with or contain three dots \"...\" which indicate a\nsuffix, prefix or suffix+prefix match like in the To field of Redirect.\n",
 			}}})
 
 	gui.RegisterType(ht.RenderedHTML{}, gui.Typeinfo{
@@ -209,192 +279,6 @@ func init() {
 				Doc: "KeepAs is the file name to store the rendered HTML to. Useful for debugging\npurpose.\n",
 			}}})
 
-	gui.RegisterType(ht.JSONExpr{}, gui.Typeinfo{
-		Doc: "JSONExpr allows checking JSON documents via gojee expressions. See\ngithub.com/nytlabs/gojee (or the vendored version) for details.\n\nConsider this JSON:\n\n    { \"foo\": 5, \"bar\": [ 1, 2, 3 ] }\n\nThe follwing expression have these truth values:\n\n    .foo == 5                    true\n    $len(.bar) > 2               true as $len(.bar)==3\n    .bar[1] == 2                 true\n    (.foo == 9) || (.bar[0]<7)   true as .bar[0]==1\n    $max(.bar) == 3              true\n    $has(.bar, 7)                false as bar has no 7\n",
-		Field: map[string]gui.Fieldinfo{
-			"Expression": gui.Fieldinfo{
-				Doc: "Expression is a boolean gojee expression which must evaluate to true for the\ncheck to pass.\n",
-			}}})
-
-	gui.RegisterType(ht.JSON{}, gui.Typeinfo{
-		Doc: "JSON allow to check an element in a JSON document against a Condition and to\nvalidate the structur of the document against a schema.\n\nThe element of the JSON document is selected by its \"path\". Example: In the JSON\ndocument\n\n    {\n      \"foo\": 5,\n      \"bar\": [ 1, \"qux\" ,3 ],\n      \"waz\": true,\n      \"maa\": { \"muh\": 3.141, \"mee\": 0 },\n      \"nil\": null\n    }\n\nthe following table shows several element paths and their value:\n\n    foo       5\n    bar       [ 1, \"qux\" ,3 ]\n    bar.0     1\n    bar.1     \"qux\"\n    bar.2     3\n    waz       true\n    maa       { \"muh\": 3.141, \"mee\": 0 }\n    maa.muh   3.141\n    maa.mee   0\n    nil       null\n\nNote that the value for \"bar\" is the raw string and contains the original white\nspace characters as present in the original JSON document.\n\nA schema is an example JSON document with the same structure where each leave\nelement just determines the expected type. The JSON document from above would\nconform to the schema:\n\n    {\n      \"foo\": 0, \"bar\": [0,\"\",1], \"waz\": false,\n      \"maa\": { \"muh\": 0.0, \"mee\": 0 },\n    }\n\nContrary to standard JSON this check allows to distinguish floats from ints with\nthe rule that an integer is a valid value for a float in a schema. So any string\nin a schema forces a string value, any int in a schema forces an integer value,\nany float in a schema forces either an int or a float. Null values in schemas\nact as wildcards: any value (int, bool, float, string or null) is valid. This is\nuseful if you want to skip validation of e.g. the first two array elements.\n\nIt is typically not useful to combine schema validation with checking a\ncondition.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Element": gui.Fieldinfo{
-				Doc: "Element in the flattened JSON map to apply the Condition to. E.g. \"foo.2\" in\n\"{foo: [4,5,6,7]}\" would be 6. The whole JSON can be selected by Sep, typically\n\".\". An empty value result in just a check for 'wellformedness' of the JSON.\n",
-			},
-			"Condition": gui.Fieldinfo{
-				Doc: "Condition to apply to the value selected by Element. If Condition is the zero\nvalue then only the existence of a JSON element selected by Element is checked.\nNote that Condition is checked against the actual raw value of the JSON document\nand will contain quotation marks for strings.\n",
-			},
-			"Schema": gui.Fieldinfo{
-				Doc: "Schema is the expected structure of the selected element.\n",
-			},
-			"Embedded": gui.Fieldinfo{
-				Doc: "Embedded is a JSON check applied to the value selected by Element. Useful when\nJSON contains embedded, quoted JSON as a string and checking via Condition is\nnot practical. (It seems this nested JSON is common nowadays. I'm getting old.)\n",
-			},
-			"Sep": gui.Fieldinfo{
-				Doc: "Sep is the separator in Element when checking the Condition. A zero value is\nequivalent to \".\"\n",
-			}}})
-
-	gui.RegisterType(ht.CustomJS{}, gui.Typeinfo{
-		Doc: "CustomJS executes the provided JavaScript.\n\nThe current Test is present in the JavaScript VM via binding the name \"Test\" at\ntop-level to the current Test being checked.\n\nThe Script's last value indicates success or failure:\n\n    - Success: true, 0, \"\"\n    - Failure: false, any number != 0, any string != \"\"\n\nCustomJS can be useful to log an excerpt of response (or the request) via\nconsole.log.\n\nThe JavaScript code is interpreted by otto. See the documentation at\nhttps://godoc.org/github.com/robertkrimen/otto for details.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Script": gui.Fieldinfo{
-				Doc: "Script is JavaScript code to be evaluated.\n\nThe script may be read from disk with the following syntax:\n\n    @file:/path/to/script\n",
-			}}})
-
-	gui.RegisterType(ht.AnyOne{}, gui.Typeinfo{
-		Doc: "AnyOne checks that at least one Of the embedded checks passes. It is the short\ncircuiting boolean OR of the underlying checks. Check execution stops once the\nfirst passing check is found. Example (in JSON5 notation) to check status code\nfor '202 OR 404':\n\n    {\n        Check: \"AnyOne\", Of: [\n            {Check: \"StatusCode\", Expect: 202},\n            {Check: \"StatusCode\", Expect: 404},\n        ]\n    }\n",
-		Field: map[string]gui.Fieldinfo{
-			"Of": gui.Fieldinfo{
-				Doc: "Of is the list of checks to execute.\n",
-			}}})
-
-	gui.RegisterType(ht.ETag{}, gui.Typeinfo{
-		Doc:   "ETag checks for the presence of a (strong) ETag header and that a subsequent\nrequest with a If-None-Match header results in a 304 Not Modified response.\n",
-		Field: map[string]gui.Fieldinfo{}})
-
-	gui.RegisterType(ht.DeleteCookie{}, gui.Typeinfo{
-		Doc: "DeleteCookie checks that the HTTP response properly deletes all cookies matching\nName, Path and Domain. Path and Domain are optional in which case all cookies\nwith the given Name are checked for deletion.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Name": gui.Fieldinfo{
-				Doc: "",
-			},
-			"Path": gui.Fieldinfo{
-				Doc: "",
-			},
-			"Domain": gui.Fieldinfo{
-				Doc: "",
-			}}})
-
-	gui.RegisterType(ht.HTMLContains{}, gui.Typeinfo{
-		Doc: "HTMLContains checks the text content (and optionally the order) of HTML elements\nselected by a CSS rule.\n\nThe text content found in the HTML document is normalized by roughly the\nfollowing procedure:\n\n    1.  Newlines are inserted around HTML block elements\n        (i.e. any non-inline element)\n    2.  Newlines and tabs are replaced by spaces.\n    3.  Multiple spaces are replaced by one space.\n    4.  Leading and trailing spaces are trimmed of.\n\nAs an example consider the following HTML:\n\n    <html><body>\n      <ul class=\"fancy\"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>\n    </body></html>\n\nThe normalized text selected by a Selector of \"ul.fancy\" would be\n\n    \"One Second Three\"\n",
-		Field: map[string]gui.Fieldinfo{
-			"Raw": gui.Fieldinfo{
-				Doc: "Raw turns of white space normalization and will check the unprocessed text\ncontent.\n",
-			},
-			"Complete": gui.Fieldinfo{
-				Doc: "Complete makes sure that no excess HTML elements are found: If true the\nlen(Text) must be equal to the number of HTML elements selected for the check to\nsucceed.\n",
-			},
-			"InOrder": gui.Fieldinfo{
-				Doc: "InOrder makes the check fail if the selected HTML elements have a different\norder than given in Text.\n",
-			},
-			"Selector": gui.Fieldinfo{
-				Doc: "Selector is the CSS selector of the HTML elements.\n",
-			},
-			"Text": gui.Fieldinfo{
-				Doc: "Text contains the expected plain text content of the HTML elements selected\nthrough the given selector.\n",
-			}}})
-
-	gui.RegisterType(ht.Identity{}, gui.Typeinfo{
-		Doc: "Identity checks the value of the response body by comparing its SHA1 hash to the\nexpected SHA1 value.\n",
-		Field: map[string]gui.Fieldinfo{
-			"SHA1": gui.Fieldinfo{
-				Doc: "SHA1 is the expected hash as shown by sha1sum of the whole body. E.g.\n2ef7bde608ce5404e97d5f042f95f89f1c232871 for a \"Hello World!\" body (no newline).\n",
-			}}})
-
-	gui.RegisterType(ht.Screenshot{}, gui.Typeinfo{
-		Doc: "Screenshot checks actual screenshots rendered via the headless browser PhantomJS\nagainst a golden record of the expected screenshot.\n\nNote that PhantomJS will make additional request to fetch all linked resources\nin the HTML page. If the original request has BasicAuthUser (and BasicAuthPass)\nset this credentials will be sent to all linked resources of the page. Depending\non where these resources are located this might be a security issue.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Browser": gui.Fieldinfo{
-				Doc: "",
-			},
-			"Expected": gui.Fieldinfo{
-				Doc: "Expected is the file path of the 'golden record' image to test the actual\nscreenshot against.\n",
-			},
-			"Actual": gui.Fieldinfo{
-				Doc: "Actual is the name of the file the actual rendered screenshot is saved to. An\nempty value disables storing the generated screenshot.\n",
-			},
-			"AllowedDifference": gui.Fieldinfo{
-				Doc: "AllowedDifference is the total number of pixels which may differ between the two\nscreenshots while still passing this check.\n",
-			},
-			"IgnoreRegion": gui.Fieldinfo{
-				Doc: "IgnoreRegion is a list of regions which are ignored during comparing the actual\nscreenshot to the golden record. The entries are specify rectangles in the form\nof the Geometry (with ignored zoom factor).\n",
-			}}})
-
-	gui.RegisterType(ht.StatusCode{}, gui.Typeinfo{
-		Doc: "StatusCode checks the HTTP statuscode.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Expect": gui.Fieldinfo{
-				Doc: "Expect is the value to expect, e.g. 302.\n\nIf Expect <= 9 it matches a whole range of status codes, e.g. with Expect==4 any\nof the 4xx status codes would fulfill this check.\n",
-			}}})
-
-	gui.RegisterType(ht.Sorted{}, gui.Typeinfo{
-		Doc: "Sorted checks for an ordered occurrence of items. The check Sorted could be\nreplaced by a Regexp based Body test without loss of functionality; Sorted just\nmakes the idea of \"looking for a sorted occurrence\" clearer.\n\nIf the response has a Content-Type header indicating a HTML response the HTML\nwill be parsed and the text content normalized as described in the HTMLContains\ncheck.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Text": gui.Fieldinfo{
-				Doc: "Text is the list of text fragments to look for in the response body or the\nnormalized text content of the HTML page.\n",
-			},
-			"AllowedMisses": gui.Fieldinfo{
-				Doc: "AllowedMisses is the number of elements of Text which may not be present in the\nresponse body. The default of 0 means all elements of Text must be present.\n",
-			}}})
-
-	gui.RegisterType(ht.Header{}, gui.Typeinfo{
-		Doc: "Header provides a textual test of single-valued HTTP headers.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Header": gui.Fieldinfo{
-				Doc: "Header is the HTTP header to check.\n",
-			},
-			"Condition": gui.Fieldinfo{
-				Doc: "Condition is applied to the first header value. A zero value checks for the\nexistence of the given Header only.\n",
-			},
-			"Absent": gui.Fieldinfo{
-				Doc: "Absent indicates that no header Header shall be part of the response.\n",
-			}}})
-
-	gui.RegisterType(ht.Resilience{}, gui.Typeinfo{
-		Doc: "Resilience checks the resilience of an URL against unexpected requests like\ndifferent HTTP methods, changed or garbled parameters, different parameter\ntransmission types and changed or garbled HTTP headers.\n\nParameters and Header values can undergo several different types of\nmodifications\n\n    * all:       all the individual modifications below (excluding 'space'\n                 for HTTP headers)\n    * drop:      don't send at all\n    * none:      don't modify the individual parameters or header but\n                 don't send any parameters or headers\n    * double:    send same value two times\n    * twice:     send two different values (original and \"extraValue\")\n    * change:    change a single character (first, middle and last one)\n    * delete:    drop single character (first, middle and last one)\n    * nonsense:  the values \"p,f1u;p5c:h*\", \"hubba%12bubba(!\" and \"   \"\n    * space:     the values \" \", \"       \", \"\\t\", \"\\n\", \"\\r\", \"\\v\", \"\\u00A0\",\n                 \"\\u2003\", \"\\u200B\", \"\\x00\\x00\", and \"\\t \\v \\r \\n \"\n    * malicious: the values \"\\uFEFF\\u200B\\u2029\", \"ʇunpᴉpᴉɔuᴉ\",\n                 \"http://a/%%30%30\" and \"' OR 1=1 -- 1\"\n    * user       use user defined values from Values\n    * empty:     \"\"\n    * type:      change the type (if obvious)\n        - \"1234\"     -->  \"wwww\"\n        - \"3.1415\"   -->  \"wwwwww\"\n        - \"i@you.me\" -->  \"iXyouYme\"\n        - \"foobar  \" -->  \"123\"\n    * large:     produce much larger values\n        - \"1234\"     -->  \"9999999\" (just large), \"2147483648\" (MaxInt32 + 1)\n                          \"9223372036854775808\" (MaxInt64 + 1)\n                          \"18446744073709551616\" (MaxUInt64 + 1)\n        - \"56.78\"    -->  \"888888888.9999\", \"123.456e12\",\n                          \"3.5e38\" (larger than MaxFloat32)\n                          \"1.9e308\" (larger than MaxFloat64)\n        - \"foo\"      -->  50 * \"X\", 160 * \"Y\" and 270 * \"Z\"\n    * tiny:      produce 0 or short values\n        - \"1234\"      -->  \"0\" and \"1\"\n        - \"12.3\"      -->  \"0\", \"0.02\", \"0.0003\", \"1e-12\" and \"4.7e-324\"\n        - \"foobar\"    --> \"f\"\n    * negative   produce negative values\n        - \"1234\"      -->  \"-2\"\n        - \"56.78\"     -->  \"-3.3\"\n\nThis check will make a wast amount of request to the given URL including the\nmodifying and non-idempotent methods POST, PUT, and DELETE. Some care using this\ncheck is advisable.\n",
-		Field: map[string]gui.Fieldinfo{
-			"ParamsAs": gui.Fieldinfo{
-				Doc: "ParamsAs controls how parameter values are transmitted, it is a space separated\nlist of all transmission types like in the Request.ParamsAs field, e.g. \"URL\nbody multipart\" to check URL query parameters, x-www-form-urlencoded and\nmultipart/formdata. The empty value will just check the type used in the\noriginal test.\n",
-			},
-			"SaveFailuresTo": gui.Fieldinfo{
-				Doc: "SaveFailuresTo is the filename to which all failed checks shall be logged. The\ndata is appended to the file.\n",
-			},
-			"Checks": gui.Fieldinfo{
-				Doc: "Checks is the list of checks to perform on the received responses. In most cases\nthe -- correct -- behaviour of the server will differ from the response to a\nvalid, unscrambled request; typically by returning one of the 4xx status codes.\nIf Checks is empty, only a simple NoServerError will be executed.\n",
-			},
-			"Values": gui.Fieldinfo{
-				Doc: "Values contains a list of values to use as header and parameter values. Note\nthat header and parameter checking uses the same list of Values, you might want\nto do two Resilience checks, one for the headers and one for the parameters. If\nvalues is empty, then only the builtin modifications selected by\nMod{Param,Header} are used.\n",
-			},
-			"Methods": gui.Fieldinfo{
-				Doc: "Methods is the space separated list of HTTP methods to check, e.g. \"GET POST\nHEAD\". The empty value will test the original method of the test only.\n",
-			},
-			"ModParam": gui.Fieldinfo{
-				Doc: "ModParam and ModHeader control which modifications of parameter values and\nheader values are checked. It is a space separated string of the modifications\nexplained above e.g. \"drop nonsense empty\". An empty value turns off resilience\ntesting.\n",
-			},
-			"ModHeader": gui.Fieldinfo{
-				Doc: "ModParam and ModHeader control which modifications of parameter values and\nheader values are checked. It is a space separated string of the modifications\nexplained above e.g. \"drop nonsense empty\". An empty value turns off resilience\ntesting.\n",
-			}}})
-
-	gui.RegisterType(ht.Body{}, gui.Typeinfo{
-		Doc:   "Body provides simple condition checks on the response body.\n",
-		Field: map[string]gui.Fieldinfo{}})
-
-	gui.RegisterType(ht.RedirectChain{}, gui.Typeinfo{
-		Doc: "RedirectChain checks steps in a redirect chain. The check passes if all stations\nin Via have been accessed in order; the actual redirect chain may hit additional\nstations.\n\nNote that this check can be used on tests with\n\n    Request.FollowRedirects = true\n",
-		Field: map[string]gui.Fieldinfo{
-			"Via": gui.Fieldinfo{
-				Doc: "Via contains the necessary URLs accessed during a redirect chain.\n\nAny URL may start with, end with or contain three dots \"...\" which indicate a\nsuffix, prefix or suffix+prefix match like in the To field of Redirect.\n",
-			}}})
-
-	gui.RegisterType(ht.XML{}, gui.Typeinfo{
-		Doc: "XML allows to check XML request bodies.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Path": gui.Fieldinfo{
-				Doc: "Path is a XPath expression understood by gopkg.in/xmlpath.v2.\n",
-			},
-			"Condition": gui.Fieldinfo{
-				Doc: "Condition the first element addressed by Path must fulfill.\n",
-			}}})
-
-	gui.RegisterType(ht.UTF8Encoded{}, gui.Typeinfo{
-		Doc:   "UTF8Encoded checks that the response body is valid UTF-8 without BOMs.\n",
-		Field: map[string]gui.Fieldinfo{}})
-
-	gui.RegisterType(ht.FinalURL{}, gui.Typeinfo{
-		Doc:   "FinalURL checks the last URL after following all redirects. This check is useful\nonly for tests with Request.FollowRedirects=true\n",
-		Field: map[string]gui.Fieldinfo{}})
-
 	gui.RegisterType(ht.RenderingTime{}, gui.Typeinfo{
 		Doc: "RenderingTime limits the maximal allowed time to render a whole HTML page.\n\nThe \"rendering time\" is how long it takes PhantomJS to load all referenced\nassets and render the page. For obvious reason this cannot be determined with\nabsolute accuracy.\n",
 		Field: map[string]gui.Fieldinfo{
@@ -405,8 +289,104 @@ func init() {
 				Doc: "",
 			}}})
 
-	gui.RegisterType(ht.NoServerError{}, gui.Typeinfo{
-		Doc:   "NoServerError checks the HTTP status code for not being a 5xx server error and\nthat the body could be read without errors or timeouts.\n",
+	gui.RegisterType(ht.Resilience{}, gui.Typeinfo{
+		Doc: "Resilience checks the resilience of an URL against unexpected requests like\ndifferent HTTP methods, changed or garbled parameters, different parameter\ntransmission types and changed or garbled HTTP headers.\n\nParameters and Header values can undergo several different types of\nmodifications\n\n    * all:       all the individual modifications below (excluding 'space'\n                 for HTTP headers)\n    * drop:      don't send at all\n    * none:      don't modify the individual parameters or header but\n                 don't send any parameters or headers\n    * double:    send same value two times\n    * twice:     send two different values (original and \"extraValue\")\n    * change:    change a single character (first, middle and last one)\n    * delete:    drop single character (first, middle and last one)\n    * nonsense:  the values \"p,f1u;p5c:h*\", \"hubba%12bubba(!\" and \"   \"\n    * space:     the values \" \", \"       \", \"\\t\", \"\\n\", \"\\r\", \"\\v\", \"\\u00A0\",\n                 \"\\u2003\", \"\\u200B\", \"\\x00\\x00\", and \"\\t \\v \\r \\n \"\n    * malicious: the values \"\\uFEFF\\u200B\\u2029\", \"ʇunpᴉpᴉɔuᴉ\",\n                 \"http://a/%%30%30\" and \"' OR 1=1 -- 1\"\n    * user       use user defined values from Values\n    * empty:     \"\"\n    * type:      change the type (if obvious)\n        - \"1234\"     -->  \"wwww\"\n        - \"3.1415\"   -->  \"wwwwww\"\n        - \"i@you.me\" -->  \"iXyouYme\"\n        - \"foobar  \" -->  \"123\"\n    * large:     produce much larger values\n        - \"1234\"     -->  \"9999999\" (just large), \"2147483648\" (MaxInt32 + 1)\n                          \"9223372036854775808\" (MaxInt64 + 1)\n                          \"18446744073709551616\" (MaxUInt64 + 1)\n        - \"56.78\"    -->  \"888888888.9999\", \"123.456e12\",\n                          \"3.5e38\" (larger than MaxFloat32)\n                          \"1.9e308\" (larger than MaxFloat64)\n        - \"foo\"      -->  50 * \"X\", 160 * \"Y\" and 270 * \"Z\"\n    * tiny:      produce 0 or short values\n        - \"1234\"      -->  \"0\" and \"1\"\n        - \"12.3\"      -->  \"0\", \"0.02\", \"0.0003\", \"1e-12\" and \"4.7e-324\"\n        - \"foobar\"    --> \"f\"\n    * negative   produce negative values\n        - \"1234\"      -->  \"-2\"\n        - \"56.78\"     -->  \"-3.3\"\n\nThis check will make a wast amount of request to the given URL including the\nmodifying and non-idempotent methods POST, PUT, and DELETE. Some care using this\ncheck is advisable.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Checks": gui.Fieldinfo{
+				Doc: "Checks is the list of checks to perform on the received responses. In most cases\nthe -- correct -- behaviour of the server will differ from the response to a\nvalid, unscrambled request; typically by returning one of the 4xx status codes.\nIf Checks is empty, only a simple NoServerError will be executed.\n",
+			},
+			"Methods": gui.Fieldinfo{
+				Doc: "Methods is the space separated list of HTTP methods to check, e.g. \"GET POST\nHEAD\". The empty value will test the original method of the test only.\n",
+			},
+			"ModHeader": gui.Fieldinfo{
+				Doc: "ModParam and ModHeader control which modifications of parameter values and\nheader values are checked. It is a space separated string of the modifications\nexplained above e.g. \"drop nonsense empty\". An empty value turns off resilience\ntesting.\n",
+			},
+			"ModParam": gui.Fieldinfo{
+				Doc: "ModParam and ModHeader control which modifications of parameter values and\nheader values are checked. It is a space separated string of the modifications\nexplained above e.g. \"drop nonsense empty\". An empty value turns off resilience\ntesting.\n",
+			},
+			"ParamsAs": gui.Fieldinfo{
+				Doc: "ParamsAs controls how parameter values are transmitted, it is a space separated\nlist of all transmission types like in the Request.ParamsAs field, e.g. \"URL\nbody multipart\" to check URL query parameters, x-www-form-urlencoded and\nmultipart/formdata. The empty value will just check the type used in the\noriginal test.\n",
+			},
+			"SaveFailuresTo": gui.Fieldinfo{
+				Doc: "SaveFailuresTo is the filename to which all failed checks shall be logged. The\ndata is appended to the file.\n",
+			},
+			"Values": gui.Fieldinfo{
+				Doc: "Values contains a list of values to use as header and parameter values. Note\nthat header and parameter checking uses the same list of Values, you might want\nto do two Resilience checks, one for the headers and one for the parameters. If\nvalues is empty, then only the builtin modifications selected by\nMod{Param,Header} are used.\n",
+			}}})
+
+	gui.RegisterType(ht.ResponseTime{}, gui.Typeinfo{
+		Doc: "ResponseTime checks the response time.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Higher": gui.Fieldinfo{
+				Doc: "",
+			},
+			"Lower": gui.Fieldinfo{
+				Doc: "",
+			}}})
+
+	gui.RegisterType(ht.Screenshot{}, gui.Typeinfo{
+		Doc: "Screenshot checks actual screenshots rendered via the headless browser PhantomJS\nagainst a golden record of the expected screenshot.\n\nNote that PhantomJS will make additional request to fetch all linked resources\nin the HTML page. If the original request has BasicAuthUser (and BasicAuthPass)\nset this credentials will be sent to all linked resources of the page. Depending\non where these resources are located this might be a security issue.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Actual": gui.Fieldinfo{
+				Doc: "Actual is the name of the file the actual rendered screenshot is saved to. An\nempty value disables storing the generated screenshot.\n",
+			},
+			"AllowedDifference": gui.Fieldinfo{
+				Doc: "AllowedDifference is the total number of pixels which may differ between the two\nscreenshots while still passing this check.\n",
+			},
+			"Browser": gui.Fieldinfo{
+				Doc: "",
+			},
+			"Expected": gui.Fieldinfo{
+				Doc: "Expected is the file path of the 'golden record' image to test the actual\nscreenshot against.\n",
+			},
+			"IgnoreRegion": gui.Fieldinfo{
+				Doc: "IgnoreRegion is a list of regions which are ignored during comparing the actual\nscreenshot to the golden record. The entries are specify rectangles in the form\nof the Geometry (with ignored zoom factor).\n",
+			}}})
+
+	gui.RegisterType(ht.SetCookie{}, gui.Typeinfo{
+		Doc: "SetCookie checks for cookies being properly set. Note that the Path and Domain\nconditions are checked on the received Path and/or Domain and not on the\ninterpreted values according to RFC 6265.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Absent": gui.Fieldinfo{
+				Doc: "Absent indicates that the cookie with the given Name must not be received.\n",
+			},
+			"Domain": gui.Fieldinfo{
+				Doc: "// Domain is applied to the domain value",
+			},
+			"MinLifetime": gui.Fieldinfo{
+				Doc: "MinLifetime is the expectetd minimum lifetime of the cookie. A positive value\nenforces a persistent cookie. Negative values are illegal (use DelteCookie\ninstead).\n",
+			},
+			"Name": gui.Fieldinfo{
+				Doc: "// Name is the cookie name.",
+			},
+			"Path": gui.Fieldinfo{
+				Doc: "// Path is applied to the path value",
+			},
+			"Type": gui.Fieldinfo{
+				Doc: "Type is the type of the cookie. It is a space separated string of the following\n(case-insensitive) keywords:\n\n    - \"session\": a session cookie\n    - \"persistent\": a persistent cookie\n    - \"secure\": a secure cookie, to be sont over https only\n    - \"unsafe\", aka insecure; to be sent also over http\n    - \"httpOnly\": not accesible from JavaScript\n    - \"exposed\": accesible from JavaScript, Flash, etc.\n",
+			},
+			"Value": gui.Fieldinfo{
+				Doc: "// Value is applied to the cookie value",
+			}}})
+
+	gui.RegisterType(ht.Sorted{}, gui.Typeinfo{
+		Doc: "Sorted checks for an ordered occurrence of items. The check Sorted could be\nreplaced by a Regexp based Body test without loss of functionality; Sorted just\nmakes the idea of \"looking for a sorted occurrence\" clearer.\n\nIf the response has a Content-Type header indicating a HTML response the HTML\nwill be parsed and the text content normalized as described in the HTMLContains\ncheck.\n",
+		Field: map[string]gui.Fieldinfo{
+			"AllowedMisses": gui.Fieldinfo{
+				Doc: "AllowedMisses is the number of elements of Text which may not be present in the\nresponse body. The default of 0 means all elements of Text must be present.\n",
+			},
+			"Text": gui.Fieldinfo{
+				Doc: "Text is the list of text fragments to look for in the response body or the\nnormalized text content of the HTML page.\n",
+			}}})
+
+	gui.RegisterType(ht.StatusCode{}, gui.Typeinfo{
+		Doc: "StatusCode checks the HTTP statuscode.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Expect": gui.Fieldinfo{
+				Doc: "Expect is the value to expect, e.g. 302.\n\nIf Expect <= 9 it matches a whole range of status codes, e.g. with Expect==4 any\nof the 4xx status codes would fulfill this check.\n",
+			}}})
+
+	gui.RegisterType(ht.UTF8Encoded{}, gui.Typeinfo{
+		Doc:   "UTF8Encoded checks that the response body is valid UTF-8 without BOMs.\n",
 		Field: map[string]gui.Fieldinfo{}})
 
 	gui.RegisterType(ht.ValidHTML{}, gui.Typeinfo{
@@ -416,35 +396,24 @@ func init() {
 				Doc: "Ignore is a space separated list of issues to ignore. You normally won't skip\ndetection of these issues as all issues are fundamental flaws which are easy to\nfix.\n",
 			}}})
 
-	gui.RegisterType(ht.CookieExtractor{}, gui.Typeinfo{
-		Doc: "CookieExtractor extracts the value of a cookie received in a Set-Cookie header.\nThe value of the first cookie with the given name is extracted.\n",
+	gui.RegisterType(ht.W3CValidHTML{}, gui.Typeinfo{
+		Doc: "W3CValidHTML checks for valid HTML but checking the response body via the online\nchecker from W3C which is very strict.\n",
 		Field: map[string]gui.Fieldinfo{
-			"Name": gui.Fieldinfo{
-				Doc: "// Name is the name of the cookie.",
-			}}})
-
-	gui.RegisterType(ht.JSExtractor{}, gui.Typeinfo{
-		Doc: "JSExtractor extracts arbitrary stuff via custom JavaScript code.\n\nThe current Test is present in the JavaScript VM via binding the name \"Test\" at\ntop-level to the current Test being checked.\n\nThe Script is evaluated and the final expression is the value extracted with the\nfollowing exceptions:\n\n    - undefined or null is treated as an error\n    - Objects and Arrays are treated as errors. The error message is reported\n      in the field 'errmsg' of the object or the index 0 of the array.\n    - Strings, Numbers and Bools are treated as properly extracted values\n      which are returned.\n    - Other types result in undefined behaviour.\n\nThe JavaScript code is interpreted by otto. See the documentation at\nhttps://godoc.org/github.com/robertkrimen/otto for details.\n",
-		Field: map[string]gui.Fieldinfo{
-			"Script": gui.Fieldinfo{
-				Doc: "Script is JavaScript code to be evaluated.\n\nThe script may be read from disk with the following syntax:\n\n    @file:/path/to/script\n",
-			}}})
-
-	gui.RegisterType(ht.SetVariable{}, gui.Typeinfo{
-		Doc: "SetVariable allows to pragmatically \"extract\" a fixed value.\n",
-		Field: map[string]gui.Fieldinfo{
-			"To": gui.Fieldinfo{
-				Doc: "To is the value to extract.\n",
-			}}})
-
-	gui.RegisterType(ht.HTMLExtractor{}, gui.Typeinfo{
-		Doc: "HTMLExtractor allows to extract data from an executed Test. It supports\nextracting HTML attribute values and HTML text node values. Examples for CSRF\ntoken in the HTML:\n\n    <meta name=\"_csrf\" content=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\" />\n    <input type=\"hidden\" name=\"_csrf\" value=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\"/>\n",
-		Field: map[string]gui.Fieldinfo{
-			"Selector": gui.Fieldinfo{
-				Doc: "Selector is the CSS selector of an element, e.g.\n\n    head meta[name=\"_csrf\"]   or\n    form#login input[name=\"tok\"]\n    div.token span\n",
+			"AllowedErrors": gui.Fieldinfo{
+				Doc: "AllowedErrors is the number of allowed errors (after ignoring errors).\n",
 			},
-			"Attribute": gui.Fieldinfo{
-				Doc: "Attribute is the name of the attribute from which the value should be extracted.\nThe magic value \"~text~\" refers to the normalized text content of the element\nand ~rawtext~ to the raw text content. E.g. in the examples above the following\nshould be sensible:\n\n    content\n    value\n    ~text~\n",
+			"IgnoredErrors": gui.Fieldinfo{
+				Doc: "IgnoredErrros is a list of error messages to be ignored completely.\n",
+			}}})
+
+	gui.RegisterType(ht.XML{}, gui.Typeinfo{
+		Doc: "XML allows to check XML request bodies.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Condition": gui.Fieldinfo{
+				Doc: "Condition the first element addressed by Path must fulfill.\n",
+			},
+			"Path": gui.Fieldinfo{
+				Doc: "Path is a XPath expression understood by gopkg.in/xmlpath.v2.\n",
 			}}})
 
 	gui.RegisterType(ht.BodyExtractor{}, gui.Typeinfo{
@@ -457,57 +426,85 @@ func init() {
 				Doc: "SubMatch selects which submatch (capturing group) of Regexp shall be returned. A\n0 value indicates the whole match.\n",
 			}}})
 
+	gui.RegisterType(ht.CookieExtractor{}, gui.Typeinfo{
+		Doc: "CookieExtractor extracts the value of a cookie received in a Set-Cookie header.\nThe value of the first cookie with the given name is extracted.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Name": gui.Fieldinfo{
+				Doc: "// Name is the name of the cookie.",
+			}}})
+
+	gui.RegisterType(ht.HTMLExtractor{}, gui.Typeinfo{
+		Doc: "HTMLExtractor allows to extract data from an executed Test. It supports\nextracting HTML attribute values and HTML text node values. Examples for CSRF\ntoken in the HTML:\n\n    <meta name=\"_csrf\" content=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\" />\n    <input type=\"hidden\" name=\"_csrf\" value=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\"/>\n",
+		Field: map[string]gui.Fieldinfo{
+			"Attribute": gui.Fieldinfo{
+				Doc: "Attribute is the name of the attribute from which the value should be extracted.\nThe magic value \"~text~\" refers to the normalized text content of the element\nand ~rawtext~ to the raw text content. E.g. in the examples above the following\nshould be sensible:\n\n    content\n    value\n    ~text~\n",
+			},
+			"Selector": gui.Fieldinfo{
+				Doc: "Selector is the CSS selector of an element, e.g.\n\n    head meta[name=\"_csrf\"]   or\n    form#login input[name=\"tok\"]\n    div.token span\n",
+			}}})
+
+	gui.RegisterType(ht.JSExtractor{}, gui.Typeinfo{
+		Doc: "JSExtractor extracts arbitrary stuff via custom JavaScript code.\n\nThe current Test is present in the JavaScript VM via binding the name \"Test\" at\ntop-level to the current Test being checked.\n\nThe Script is evaluated and the final expression is the value extracted with the\nfollowing exceptions:\n\n    - undefined or null is treated as an error\n    - Objects and Arrays are treated as errors. The error message is reported\n      in the field 'errmsg' of the object or the index 0 of the array.\n    - Strings, Numbers and Bools are treated as properly extracted values\n      which are returned.\n    - Other types result in undefined behaviour.\n\nThe JavaScript code is interpreted by otto. See the documentation at\nhttps://godoc.org/github.com/robertkrimen/otto for details.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Script": gui.Fieldinfo{
+				Doc: "Script is JavaScript code to be evaluated.\n\nThe script may be read from disk with the following syntax:\n\n    @file:/path/to/script\n",
+			}}})
+
 	gui.RegisterType(ht.JSONExtractor{}, gui.Typeinfo{
 		Doc: "JSONExtractor extracts a value from a JSON response body.\n\nJSONExtractor works like the JSON check (i.e. elements are selected by their\npath) with two differences:\n\n    * null values are extracted as the empty string \"\"\n    * strings are unquoted\n\nNon-leaf elements can be extraced and will be returned verbatim. E.g. extarcting\nelement Foo from\n\n    {\"Foo\": [ 1 , 2,3]  }\n\nwill extract the following string with verbatim spaces in the array:\n\n    \"[ 1 , 2,3]\"\n",
 		Field: map[string]gui.Fieldinfo{
 			"Element": gui.Fieldinfo{
 				Doc: "Element path to extract.\n",
 			},
-			"Sep": gui.Fieldinfo{
-				Doc: "Sep is the separator in the element path. A zero value is equivalent to \".\"\n",
-			},
 			"Embedded": gui.Fieldinfo{
 				Doc: "Embedded parses the nonempty string selected by Element as a new JSON document\nand applies the extraction to this embedded JSON. E.g. if the overal JSON is\n\n    {\"data\": \"[123,456,789]\"}\n\nthe value if \"data\" is a string which itself is a JSON document. to extract its\nsecond array element you can use\n\n    JSONExtractor{\n        Element: \"data\",\n        Embeded: &JSONExtractor{Element: 1},\n    }\n",
+			},
+			"Sep": gui.Fieldinfo{
+				Doc: "Sep is the separator in the element path. A zero value is equivalent to \".\"\n",
+			}}})
+
+	gui.RegisterType(ht.SetVariable{}, gui.Typeinfo{
+		Doc: "SetVariable allows to pragmatically \"extract\" a fixed value.\n",
+		Field: map[string]gui.Fieldinfo{
+			"To": gui.Fieldinfo{
+				Doc: "To is the value to extract.\n",
 			}}})
 
 	gui.RegisterType(ht.Test{}, gui.Typeinfo{
 		Doc: "Test is a single logical test which does one HTTP request and checks a number of\nChecks on the received Response.\n",
 		Field: map[string]gui.Fieldinfo{
-			"VarEx": gui.Fieldinfo{
-				Doc: "VarEx may be used to popultate variables from the response. TODO: Rename.\n// map[string]Extractor `json:\",omitempty\"`",
+			"CheckResults": gui.Fieldinfo{
+				Doc: "// The individual checks.",
 			},
-			"Execution": gui.Fieldinfo{
-				Doc: "Execution controls the test execution.\n",
-			},
-			"Log": gui.Fieldinfo{
-				Doc: "Log is the logger to use.\n",
+			"Checks": gui.Fieldinfo{
+				Doc: "Checks contains all checks to perform on the response to the HTTP request.\n",
 			},
 			"Description": gui.Fieldinfo{
 				Doc: "Description what this test's intentions are.\n",
 			},
-			"ExValues": gui.Fieldinfo{
-				Doc: "ExValues contains the result of the extractions.\n",
-			},
-			"Status": gui.Fieldinfo{
-				Doc: "The following results are filled during Run. This should be collected into\nsomething like struct TestResult{...}.\n",
-			},
-			"FullDuration": gui.Fieldinfo{
+			"Duration": gui.Fieldinfo{
 				Doc: "",
-			},
-			"Name": gui.Fieldinfo{
-				Doc: "Name of the test.\n",
 			},
 			"Error": gui.Fieldinfo{
 				Doc: "",
 			},
-			"Tries": gui.Fieldinfo{
+			"ExValues": gui.Fieldinfo{
+				Doc: "ExValues contains the result of the extractions.\n",
+			},
+			"Execution": gui.Fieldinfo{
+				Doc: "Execution controls the test execution.\n",
+			},
+			"FullDuration": gui.Fieldinfo{
 				Doc: "",
 			},
-			"Duration": gui.Fieldinfo{
-				Doc: "",
+			"Jar": gui.Fieldinfo{
+				Doc: "Jar is the cookie jar to use\n",
 			},
-			"CheckResults": gui.Fieldinfo{
-				Doc: "// The individual checks.",
+			"Log": gui.Fieldinfo{
+				Doc: "Log is the logger to use.\n",
+			},
+			"Name": gui.Fieldinfo{
+				Doc: "Name of the test.\n",
 			},
 			"Request": gui.Fieldinfo{
 				Doc: "Request is the HTTP request.\n",
@@ -515,57 +512,36 @@ func init() {
 			"Response": gui.Fieldinfo{
 				Doc: "Response to the Request\n",
 			},
-			"Checks": gui.Fieldinfo{
-				Doc: "Checks contains all checks to perform on the response to the HTTP request.\n",
+			"Started": gui.Fieldinfo{
+				Doc: "",
 			},
-			"Jar": gui.Fieldinfo{
-				Doc: "Jar is the cookie jar to use\n",
+			"Status": gui.Fieldinfo{
+				Doc: "The following results are filled during Run. This should be collected into\nsomething like struct TestResult{...}.\n",
+			},
+			"Tries": gui.Fieldinfo{
+				Doc: "",
+			},
+			"VarEx": gui.Fieldinfo{
+				Doc: "VarEx may be used to popultate variables from the response. TODO: Rename.\n// map[string]Extractor `json:\",omitempty\"`",
 			},
 			"Variables": gui.Fieldinfo{
 				Doc: "Variables contains name/value-pairs used for variable substitution in files read\nin, e.g. for Request.Body = \"@vfile:/path/to/file\".\n",
-			},
-			"Started": gui.Fieldinfo{
-				Doc: "",
 			}}})
 
 	gui.RegisterType(ht.Request{}, gui.Typeinfo{
 		Doc: "Request is a HTTP request.\n",
 		Field: map[string]gui.Fieldinfo{
-			"ParamsAs": gui.Fieldinfo{
-				Doc: "ParamsAs determines how the parameters in the Param field are sent:\n\n    \"URL\" or \"\": append properly encoded to URL\n    \"body\"     : send as application/x-www-form-urlencoded in body.\n    \"multipart\": send as multipart/form-data in body.\n\nThe two values \"body\" and \"multipart\" must not be used on a GET or HEAD request.\n",
+			"BasicAuthPass": gui.Fieldinfo{
+				Doc: "",
 			},
 			"BasicAuthUser": gui.Fieldinfo{
 				Doc: "BasicAuthUser and BasicAuthPass contain optional username and password which\nwill be sent in a Basic Authentication header. If following redirects the\nauthentication header is also sent on subsequent requests to the same host.\n",
 			},
-			"SentBody": gui.Fieldinfo{
-				Doc: "// the 'real' body",
-			},
-			"URL": gui.Fieldinfo{
-				Doc: "URL ist the URL of the request.\n",
-			},
-			"Header": gui.Fieldinfo{
-				Doc: "Header contains the specific http headers to be sent in this request. User-Agent\nand Accept headers are set automaticaly to the global default values if not set\nexplicitly.\n",
-			},
 			"Body": gui.Fieldinfo{
 				Doc: "Body is the full body to send in the request. Body must be empty if Params are\nsent as multipart or form-urlencoded.\n",
 			},
-			"Method": gui.Fieldinfo{
-				Doc: "Method is the HTTP method to use. A empty method is equivalent to \"GET\"\n",
-			},
 			"Chunked": gui.Fieldinfo{
 				Doc: "Chunked turns of setting of the Content-Length header resulting in chunked\ntransfer encoding of POST bodies.\n",
-			},
-			"Timeout": gui.Fieldinfo{
-				Doc: "Timeout of this request. If zero use DefaultClientTimeout.\n",
-			},
-			"Request": gui.Fieldinfo{
-				Doc: "// the 'real' request",
-			},
-			"SentParams": gui.Fieldinfo{
-				Doc: "// the 'real' parameters",
-			},
-			"Params": gui.Fieldinfo{
-				Doc: "Params contains the parameters and their values to send in the request.\n\nIf the parameters are sent as multipart it is possible to include files by\nspecial formated values. The following formats are recognized:\n\n    @file:/path/to/thefile\n         read in /path/to/thefile and use its content as the\n         parameter value. The path may be relative.\n    @vfile:/path/to/thefile\n         read in /path/to/thefile and perform variable substitution\n         in its content to yield the parameter value.\n    @file:@name-of-file:direct-data\n    @vfile:@name-of-file:direct-data\n         use direct-data as the parameter value and name-of-file\n         as the filename. (There is no difference between the\n         @file and @vfile variants; variable substitution has\n         been performed already and is not done twice on direct-data.\n",
 			},
 			"Cookies": gui.Fieldinfo{
 				Doc: "Cookies contains the cookies to send in the request.\n",
@@ -573,27 +549,51 @@ func init() {
 			"FollowRedirects": gui.Fieldinfo{
 				Doc: "FollowRedirects determines if automatic following of redirects should be done.\n",
 			},
-			"BasicAuthPass": gui.Fieldinfo{
-				Doc: "",
+			"Header": gui.Fieldinfo{
+				Doc: "Header contains the specific http headers to be sent in this request. User-Agent\nand Accept headers are set automaticaly to the global default values if not set\nexplicitly.\n",
+			},
+			"Method": gui.Fieldinfo{
+				Doc: "Method is the HTTP method to use. A empty method is equivalent to \"GET\"\n",
+			},
+			"Params": gui.Fieldinfo{
+				Doc: "Params contains the parameters and their values to send in the request.\n\nIf the parameters are sent as multipart it is possible to include files by\nspecial formated values. The following formats are recognized:\n\n    @file:/path/to/thefile\n         read in /path/to/thefile and use its content as the\n         parameter value. The path may be relative.\n    @vfile:/path/to/thefile\n         read in /path/to/thefile and perform variable substitution\n         in its content to yield the parameter value.\n    @file:@name-of-file:direct-data\n    @vfile:@name-of-file:direct-data\n         use direct-data as the parameter value and name-of-file\n         as the filename. (There is no difference between the\n         @file and @vfile variants; variable substitution has\n         been performed already and is not done twice on direct-data.\n",
+			},
+			"ParamsAs": gui.Fieldinfo{
+				Doc: "ParamsAs determines how the parameters in the Param field are sent:\n\n    \"URL\" or \"\": append properly encoded to URL\n    \"body\"     : send as application/x-www-form-urlencoded in body.\n    \"multipart\": send as multipart/form-data in body.\n\nThe two values \"body\" and \"multipart\" must not be used on a GET or HEAD request.\n",
+			},
+			"Request": gui.Fieldinfo{
+				Doc: "// the 'real' request",
+			},
+			"SentBody": gui.Fieldinfo{
+				Doc: "// the 'real' body",
+			},
+			"SentParams": gui.Fieldinfo{
+				Doc: "// the 'real' parameters",
+			},
+			"Timeout": gui.Fieldinfo{
+				Doc: "Timeout of this request. If zero use DefaultClientTimeout.\n",
+			},
+			"URL": gui.Fieldinfo{
+				Doc: "URL ist the URL of the request.\n",
 			}}})
 
 	gui.RegisterType(ht.Response{}, gui.Typeinfo{
 		Doc: "Response captures information about a http response.\n",
 		Field: map[string]gui.Fieldinfo{
+			"BodyErr": gui.Fieldinfo{
+				Doc: "",
+			},
+			"BodyStr": gui.Fieldinfo{
+				Doc: "The received body and the error got while reading it.\n",
+			},
+			"Duration": gui.Fieldinfo{
+				Doc: "Duration to receive response and read the whole body.\n",
+			},
 			"Redirections": gui.Fieldinfo{
 				Doc: "Redirections records the URLs of automatic GET requests due to redirects.\n",
 			},
 			"Response": gui.Fieldinfo{
 				Doc: "Response is the received HTTP response. Its body has bean read and closed\nalready.\n",
-			},
-			"Duration": gui.Fieldinfo{
-				Doc: "Duration to receive response and read the whole body.\n",
-			},
-			"BodyStr": gui.Fieldinfo{
-				Doc: "The received body and the error got while reading it.\n",
-			},
-			"BodyErr": gui.Fieldinfo{
-				Doc: "",
 			}}})
 
 	gui.RegisterType(ht.CheckList{}, gui.Typeinfo{
@@ -607,33 +607,33 @@ func init() {
 	gui.RegisterType(ht.Extraction{}, gui.Typeinfo{
 		Doc: "Extraction captures the result of a variable extraction.\n",
 		Field: map[string]gui.Fieldinfo{
-			"Value": gui.Fieldinfo{
+			"Error": gui.Fieldinfo{
 				Doc: "",
 			},
-			"Error": gui.Fieldinfo{
+			"Value": gui.Fieldinfo{
 				Doc: "",
 			}}})
 
 	gui.RegisterType(ht.Execution{}, gui.Typeinfo{
 		Doc: "Execution contains parameters controlling the test execution.\n",
 		Field: map[string]gui.Fieldinfo{
-			"Tries": gui.Fieldinfo{
-				Doc: "Tries is the maximum number of tries made for this test. Both 0 and 1 mean:\n\"Just one try. No redo.\" Negative values indicate that the test should be\nskipped altogether.\n",
-			},
-			"Wait": gui.Fieldinfo{
-				Doc: "Wait time between retries.\n",
-			},
-			"PreSleep": gui.Fieldinfo{
-				Doc: "Pre-, Inter- and PostSleep are the sleep durations made before the request,\nbetween request and the checks and after the checks.\n",
-			},
 			"InterSleep": gui.Fieldinfo{
 				Doc: "Pre-, Inter- and PostSleep are the sleep durations made before the request,\nbetween request and the checks and after the checks.\n",
 			},
 			"PostSleep": gui.Fieldinfo{
 				Doc: "Pre-, Inter- and PostSleep are the sleep durations made before the request,\nbetween request and the checks and after the checks.\n",
 			},
+			"PreSleep": gui.Fieldinfo{
+				Doc: "Pre-, Inter- and PostSleep are the sleep durations made before the request,\nbetween request and the checks and after the checks.\n",
+			},
+			"Tries": gui.Fieldinfo{
+				Doc: "Tries is the maximum number of tries made for this test. Both 0 and 1 mean:\n\"Just one try. No redo.\" Negative values indicate that the test should be\nskipped altogether.\n",
+			},
 			"Verbosity": gui.Fieldinfo{
 				Doc: "Verbosity level in logging.\n",
+			},
+			"Wait": gui.Fieldinfo{
+				Doc: "Wait time between retries.\n",
 			}}})
 
 	gui.RegisterType(ht.Cookie{}, gui.Typeinfo{
@@ -649,41 +649,41 @@ func init() {
 	gui.RegisterType(ht.Condition{}, gui.Typeinfo{
 		Doc: "Condition is a conjunction of tests against a string. Note that Contains and\nRegexp conditions both use the same Count; most likely one would use either\nContains or Regexp but not both.\n",
 		Field: map[string]gui.Fieldinfo{
-			"Min": gui.Fieldinfo{
-				Doc: "Min and Max are the minimum and maximum length the string may have. Two zero\nvalues disables this test.\n",
-			},
-			"Max": gui.Fieldinfo{
-				Doc: "Min and Max are the minimum and maximum length the string may have. Two zero\nvalues disables this test.\n",
-			},
-			"Time": gui.Fieldinfo{
-				Doc: "Time checks whether the string is a valid time if parsed with Time as the layout\nstring.\n",
-			},
-			"Equals": gui.Fieldinfo{
-				Doc: "Equals is the exact value to be expected. No other tests are performed if Equals\nis non-zero as these other tests would be redundant.\n",
-			},
-			"Prefix": gui.Fieldinfo{
-				Doc: "Prefix is the required prefix\n",
-			},
-			"Suffix": gui.Fieldinfo{
-				Doc: "Suffix is the required suffix.\n",
-			},
 			"Contains": gui.Fieldinfo{
 				Doc: "Contains must be contained in the string.\n",
-			},
-			"Regexp": gui.Fieldinfo{
-				Doc: "Regexp is a regular expression to look for.\n",
 			},
 			"Count": gui.Fieldinfo{
 				Doc: "Count determines how many occurrences of Contains or Regexp are required for a\nmatch:\n\n      0: Any positive number of matches is okay\n    > 0: Exactly that many matches required\n    < 0: No match allowed (invert the condition)\n",
 			},
-			"GreaterThan": gui.Fieldinfo{
-				Doc: "GreaterThan and LessThan are lower and upper bound on the numerical value of the\nstring: The string is trimmed from spaces as well as from single and double\nquotes before parsed as a float64. If the string is not float value these\nconditions fail. Nil disables these conditions.\n",
+			"Equals": gui.Fieldinfo{
+				Doc: "Equals is the exact value to be expected. No other tests are performed if Equals\nis non-zero as these other tests would be redundant.\n",
 			},
-			"LessThan": gui.Fieldinfo{
+			"GreaterThan": gui.Fieldinfo{
 				Doc: "GreaterThan and LessThan are lower and upper bound on the numerical value of the\nstring: The string is trimmed from spaces as well as from single and double\nquotes before parsed as a float64. If the string is not float value these\nconditions fail. Nil disables these conditions.\n",
 			},
 			"Is": gui.Fieldinfo{
 				Doc: "Is checks whether the string under test matches one of a given list of given\ntypes. Double quotes are trimmed from the string before validation its type.\n\nThe following types are available:\n\n    Alpha          Alphanumeric  ASCII             Base64\n    CIDR           CreditCard    DataURI           DialString\n    DNSName        Email         FilePath          Float\n    FullWidth      HalfWidth     Hexadecimal       Hexcolor\n    Host           Int           IP                IPv4\n    IPv6           ISBN10        ISBN13            ISO3166Alpha2\n    ISO3166Alpha3  JSON          Latitude          Longitude\n    LowerCase      MAC           MongoID           Multibyte\n    Null           Numeric       Port              PrintableASCII\n    RequestURI     RequestURL    RFC3339           RGBcolor\n    Semver         SSN           UpperCase         URL\n    UTFDigit       UTFLetter     UTFLetterNumeric  UTFNumeric\n    UUID           UUIDv3        UUIDv4            UUIDv5\n    VariableWidth\n\nSee github.com/asaskevich/govalidator for a detailed description.\n\nThe string \"OR\" is ignored an can be used to increase the readability of this\ncondition in situations like\n\n    Condition{Is: \"Hexcolor OR RGBColor OR MongoID\"}\n",
+			},
+			"LessThan": gui.Fieldinfo{
+				Doc: "GreaterThan and LessThan are lower and upper bound on the numerical value of the\nstring: The string is trimmed from spaces as well as from single and double\nquotes before parsed as a float64. If the string is not float value these\nconditions fail. Nil disables these conditions.\n",
+			},
+			"Max": gui.Fieldinfo{
+				Doc: "Min and Max are the minimum and maximum length the string may have. Two zero\nvalues disables this test.\n",
+			},
+			"Min": gui.Fieldinfo{
+				Doc: "Min and Max are the minimum and maximum length the string may have. Two zero\nvalues disables this test.\n",
+			},
+			"Prefix": gui.Fieldinfo{
+				Doc: "Prefix is the required prefix\n",
+			},
+			"Regexp": gui.Fieldinfo{
+				Doc: "Regexp is a regular expression to look for.\n",
+			},
+			"Suffix": gui.Fieldinfo{
+				Doc: "Suffix is the required suffix.\n",
+			},
+			"Time": gui.Fieldinfo{
+				Doc: "Time checks whether the string is a valid time if parsed with Time as the layout\nstring.\n",
 			}}})
 
 	gui.RegisterType(url.Values{}, gui.Typeinfo{
@@ -697,8 +697,20 @@ func init() {
 	gui.RegisterType(http.Response{}, gui.Typeinfo{
 		Doc: "Response represents the response from an HTTP request.\n",
 		Field: map[string]gui.Fieldinfo{
-			"Status": gui.Fieldinfo{
-				Doc: "// e.g. \"200 OK\"",
+			"Body": gui.Fieldinfo{
+				Doc: "Body represents the response body.\n\nThe http Client and Transport guarantee that Body is always non-nil, even on\nresponses without a body or responses with a zero-length body. It is the\ncaller's responsibility to close Body. The default HTTP client's Transport does\nnot attempt to reuse HTTP/1.0 or HTTP/1.1 TCP connections (\"keep-alive\") unless\nthe Body is read to completion and is closed.\n\nThe Body is automatically dechunked if the server replied with a \"chunked\"\nTransfer-Encoding.\n",
+			},
+			"Close": gui.Fieldinfo{
+				Doc: "Close records whether the header directed that the connection be closed after\nreading Body. The value is advice for clients: neither ReadResponse nor\nResponse.Write ever closes a connection.\n",
+			},
+			"ContentLength": gui.Fieldinfo{
+				Doc: "ContentLength records the length of the associated content. The value -1\nindicates that the length is unknown. Unless Request.Method is \"HEAD\", values >=\n0 indicate that the given number of bytes may be read from Body.\n",
+			},
+			"Header": gui.Fieldinfo{
+				Doc: "Header maps header keys to values. If the response had multiple headers with the\nsame key, they may be concatenated, with comma delimiters. (Section 4.2 of RFC\n2616 requires that multiple headers be semantically equivalent to a\ncomma-delimited sequence.) When Header values are duplicated by other fields in\nthis struct (e.g., ContentLength, TransferEncoding, Trailer), the field values\nare authoritative.\n\nKeys in the map are canonicalized (see CanonicalHeaderKey).\n",
+			},
+			"Proto": gui.Fieldinfo{
+				Doc: "// e.g. \"HTTP/1.0\"",
 			},
 			"ProtoMajor": gui.Fieldinfo{
 				Doc: "// e.g. 1",
@@ -706,38 +718,26 @@ func init() {
 			"ProtoMinor": gui.Fieldinfo{
 				Doc: "// e.g. 0",
 			},
-			"Uncompressed": gui.Fieldinfo{
-				Doc: "Uncompressed reports whether the response was sent compressed but was\ndecompressed by the http package. When true, reading from Body yields the\nuncompressed content instead of the compressed content actually set from the\nserver, ContentLength is set to -1, and the \"Content-Length\" and\n\"Content-Encoding\" fields are deleted from the responseHeader. To get the\noriginal response from the server, set Transport.DisableCompression to true.\n",
-			},
-			"TLS": gui.Fieldinfo{
-				Doc: "TLS contains information about the TLS connection on which the response was\nreceived. It is nil for unencrypted responses. The pointer is shared between\nresponses and should not be modified.\n",
-			},
-			"Header": gui.Fieldinfo{
-				Doc: "Header maps header keys to values. If the response had multiple headers with the\nsame key, they may be concatenated, with comma delimiters. (Section 4.2 of RFC\n2616 requires that multiple headers be semantically equivalent to a\ncomma-delimited sequence.) When Header values are duplicated by other fields in\nthis struct (e.g., ContentLength, TransferEncoding, Trailer), the field values\nare authoritative.\n\nKeys in the map are canonicalized (see CanonicalHeaderKey).\n",
-			},
-			"Close": gui.Fieldinfo{
-				Doc: "Close records whether the header directed that the connection be closed after\nreading Body. The value is advice for clients: neither ReadResponse nor\nResponse.Write ever closes a connection.\n",
-			},
-			"Body": gui.Fieldinfo{
-				Doc: "Body represents the response body.\n\nThe http Client and Transport guarantee that Body is always non-nil, even on\nresponses without a body or responses with a zero-length body. It is the\ncaller's responsibility to close Body. The default HTTP client's Transport does\nnot attempt to reuse HTTP/1.0 or HTTP/1.1 TCP connections (\"keep-alive\") unless\nthe Body is read to completion and is closed.\n\nThe Body is automatically dechunked if the server replied with a \"chunked\"\nTransfer-Encoding.\n",
-			},
 			"Request": gui.Fieldinfo{
 				Doc: "Request is the request that was sent to obtain this Response. Request's Body is\nnil (having already been consumed). This is only populated for Client requests.\n",
+			},
+			"Status": gui.Fieldinfo{
+				Doc: "// e.g. \"200 OK\"",
 			},
 			"StatusCode": gui.Fieldinfo{
 				Doc: "// e.g. 200",
 			},
-			"Proto": gui.Fieldinfo{
-				Doc: "// e.g. \"HTTP/1.0\"",
+			"TLS": gui.Fieldinfo{
+				Doc: "TLS contains information about the TLS connection on which the response was\nreceived. It is nil for unencrypted responses. The pointer is shared between\nresponses and should not be modified.\n",
 			},
-			"ContentLength": gui.Fieldinfo{
-				Doc: "ContentLength records the length of the associated content. The value -1\nindicates that the length is unknown. Unless Request.Method is \"HEAD\", values >=\n0 indicate that the given number of bytes may be read from Body.\n",
+			"Trailer": gui.Fieldinfo{
+				Doc: "Trailer maps trailer keys to values in the same format as Header.\n\nThe Trailer initially contains only nil values, one for each key specified in\nthe server's \"Trailer\" header value. Those values are not added to Header.\n\nTrailer must not be accessed concurrently with Read calls on the Body.\n\nAfter Body.Read has returned io.EOF, Trailer will contain any trailer values\nsent by the server.\n",
 			},
 			"TransferEncoding": gui.Fieldinfo{
 				Doc: "Contains transfer encodings from outer-most to inner-most. Value is nil, means\nthat \"identity\" encoding is used.\n",
 			},
-			"Trailer": gui.Fieldinfo{
-				Doc: "Trailer maps trailer keys to values in the same format as Header.\n\nThe Trailer initially contains only nil values, one for each key specified in\nthe server's \"Trailer\" header value. Those values are not added to Header.\n\nTrailer must not be accessed concurrently with Read calls on the Body.\n\nAfter Body.Read has returned io.EOF, Trailer will contain any trailer values\nsent by the server.\n",
+			"Uncompressed": gui.Fieldinfo{
+				Doc: "Uncompressed reports whether the response was sent compressed but was\ndecompressed by the http package. When true, reading from Body yields the\nuncompressed content instead of the compressed content actually set from the\nserver, ContentLength is set to -1, and the \"Content-Length\" and\n\"Content-Encoding\" fields are deleted from the responseHeader. To get the\noriginal response from the server, set Transport.DisableCompression to true.\n",
 			}}})
 
 }

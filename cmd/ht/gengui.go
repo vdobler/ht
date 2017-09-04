@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/vdobler/ht/gui"
@@ -84,13 +85,26 @@ func dumpCommonTypes(buf *bytes.Buffer) {
 }
 
 func dumpChecksAndExtr(buf *bytes.Buffer) {
-	for _, typ := range ht.CheckRegistry {
+	names := make([]string, 0, len(ht.CheckRegistry))
+	for name := range ht.CheckRegistry {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		typ := ht.CheckRegistry[name]
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
 		}
 		dumpData(buf, typ)
 	}
-	for _, typ := range ht.ExtractorRegistry {
+
+	names = make([]string, 0, len(ht.ExtractorRegistry))
+	for name := range ht.ExtractorRegistry {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		typ := ht.ExtractorRegistry[name]
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
 		}
@@ -107,11 +121,16 @@ func dumpData(buf *bytes.Buffer, t reflect.Type) {
 	infoLit := fmt.Sprintf(`gui.Typeinfo{
     Doc: %q,
     Field: map[string]gui.Fieldinfo{`, ti.Doc)
-	for field, fi := range ti.Field {
+	names := make([]string, 0, len(ti.Field))
+	for name := range ti.Field {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, field := range names {
 		infoLit += fmt.Sprintf(`
         %q: gui.Fieldinfo{
             Doc: %q,
-        },`, field, fi.Doc)
+        },`, field, ti.Field[field].Doc)
 	}
 	infoLit += "}}"
 
