@@ -139,10 +139,6 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 			return
 		}
 
-		rawdata := data
-		durdata := data
-		vardata := data
-
 		// Construct the initial raw soup.
 		var s interface{}
 		err = hjson.Unmarshal(data, &s)
@@ -156,7 +152,7 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		delete(soup, "Response")
 
 		// Unmodified soup in Hjson format.
-		rawdata, err = hjson.Marshal(soup)
+		rawdata, err := hjson.Marshal(soup)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Cannot marshal to Hjson: %s\n\n", err)
@@ -166,7 +162,7 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 
 		// Rewrite possible time.Durations to strings (25000000 -> 25ms)
 		fixDuration(soup)
-		durdata, err = hjson.Marshal(soup)
+		durdata, err := hjson.Marshal(soup)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Cannot marshal to Hjson: %s\n%#v\n", err, soup)
@@ -182,7 +178,7 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 			fmt.Fprintf(w, "%s\n\n%s\n", string(rawdata), string(durdata))
 			return
 		}
-		vardata, err = hjson.Marshal(soup)
+		vardata, err := hjson.Marshal(soup)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Cannot marshal to Hjson: %s\n\n", err)
