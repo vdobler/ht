@@ -12,7 +12,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/vdobler/ht/gui"
 	"github.com/vdobler/ht/ht"
@@ -118,6 +121,7 @@ func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Reques
 
 func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
+		req.ParseForm()
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 		// Clear stuff from test whcih is not part of a Hjson test definition.
@@ -135,25 +139,166 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 			return
 		}
 
-		var soup interface{}
-		err = hjson.Unmarshal(data, &soup)
+		rawdata := data
+		durdata := data
+		vardata := data
+
+		// Construct the initial raw soup.
+		var s interface{}
+		err = hjson.Unmarshal(data, &s)
 		if err != nil {
 			w.WriteHeader(500)
-			fmt.Fprintf(w, "Cannot unmarshal to Hjson soup: %s", err)
+			fmt.Fprintf(w, "Cannot unmarshal to Hjson soup: %s\n\n", err)
+			fmt.Fprintf(w, "%s\n", string(data))
 			return
 		}
-		delete(soup.(map[string]interface{}), "Response")
+		soup := s.(map[string]interface{})
+		delete(soup, "Response")
 
-		data, err = hjson.Marshal(soup)
+		// Unmodified soup in Hjson format.
+		rawdata, err = hjson.Marshal(soup)
 		if err != nil {
 			w.WriteHeader(500)
-			fmt.Fprintf(w, "Cannot marshal to Hjson: %s", err)
+			fmt.Fprintf(w, "Cannot marshal to Hjson: %s\n\n", err)
+			fmt.Fprintf(w, "%s\n", string(data))
 			return
 		}
 
+		// Rewrite possible time.Durations to strings (25000000 -> 25ms)
+		fixDuration(soup)
+		durdata, err = hjson.Marshal(soup)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Cannot marshal to Hjson: %s\n%#v\n", err, soup)
+			fmt.Fprintf(w, "%s\n\n%s\n", string(data), string(rawdata))
+			return
+		}
+
+		// Invert variable substitution: Replace value by variable.
+		soup, err = invertVars(soup, test.Variables)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Cannot invert variable substitution: %s\n\n", err)
+			fmt.Fprintf(w, "%s\n\n%s\n", string(rawdata), string(durdata))
+			return
+		}
+		vardata, err = hjson.Marshal(soup)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "Cannot marshal to Hjson: %s\n\n", err)
+			fmt.Fprintf(w, "%s\n\n%s\n", string(rawdata), string(durdata))
+			return
+		}
+
+		// Output all three variants.
 		w.WriteHeader(200)
-		w.Write(data)
+		w.Write([]byte("Raw Data\n========\n\n"))
+		w.Write(rawdata)
+		w.Write([]byte("\n\n\nSensible Durations\n==================\n\n"))
+		w.Write(durdata)
+		w.Write([]byte("\n\n\nWith Variables\n==============\n\n"))
+		w.Write(vardata)
 	}
+}
+
+// Invert the variable replacement in data.
+// If variables contains CURRENT_DIR="." then inverting this would
+// replace every occurence of "." with "{{CURRENT_DIR}}, e.g.:
+//     URL: "http://www{{CURRENT_DIR}}example{{CURRENT_DIR}}org/"
+// which is not what we want. We thus replace longer strings first and
+// skip unsuitibale replacements
+func invertVars(soup map[string]interface{}, variables map[string]string) (map[string]interface{}, error) {
+	origVariables := soup["Variables"]
+
+	// Produce list of names suitable for replacement, sorted by
+	// longest value first.
+	names := make([]string, 0, len(variables))
+	for name, value := range variables {
+		if unsuitableReplacement(name, value) {
+			continue
+		}
+		names = append(names, name)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		return len(variables[names[i]]) > len(variables[names[j]])
+	})
+
+	// Construct the replacer.
+	oldnew := make([]string, 2*len(names))
+	for i, name := range names {
+		oldnew[2*i] = variables[name]
+		oldnew[2*i+1] = "{{" + name + "}}"
+	}
+	repl := strings.NewReplacer(oldnew...)
+
+	// Apply the replacer to soup without the Variables section by
+	// roundtripping through marshaled Hjson.
+	delete(soup, "Variables")
+	options := hjson.DefaultOptions()
+	// Always quote as otherwise var inversion might produce malformed Hjson.
+	options.QuoteAlways = true
+	marshaled, err := hjson.MarshalWithOptions(soup, options)
+	if err != nil {
+		return nil, fmt.Errorf("Marshal: %s\n%#v\n", err, soup)
+	}
+	converted := repl.Replace(string(marshaled))
+	var s interface{}
+	err = hjson.Unmarshal([]byte(converted), &s)
+	if err != nil {
+		return nil, fmt.Errorf("Unmarshal: %s\n%s\n", err, converted)
+	}
+	soup = s.(map[string]interface{})
+	soup["Variables"] = origVariables
+
+	return soup, nil
+}
+
+func unsuitableReplacement(name, value string) bool {
+	if len(value) <= 1 {
+		return true // no single charater replacements
+	}
+	if v, e := strconv.Atoi(value); e == nil && v <= 99 {
+		return true // no smal or negative numbers.
+	}
+
+	return false
+}
+
+// fixDuration dives into the soup looking for int64 which might be
+// a time.Duration and rewrites it to a string.
+func fixDuration(soup map[string]interface{}) {
+	for key := range soup {
+		switch val := soup[key].(type) {
+		case int64:
+			if mightBeDuration(val) {
+				s := time.Duration(val).String()
+				soup[key] = s
+			}
+		case map[string]interface{}:
+			fixDuration(val)
+		}
+	}
+}
+
+func mightBeDuration(n int64) bool {
+	if n < 0 {
+		return false
+	}
+	if n%(1000*1000) != 0 {
+		// Contains parts less than 1 ms
+		return false
+	}
+
+	for n%10 == 0 {
+		n /= 10
+	}
+
+	if n >= 1000 {
+		// More than 3 significant digits
+		return false
+	}
+
+	return true
 }
 
 func binaryHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
@@ -349,7 +494,7 @@ func writeEpilogue(buf *bytes.Buffer) {
         <button class="actionbutton" name="action" value="update" title="Save"> Update Values </button>
       </p>
       <p>
-        <button class="actionbutton" name="action" value="export" style="background-color: #FFE4B5;" title="Export current Test as Hjson. Needs manual rework!"> Export Test </button>
+        <button class="actionbutton" name="action" value="export" style="background-color: #FFE4B5;" title="Export current Test as Hjson."> Export Test </button>
       </p>
     </div>
 
