@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -85,7 +86,9 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 			os.Exit(9)
 		}
 		test.SetMetadata("Filename", rt.File.Name)
-		test.Jar = jar
+		if u, err := url.Parse(test.Request.URL); err != nil {
+			test.PopulateCookies(jar, u)
+		}
 	}
 
 	testValue := gui.NewValue(*test, "Test")
