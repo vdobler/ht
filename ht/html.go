@@ -210,7 +210,8 @@ var _ Preparable = &HTMLTag{}
 //   4.  Leading and trailing spaces are trimmed of.
 // As an example consider the following HTML:
 //   <html><body>
-//     <ul class="fancy"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>
+//     <ul class="fancy"><li>One</li><li>S<strong>econ</strong>d</li>
+//        <li> Three </li></ul>
 //   </body></html>
 // The normalized text selected by a Selector of "ul.fancy" would be
 //    "One Second Three"

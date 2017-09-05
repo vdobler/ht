@@ -121,6 +121,8 @@ func dumpData(buf *bytes.Buffer, t reflect.Type) {
 	infoLit := fmt.Sprintf(`gui.Typeinfo{
     Doc: %q,
     Field: map[string]gui.Fieldinfo{`, ti.Doc)
+	warnIfTooBroad(symbol, ti.Doc)
+
 	names := make([]string, 0, len(ti.Field))
 	for name := range ti.Field {
 		names = append(names, name)
@@ -131,10 +133,22 @@ func dumpData(buf *bytes.Buffer, t reflect.Type) {
         %q: gui.Fieldinfo{
             Doc: %q,
         },`, field, ti.Field[field].Doc)
+		warnIfTooBroad(symbol+"."+field, ti.Field[field].Doc)
+
 	}
 	infoLit += "}}"
 
 	fmt.Fprintf(buf, "gui.RegisterType(%s, %s)\n\n", typeLit, infoLit)
+}
+
+func warnIfTooBroad(symbol, doc string) {
+	for _, line := range strings.Split(doc, "\n") {
+		if len(line) > 80 {
+			fmt.Printf("Type Doc for %s too long:\n  %s\n",
+				symbol, line)
+		}
+	}
+
 }
 
 func infoFor(importPath, symbol string) gui.Typeinfo {

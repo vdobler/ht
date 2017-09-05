@@ -176,7 +176,8 @@ func noSuchExtractorError(name string) error {
 // It supports extracting HTML attribute values and HTML text node values.
 // Examples for CSRF token in the HTML:
 //    <meta name="_csrf" content="18f0ca3f-a50a-437f-9bd1-15c0caa28413" />
-//    <input type="hidden" name="_csrf" value="18f0ca3f-a50a-437f-9bd1-15c0caa28413"/>
+//    <input type="hidden" name="_csrf"
+//        value="18f0ca3f-a50a-437f-9bd1-15c0caa28413"/>
 type HTMLExtractor struct {
 	// Selector is the CSS selector of an element, e.g.
 	//     head meta[name="_csrf"]   or

@@ -37,7 +37,8 @@ var sampleHTML = `<!doctype html>
 	things.
   </p>
   <ul class="items"><li>Foo</li><li>Bar</li><li>Waz</li></ul>
-  <ul class="fancy"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>
+  <ul class="fancy"><li>One</li><li>S<strong>econ</strong>d</li>
+     <li> Three </li></ul>
 </div>
 <p>Large 24&#034; Monitor</p>
 <p>Small 12" Monitor</p>
