@@ -199,8 +199,8 @@ func (v *Value) renderString(path string, depth int, readonly bool, val reflect.
 	v.renderMessages(path, depth)
 	v.printf("%s", indent(depth))
 
-	isMultiline := strings.Contains(val.String(), "\n")
-	escVal := template.HTMLEscapeString(val.String())
+	isMultiline := strings.Contains(str, "\n") || len(str) > 200
+	escVal := template.HTMLEscapeString(str)
 	if readonly {
 		if isMultiline {
 			v.printf("<pre>")
