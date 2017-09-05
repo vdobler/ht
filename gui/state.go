@@ -141,7 +141,7 @@ pre {
 
 .tooltip .tooltiptext {
   visibility: hidden;
-  width: 640px;
+  width: 656px;
   background-color: #404040;
   color: #eeeeee;
   text-align: left;
@@ -183,6 +183,10 @@ label {
   font-family: "Arial Black", Gadget, sans-serif;
   margin: 4px 2px;
   cursor: pointer;
+}
+
+div.implements-buttons {
+  margin-right: 250px;
 }
 `
 

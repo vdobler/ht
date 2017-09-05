@@ -448,6 +448,7 @@ func (v *Value) renderNilInterface(path string, depth int, readonly bool, val re
 	}
 
 	op := path + ".__TYPE__"
+	v.printf("%s<div class=\"implements-buttons\">\n", indent(depth))
 	for _, typ := range Implements[val.Type()] {
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
@@ -455,13 +456,14 @@ func (v *Value) renderNilInterface(path string, depth int, readonly bool, val re
 		name, tooltip := v.typeinfo(typ)
 		hname := template.HTMLEscapeString(name)
 
-		v.printf("%s<button name=\"%s\" value=\"%s\" style=\"margin-top: 2px; margin-bottom: 2px;\" class=\"tooltip\">%s<span class=\"tooltiptext\"><pre>%s</pre></span></button> &nbsp; \n",
-			indent(depth),
+		v.printf("%s<button name=\"%s\" value=\"%s\" style=\"margin-top: 2px; margin-bottom: 2px;\" class=\"tooltip\">%s<span class=\"tooltiptext\"><pre>%s</pre></span></button> &emsp; \n",
+			indent(depth+1),
 			template.HTMLEscapeString(op),
 			hname, hname,
 			template.HTMLEscapeString(tooltip),
 		)
 	}
+	v.printf("%s</div>\n", indent(depth))
 	return nil
 }
 
