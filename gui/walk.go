@@ -100,8 +100,23 @@ func walkString(form url.Values, path string, val reflect.Value) (reflect.Value,
 
 	if newVals, ok := form[path]; ok {
 		delete(form, path)
-		newVal := newVals[0]
-		cpy.SetString(newVal)
+		if len(newVals) == 1 {
+			cpy.SetString(newVals[0])
+		} else {
+			// Multiple new values stem from checkboxes generated from
+			// fields with an Any setting.
+			nv := ""
+			for _, v := range newVals {
+				if v == "" {
+					continue
+				}
+				if nv != "" {
+					nv += " "
+				}
+				nv += v
+			}
+			cpy.SetString(nv)
+		}
 	}
 
 	return cpy, nil

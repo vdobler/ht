@@ -52,7 +52,8 @@ type Fieldinfo struct {
 	Doc       string         // Doc is the field documentation
 	Multiline bool           // Multiline allows multiline strings
 	Const     bool           // Const values are unchangable (display only)
-	Only      []string       // Only contains the set of allowed values
+	Only      []string       // Only contains the set of allowed values (pick one)
+	Any       []string       // Any contains the set of allowed values (pick any)
 	Validate  *regexp.Regexp // Validate this field
 	Omit      bool           // Omit this field
 }

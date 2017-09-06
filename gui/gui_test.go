@@ -78,6 +78,7 @@ type Options struct {
 	}
 	Started time.Time
 	Data    []byte
+	Ignore  string
 }
 
 type Execution struct {
@@ -126,6 +127,11 @@ func registerTestTypes() {
 			"Simple":   Fieldinfo{Doc: "Simple is the common name."},
 			"Advanced": Fieldinfo{Doc: "Advanced contains admin options."},
 			"Complex":  Fieldinfo{Doc: "Complex allows fancy customisations."},
+			"Ignore": Fieldinfo{
+				Doc: "Ignore some weather conditions:\n" +
+					"Space seperated list of 'rain', 'darkness', 'snow' and 'hail'",
+				Any: []string{"rain", "rainfall", "snow", "hail"},
+			},
 		},
 	})
 
@@ -195,6 +201,7 @@ func TestGUI(t *testing.T) {
 		0x83, 0x06, 0x00, 0xC6, 0x09, 0x03, 0xE5, 0x67, 0xDA, 0x39,
 		0xCE, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
 		0x42, 0x60, 0x82}
+	test.Options.Ignore = "rainfall snow"
 	test.Execution.Env = map[string]string{
 		"Hello": "World",
 		"ABC":   "XYZ",

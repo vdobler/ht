@@ -218,7 +218,6 @@ func (v *Value) renderString(path string, depth int, readonly bool, val reflect.
 		v.printf("<textarea cols=\"82\" rows=\"5\" name=\"%s\">%s</textarea>\n",
 			template.HTMLEscapeString(path),
 			escVal)
-
 	} else if len(v.nextfieldinfo.Only) > 0 {
 		v.printf("<select name=\"%s\">\n", template.HTMLEscapeString(path))
 		current := val.String()
@@ -233,6 +232,29 @@ func (v *Value) renderString(path string, depth int, readonly bool, val reflect.
 				template.HTMLEscapeString(only))
 		}
 		v.printf("%s</select>\n", indent(depth))
+	} else if len(v.nextfieldinfo.Any) > 0 {
+		current := " " + val.String() + " "
+		name := template.HTMLEscapeString(path)
+		for _, any := range v.nextfieldinfo.Any {
+			option := template.HTMLEscapeString(any)
+			checked := ""
+			if strings.Contains(current, " "+any+" ") {
+				checked = `checked`
+			}
+			v.printf("%s<input type=\"checkbox\" name=\"%s\" value=\"%s\" %s/>&nbsp;%s &emsp; \n",
+				indent(depth+1),
+				name,
+				option,
+				checked,
+				option)
+		}
+		// This hidden "checkbox" force the browser to send at least
+		// this one parameter: If you uncheck all checkboxes the browser
+		// would not send parameter name at all so we would miss the
+		// update.
+		v.printf("%s<input type=\"hidden\" name=\"%s\" value=\"\"/>\n",
+			indent(depth+1), name)
+
 	} else {
 		v.printf("<input type=\"text\" name=\"%s\" value=\"%s\" />\n",
 			template.HTMLEscapeString(path),
