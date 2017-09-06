@@ -42,6 +42,37 @@ func registerGUITypes() {
 		"Body,Close,Request,TLS",
 		"", "",
 	)
+
+	/*
+		This is too much. This field in Condition is used rarely
+		and the GUI is overloaded with all these checkboxes as
+		Condition is a common element in checks.
+		setFieldAny(ht.Condition{}, "Is",
+			"Alpha Alphanumeric ASCII Base64 CIDR CreditCard DataURI "+
+				"DialString DNSName Email FilePath Float FullWidth "+
+				"HalfWidth Hexadecimal Hexcolor Host Int IP IPv4 IPv6 "+
+				"ISBN10 ISBN13 ISO3166Alpha2 ISO3166Alpha3 JSON "+
+				"Latitude Longitude LowerCase MAC MongoID Multibyte "+
+				"Null Numeric Port PrintableASCII RequestURI RequestURL "+
+				"RFC3339 RGBcolor Semver SSN UpperCase URL UTFDigit "+
+				"UTFLetter UTFLetterNumeric UTFNumeric UUID UUIDv3 UUIDv4 "+
+				"UUIDv5 VariableWidth")
+	*/
+
+	// ---- Checks ---
+
+	setFieldAny(ht.SetCookie{}, "Type",
+		"session persistent secure unsafe httpOnly exposed")
+
+	setFieldOnly(ht.Resilience{}, "Method", "GET,POST,HEAD,PUT,DELETE,PATCH")
+	resilMod := "all drop none double twice change delete nonsense space " +
+		"malicious user empty type large tiny negative"
+	setFieldAny(ht.Resilience{}, "ModParam", resilMod)
+	setFieldAny(ht.Resilience{}, "ModHeader", resilMod)
+
+	setFieldAny(ht.ValidHTML{}, "Ignore",
+		"doctype structure uniqueids lang attr escaping attresc label url")
+
 }
 
 func setFieldOnly(t interface{}, field, values string) {
@@ -49,6 +80,14 @@ func setFieldOnly(t interface{}, field, values string) {
 	ti := gui.Typedata[typ]
 	fi := ti.Field[field]
 	fi.Only = strings.Split(values, ",")
+	ti.Field[field] = fi
+}
+
+func setFieldAny(t interface{}, field, values string) {
+	typ := reflect.TypeOf(t)
+	ti := gui.Typedata[typ]
+	fi := ti.Field[field]
+	fi.Any = strings.Split(values, " ")
 	ti.Field[field] = fi
 }
 
