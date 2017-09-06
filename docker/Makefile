@@ -35,6 +35,7 @@ push: tag
 ht:
 	cd ../cmd/ht && \
 	go run gendoc.go && \
+	go run gengui.go && \
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ht -ldflags "-X main.version=$$(git describe) -s"
 	cp ../cmd/ht/ht .
 	goupx --strip-binary ht
