@@ -18,8 +18,44 @@ func init() {
 			}}})
 
 	gui.RegisterType(ht.Body{}, gui.Typeinfo{
-		Doc:   "Body provides simple condition checks on the response body.\n",
-		Field: map[string]gui.Fieldinfo{}})
+		Doc: "Body provides simple condition checks on the response body.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Contains": gui.Fieldinfo{
+				Doc: "Contains must be contained in the string.\n",
+			},
+			"Count": gui.Fieldinfo{
+				Doc: "Count determines how many occurrences of Contains or Regexp are required for a\nmatch:\n\n      0: Any positive number of matches is okay\n    > 0: Exactly that many matches required\n    < 0: No match allowed (invert the condition)\n",
+			},
+			"Equals": gui.Fieldinfo{
+				Doc: "Equals is the exact value to be expected. No other tests are performed if Equals\nis non-zero as these other tests would be redundant.\n",
+			},
+			"GreaterThan": gui.Fieldinfo{
+				Doc: "GreaterThan and LessThan are lower and upper bound on the numerical value of the\nstring: The string is trimmed from spaces as well as from single and double\nquotes before parsed as a float64. If the string is not float value these\nconditions fail. Nil disables these conditions.\n",
+			},
+			"Is": gui.Fieldinfo{
+				Doc: "Is checks whether the string under test matches one of a given list of given\ntypes. Double quotes are trimmed from the string before validation its type.\n\nThe following types are available:\n\n    Alpha          Alphanumeric  ASCII             Base64\n    CIDR           CreditCard    DataURI           DialString\n    DNSName        Email         FilePath          Float\n    FullWidth      HalfWidth     Hexadecimal       Hexcolor\n    Host           Int           IP                IPv4\n    IPv6           ISBN10        ISBN13            ISO3166Alpha2\n    ISO3166Alpha3  JSON          Latitude          Longitude\n    LowerCase      MAC           MongoID           Multibyte\n    Null           Numeric       Port              PrintableASCII\n    RequestURI     RequestURL    RFC3339           RGBcolor\n    Semver         SSN           UpperCase         URL\n    UTFDigit       UTFLetter     UTFLetterNumeric  UTFNumeric\n    UUID           UUIDv3        UUIDv4            UUIDv5\n    VariableWidth\n\nSee github.com/asaskevich/govalidator for a detailed description.\n\nThe string \"OR\" is ignored an can be used to increase the readability of this\ncondition in situations like\n\n    Condition{Is: \"Hexcolor OR RGBColor OR MongoID\"}\n",
+			},
+			"LessThan": gui.Fieldinfo{
+				Doc: "GreaterThan and LessThan are lower and upper bound on the numerical value of the\nstring: The string is trimmed from spaces as well as from single and double\nquotes before parsed as a float64. If the string is not float value these\nconditions fail. Nil disables these conditions.\n",
+			},
+			"Max": gui.Fieldinfo{
+				Doc: "Min and Max are the minimum and maximum length the string may have. Two zero\nvalues disables this test.\n",
+			},
+			"Min": gui.Fieldinfo{
+				Doc: "Min and Max are the minimum and maximum length the string may have. Two zero\nvalues disables this test.\n",
+			},
+			"Prefix": gui.Fieldinfo{
+				Doc: "Prefix is the required prefix\n",
+			},
+			"Regexp": gui.Fieldinfo{
+				Doc: "Regexp is a regular expression to look for.\n",
+			},
+			"Suffix": gui.Fieldinfo{
+				Doc: "Suffix is the required suffix.\n",
+			},
+			"Time": gui.Fieldinfo{
+				Doc: "Time checks whether the string is a valid time if parsed with Time as the layout\nstring.\n",
+			}}})
 
 	gui.RegisterType(ht.Cache{}, gui.Typeinfo{
 		Doc: "Cache allows to test for HTTP Cache-Control headers. The zero value checks for\nthe existence of a Cache-Control header only. Note that not all combinations are\nsensible.\n",
@@ -75,8 +111,44 @@ func init() {
 		Field: map[string]gui.Fieldinfo{}})
 
 	gui.RegisterType(ht.FinalURL{}, gui.Typeinfo{
-		Doc:   "FinalURL checks the last URL after following all redirects. This check is useful\nonly for tests with Request.FollowRedirects=true\n",
-		Field: map[string]gui.Fieldinfo{}})
+		Doc: "FinalURL checks the last URL after following all redirects. This check is useful\nonly for tests with Request.FollowRedirects=true\n",
+		Field: map[string]gui.Fieldinfo{
+			"Contains": gui.Fieldinfo{
+				Doc: "Contains must be contained in the string.\n",
+			},
+			"Count": gui.Fieldinfo{
+				Doc: "Count determines how many occurrences of Contains or Regexp are required for a\nmatch:\n\n      0: Any positive number of matches is okay\n    > 0: Exactly that many matches required\n    < 0: No match allowed (invert the condition)\n",
+			},
+			"Equals": gui.Fieldinfo{
+				Doc: "Equals is the exact value to be expected. No other tests are performed if Equals\nis non-zero as these other tests would be redundant.\n",
+			},
+			"GreaterThan": gui.Fieldinfo{
+				Doc: "GreaterThan and LessThan are lower and upper bound on the numerical value of the\nstring: The string is trimmed from spaces as well as from single and double\nquotes before parsed as a float64. If the string is not float value these\nconditions fail. Nil disables these conditions.\n",
+			},
+			"Is": gui.Fieldinfo{
+				Doc: "Is checks whether the string under test matches one of a given list of given\ntypes. Double quotes are trimmed from the string before validation its type.\n\nThe following types are available:\n\n    Alpha          Alphanumeric  ASCII             Base64\n    CIDR           CreditCard    DataURI           DialString\n    DNSName        Email         FilePath          Float\n    FullWidth      HalfWidth     Hexadecimal       Hexcolor\n    Host           Int           IP                IPv4\n    IPv6           ISBN10        ISBN13            ISO3166Alpha2\n    ISO3166Alpha3  JSON          Latitude          Longitude\n    LowerCase      MAC           MongoID           Multibyte\n    Null           Numeric       Port              PrintableASCII\n    RequestURI     RequestURL    RFC3339           RGBcolor\n    Semver         SSN           UpperCase         URL\n    UTFDigit       UTFLetter     UTFLetterNumeric  UTFNumeric\n    UUID           UUIDv3        UUIDv4            UUIDv5\n    VariableWidth\n\nSee github.com/asaskevich/govalidator for a detailed description.\n\nThe string \"OR\" is ignored an can be used to increase the readability of this\ncondition in situations like\n\n    Condition{Is: \"Hexcolor OR RGBColor OR MongoID\"}\n",
+			},
+			"LessThan": gui.Fieldinfo{
+				Doc: "GreaterThan and LessThan are lower and upper bound on the numerical value of the\nstring: The string is trimmed from spaces as well as from single and double\nquotes before parsed as a float64. If the string is not float value these\nconditions fail. Nil disables these conditions.\n",
+			},
+			"Max": gui.Fieldinfo{
+				Doc: "Min and Max are the minimum and maximum length the string may have. Two zero\nvalues disables this test.\n",
+			},
+			"Min": gui.Fieldinfo{
+				Doc: "Min and Max are the minimum and maximum length the string may have. Two zero\nvalues disables this test.\n",
+			},
+			"Prefix": gui.Fieldinfo{
+				Doc: "Prefix is the required prefix\n",
+			},
+			"Regexp": gui.Fieldinfo{
+				Doc: "Regexp is a regular expression to look for.\n",
+			},
+			"Suffix": gui.Fieldinfo{
+				Doc: "Suffix is the required suffix.\n",
+			},
+			"Time": gui.Fieldinfo{
+				Doc: "Time checks whether the string is a valid time if parsed with Time as the layout\nstring.\n",
+			}}})
 
 	gui.RegisterType(ht.HTMLContains{}, gui.Typeinfo{
 		Doc: "HTMLContains checks the text content (and optionally the order) of HTML elements\nselected by a CSS rule.\n\nThe text content found in the HTML document is normalized by roughly the\nfollowing procedure:\n\n    1.  Newlines are inserted around HTML block elements\n        (i.e. any non-inline element)\n    2.  Newlines and tabs are replaced by spaces.\n    3.  Multiple spaces are replaced by one space.\n    4.  Leading and trailing spaces are trimmed of.\n\nAs an example consider the following HTML:\n\n    <html><body>\n      <ul class=\"fancy\"><li>One</li><li>S<strong>econ</strong>d</li>\n         <li> Three </li></ul>\n    </body></html>\n\nThe normalized text selected by a Selector of \"ul.fancy\" would be\n\n    \"One Second Three\"\n",
@@ -290,7 +362,7 @@ func init() {
 			}}})
 
 	gui.RegisterType(ht.Resilience{}, gui.Typeinfo{
-		Doc: "Resilience checks the resilience of an URL against unexpected requests like\ndifferent HTTP methods, changed or garbled parameters, different parameter\ntransmission types and changed or garbled HTTP headers.\n\nParameters and Header values can undergo several different types of\nmodifications\n\n    * all:       all the individual modifications below (excluding 'space'\n                 for HTTP headers)\n    * drop:      don't send at all\n    * none:      don't modify the individual parameters or header but\n                 don't send any parameters or headers\n    * double:    send same value two times\n    * twice:     send two different values (original and \"extraValue\")\n    * change:    change a single character (first, middle and last one)\n    * delete:    drop single character (first, middle and last one)\n    * nonsense:  the values \"p,f1u;p5c:h*\", \"hubba%12bubba(!\" and \"   \"\n    * space:     the values \" \", \"       \", \"\\t\", \"\\n\", \"\\r\", \"\\v\", \"\\u00A0\",\n                 \"\\u2003\", \"\\u200B\", \"\\x00\\x00\", and \"\\t \\v \\r \\n \"\n    * malicious: the values \"\\uFEFF\\u200B\\u2029\", \"ʇunpᴉpᴉɔuᴉ\",\n                 \"http://a/%%30%30\" and \"' OR 1=1 -- 1\"\n    * user       use user defined values from Values\n    * empty:     \"\"\n    * type:      change the type (if obvious)\n        - \"1234\"     -->  \"wwww\"\n        - \"3.1415\"   -->  \"wwwwww\"\n        - \"i@you.me\" -->  \"iXyouYme\"\n        - \"foobar  \" -->  \"123\"\n    * large:     produce much larger values\n        - \"1234\"     -->  \"9999999\" (just large), \"2147483648\" (MaxInt32 + 1)\n                          \"9223372036854775808\" (MaxInt64 + 1)\n                          \"18446744073709551616\" (MaxUInt64 + 1)\n        - \"56.78\"    -->  \"888888888.9999\", \"123.456e12\",\n                          \"3.5e38\" (larger than MaxFloat32)\n                          \"1.9e308\" (larger than MaxFloat64)\n        - \"foo\"      -->  50 * \"X\", 160 * \"Y\" and 270 * \"Z\"\n    * tiny:      produce 0 or short values\n        - \"1234\"      -->  \"0\" and \"1\"\n        - \"12.3\"      -->  \"0\", \"0.02\", \"0.0003\", \"1e-12\" and \"4.7e-324\"\n        - \"foobar\"    --> \"f\"\n    * negative   produce negative values\n        - \"1234\"      -->  \"-2\"\n        - \"56.78\"     -->  \"-3.3\"\n\nThis check will make a wast amount of request to the given URL including the\nmodifying and non-idempotent methods POST, PUT, and DELETE. Some care using this\ncheck is advisable.\n",
+		Doc: "Resilience checks the resilience of an URL against unexpected requests like\ndifferent HTTP methods, changed or garbled parameters, different parameter\ntransmission types and changed or garbled HTTP headers.\n\nParameters and Header values can undergo several different types of\nmodifications\n\n    * all:       all the individual modifications below (excluding 'space'\n                 for HTTP headers)\n    * drop:      don't send at all\n    * none:      don't modify the individual parameters or header but\n                 don't send any parameters or headers\n    * double:    send same value two times\n    * twice:     send two different values (original and \"extraValue\")\n    * change:    change a single character (first, middle and last one)\n    * delete:    drop single character (first, middle and last one)\n    * nonsense:  the values \"p,f1u;p5c:h*\", \"hubba%12bubba(!\" and \"   \"\n    * space:     the values \" \", \"       \", \"\\t\", \"\\n\", \"\\r\", \"\\v\", \"\\u00A0\",\n                 \"\\u2003\", \"\\u200B\", \"\\x00\\x00\", and \"\\t \\v \\r \\n \"\n    * malicious: the values \"\\uFEFF\\u200B\\u2029\", \"ʇunpᴉpᴉɔuᴉ\",\n                 \"http://a/%%30%30\" and \"' OR 1=1 -- 1\"\n    * user:      use user defined values from Values\n    * empty:     \"\"\n    * type:      change the type (if obvious)\n        - \"1234\"     -->  \"wwww\"\n        - \"3.1415\"   -->  \"wwwwww\"\n        - \"i@you.me\" -->  \"iXyouYme\"\n        - \"foobar  \" -->  \"123\"\n    * large:     produce much larger values\n        - \"1234\"     -->  \"9999999\" (just large), \"2147483648\" (MaxInt32 + 1)\n                          \"9223372036854775808\" (MaxInt64 + 1)\n                          \"18446744073709551616\" (MaxUInt64 + 1)\n        - \"56.78\"    -->  \"888888888.9999\", \"123.456e12\",\n                          \"3.5e38\" (larger than MaxFloat32)\n                          \"1.9e308\" (larger than MaxFloat64)\n        - \"foo\"      -->  50 * \"X\", 160 * \"Y\" and 270 * \"Z\"\n    * tiny:      produce 0 or short values\n        - \"1234\"      -->  \"0\" and \"1\"\n        - \"12.3\"      -->  \"0\", \"0.02\", \"0.0003\", \"1e-12\" and \"4.7e-324\"\n        - \"foobar\"    --> \"f\"\n    * negative:  produce negative values\n        - \"1234\"      -->  \"-2\"\n        - \"56.78\"     -->  \"-3.3\"\n\nThis check will make a wast amount of request to the given URL including the\nmodifying and non-idempotent methods POST, PUT, and DELETE. Some care using this\ncheck is advisable.\n",
 		Field: map[string]gui.Fieldinfo{
 			"Checks": gui.Fieldinfo{
 				Doc: "Checks is the list of checks to perform on the received responses. In most cases\nthe -- correct -- behaviour of the server will differ from the response to a\nvalid, unscrambled request; typically by returning one of the 4xx status codes.\nIf Checks is empty, only a simple NoServerError will be executed.\n",
@@ -390,7 +462,7 @@ func init() {
 		Field: map[string]gui.Fieldinfo{}})
 
 	gui.RegisterType(ht.ValidHTML{}, gui.Typeinfo{
-		Doc: "ValidHTML checks for valid HTML 5; well kinda: It make sure that some common but\neasy to detect fuckups are not present. The following issues are detected:\n\n    * 'doctype':   not exactly one DOCTYPE\n    * 'structure': ill-formed tag nesting / tag closing\n    * 'uniqueids': uniqness of id attribute values\n    * 'lang':      ill-formed lang attributes\n    * 'attr':  duplicate attributes\n    * 'escaping':  unescaped &, < and > characters or unknown entities\n    * 'attresc':   like escaping but limited to attributes\n    * 'label':     reference to nonexisting ids in a label tags\n    * 'url':       malformed URLs\n\nNotes:\n\n    - HTML5 allows unescaped & in several circumstances but ValidHTML\n      reports all stray & as an error.\n    - The lang attributes are parse very lax, e.g. the non-canonical form\n      'de_CH' is considered valid (and equivalent to 'de-CH'). I don't\n      know how browser handle this.\n",
+		Doc: "ValidHTML checks for valid HTML 5; well kinda: It make sure that some common but\neasy to detect fuckups are not present. The following issues are detected:\n\n    * 'doctype':   not exactly one DOCTYPE\n    * 'structure': ill-formed tag nesting / tag closing\n    * 'uniqueids': uniqness of id attribute values\n    * 'lang':      ill-formed lang attributes\n    * 'attr':      duplicate attributes\n    * 'escaping':  unescaped &, < and > characters or unknown entities\n    * 'attresc':   like escaping but limited to attributes\n    * 'label':     reference to nonexisting ids in a label tags\n    * 'url':       malformed URLs\n\nNotes:\n\n    - HTML5 allows unescaped & in several circumstances but ValidHTML\n      reports all stray & as an error.\n    - The lang attributes are parse very lax, e.g. the non-canonical form\n      'de_CH' is considered valid (and equivalent to 'de-CH'). I don't\n      know how browser handle this.\n",
 		Field: map[string]gui.Fieldinfo{
 			"Ignore": gui.Fieldinfo{
 				Doc: "Ignore is a space separated list of issues to ignore. You normally won't skip\ndetection of these issues as all issues are fundamental flaws which are easy to\nfix.\n",
@@ -434,7 +506,7 @@ func init() {
 			}}})
 
 	gui.RegisterType(ht.HTMLExtractor{}, gui.Typeinfo{
-		Doc: "HTMLExtractor allows to extract data from an executed Test. It supports\nextracting HTML attribute values and HTML text node values. Examples for CSRF\ntoken in the HTML:\n\n    <meta name=\"_csrf\" content=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\" />\n    <input type=\"hidden\" name=\"_csrf\" value=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\"/>\n",
+		Doc: "HTMLExtractor allows to extract data from an executed Test. It supports\nextracting HTML attribute values and HTML text node values. Examples for CSRF\ntoken in the HTML:\n\n    <meta name=\"_csrf\" content=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\" />\n    <input type=\"hidden\" name=\"_csrf\"\n        value=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\"/>\n",
 		Field: map[string]gui.Fieldinfo{
 			"Attribute": gui.Fieldinfo{
 				Doc: "Attribute is the name of the attribute from which the value should be extracted.\nThe magic value \"~text~\" refers to the normalized text content of the element\nand ~rawtext~ to the raw text content. E.g. in the examples above the following\nshould be sensible:\n\n    content\n    value\n    ~text~\n",

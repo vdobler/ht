@@ -242,7 +242,8 @@ var typeDoc = map[string]string{
 		"    As an example consider the following HTML:\n" +
 		"\n" +
 		"    <html><body>\n" +
-		"      <ul class=\"fancy\"><li>One</li><li>S<strong>econ</strong>d</li><li> Three </li></ul>\n" +
+		"      <ul class=\"fancy\"><li>One</li><li>S<strong>econ</strong>d</li>\n" +
+		"         <li> Three </li></ul>\n" +
 		"    </body></html>\n" +
 		"\n" +
 		"    The normalized text selected by a Selector of \"ul.fancy\" would be\n" +
@@ -270,7 +271,8 @@ var typeDoc = map[string]string{
 		"    CSRF token in the HTML:\n" +
 		"\n" +
 		"    <meta name=\"_csrf\" content=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\" />\n" +
-		"    <input type=\"hidden\" name=\"_csrf\" value=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\"/>",
+		"    <input type=\"hidden\" name=\"_csrf\"\n" +
+		"        value=\"18f0ca3f-a50a-437f-9bd1-15c0caa28413\"/>",
 	"htmltag": "type HTMLTag struct {\n" +
 		"\t// Selector is the CSS selector of the HTML elements.\n" +
 		"\tSelector string\n" +
@@ -806,7 +808,7 @@ var typeDoc = map[string]string{
 		"                 \"\\u2003\", \"\\u200B\", \"\\x00\\x00\", and \"\\t \\v \\r \\n \"\n" +
 		"    * malicious: the values \"\\uFEFF\\u200B\\u2029\", \"ʇunpᴉpᴉɔuᴉ\",\n" +
 		"                 \"http://a/%%30%30\" and \"' OR 1=1 -- 1\"\n" +
-		"    * user       use user defined values from Values\n" +
+		"    * user:      use user defined values from Values\n" +
 		"    * empty:     \"\"\n" +
 		"    * type:      change the type (if obvious)\n" +
 		"        - \"1234\"     -->  \"wwww\"\n" +
@@ -825,7 +827,7 @@ var typeDoc = map[string]string{
 		"        - \"1234\"      -->  \"0\" and \"1\"\n" +
 		"        - \"12.3\"      -->  \"0\", \"0.02\", \"0.0003\", \"1e-12\" and \"4.7e-324\"\n" +
 		"        - \"foobar\"    --> \"f\"\n" +
-		"    * negative   produce negative values\n" +
+		"    * negative:  produce negative values\n" +
 		"        - \"1234\"      -->  \"-2\"\n" +
 		"        - \"56.78\"     -->  \"-3.3\"\n" +
 		"\n" +
@@ -994,7 +996,7 @@ var typeDoc = map[string]string{
 		"    * 'structure': ill-formed tag nesting / tag closing\n" +
 		"    * 'uniqueids': uniqness of id attribute values\n" +
 		"    * 'lang':      ill-formed lang attributes\n" +
-		"    * 'attr':  duplicate attributes\n" +
+		"    * 'attr':      duplicate attributes\n" +
 		"    * 'escaping':  unescaped &, < and > characters or unknown entities\n" +
 		"    * 'attresc':   like escaping but limited to attributes\n" +
 		"    * 'label':     reference to nonexisting ids in a label tags\n" +
