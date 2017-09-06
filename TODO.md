@@ -7,16 +7,6 @@ Open Issues
 *  Generating and storing the type doc twice is overkill. The GUI data could be
    used to generate the `go doc` output.
 
-*  Export in the GUI does not produce valid Hjson tests:
-     - At least time.Duration fields are off by a factor of 10^9 (ns vs s).
-       Could be fixed by traversing the Hjson soup and chaning any suspicious
-       int64 like 500000000 to a string like "500ms".
-     - Variables have been substituted during loading of the test. To roundtrip
-       from/to disk it would be nice if the exported test could contain the
-       unexpanded Variables. Same solution: traverse the hjson soup and replace
-       current values with {{name}}.
-   Both "solutions" are just heuristics.
-
 *  Error handling in the GUI is not good. 
 
 *  The tests for phantomjs screenshots fail on Windows because the font (or its
@@ -186,3 +176,14 @@ Resolved TODOs
 
 *  The type and field documentation for the GUI needs to be automated.
    --> Automated via gengui.go
+
+*  Export in the GUI does not produce valid Hjson tests:
+     - At least time.Duration fields are off by a factor of 10^9 (ns vs s).
+       Could be fixed by traversing the Hjson soup and chaning any suspicious
+       int64 like 500000000 to a string like "500ms".
+     - Variables have been substituted during loading of the test. To roundtrip
+       from/to disk it would be nice if the exported test could contain the
+       unexpanded Variables. Same solution: traverse the hjson soup and replace
+       current values with {{name}}.
+   Both "solutions" are just heuristics.
+   --> But seems to work "good enough".
