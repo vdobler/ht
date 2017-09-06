@@ -104,23 +104,8 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 	os.Exit(0)
 }
 
-func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
-	return func(w http.ResponseWriter, req *http.Request) {
-		buf := &bytes.Buffer{}
-		writePreamble(buf, "Test Builder")
-
-		data, err := val.Render()
-		buf.Write(data)
-		writeEpilogue(buf)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(200)
-		w.Write(buf.Bytes())
-
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-}
+// ----------------------------------------------------------------------------
+// Export
 
 func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
@@ -330,7 +315,18 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		fragment, _ := val.Update(req.Form)
 
 		switch req.Form.Get("action") {
+		case "save":
+			val.PushCurrent()
+		case "undo":
+			n := len(val.Last)
+			if n == 0 {
+				w.WriteHeader(400)
+				w.Write([]byte("No more undoable states."))
+				return
+			}
+			val.Current, val.Last = val.Last[n-1], val.Last[:n-1]
 		case "execute":
+			val.PushCurrent()
 			executeTest(val)
 			extractVars(val)
 			fragment = "Test.Response"
@@ -351,6 +347,7 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 			extractVars(val)
 			fragment = "Test.ExValues"
 		case "export":
+			val.PushCurrent()
 			w.Header().Set("Location", "/export")
 			w.WriteHeader(303)
 			return
@@ -366,7 +363,6 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 }
 
 func executeChecks(val *gui.Value) {
-	val.Last = append(val.Last, val.Current)
 	test := val.Current.(ht.Test)
 	prepErr := test.PrepareChecks()
 	if prepErr != nil {
@@ -382,14 +378,12 @@ func executeChecks(val *gui.Value) {
 }
 
 func extractVars(val *gui.Value) {
-	val.Last = append(val.Last, val.Current)
 	test := val.Current.(ht.Test)
 	test.Extract()
 	val.Current = test
 }
 
 func executeTest(val *gui.Value) {
-	val.Last = append(val.Last, val.Current)
 	test := val.Current.(ht.Test)
 	test.Run()
 	if test.Response.Response != nil {
@@ -398,6 +392,27 @@ func executeTest(val *gui.Value) {
 	}
 	augmentMessages(&test, val)
 	val.Current = test
+}
+
+// ----------------------------------------------------------------------------
+// Display
+
+func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		buf := &bytes.Buffer{}
+		writePreamble(buf, "Test Builder")
+
+		data, err := val.Render()
+		buf.Write(data)
+		writeEpilogue(buf, val)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(200)
+		w.Write(buf.Bytes())
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func augmentMessages(test *ht.Test, val *gui.Value) {
@@ -477,7 +492,7 @@ h1 {
 `)
 }
 
-func writeEpilogue(buf *bytes.Buffer) {
+func writeEpilogue(buf *bytes.Buffer, val *gui.Value) {
 	buf.WriteString(`
     <div style="position: fixed; top:2%; right:2%;">
       </p>
@@ -490,11 +505,23 @@ func writeEpilogue(buf *bytes.Buffer) {
         <button class="actionbutton" name="action" value="extractvars" style="background-color: #87CEEB;" title="Extract variables from Response. Requires a valid response."> Extract Vars </button>
       </p>
       <p>
-        <button class="actionbutton" name="action" value="update" title="Save"> Update Values </button>
+        <button class="actionbutton" name="action" value="save" title="Save current state (reachable via Undo)."> Save </button>
       </p>
       <p>
         <button class="actionbutton" name="action" value="export" style="background-color: #FFE4B5;" title="Export current Test as Hjson."> Export Test </button>
       </p>
+`)
+
+	if len(val.Last) > 0 {
+		buf.WriteString(`
+      <p>
+        <button class="actionbutton" name="action" value="undo" style="background-color: #E6E600;" title="Go back to last saved/executed test."> Undo </button>
+      </p>
+`)
+
+	}
+
+	buf.WriteString(`
     </div>
 
     <div style="height: 600px"> &nbsp; </div>
