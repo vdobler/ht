@@ -204,7 +204,13 @@ func typeinfo(pkgDoc *doc.Package, typeName string) gui.Typeinfo {
 	spec := typeSpec(typ.Decl, typ.Name)
 	structType, ok := spec.Type.(*ast.StructType)
 	if !ok {
-		fmt.Println(typeName, "is not a struct")
+		if ident, ok := spec.Type.(*ast.Ident); ok {
+			ti := typeinfo(pkgDoc, ident.Name)
+			tinfo.Field = ti.Field
+		} else {
+			fmt.Printf("%s is neither a struct nor a named type but a %T %#v\n",
+				typeName, spec.Type, spec.Type)
+		}
 		return tinfo
 	}
 
