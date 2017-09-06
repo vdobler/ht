@@ -364,6 +364,8 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 
 func executeChecks(val *gui.Value) {
 	test := val.Current.(ht.Test)
+	test.Status = ht.NotRun
+	test.Error = nil
 	prepErr := test.PrepareChecks()
 	if prepErr != nil {
 		augmentPrepareMessages(prepErr, val)
