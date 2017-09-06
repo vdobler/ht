@@ -33,6 +33,7 @@ Non-Goals
 ht is not the jack of all trades in testing web applications:
 * Simulating different browsers is not done.
 * Simulating interactions in a browser is not done.
+* Load testing capabilities are very limited.
 
 
 Installation
@@ -86,6 +87,18 @@ Tests have one of the following status:
  - `Bogus`:   The test itself is malformed, e.g. trying to upload a file
               via query parameters. Your tests should not be bogus.
 
+Often a Test needs to be parametrized, e.g. to execute it against different
+systems. This is done through **`Variables`**. Variable substitution is a plain
+textual replacement of strings of the form `{{VariableName}}` with a value.
+Such variables can be set in the Test, during inclusion of a Test in a Suite
+or during execution of cmd/ht. Some variables are provided by the system itself.
+
+Variable values can be set from data extracted from previous responses through
+**`Extractors`**. These are able to extract information from cookies, HTTP
+headers, JSON documents or via regular expression from a HTTP response body.
+Variable extraction and substitution in subsequent requests allows to build
+test Suites which validate complex business processes.
+
 
 Tests, Checks and Suites
 ------------------------
@@ -123,74 +136,72 @@ Please refer to the built in documentation by running:
 
 to see the full documentation.
 
-The following (nonsensical) example show lots of features and syntactical
-sugar available when writing tests:
+The following example show some more features and syntactical sugar available
+when writing tests:
 
 ```
-// file: swank.ht
-{
-    Name: Feature Show Off
-    Description: '''Multiline strings work well
-                    and require less "quoting" than plain JSON.'''
+// file: example.ht
+{ 
+    Name: Example of more features
     Request: {
-        Method:  POST
-        URL:     "http://{{HOST}}/some/path?A=1"  // {{HOST}} is a variable, see below.
-        Params:  {
-            // 'A' is already part of the URL
-            B: "foo"            // single value
-            C: [ 3.14, 2.72 ]   // multiple values (duplicated parameter)
+        Method: GET
+        URL:    https://{{HOST}}/some/path
+        Params: {
+            query: "statement of work"
         }
         Header: {
-            Accept:   xml,html
-            X-Custom: [ 345, "ABC" ]
+            Accept:   text/html
         }
-        Body: '''{"value": 9988}'''  // send POST body
-        FollowRedirects: "true"  // follow 30x until 'real' response
-        BasicAuthUser: "root"    // Convenience: Set proper Authorization: Basic 
-        BasicAuthPass: "secret"  //              header from username/password.
-        Timeout: "2s"    // shorter timeout
-        Chunked: "true"  // force chunked POST bodies
+        FollowRedirects: true
     }
-
     Checks: [
         {Check: "StatusCode", Expect: 200}
-        {Check: "None", Of: [  // logical NAND of the following tests
-                {Check: "Body", Contains: "something went wrong"}
-                {Check: "JSON", Element: "field.2", Contains: "ooops"}
-            ]
+        {Check: "ContentType", Is: "text/html"}
+        {Check: "UTF8Encoded"}
+        {Check: "ETag"}
+        {Check: "ValidHTML"}
+        {Check: "HTMLContains"
+            Selector: h3.legal
+            Text: [ "Intro", "Scope", "Duration", "Fees" ]
+            InOrder: true
         }
-        {Check: "RedirectChain", Via: [ ".../verifyuser", ".../sso/settoken" ]}
     ]
-
-    Execution: {
-        // Wait 100ms before doing actual work in this test, 120ms between
-        // receiving the response and execution of the first check and 140ms
-        // after the last checks.
-        PreSleep:   100ms
-        InterSleep: 120ms
-        PostSleep:  0.14s
-
-	// Anticipate failures and errors: Retry this test up to 8 times
-	// if it fails or errors waiting 1.5 seconds between retries.
-        // Test will fail/error if all 8 tries fail/error.
-        Tries: 8
+    Execution: { 
+        Tries: 3
         Wait:  1.5s
     }
-
-    // Variables can be set/updated from the received response via
-    // several different extractors.
-    VarEx: {
-        LOGINTOKEN: {Extractor: "JSONExtractor", Element: "0.1.token"}
-    }
-
-    // Variables can contain defaults for variable substitutions. These
-    // defaults are used only if the value is unset on the surrounding
-    // execution context, typically the suite.
     Variables: {
         HOST: "localhost:1234"
     }
 }
 ```
+
+Here the URL contains a variable `{{HOST}}`: When the test is read in from disk
+this placeholder is replaced by the current value of the HOST variable. HOST
+defaults to "localhost:1234". This test is retried two more times if it fails
+with a pause of 1.5 seconds between retreies.
+
+Sending query parameters is dead simple, encoding is done automatic. Sending
+parameters in a POST request as application/x-www-form-urlencoded or as
+multipart/form-data is possible too (see "ParamsAS" in `ht doc Request`).
+
+The checks consist of simple and complex checks.
+
+ * HTTP Status code is compared against the expected value of 200
+ * The Content-Type header is checked. This check is not a simple string
+   comparison of a HTTP header but realy parses the Content-Type header:
+   A `Content-Type: text/html; charset=iso_8859-1` would fulfill this check too.
+ * Proper encoding of the HTTP body is checked.
+ * Existence and proper handling of a ETag header is checked: This check
+   not only checks for the presence of a ETag header but will also issue a
+   _second_ request to the URL of the Test with a `If-None-Match` HTTP header
+   and check that the second request results in a 304.
+ * ValidHTML takes a coars look at a HTML document and reports simple
+   problems like duplicate tag IDs.
+ * The last check interpretes the HTML and looks for h3 tags classified
+   as legal. There must be at least 4 of themwith the given text content
+   in the given order (but there might be more).
+
 
 Combine these two test into a suite, e.g. like this
 
@@ -201,21 +212,41 @@ Combine these two test into a suite, e.g. like this
     Description: Demonstration purpose only.
     KeepCookies: true  // behave like a browser
 
-    Setup: [  // failing/errored setup tests will skip main tests
+    // Failing/errored Setup Tests will skip main Tests.
+    Setup: [  
         {File: "minimal.ht"}
     ]
 
     Main: [
-        {File: "swank.ht"}
-	// Execute swank ht once more but use localhost:808 as value of HOST variable
-        {File: "swank.ht", Variables: {HOST: "localhost:8080"}}
+        {File: "example.ht"}
+        {File: "example.ht", Variables: {HOST: "localhost:8080"}}
     ]
 }
 ```
 
+The `example.ht` Tests is included twice: In the second invocation the value
+of the HOST variable will be "localhost:8080".
+
 Now you can execute the full suite like this:
 
     # ht exec -vv -output result suite.suite
+
+
+
+Graphical User Interface
+------------------------
+
+The Tests in Hjson format are easy to read (at least that was the intention).
+But they can be hard to write as you have to know what types of Checks are
+available and which options control their behaviour. Debugging is hard too.
+
+To faciliate this cmd/ht offers a very simple GUI to craft and debug Test,
+Checks and Variable Extractions. The GUI provides tooltips to all types, fields
+and options and allows to execute Tests and dry run Checks and Extractions.
+
+    # ht gui
+
+Please refer to the help (`ht help gui`) for more details.
 
 
 
@@ -257,6 +288,25 @@ For details see the the godoc for reference:
   Run `ht help` for details
 * An example test suite can be found in
   https://github.com/vdobler/ht/blob/master/testdata/sample.suite
+
+
+How does it compare to ...
+--------------------------
+
+In direct comparison to specialiesd tools like Selenium, Scalatest, JMeter,
+httpexpect, Gatlin etc. pp. ht will lack. Ht's ability to drive a headless browser
+is totally inferiour to Selenium/Webdriver/YourFaviriteTool. Ht's capabilities
+in generating load is far worse than JMeter or Gatlin.
+
+Ht's strength lies in providing high-level checks suitable to detect problems
+in HTTP based applications combined with good diagnostics which allow for
+efficient debugging of such tests.
+
+
+Is it any good?
+---------------
+
+Yes
 
 
 Copyright
