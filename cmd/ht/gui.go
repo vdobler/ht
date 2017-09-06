@@ -371,6 +371,7 @@ func executeChecks(val *gui.Value) {
 		return
 	}
 
+	test.Status = ht.NotRun
 	test.ExecuteChecks()
 	augmentMessages(&test, val)
 
