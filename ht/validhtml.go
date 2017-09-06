@@ -27,7 +27,7 @@ func init() {
 //   * 'structure': ill-formed tag nesting / tag closing
 //   * 'uniqueids': uniqness of id attribute values
 //   * 'lang':      ill-formed lang attributes
-//   * 'attr':  duplicate attributes
+//   * 'attr':      duplicate attributes
 //   * 'escaping':  unescaped &, < and > characters or unknown entities
 //   * 'attresc':   like escaping but limited to attributes
 //   * 'label':     reference to nonexisting ids in a label tags
