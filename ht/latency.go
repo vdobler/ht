@@ -293,7 +293,6 @@ func (L *Latency) Prepare(*Test) error {
 	}
 
 	if err := L.parseLimit(); err != nil {
-		fmt.Printf("err = %v\n", err)
 		return err
 	}
 
@@ -303,7 +302,7 @@ func (L *Latency) Prepare(*Test) error {
 var _ Preparable = &Latency{}
 
 func (L *Latency) parseLimit() error {
-	parts := strings.Split(L.Limits, ";")
+	parts := strings.Split(strings.Trim(L.Limits, "; "), ";")
 	for i := range parts {
 		s := strings.TrimSpace(parts[i])
 		q, t, err := parseQantileLimit(s)
@@ -320,7 +319,7 @@ func (L *Latency) parseLimit() error {
 func parseQantileLimit(s string) (float64, time.Duration, error) {
 	parts := strings.SplitN(s, "≤", 2)
 	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("missing '≤'")
+		return 0, 0, fmt.Errorf("Latency: missing '≤' in %q", s)
 	}
 
 	q := strings.TrimSpace(strings.TrimRight(parts[0], " %"))
@@ -332,7 +331,7 @@ func parseQantileLimit(s string) (float64, time.Duration, error) {
 		quantile /= 100
 	}
 	if quantile < 0 || quantile > 1 {
-		return 0, 0, fmt.Errorf("quantile %.3f out of range [0,1]", quantile)
+		return 0, 0, fmt.Errorf("Latency: quantile %.3f out of range [0,1]", quantile)
 	}
 
 	b := strings.TrimSpace(strings.TrimLeft(parts[1], "="))
@@ -342,7 +341,7 @@ func parseQantileLimit(s string) (float64, time.Duration, error) {
 		return 0, 0, err
 	}
 	if m <= 0 || m > 300*time.Second {
-		return 0, 0, fmt.Errorf("limit %s out of range (0,300s]", m)
+		return 0, 0, fmt.Errorf("Latency: limit %s out of range (0,300s]", m)
 	}
 
 	return quantile, m, nil
