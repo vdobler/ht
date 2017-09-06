@@ -62,6 +62,13 @@ func (v *Value) Render() ([]byte, error) {
 	return v.buf.Bytes(), err
 }
 
+// PushCurrent stores the Current value in v to the list of Last
+// values. This allows to checkpoint the state of v for subsequent
+// undoes to one of the Pushed states.
+func (v *Value) PushCurrent() {
+	v.Last = append(v.Last, v.Current)
+}
+
 // Update v with data from the received HTML form. It returns the path of the
 // most prominent field (TODO: explain better).
 func (v *Value) Update(form url.Values) (string, errorlist.List) {
@@ -71,23 +78,19 @@ func (v *Value) Update(form url.Values) (string, errorlist.List) {
 
 	updated, err := walk(form, v.Path, val)
 
-	if err == nil {
-		v.Last = append(v.Last, v.Current)
-	} else {
-		// Process validation errors
-		for _, e := range err {
-			switch ve := e.(type) {
-			case ValueError:
-				if firstErrorPath == "" {
-					firstErrorPath = ve.Path
-				}
-				v.Messages[ve.Path] = []Message{{
-					Type: "error",
-					Text: ve.Err.Error(),
-				}}
-			case addNoticeError:
-				firstErrorPath = string(ve)
+	// Process validation errors
+	for _, e := range err {
+		switch ve := e.(type) {
+		case ValueError:
+			if firstErrorPath == "" {
+				firstErrorPath = ve.Path
 			}
+			v.Messages[ve.Path] = []Message{{
+				Type: "error",
+				Text: ve.Err.Error(),
+			}}
+		case addNoticeError:
+			firstErrorPath = string(ve)
 		}
 	}
 
