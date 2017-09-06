@@ -50,7 +50,7 @@ func init() {
 //                "\u2003", "\u200B", "\x00\x00", and "\t \v \r \n "
 //   * malicious: the values "\uFEFF\u200B\u2029", "ʇunpᴉpᴉɔuᴉ",
 //                "http://a/%%30%30" and "' OR 1=1 -- 1"
-//   * user       use user defined values from Values
+//   * user:      use user defined values from Values
 //   * empty:     ""
 //   * type:      change the type (if obvious)
 //       - "1234"     -->  "wwww"
@@ -69,7 +69,7 @@ func init() {
 //       - "1234"      -->  "0" and "1"
 //       - "12.3"      -->  "0", "0.02", "0.0003", "1e-12" and "4.7e-324"
 //       - "foobar"    --> "f"
-//   * negative   produce negative values
+//   * negative:  produce negative values
 //       - "1234"      -->  "-2"
 //       - "56.78"     -->  "-3.3"
 //
