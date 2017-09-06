@@ -955,6 +955,9 @@ done:
 // ExecuteChecks applies the checks in t to the HTTP response received during
 // executeRequest.
 //
+// The checks and the test have to be prepared before calling this method
+// via PrepareChecks.
+//
 // Normally all checks in t.Checks are executed. If the first check in
 // t.Checks is a StatusCode check against 200 and it fails, then the rest of
 // the tests are skipped.
