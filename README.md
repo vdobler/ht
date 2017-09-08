@@ -47,7 +47,7 @@ Installing ht should be simple if Go 1.8 and git are available and working:
 
     `$GOPATH/bin/ht quick <URL-of-HTML-page>`
 
-  and check the generated `Report.html` file.
+  and check the generated `_Report_.html` file.
 
 If you want to run checks on rendered HTML pages you need a local installation
 of (PhantomJS)[http://phantomjs.org] in version >= 2.0.
@@ -74,7 +74,7 @@ of requests. Tests in a suite may share a common cookie jar so that simulating
 a browser session becomes easy.
 
 A load test is a throughput test which uses a mixture of suites to generate
-a distribution of requests: The load test is a set of **`Scenario`**s where
+a distribution of requests: The load test is a set of **`Scenarios`** where
 each scenario (technically just a suite) contributes a certain percentage to
 the whole set of request.
 
@@ -199,7 +199,7 @@ The checks consist of simple and complex checks.
  * ValidHTML takes a coars look at a HTML document and reports simple
    problems like duplicate tag IDs.
  * The last check interpretes the HTML and looks for h3 tags classified
-   as legal. There must be at least 4 of themwith the given text content
+   as legal. There must be at least 4 of them with the given text content
    in the given order (but there might be more).
 
 
@@ -229,8 +229,11 @@ of the HOST variable will be "localhost:8080".
 
 Now you can execute the full suite like this:
 
-    # ht exec -vv -output result suite.suite
+    $ ht exec -vv -output result suite.suite
 
+The `exec` subcommand allows very fine control over the execution of the
+suites/tests. Please consult `ht help exec` for a description of the command
+line flags.
 
 
 Graphical User Interface
@@ -244,11 +247,125 @@ To faciliate this cmd/ht offers a very simple GUI to craft and debug Test,
 Checks and Variable Extractions. The GUI provides tooltips to all types, fields
 and options and allows to execute Tests and dry run Checks and Extractions.
 
-    # ht gui
+    $ ht gui
 
 Please refer to the help (`ht help gui`) for more details.
 
 
+How to write proper tests?
+--------------------------
+
+The main starting point to write proper automated test is to have a good
+model of how your application should work, what it is expected to do:
+What is the proper response to a certain stimulus (a request)?
+
+Let's assume you have to check that the Search functionality "works properly".
+Break down this generic "works properly" into testable parts, e.g. like this:
+
+ * Is the search box present in the HTML of the homepage?
+ * Will submitting the form trigger a request to the correct URL?
+ * Does the search answer in reasonable amout of time, no matter how
+   many results are found?
+ * Does a search display the expected hits in the expected order?
+
+Tests for this could look like this:
+
+```
+// file: searchbox.ht
+{
+    Name: Look for Searchbox on Homepage
+    Request: {
+        URL: https://www.example.org/homepage
+    }
+    Checks: [
+        // Start with two basic checks to make sure we got a sensible response.
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ContentType", Is: "text/html"}
+
+        // Start looking for the search box. Become more and more specific.
+	// This makes tracking problems easier.
+	{Check: "HTMLTag", Selector: "form.search"}
+	{Check: "HTMLTag", Selector: "form.search input[type=search\"]"}
+	{Check: "HTMLTag", Selector: "form.search input[type=search][placeholder=\"search website\"]"}
+
+	// Check target of this form: Must hit version 2 of search:
+	{Check: "HTMLTag", Selector: "form.search[action=\"/search_v2/\"]"}
+    ]
+}
+```
+
+Speed of search must be tested for different query terms, so make the query
+a variable.
+
+```
+# searchspeed.ht
+{
+    Name: Search is fast
+    Request: {
+        URL: https://www.example.org/search_v2
+        Params: {
+            // This test can be parametrised with different query arguments.
+            q: "{{QUERY}}"
+        }
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ResponseTime", Lower: "1.1s"}
+    ]
+}
+```
+
+To test the results of a search it is convenient to have magic phrase which is
+used only in controlled places with: All these places (and none else should)
+turn up in the lsit of search results.
+
+```
+# searchresults.ht
+{
+    Name: Search produces sorted results
+    Request: {
+        URL: https://www.example.org/search_v2
+        Params: {
+            q: "open sesame"  // has defined usage on site
+        }
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: HTMLContains
+            Selector: ".results li.hit span.title"
+            Complete: true, InOrder: true
+            Text: [
+                "Ali Baba"
+                "Sample Document 1 (indexable)"
+                "Public Information 3"
+            ]
+        }
+    ]
+}
+```
+
+Combine these into a suite:
+
+```
+# search.suite
+{
+    Name: Test basic website search
+
+    Main: [
+        {File: "searchbox.ht"}
+        {File: "searchspeed.ht", Variables: {QUERY: ""}}
+        {File: "searchspeed.ht", Variables: {QUERY: "blaxyz"}}      // no search result
+        {File: "searchspeed.ht", Variables: {QUERY: "open sesame"}} // exaclty 3 results
+        {File: "searchspeed.ht", Variables: {QUERY: "product"}}     // lots of results
+        {File: "searchspeed.ht", Variables: {QUERY: "name"}}        // hundreds of results
+        {File: "searchresults.ht"}
+    ]
+}
+```
+
+You can store these four files individually or inside an "archive file" like
+[this one](https://github.com/vdobler/ht/blob/master/search.archive). Executing a
+suite inside an archive works like `ht exec search.suite@search.archive`.
 
 
 Documentation
@@ -276,7 +393,6 @@ The builtin help to cmd/ht is useful too:
     $ ht doc RawTest       #  show details of disk format of a test
     $ ht doc RawSuite      #  show details of disk format of a suite
 
-
 For details see the the godoc for reference:
 
 * Tests, Checks and their options:
@@ -295,7 +411,7 @@ How does it compare to ...
 
 In direct comparison to specialiesd tools like Selenium, Scalatest, JMeter,
 httpexpect, Gatlin etc. pp. ht will lack. Ht's ability to drive a headless browser
-is totally inferiour to Selenium/Webdriver/YourFaviriteTool. Ht's capabilities
+is totally inferiour to Selenium/Webdriver/YourFavoriteTool. Ht's capabilities
 in generating load is far worse than JMeter or Gatlin.
 
 Ht's strength lies in providing high-level checks suitable to detect problems
@@ -312,7 +428,7 @@ Yes
 Copyright
 ---------
 
-Copyright 2016 Volker Dobler
+Copyright 2017 Volker Dobler
 
 All rights reserved. Use of this source code is governed by
 a BSD-style license that can be found in the LICENSE file.
