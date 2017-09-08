@@ -140,7 +140,7 @@ func TestLoadRawSuite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
-	if testing.Verbose() {
+	if *verboseTest {
 		pp("RawSuite", raw)
 	}
 	if len(raw.RawTests()) != 6 {
@@ -153,7 +153,7 @@ func TestFancySuite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
-	if testing.Verbose() {
+	if *verboseTest {
 		pp("FancSuite", raw)
 	}
 }
@@ -166,7 +166,7 @@ func TestRawSuiteExecute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
-	if testing.Verbose() {
+	if *verboseTest {
 		for i, test := range raw.RawTests() {
 			fmt.Printf("%d. %q\n", i, test.Name)
 		}
@@ -178,21 +178,20 @@ func TestRawSuiteExecute(t *testing.T) {
 	}
 
 	s := raw.Execute(vars, nil, logger())
-	fmt.Println("STATUS ==", s.Status, s.Error)
 
-	if testing.Verbose() {
+	if *verboseTest {
+		fmt.Println("STATUS ==", s.Status, s.Error)
+
 		err = s.PrintReport(os.Stdout)
 		if err != nil {
 			t.Fatalf("Unexpected error %s", err)
 		}
-	}
 
-	for i, test := range s.Tests {
-		fmt.Printf("%d. %q ==> %s (%v)\n", i, test.Name,
-			test.Result.Status, test.Result.Error)
-	}
+		for i, test := range s.Tests {
+			fmt.Printf("%d. %q ==> %s (%v)\n", i, test.Name,
+				test.Result.Status, test.Result.Error)
+		}
 
-	if testing.Verbose() {
 		err = HTMLReport(".", s)
 		if err != nil {
 			t.Fatalf("Unexpected error %s", err)
@@ -479,9 +478,30 @@ func TestLoadRawLoadtest(t *testing.T) {
 	}
 
 	scenarios := raw.ToScenario(global)
-	for i, scen := range scenarios {
-		fmt.Printf("%d. %d%% %q (max %d threads)\n",
-			i, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads)
+	if *verboseTest {
+		for i, scen := range scenarios {
+			fmt.Printf("%d. %d%% %q (max %d threads)\n",
+				i, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads)
+		}
+	}
+
+	if s := scenarios[0]; s.Percentage != 15 ||
+		s.RawSuite.Name != "A SE Bot" ||
+		s.MaxThreads != 10 {
+		t.Errorf("Scenario 0:Got %#v", s)
+	}
+	if s := scenarios[1]; s.Percentage != 60 ||
+		s.RawSuite.Name != "Random Surfer" ||
+		s.MaxThreads != 15 {
+		t.Errorf("Scenario 1:Got %#v", s)
+	}
+	if s := scenarios[2]; s.Percentage != 25 ||
+		s.RawSuite.Name != "Geek searches" ||
+		s.MaxThreads != 5 {
+		t.Errorf("Scenario 2:Got %#v", s)
+	}
+	if n := len(scenarios); n > 3 {
+		t.Errorf("Got %d scenarios", n)
 	}
 }
 
@@ -521,8 +541,13 @@ func TestInlineTests(t *testing.T) {
 	}
 
 	s := rs.Execute(nil, nil, logger())
-	fmt.Println(s.Status)
-	fmt.Println(s.Tests[0].PrintReport(os.Stdout))
+	if *verboseTest {
+		fmt.Println(s.Status)
+		err = s.Tests[0].PrintReport(os.Stdout)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 type MyX struct {
@@ -552,7 +577,7 @@ func TestDecodeErrors(t *testing.T) {
 		if (err == nil) != tc.okay {
 			t.Errorf("%d: err=%s", i, err)
 		}
-		if testing.Verbose() {
+		if *verboseTest {
 			t.Log("Testcase", i, ": Error =", err)
 		}
 	}

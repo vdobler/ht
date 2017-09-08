@@ -92,18 +92,20 @@ func TestHTMLReport(t *testing.T) {
 				"http://www.example.org/auth",
 			},
 		},
-		Status:       ht.Pass,
-		Started:      time.Date(2017, 9, 8, 9, 48, 1, 0, time.UTC),
-		Duration:     210 * time.Millisecond,
-		FullDuration: 220 * time.Millisecond,
-		Tries:        1,
-		CheckResults: []ht.CheckResult{
-			{
-				Name:     "StatusCode",
-				JSON:     "{Expect: 200}",
-				Status:   ht.Pass,
-				Duration: 20 * time.Millisecond,
-				Error:    nil,
+		Result: ht.Result{
+			Status:       ht.Pass,
+			Started:      time.Date(2017, 9, 8, 9, 48, 1, 0, time.UTC),
+			Duration:     210 * time.Millisecond,
+			FullDuration: 220 * time.Millisecond,
+			Tries:        1,
+			CheckResults: []ht.CheckResult{
+				{
+					Name:     "StatusCode",
+					JSON:     "{Expect: 200}",
+					Status:   ht.Pass,
+					Duration: 20 * time.Millisecond,
+					Error:    nil,
+				},
 			},
 		},
 	}
@@ -137,27 +139,29 @@ func TestHTMLReport(t *testing.T) {
 			BodyStr:  "true",
 			BodyErr:  nil,
 		},
-		Status:       ht.Fail,
-		Started:      time.Date(2017, 9, 8, 9, 48, 1, 3, time.UTC),
-		Duration:     310 * time.Millisecond,
-		FullDuration: 320 * time.Millisecond,
-		Tries:        1,
-		CheckResults: []ht.CheckResult{
-			{
-				Name:     "StatusCode",
-				JSON:     "{Expect: 200}",
-				Status:   ht.Pass,
-				Duration: 30 * time.Millisecond,
-				Error:    nil,
-			},
-			{
-				Name:     "Body",
-				JSON:     `{Prefix: "super", Contains: "okay"}`,
-				Status:   ht.Fail,
-				Duration: 31 * time.Millisecond,
-				Error: ht.ErrorList{
-					fmt.Errorf("bad Prefix"),
-					fmt.Errorf("missing okay"),
+		Result: ht.Result{
+			Status:       ht.Fail,
+			Started:      time.Date(2017, 9, 8, 9, 48, 1, 3, time.UTC),
+			Duration:     310 * time.Millisecond,
+			FullDuration: 320 * time.Millisecond,
+			Tries:        1,
+			CheckResults: []ht.CheckResult{
+				{
+					Name:     "StatusCode",
+					JSON:     "{Expect: 200}",
+					Status:   ht.Pass,
+					Duration: 30 * time.Millisecond,
+					Error:    nil,
+				},
+				{
+					Name:     "Body",
+					JSON:     `{Prefix: "super", Contains: "okay"}`,
+					Status:   ht.Fail,
+					Duration: 31 * time.Millisecond,
+					Error: ht.ErrorList{
+						fmt.Errorf("bad Prefix"),
+						fmt.Errorf("missing okay"),
+					},
 				},
 			},
 		},
@@ -169,7 +173,7 @@ func TestHTMLReport(t *testing.T) {
 	test3 := &ht.Test{
 		Name:        "Test 3",
 		Description: "The third test",
-		Status:      ht.NotRun,
+		Result:      ht.Result{Status: ht.NotRun},
 	}
 	test3.SetMetadata("Filename", "test3.ht")
 
@@ -178,7 +182,7 @@ func TestHTMLReport(t *testing.T) {
 	test4 := &ht.Test{
 		Name:        "Test 4",
 		Description: "The fourth test",
-		Status:      ht.Skipped,
+		Result:      ht.Result{Status: ht.Skipped},
 	}
 	test4.SetMetadata("Filename", "test4.ht")
 

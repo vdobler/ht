@@ -5,6 +5,7 @@
 package suite
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -18,6 +19,8 @@ import (
 
 	"github.com/vdobler/ht/ht"
 )
+
+var verboseTest = flag.Bool("suite.verbose", false, "be verbose during testing")
 
 func waitHandler(w http.ResponseWriter, r *http.Request) {
 	mean, stdd := formValue(r, "mean"), formValue(r, "stdd")
@@ -249,7 +252,7 @@ func TestThroughput(t *testing.T) {
 	if err != nil {
 		fmt.Println("==> ", err.Error())
 	}
-	if testing.Verbose() {
+	if *verboseTest {
 		fmt.Println("")
 		fmt.Println("## ", failures.Name)
 		failures.PrintReport(os.Stdout)

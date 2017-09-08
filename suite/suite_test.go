@@ -17,7 +17,7 @@ import (
 )
 
 func logger() *log.Logger {
-	if testing.Verbose() {
+	if *verboseTest {
 		return log.New(os.Stdout, "", 0)
 	}
 
