@@ -176,6 +176,26 @@ func expandTrippleDots(args []string) []string {
 	return expanded
 }
 
+func filesystemFor(arg string) (suite.FileSystem, string) {
+	i := strings.Index(arg, "@")
+	if i == -1 {
+		return nil, arg // Not an archive, use real file system from OS.
+	}
+
+	blob, err := ioutil.ReadFile(arg[i+1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
+		os.Exit(9)
+	}
+	fs, err := suite.NewFileSystem(string(blob))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
+		os.Exit(9)
+	}
+	arg = arg[:i]
+	return fs, arg
+}
+
 func loadSuites(args []string) []*suite.RawSuite {
 	args = expandTrippleDots(args)
 
@@ -188,20 +208,7 @@ func loadSuites(args []string) []*suite.RawSuite {
 	exit := false
 	for _, arg := range args {
 		// Process arguments of the form <name>@<archive>.
-		var fs suite.FileSystem
-		if i := strings.Index(arg, "@"); i != -1 {
-			blob, err := ioutil.ReadFile(arg[i+1:])
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
-				os.Exit(9)
-			}
-			fs, err = suite.NewFileSystem(string(blob))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
-				os.Exit(9)
-			}
-			arg = arg[:i]
-		}
+		fs, arg := filesystemFor(arg)
 		s, err := suite.LoadRawSuite(arg, fs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot read suite %q: %s\n", arg, err)
@@ -324,7 +331,8 @@ func loadTests(args []string) []*suite.RawTest {
 	tt := []*suite.RawTest{}
 	// Input and setup tests from command line arguments.
 	for _, arg := range args {
-		test, err := suite.LoadRawTest(arg, nil)
+		fs, arg := filesystemFor(arg)
+		test, err := suite.LoadRawTest(arg, fs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot read test %q: %s\n", arg, err)
 			os.Exit(8)
