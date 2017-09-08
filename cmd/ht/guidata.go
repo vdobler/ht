@@ -545,29 +545,17 @@ func init() {
 	gui.RegisterType(ht.Test{}, gui.Typeinfo{
 		Doc: "Test is a single logical test which does one HTTP request and checks a number of\nChecks on the received Response.\n",
 		Field: map[string]gui.Fieldinfo{
-			"CheckResults": gui.Fieldinfo{
-				Doc: "// The individual checks.",
-			},
 			"Checks": gui.Fieldinfo{
 				Doc: "Checks contains all checks to perform on the response to the HTTP request.\n",
 			},
 			"Description": gui.Fieldinfo{
 				Doc: "Description what this test's intentions are.\n",
 			},
-			"Duration": gui.Fieldinfo{
-				Doc: "",
-			},
-			"Error": gui.Fieldinfo{
-				Doc: "",
-			},
 			"ExValues": gui.Fieldinfo{
 				Doc: "ExValues contains the result of the extractions.\n",
 			},
 			"Execution": gui.Fieldinfo{
 				Doc: "Execution controls the test execution.\n",
-			},
-			"FullDuration": gui.Fieldinfo{
-				Doc: "",
 			},
 			"Jar": gui.Fieldinfo{
 				Doc: "Jar is the cookie jar to use\n",
@@ -584,14 +572,8 @@ func init() {
 			"Response": gui.Fieldinfo{
 				Doc: "Response to the Request\n",
 			},
-			"Started": gui.Fieldinfo{
-				Doc: "",
-			},
-			"Status": gui.Fieldinfo{
-				Doc: "The following results are filled during Run. This should be collected into\nsomething like struct TestResult{...}.\n",
-			},
-			"Tries": gui.Fieldinfo{
-				Doc: "",
+			"Result": gui.Fieldinfo{
+				Doc: "Result contains details of a test run. It is filled by the Run method and\nExecuteChecks.\n",
 			},
 			"VarEx": gui.Fieldinfo{
 				Doc: "VarEx may be used to popultate variables from the response. TODO: Rename.\n// map[string]Extractor `json:\",omitempty\"`",

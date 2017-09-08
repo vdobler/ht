@@ -961,15 +961,9 @@ var typeDoc = map[string]string{
 		"\t// in files read in, e.g. for Request.Body = \"@vfile:/path/to/file\".\n" +
 		"\tVariables map[string]string \n" +
 		"\n" +
-		"\t// The following results are filled during Run.\n" +
-		"\t// This should be collected into something like struct TestResult{...}.\n" +
-		"\tStatus       Status        \n" +
-		"\tStarted      time.Time     \n" +
-		"\tError        error         \n" +
-		"\tDuration     time.Duration \n" +
-		"\tFullDuration time.Duration \n" +
-		"\tTries        int           \n" +
-		"\tCheckResults []CheckResult  // The individual checks.\n" +
+		"\t// Result contains details of a test run. It is filled by the Run\n" +
+		"\t// method and ExecuteChecks.\n" +
+		"\tResult Result\n" +
 		"\n" +
 		"\t// Log is the logger to use.\n" +
 		"\tLog interface {\n" +
