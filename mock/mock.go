@@ -242,8 +242,8 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	checkPrepareErr := faketest.PrepareChecks()
 	if checkPrepareErr == nil {
 		faketest.ExecuteChecks()
-		reportStatus = faketest.Status
-		reportError = faketest.Error
+		reportStatus = faketest.Result.Status
+		reportError = faketest.Result.Error
 	}
 	extractions := faketest.Extract()
 
@@ -307,15 +307,17 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BodyStr:  sentBody,
 			BodyErr:  nil,
 		},
-		Status:       reportStatus,
-		Error:        reportError,
-		Started:      started,
-		Duration:     time.Since(started),
-		FullDuration: time.Since(started),
-		Tries:        1,
-		CheckResults: faketest.CheckResults,
-		Variables:    scope,
-		ExValues:     faketest.ExValues,
+		Result: ht.Result{
+			Status:       reportStatus,
+			Error:        reportError,
+			Started:      started,
+			Duration:     time.Since(started),
+			FullDuration: time.Since(started),
+			Tries:        1,
+			CheckResults: faketest.Result.CheckResults,
+		},
+		Variables: scope,
+		ExValues:  faketest.ExValues,
 	}
 
 	// We want to analyse if this mock was called, so we need a way to
@@ -325,7 +327,7 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	report.SetMetadata("Filename", scope["MOCK_NAME"])
 
 	if checkPrepareErr != nil {
-		report.Status, report.Error = ht.Bogus, checkPrepareErr
+		report.Result.Status, report.Result.Error = ht.Bogus, checkPrepareErr
 	}
 
 	m.Monitor <- report
@@ -568,8 +570,10 @@ func Provide(mocks []*Mock, logger Log) (Control, error) {
 		body, _ := ioutil.ReadAll(r.Body)
 		u := r.URL.String()
 		report := &ht.Test{
-			Name:   "Not Found " + u,
-			Status: ht.Fail,
+			Name: "Not Found " + u,
+			Result: ht.Result{
+				Status: ht.Fail,
+			},
 			Request: ht.Request{
 				Method:   r.Method,
 				URL:      u,
@@ -653,8 +657,10 @@ func Analyse(ctrl Control) []*ht.Test {
 				Method: m.Method,
 				URL:    m.URL,
 			},
-			Status: ht.Error,
-			Error:  fmt.Errorf("mock %q was not called", m.Name),
+			Result: ht.Result{
+				Status: ht.Error,
+				Error:  fmt.Errorf("mock %q was not called", m.Name),
+			},
 		}
 		r := append(*ctrl.results, errored)
 		ctrl.results = &r

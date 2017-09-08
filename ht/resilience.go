@@ -223,11 +223,11 @@ func (r Resilience) collectErrors(t *Test, suite *Collection) error {
 	} else {
 		defer file.Close()
 		fmt.Fprintf(file, "#### List of failed Reslience checks in test %q started at %s:\n",
-			t.Name, t.Started)
+			t.Name, t.Result.Started)
 	}
 
 	for _, t := range suite.Tests {
-		if t.Status != Pass {
+		if t.Result.Status != Pass {
 			failures = append(failures, t.Name)
 			if file == nil {
 				continue
@@ -238,7 +238,7 @@ func (r Resilience) collectErrors(t *Test, suite *Collection) error {
 			if err != nil {
 				fmt.Fprintf(file, "# %q: Cannot serialize: %q\n", t.Name, err.Error())
 			} else {
-				fmt.Fprintf(file, "# %q: %s\n", t.Name, t.Status)
+				fmt.Fprintf(file, "# %q: %s\n", t.Name, t.Result.Status)
 				fmt.Fprintln(file, string(data))
 				fmt.Fprintln(file)
 			}

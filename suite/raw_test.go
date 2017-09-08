@@ -188,7 +188,8 @@ func TestRawSuiteExecute(t *testing.T) {
 	}
 
 	for i, test := range s.Tests {
-		fmt.Printf("%d. %q ==> %s (%v)\n", i, test.Name, test.Status, test.Error)
+		fmt.Printf("%d. %q ==> %s (%v)\n", i, test.Name,
+			test.Result.Status, test.Result.Error)
 	}
 
 	if testing.Verbose() {

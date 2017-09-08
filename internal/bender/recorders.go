@@ -41,7 +41,7 @@ func logMessage(l *log.Logger, e Event) {
 	case StartRequestEvent:
 		log.Print("Running ", e.Test.Name)
 	case EndRequestEvent:
-		log.Printf("Done %s %s %s", e.Test.Response.Duration, e.Test.Status, e.Test.Name)
+		log.Printf("Done %s %s %s", e.Test.Response.Duration, e.Test.Result.Status, e.Test.Name)
 	}
 }
 

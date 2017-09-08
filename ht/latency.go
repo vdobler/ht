@@ -155,8 +155,8 @@ func (L *Latency) Execute(t *Test) error {
 				wg2.Add(1)
 				ex.Run()
 				results <- latencyResult{
-					status:   ex.Status,
-					started:  ex.Started,
+					status:   ex.Result.Status,
+					started:  ex.Result.Started,
 					duration: ex.Response.Duration,
 					execBy:   id,
 				}

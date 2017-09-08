@@ -85,15 +85,15 @@ func (sc *Scenario) setup(logger *log.Logger) *Suite {
 	executor := func(test *ht.Test) error {
 		i++
 		test.SetMetadata("SeqNo", fmt.Sprintf("Setup-%02d", i))
-		if test.Status == ht.Bogus || test.Status == ht.Skipped {
+		if test.Result.Status == ht.Bogus || test.Result.Status == ht.Skipped {
 			return nil
 		}
 		if !sc.RawSuite.tests[i-1].IsEnabled() {
-			test.Status = ht.Skipped
+			test.Result.Status = ht.Skipped
 			return nil
 		}
 		test.Run()
-		if test.Status > ht.Pass {
+		if test.Result.Status > ht.Pass {
 			return ErrAbortExecution
 		}
 		return nil
@@ -114,11 +114,11 @@ func (sc *Scenario) teardown(logger *log.Logger) *Suite {
 	executor := func(test *ht.Test) error {
 		i++
 		test.SetMetadata("SeqNo", fmt.Sprintf("Teardown-%02d", i))
-		if test.Status == ht.Bogus || test.Status == ht.Skipped {
+		if test.Result.Status == ht.Bogus || test.Result.Status == ht.Skipped {
 			return nil
 		}
 		if !sc.RawSuite.tests[i-1].IsEnabled() {
-			test.Status = ht.Skipped
+			test.Result.Status = ht.Skipped
 			return nil
 		}
 		test.Run()
@@ -207,7 +207,7 @@ func (p *pool) newThread(stop chan bool, logger *log.Logger) {
 				test.SetMetadata("Identifier", ti)
 
 				if !p.Scenario.RawSuite.tests[t-1].IsEnabled() {
-					test.Status = ht.Skipped
+					test.Result.Status = ht.Skipped
 					return nil
 				}
 				select {
@@ -948,19 +948,19 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 
 		// Data Recorder
 		d := TestData{
-			Started:      e.Test.Started,
-			Status:       e.Test.Status,
+			Started:      e.Test.Result.Started,
+			Status:       e.Test.Result.Status,
 			ReqDuration:  time.Duration(e.Test.Response.Duration),
-			TestDuration: time.Duration(e.Test.Duration),
+			TestDuration: time.Duration(e.Test.Result.Duration),
 			ID:           e.Test.GetMetadata("Identifier").(TestIdentifier),
-			Error:        e.Test.Error,
+			Error:        e.Test.Result.Error,
 			Wait:         time.Duration(e.Wait),
 			Overage:      time.Duration(e.Overage),
 		}
 		*data = append(*data, d)
 
 		// Test Recorder
-		if e.Test.Status >= from {
+		if e.Test.Result.Status >= from {
 			*tests = append(*tests, e.Test)
 		}
 
@@ -972,7 +972,7 @@ func newRecorder(data *[]TestData, tests *[]*ht.Test, from ht.Status, w *csv.Wri
 		cnt++
 
 		// StatusRing
-		sr.Store(e.Test.Status)
+		sr.Store(e.Test.Result.Status)
 	}
 }
 

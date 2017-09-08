@@ -51,11 +51,11 @@ func (s *Collection) ExecuteConcurrent(maxConcurrent int, jar *cookiejar.Jar) er
 
 	el := ErrorList{}
 	for _, test := range s.Tests {
-		if test.Status > s.Status {
-			s.Status = test.Status
+		if test.Result.Status > s.Status {
+			s.Status = test.Result.Status
 		}
-		if test.Status > Pass {
-			el = append(el, test.Error)
+		if test.Result.Status > Pass {
+			el = append(el, test.Result.Error)
 		}
 	}
 

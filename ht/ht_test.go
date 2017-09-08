@@ -68,11 +68,12 @@ func TestSkippingChecks(t *testing.T) {
 			test.Checks[1] = &sc1
 		}
 		test.Run()
-		if test.CheckResults[0].Status != tc.fstatus ||
-			test.CheckResults[1].Status != tc.sstatus {
+		if test.Result.CheckResults[0].Status != tc.fstatus ||
+			test.Result.CheckResults[1].Status != tc.sstatus {
 			t.Errorf("%d,%t: %d against %d/%d, got %s/%s want %s/%s", i, tc.pointer, tc.code,
 				tc.first, tc.second,
-				test.CheckResults[0].Status, test.CheckResults[1].Status,
+				test.Result.CheckResults[0].Status,
+				test.Result.CheckResults[1].Status,
 				tc.fstatus, tc.sstatus)
 		}
 	}
@@ -379,11 +380,11 @@ func TestPolling(t *testing.T) {
 			},
 		}
 		test.Run()
-		if got := test.Status; got != tc.want {
-			t.Errorf("%d: got %s, want %s (error=%s)", i, got, tc.want, test.Error)
+		if got := test.Result.Status; got != tc.want {
+			t.Errorf("%d: got %s, want %s (error=%s)", i, got, tc.want, test.Result.Error)
 		}
-		if tc.want == Pass && test.Error != nil {
-			t.Errorf("%d: got non-nil eror: %+v", i, test.Error)
+		if tc.want == Pass && test.Result.Error != nil {
+			t.Errorf("%d: got non-nil eror: %+v", i, test.Result.Error)
 		}
 	}
 }
@@ -413,8 +414,8 @@ func TestClientTimeout(t *testing.T) {
 		t.Errorf("Took too long: %s", d)
 	}
 
-	if test.Status != Error {
-		t.Errorf("Got status %s, want Error", test.Status)
+	if test.Result.Status != Error {
+		t.Errorf("Got status %s, want Error", test.Result.Status)
 	}
 }
 

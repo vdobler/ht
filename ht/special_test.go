@@ -171,14 +171,14 @@ func TestFilePseudorequest(t *testing.T) {
 				t.Fatalf("Unexpected error: %s <%T>", err, err)
 			}
 
-			got := test.Status.String()
+			got := test.Result.Status.String()
 			if got != expect {
 				sc := 0
 				if test.Response.Response != nil {
 					sc = test.Response.Response.StatusCode
 				}
 				t.Errorf("Got %s, want %s.\nError=%v\nStatusCode=%d\nBody=%q\n",
-					got, expect, test.Error, sc, test.Response.BodyStr)
+					got, expect, test.Result.Error, sc, test.Response.BodyStr)
 			}
 		})
 	}
@@ -219,10 +219,10 @@ echo "FOO_VAR=$FOO_VAR"
 	if err := test.Run(); err != nil {
 		t.Fatalf("Unexpected error %s <%T>", err, err)
 	}
-	if test.Status != Pass {
+	if test.Result.Status != Pass {
 		test.PrintReport(os.Stdout)
 		fmt.Printf("Response-Body=%q\n", test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
+		t.Errorf("Got test status %s (want Pass)", test.Result.Status)
 	}
 }
 
@@ -243,10 +243,10 @@ func testBashNonzeroExit(t *testing.T) {
 	if err := test.Run(); err != nil {
 		t.Fatalf("Unexpected error %s <%T>", err, err)
 	}
-	if test.Status != Pass {
+	if test.Result.Status != Pass {
 		test.PrintReport(os.Stdout)
 		fmt.Printf("Response-Body=%q\n", test.Response.BodyStr)
-		t.Errorf("Got test status %s (want Pass)", test.Status)
+		t.Errorf("Got test status %s (want Pass)", test.Result.Status)
 	}
 }
 
@@ -269,8 +269,8 @@ func testBashTimeout(t *testing.T) {
 	if err := test.Run(); err != nil {
 		t.Fatalf("Unexpected error %s <%T>", err, err)
 	}
-	if test.Status != Pass {
-		t.Errorf("Got %s, want Pass", test.Status)
+	if test.Result.Status != Pass {
+		t.Errorf("Got %s, want Pass", test.Result.Status)
 		fmt.Printf("Response-Body=%q\n", test.Response.BodyStr)
 		test.PrintReport(os.Stdout)
 	}
@@ -291,11 +291,11 @@ func testBashError(t *testing.T) {
 	if err := test.Run(); err != nil {
 		t.Fatalf("Unexpected error %s <%T>", err, err)
 	}
-	if test.Status != Error {
+	if test.Result.Status != Error {
 		t.Errorf("Got %s, want Error\nBody = %q\nHeader = %v",
-			test.Status, test.Response.BodyStr,
+			test.Result.Status, test.Response.BodyStr,
 			test.Response.Response.Header)
-		e := test.Error.Error()
+		e := test.Result.Error.Error()
 		if !strings.HasPrefix(e, "open /tmp/somehere-nonexisten/bashscript") ||
 			!strings.HasSuffix(e, "no such file or directory") {
 			t.Errorf("Got wrong error %s", e)
@@ -338,10 +338,10 @@ func TestSQLPseudorequest(t *testing.T) {
 				fmt.Println(test.Response.BodyStr)
 				fmt.Println("└──────────────────────────────┘")
 			}
-			if test.Status != Pass {
+			if test.Result.Status != Pass {
 				test.PrintReport(os.Stdout)
 				fmt.Println(test.Response.BodyStr)
-				t.Errorf("Got test status %s (want Pass)", test.Status)
+				t.Errorf("Got test status %s (want Pass)", test.Result.Status)
 			}
 		})
 	}
@@ -351,7 +351,7 @@ func TestSQLPseudorequest(t *testing.T) {
 			if err := test.Run(); err != nil {
 				t.Fatalf("Unexpected error %s <%T>", err, err)
 			}
-			if got := test.Status.String(); got != test.Description {
+			if got := test.Result.Status.String(); got != test.Description {
 				test.PrintReport(os.Stdout)
 				fmt.Println(test.Response.BodyStr)
 				t.Errorf("Got test status %s (want %s)", got, test.Description)

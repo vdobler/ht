@@ -69,10 +69,10 @@ func (ETag) Execute(t *Test) error {
 	}
 
 	second.Run()
-	if second.Status == Fail {
+	if second.Result.Status == Fail {
 		return errETagIgnored
 	}
-	return second.Error
+	return second.Result.Error
 }
 
 // etags returns "ETag" and "Etag" headers from h. There must be an other solution.

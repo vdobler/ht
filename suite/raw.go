@@ -216,7 +216,7 @@ func loadMixins(mixs []string, dir string, fs FileSystem) ([]*Mixin, error) {
 
 // ToTest produces a ht.Test from a raw test rt.
 func (rt *RawTest) ToTest(variables scope.Variables) (*ht.Test, error) {
-	bogus := &ht.Test{Status: ht.Bogus}
+	bogus := &ht.Test{Result: ht.Result{Status: ht.Bogus}}
 	replacer := variables.Replacer()
 
 	// Make substituted a copy of rt with variables substituted.
@@ -504,21 +504,21 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 		}
 
 		switch {
-		case test.Status == ht.Skipped:
+		case test.Result.Status == ht.Skipped:
 			fallthrough
 		case !rs.tests[i-1].IsEnabled():
 			fallthrough
 		case setupfailures && isSetupOrMain():
-			test.Status = ht.Skipped
+			test.Result.Status = ht.Skipped
 			return nil
 		}
 
-		if test.Status != ht.Bogus {
+		if test.Result.Status != ht.Bogus {
 			// Run only non-bogus tests.
 			test.Execution.Verbosity = rs.Verbosity
 			test.Run()
 		}
-		if test.Status > ht.Pass && isSetup() {
+		if test.Result.Status > ht.Pass && isSetup() {
 			setupfailures = true
 		}
 
@@ -530,10 +530,10 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 	status := ht.NotRun
 	errors := ht.ErrorList{}
 	for i := 0; i < N-teardown && i < len(suite.Tests); i++ {
-		if ts := suite.Tests[i].Status; ts > status {
+		if ts := suite.Tests[i].Result.Status; ts > status {
 			status = ts
 		}
-		if err := suite.Tests[i].Error; err != nil {
+		if err := suite.Tests[i].Result.Error; err != nil {
 			errors = append(errors, err)
 		}
 	}

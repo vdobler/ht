@@ -71,8 +71,8 @@ func TestETag(t *testing.T) {
 			want = "Check ETag: " + tc.err.Error()
 		}
 		got := ""
-		if test.Error != nil {
-			got = test.Error.Error()
+		if test.Result.Error != nil {
+			got = test.Result.Error.Error()
 		}
 
 		if got != want {

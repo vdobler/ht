@@ -68,8 +68,8 @@ func (w W3CValidHTML) Execute(t *Test) error {
 	if err != nil {
 		return CantCheck{err}
 	}
-	if test.Status != Pass {
-		return CantCheck{test.Error}
+	if test.Result.Status != Pass {
+		return CantCheck{test.Result.Error}
 	}
 
 	// Interprete response from validator
@@ -552,10 +552,10 @@ func (c *Links) Execute(t *Test) error {
 	suite.ExecuteConcurrent(conc, nil)
 	if suite.Status != Pass {
 		for _, test := range suite.Tests {
-			if test.Status == Error || test.Status == Bogus {
+			if test.Result.Status == Error || test.Result.Status == Bogus {
 				broken = append(broken, fmt.Errorf("%s  -->  %s",
-					test.Request.URL, test.Error))
-			} else if test.Status == Fail {
+					test.Request.URL, test.Result.Error))
+			} else if test.Result.Status == Fail {
 				broken = append(broken, fmt.Errorf("%s  -->  %d",
 					test.Request.URL,
 					test.Response.Response.StatusCode))

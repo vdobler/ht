@@ -145,11 +145,11 @@ func TestMockSuite(t *testing.T) {
 	}
 
 	for i, test := range s.Tests {
-		if test.Status != mockSuiteResults[i].status {
+		if test.Result.Status != mockSuiteResults[i].status {
 			t.Errorf("Test %d: Got status %s, want %s",
-				i, test.Status, mockSuiteResults[i].status)
+				i, test.Result.Status, mockSuiteResults[i].status)
 		}
-		if e := fmt.Sprintln(test.Error); e != mockSuiteResults[i].err {
+		if e := fmt.Sprintln(test.Result.Error); e != mockSuiteResults[i].err {
 			t.Errorf("Test %d: Got error %q, want %q",
 				i, e, mockSuiteResults[i].err)
 		}

@@ -203,10 +203,10 @@ func TestSessionLatency(t *testing.T) {
 					test.Run()
 
 					// shared tests pass, indiv fail
-					if kind == "shared" && test.Status != Pass {
+					if kind == "shared" && test.Result.Status != Pass {
 						test.PrintReport(os.Stdout)
 						t.Errorf("Unexpected failure for shared sessions")
-					} else if kind == "indiv" && test.Status != Fail {
+					} else if kind == "indiv" && test.Result.Status != Fail {
 						test.PrintReport(os.Stdout)
 						t.Errorf("Missing failure for indiv sessions")
 					}

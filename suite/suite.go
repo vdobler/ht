@@ -125,8 +125,8 @@ func (suite *Suite) Iterate(executor Executor) {
 		test, err := rt.ToTest(testScope)
 		test.SetMetadata("Filename", rt.File.Name)
 		if err != nil {
-			test.Status = ht.Bogus
-			test.Error = err
+			test.Result.Status = ht.Bogus
+			test.Result.Error = err
 		}
 		test.Jar = suite.Jar
 		test.Log = suite.Log
@@ -140,8 +140,8 @@ func (suite *Suite) Iterate(executor Executor) {
 			mockScope["MOCK_NAME"] = m.Basename()
 			mk, err := m.ToMock(mockScope, true)
 			if err != nil {
-				test.Status = ht.Bogus
-				test.Error = err
+				test.Result.Status = ht.Bogus
+				test.Result.Error = err
 				break
 			}
 			mocks[i] = mk
@@ -149,8 +149,8 @@ func (suite *Suite) Iterate(executor Executor) {
 
 		ctrl, merr := mock.Provide(mocks, suite.Log)
 		if merr != nil {
-			test.Status = ht.Bogus
-			test.Error = merr
+			test.Result.Status = ht.Bogus
+			test.Result.Error = merr
 		}
 
 		// Execute the test (if not bogus).
@@ -159,15 +159,15 @@ func (suite *Suite) Iterate(executor Executor) {
 		if merr == nil {
 			analyseMocks(test, ctrl)
 		}
-		if test.Status == ht.Pass {
+		if test.Result.Status == ht.Pass {
 			suite.updateVariables(test)
 		}
 
 		suite.Tests = append(suite.Tests, test)
-		if test.Status > overall {
-			overall = test.Status
+		if test.Result.Status > overall {
+			overall = test.Result.Status
 		}
-		if err := test.Error; err != nil {
+		if err := test.Result.Error; err != nil {
 			errors = append(errors, err)
 		}
 
@@ -219,9 +219,9 @@ func analyseMocks(test *ht.Test, ctrl mock.Control) {
 	case ht.Pass:
 		// Fine!
 	case ht.Fail, ht.Error:
-		if test.Status <= ht.Pass { // actually equal
-			test.Status = ht.Fail
-			test.Error = fmt.Errorf("Main test passed, but mock invocations failed: %s",
+		if test.Result.Status <= ht.Pass { // actually equal
+			test.Result.Status = ht.Fail
+			test.Result.Error = fmt.Errorf("Main test passed, but mock invocations failed: %s",
 				subsuite.Error)
 		}
 	case ht.Bogus:
@@ -235,7 +235,7 @@ func analyseMocks(test *ht.Test, ctrl mock.Control) {
 }
 
 func (suite *Suite) updateVariables(test *ht.Test) {
-	if test.Status != ht.Pass {
+	if test.Result.Status != ht.Pass {
 		return
 	}
 
@@ -260,19 +260,19 @@ func (suite *Suite) updateVariables(test *ht.Test) {
 }
 
 func (suite *Suite) updateStatusAndErr(test *ht.Test) {
-	if test.Status > suite.Status {
-		suite.Status = test.Status
+	if test.Result.Status > suite.Status {
+		suite.Status = test.Result.Status
 	}
 
-	if test.Error == nil {
+	if test.Result.Error == nil {
 		return
 	}
 	if suite.Error == nil {
-		suite.Error = ht.ErrorList{test.Error}
+		suite.Error = ht.ErrorList{test.Result.Error}
 	} else if el, ok := suite.Error.(ht.ErrorList); ok {
-		suite.Error = append(el, test.Error)
+		suite.Error = append(el, test.Result.Error)
 	} else {
-		suite.Error = ht.ErrorList{suite.Error, test.Error}
+		suite.Error = ht.ErrorList{suite.Error, test.Result.Error}
 	}
 
 }
@@ -280,7 +280,7 @@ func (suite *Suite) updateStatusAndErr(test *ht.Test) {
 // Stats counts the test results of s.
 func (suite *Suite) Stats() (notRun int, skipped int, passed int, failed int, errored int, bogus int) {
 	for _, tr := range suite.Tests {
-		switch tr.Status {
+		switch tr.Result.Status {
 		case ht.NotRun:
 			notRun++
 		case ht.Skipped:
@@ -295,7 +295,7 @@ func (suite *Suite) Stats() (notRun int, skipped int, passed int, failed int, er
 			bogus++
 		default:
 			panic(fmt.Sprintf("No such Status %d in suite %q test %q",
-				tr.Status, suite.Name, tr.Name))
+				tr.Result.Status, suite.Name, tr.Name))
 		}
 	}
 	return

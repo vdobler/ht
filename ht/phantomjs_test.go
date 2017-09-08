@@ -363,9 +363,9 @@ func TestScreenshotPass(t *testing.T) {
 
 	if suite.Status != Pass {
 		for i, test := range suite.Tests {
-			if test.Status != Pass {
+			if test.Result.Status != Pass {
 				t.Errorf("%d. %s, %s: %s",
-					i, test.Name, test.Status, test.Error)
+					i, test.Name, test.Result.Status, test.Result.Error)
 			}
 		}
 	}
@@ -454,9 +454,9 @@ func TestScreenshotFail(t *testing.T) {
 
 	if suite.Status != Fail {
 		for i, test := range suite.Tests {
-			if test.Status != Fail {
+			if test.Result.Status != Fail {
 				t.Errorf("%d. %s, %s: %s",
-					i, test.Name, test.Status, test.Error)
+					i, test.Name, test.Result.Status, test.Result.Error)
 			}
 		}
 	}
@@ -541,9 +541,9 @@ func TestRenderedHTMLPassing(t *testing.T) {
 
 	if suite.Status != Pass {
 		for i, test := range suite.Tests {
-			if test.Status != Pass {
+			if test.Result.Status != Pass {
 				t.Errorf("%d. %s, %s: %s",
-					i, test.Name, test.Status, test.Error)
+					i, test.Name, test.Result.Status, test.Result.Error)
 			}
 		}
 	}
@@ -597,13 +597,13 @@ func TestRenderingTime(t *testing.T) {
 		}
 	}
 
-	if test := suite.Tests[0]; test.Status != Fail {
+	if test := suite.Tests[0]; test.Result.Status != Fail {
 		t.Errorf("%s, %s: %s",
-			test.Name, test.Status, test.Error)
+			test.Name, test.Result.Status, test.Result.Error)
 	}
-	if test := suite.Tests[1]; test.Status != Pass {
+	if test := suite.Tests[1]; test.Result.Status != Pass {
 		t.Errorf("%s, %s: %s",
-			test.Name, test.Status, test.Error)
+			test.Name, test.Result.Status, test.Result.Error)
 	}
 }
 
@@ -634,9 +634,9 @@ func TestRenderingTime2(t *testing.T) {
 	if err1 != nil {
 		t.Errorf("Unexpected error %s (%#v)", err1, err1)
 	}
-	if test1.Status != Pass || test1.Error != nil {
+	if test1.Result.Status != Pass || test1.Result.Error != nil {
 		t.Errorf("Want status=Pass and nil error, got %s, %s <%T>",
-			test1.Status, test1.Error, test1.Error)
+			test1.Result.Status, test1.Result.Error, test1.Result.Error)
 	}
 
 	test2 := &Test{
@@ -655,9 +655,9 @@ func TestRenderingTime2(t *testing.T) {
 	if err2 != nil {
 		t.Errorf("Unexpected error %s (%#v)", err2, err2)
 	}
-	if test2.Status != Fail || test2.Error == nil {
+	if test2.Result.Status != Fail || test2.Result.Error == nil {
 		t.Errorf("Want status=Fail and error, got %s, %s <%T>",
-			test2.Status, test2.Error, test2.Error)
+			test2.Result.Status, test2.Result.Error, test2.Result.Error)
 	}
 
 }
@@ -735,9 +735,9 @@ func TestFancyScreenshotPass(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error %s (%#v)", err, err)
 	}
-	if test.Status != Pass || test.Error != nil {
+	if test.Result.Status != Pass || test.Result.Error != nil {
 		t.Errorf("Want status=Pass and nil error, got %s, %s <%T>",
-			test.Status, test.Error, test.Error)
+			test.Result.Status, test.Result.Error, test.Result.Error)
 	}
 }
 
@@ -773,7 +773,7 @@ func TestFancyScreenshotFail(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error %s (%#v)", err, err)
 	}
-	if test.Status != Fail || test.Error == nil {
-		t.Errorf("Want status=Fail and non-nil error, got %s, %s <%T>", test.Status, err, err)
+	if test.Result.Status != Fail || test.Result.Error == nil {
+		t.Errorf("Want status=Fail and non-nil error, got %s, %s <%T>", test.Result.Status, err, err)
 	}
 }

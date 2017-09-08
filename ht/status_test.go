@@ -34,8 +34,8 @@ func TestStatusCode(t *testing.T) {
 		}
 
 		test.Run()
-		if test.Status != Pass {
-			t.Errorf("Unexpected error for %d: %s", code, test.Error)
+		if test.Result.Status != Pass {
+			t.Errorf("Unexpected error for %d: %s", code, test.Result.Error)
 		}
 		if *verboseTest {
 			test.PrintReport(os.Stdout)
@@ -63,13 +63,13 @@ func TestNoServerError(t *testing.T) {
 		test.Run()
 
 		if code >= 500 {
-			if test.Status != Fail {
+			if test.Result.Status != Fail {
 				t.Errorf("Missing failure for %d", code)
 			}
 
 		} else {
-			if test.Status != Pass {
-				t.Errorf("Unexpected error for %d: %s", code, test.Error)
+			if test.Result.Status != Pass {
+				t.Errorf("Unexpected error for %d: %s", code, test.Result.Error)
 			}
 		}
 		if *verboseTest {

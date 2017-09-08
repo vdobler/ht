@@ -116,7 +116,7 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		test := val.Current.(ht.Test)
 		test.Response = ht.Response{}
 		test.ExValues = make(map[string]ht.Extraction)
-		test.CheckResults = nil
+		test.Result.CheckResults = nil
 
 		// Serialize to JSON as this honours json:",omitempty" and uses
 		// custom marshallers for CheckList (and ExtractorMap ???)
@@ -364,8 +364,8 @@ func updateHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 
 func executeChecks(val *gui.Value) {
 	test := val.Current.(ht.Test)
-	test.Status = ht.NotRun
-	test.Error = nil
+	test.Result.Status = ht.NotRun
+	test.Result.Error = nil
 	prepErr := test.PrepareChecks()
 	if prepErr != nil {
 		augmentPrepareMessages(prepErr, val)
@@ -373,7 +373,7 @@ func executeChecks(val *gui.Value) {
 		return
 	}
 
-	test.Status = ht.NotRun
+	test.Result.Status = ht.NotRun
 	test.ExecuteChecks()
 	augmentMessages(&test, val)
 
@@ -420,10 +420,10 @@ func displayHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Reques
 
 func augmentMessages(test *ht.Test, val *gui.Value) {
 	// Error and Status
-	status := strings.ToLower(test.Status.String())
-	text := test.Status.String()
-	if test.Error != nil {
-		text += ": " + test.Error.Error()
+	status := strings.ToLower(test.Result.Status.String())
+	text := test.Result.Status.String()
+	if test.Result.Error != nil {
+		text += ": " + test.Result.Error.Error()
 	}
 	msg := []gui.Message{{
 		Type: status,
@@ -433,7 +433,7 @@ func augmentMessages(test *ht.Test, val *gui.Value) {
 	val.Messages["Test.Response"] = msg // because this is in focus after Execute
 
 	// Checks from CheckResults
-	for i, cr := range test.CheckResults {
+	for i, cr := range test.Result.CheckResults {
 		path := fmt.Sprintf("Test.Checks.%d", i)
 		status := strings.ToLower(cr.Status.String())
 		text := cr.Status.String()
@@ -446,7 +446,7 @@ func augmentMessages(test *ht.Test, val *gui.Value) {
 		}}
 	}
 
-	augmentPrepareMessages(test.Error, val)
+	augmentPrepareMessages(test.Result.Error, val)
 }
 
 func augmentPrepareMessages(err error, val *gui.Value) {

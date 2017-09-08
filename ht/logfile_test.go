@@ -63,12 +63,12 @@ func TestLogfile(t *testing.T) {
 		t.Fatalf("Unexpected error: %+v", err)
 	}
 
-	if test.Status != Fail || len(test.CheckResults) != len(test.Checks) {
-		t.Fatalf("Unexpected test status %s or %d != %d", test.Status,
-			len(test.CheckResults), len(test.Checks))
+	if test.Result.Status != Fail || len(test.Result.CheckResults) != len(test.Checks) {
+		t.Fatalf("Unexpected test status %s or %d != %d", test.Result.Status,
+			len(test.Result.CheckResults), len(test.Checks))
 	}
 
-	for i, cr := range test.CheckResults {
+	for i, cr := range test.Result.CheckResults {
 		if (i%2 == 0 && cr.Status != Pass) || (i%2 == 1 && cr.Status != Fail) {
 			t.Errorf("%d: %s -> %s", i, cr.JSON, cr.Status)
 		}
@@ -93,8 +93,8 @@ func testLogfileRemote(t *testing.T, ts *httptest.Server, wd string, m string, l
 	if err != nil {
 		t.Fatalf("%s file: Unexpected error: %+v", m, err)
 	}
-	if test.Status != Pass {
-		t.Fatalf("%s file, Unexpected status: %s; %v", m, test.Status, test.Error)
+	if test.Result.Status != Pass {
+		t.Fatalf("%s file, Unexpected status: %s; %v", m, test.Result.Status, test.Result.Error)
 	}
 }
 

@@ -48,12 +48,12 @@ var htmlCheckTmpl = `{{define "CHECK"}}
 var htmlTestTmpl = `{{define "TEST"}}
 {{$seqno := identifier .}}
 <div class="toggle">
-  <input type="checkbox" value="selected" {{if gt .Status 2}}checked{{end}}
+  <input type="checkbox" value="selected" {{if gt .Result.Status 2}}checked{{end}}
          id="test-{{$seqno}}" class="toggle-input">
   <label for="test-{{$seqno}}" class="toggle-label">
     <h2>{{$seqno}}:
-      <span class="{{ToUpper .Status.String}}">{{ToUpper .Status.String}}</span> 
-      "{{.Name}}" <small>(<code>{{filename .}}</code>, {{niceduration .FullDuration}})</small>
+      <span class="{{ToUpper .Result.Status.String}}">{{ToUpper .Result.Status.String}}</span> 
+      "{{.Name}}" <small>(<code>{{filename .}}</code>, {{niceduration .Result.FullDuration}})</small>
     </h2>
   </label>
   <div class="toggle-content">
@@ -71,19 +71,19 @@ var htmlTestTmpl = `{{define "TEST"}}
       </code></div>
       <div class="summary">
         <pre class="description">{{.Description}}</pre>
-	Started: {{nicetime .Started}}<br/>
-	Full Duration: {{niceduration .FullDuration}} <br/>
-        Number of tries: {{.Tries}} <br/>
-        Request Duration: {{niceduration .Duration}} <br/>
-        {{if .Error}}<br/><strong>Error:</strong> {{errlist .Error}}<br/>{{end}}
+	Started: {{nicetime .Result.Started}}<br/>
+	Full Duration: {{niceduration .Result.FullDuration}} <br/>
+        Number of tries: {{.Result.Tries}} <br/>
+        Request Duration: {{niceduration .Result.Duration}} <br/>
+        {{if .Result.Error}}<br/><strong>Error:</strong> {{errlist .Result.Error}}<br/>{{end}}
       </div>
       {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
       {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
       {{if .Request.SentParams}}{{template "FORMDATA" dict "Params" .Request.SentParams "SeqNo" $seqno}}{{end}}
       {{if or .Variables .ExValues}}{{template "VARIABLES" .}}{{end}}
-      {{if eq .Status 2 3 4 5}}{{if .CheckResults}}
+      {{if eq .Result.Status 2 3 4 5}}{{if .Result.CheckResults}}
         <div class="checks">
-          {{range $i, $e := .CheckResults}}
+          {{range $i, $e := .Result.CheckResults}}
 {{template "CHECK" dict "Check" . "SeqNo" $seqno "N" $i}}
           {{end}}
         </div>
@@ -750,23 +750,23 @@ func (s *Suite) JUnit4XML() (string, error) {
 		tc := Testcase{
 			Name:       test.Name,
 			Classname:  s.Name,
-			Time:       float64(test.FullDuration) / 1e9,
-			Assertions: len(test.CheckResults),
+			Time:       float64(test.Result.FullDuration) / 1e9,
+			Assertions: len(test.Result.CheckResults),
 			SystemOut:  SysOut{Data: sysout},
 		}
 
-		switch test.Status {
+		switch test.Result.Status {
 		case ht.NotRun, ht.Skipped:
 			tc.Skipped = &struct{}{}
 			skipped++
 		case ht.Pass:
 			passed++
 		case ht.Fail:
-			tc.Failure = &ErrorMsg{Message: test.Error.Error()}
+			tc.Failure = &ErrorMsg{Message: test.Result.Error.Error()}
 			failed++
 		case ht.Error, ht.Bogus:
 			errored++
-			tc.Error = &ErrorMsg{Message: test.Error.Error()}
+			tc.Error = &ErrorMsg{Message: test.Result.Error.Error()}
 		default:
 			panic("Oooops")
 		}

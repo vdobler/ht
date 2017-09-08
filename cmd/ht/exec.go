@@ -491,7 +491,7 @@ func (a *accumulator) update(s *suite.Suite) {
 	}
 
 	for _, t := range s.Tests {
-		switch t.Status {
+		switch t.Result.Status {
 		case ht.NotRun:
 			a.Notrun++
 		case ht.Skipped:

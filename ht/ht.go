@@ -216,15 +216,9 @@ type Test struct {
 	// in files read in, e.g. for Request.Body = "@vfile:/path/to/file".
 	Variables map[string]string `json:",omitempty"`
 
-	// The following results are filled during Run.
-	// This should be collected into something like struct TestResult{...}.
-	Status       Status        `json:"-"`
-	Started      time.Time     `json:"-"`
-	Error        error         `json:"-"`
-	Duration     time.Duration `json:"-"`
-	FullDuration time.Duration `json:"-"`
-	Tries        int           `json:"-"`
-	CheckResults []CheckResult `json:"-"` // The individual checks.
+	// Result contains details of a test run. It is filled by the Run
+	// method and ExecuteChecks.
+	Result Result
 
 	// Log is the logger to use.
 	Log interface {
@@ -235,6 +229,17 @@ type Test struct {
 
 	// metadata allows to attach additional data to a Test.
 	metadata map[string]interface{}
+}
+
+// Result contains information about an (executed) Test.
+type Result struct {
+	Status       Status        `json:"-"` // Status of the Test.
+	Started      time.Time     `json:"-"` // Start time.
+	Error        error         `json:"-"` // Error/Failures
+	Duration     time.Duration `json:"-"` // Duration of last execution/last try
+	FullDuration time.Duration `json:"-"` // Full duration of all tries.
+	Tries        int           `json:"-"` // Number of tries executed.
+	CheckResults []CheckResult `json:"-"` // The individual checks result.
 }
 
 // Disable disables t by setting the maximum number of tries to -1.
@@ -497,14 +502,14 @@ func (t *Test) AsJSON() ([]byte, error) {
 // request, problems reading the body or any failing checks do not trigger a
 // non-nil return value.
 func (t *Test) Run() error {
-	t.Started = time.Now()
-	defer func() { t.FullDuration = time.Since(t.Started) }()
+	t.Result.Started = time.Now()
+	defer func() { t.Result.FullDuration = time.Since(t.Result.Started) }()
 
 	t.infof("Running")
 
 	if t.Execution.Tries < 0 {
 		// This test is deliberately skipped.
-		t.Status = Skipped
+		t.Result.Status = Skipped
 		return nil
 	} else if t.Execution.Tries == 0 {
 		t.Execution.Tries = 1
@@ -513,12 +518,12 @@ func (t *Test) Run() error {
 	// Prepare checks and request. Both may declare the Test to be bogus.
 	err := t.PrepareChecks()
 	if err != nil {
-		t.Status, t.Error = Bogus, err
+		t.Result.Status, t.Result.Error = Bogus, err
 		return err
 	}
 	err = t.prepareRequest()
 	if err != nil {
-		t.Status, t.Error = Bogus, err
+		t.Result.Status, t.Result.Error = Bogus, err
 		return err
 	}
 
@@ -531,7 +536,7 @@ func (t *Test) Run() error {
 	start := time.Now()
 	try := 1
 	for ; try <= t.Execution.Tries; try++ {
-		t.Tries = try
+		t.Result.Tries = try
 		if try > 1 {
 			t.infof("Retry %d", try)
 			if t.Execution.Wait > 0 {
@@ -541,24 +546,24 @@ func (t *Test) Run() error {
 		}
 		t.resetRequest()
 		// Clear status and error; is updated in executeChecks.
-		t.Status, t.Error = NotRun, nil
+		t.Result.Status, t.Result.Error = NotRun, nil
 		t.Response = Response{}
 		t.execute()
-		if t.Status == Pass {
+		if t.Result.Status == Pass {
 			break
 		}
 	}
-	t.Duration = time.Since(start)
+	t.Result.Duration = time.Since(start)
 	if t.Execution.Tries > 1 {
-		if t.Status == Pass {
-			t.debugf("Trying succeeded after %d tries", t.Tries)
+		if t.Result.Status == Pass {
+			t.debugf("Trying succeeded after %d tries", t.Result.Tries)
 		} else {
 			t.debugf("Trying failed all %d tries", t.Execution.Tries)
 		}
 	}
 
-	t.infof("Result: %s (%s %s) %d tries", t.Status,
-		t.Duration, t.Response.Duration, t.Tries)
+	t.infof("Result: %s (%s %s) %d tries", t.Result.Status,
+		t.Result.Duration, t.Response.Duration, t.Result.Tries)
 
 	if t.Execution.PostSleep > 0 {
 		t.debugf("PostSleep %s", t.Execution.PostSleep)
@@ -581,13 +586,13 @@ func (t *Test) execute() {
 	case "sql":
 		err = t.executeSQL()
 		if _, ok := err.(bogusSQLQuery); ok {
-			t.Status = Bogus
-			t.Error = err
+			t.Result.Status = Bogus
+			t.Result.Error = err
 			return
 		}
 	default:
-		t.Status = Bogus
-		t.Error = fmt.Errorf("ht: unrecognized URL scheme %q", t.Request.Request.URL.Scheme)
+		t.Result.Status = Bogus
+		t.Result.Error = fmt.Errorf("ht: unrecognized URL scheme %q", t.Request.Request.URL.Scheme)
 		return
 	}
 	if err == nil {
@@ -598,11 +603,11 @@ func (t *Test) execute() {
 			}
 			t.ExecuteChecks()
 		} else {
-			t.Status = Pass
+			t.Result.Status = Pass
 		}
 	} else {
-		t.Status = Error
-		t.Error = err
+		t.Result.Status = Error
+		t.Result.Error = err
 	}
 }
 
@@ -642,14 +647,14 @@ func (t *Test) PrepareChecks() error {
 	}
 
 	// Prepare CheckResults.
-	t.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
+	t.Result.CheckResults = make([]CheckResult, len(t.Checks)) // Zero value is NotRun
 	for i, c := range t.Checks {
-		t.CheckResults[i].Name = NameOf(c)
+		t.Result.CheckResults[i].Name = NameOf(c)
 		buf, err := json.Marshal(c)
 		if err != nil {
 			buf = []byte(err.Error())
 		}
-		t.CheckResults[i].JSON = string(buf)
+		t.Result.CheckResults[i].JSON = string(buf)
 	}
 
 	return nil
@@ -966,25 +971,25 @@ func (t *Test) ExecuteChecks() {
 	for i, ck := range t.Checks {
 		start := time.Now()
 		err := ck.Execute(t)
-		t.CheckResults[i].Duration = time.Since(start)
-		t.CheckResults[i].Error = t.CheckResults[i].Error.Append(err)
+		t.Result.CheckResults[i].Duration = time.Since(start)
+		t.Result.CheckResults[i].Error = t.Result.CheckResults[i].Error.Append(err)
 		if err != nil {
 			t.debugf("Check %d %s Fail: %s", i+1, NameOf(ck), err)
 			if _, ok := err.(MalformedCheck); ok {
-				t.CheckResults[i].Status = Bogus
+				t.Result.CheckResults[i].Status = Bogus
 			} else {
-				t.CheckResults[i].Status = Fail
+				t.Result.CheckResults[i].Status = Fail
 			}
 			var errlist ErrorList
-			if el, ok := t.Error.(ErrorList); ok {
+			if el, ok := t.Result.Error.(ErrorList); ok {
 				errlist = el
 			}
-			for _, pce := range t.CheckResults[i].Error {
+			for _, pce := range t.Result.CheckResults[i].Error {
 				errlist = append(errlist, fmt.Errorf("Check %s: %s",
-					t.CheckResults[i].Name, pce))
+					t.Result.CheckResults[i].Name, pce))
 			}
 			if len(errlist) != 0 {
-				t.Error = errlist
+				t.Result.Error = errlist
 			}
 
 			// Abort needles checking if all went wrong.
@@ -1000,19 +1005,19 @@ func (t *Test) ExecuteChecks() {
 					t.debugf("skipping remaining tests as bad StatusCode %s", t.Response.Response.Status)
 					// Clear Status and Error field as these might be
 					// populated from a prior try run of the test.
-					for j := 1; j < len(t.CheckResults); j++ {
-						t.CheckResults[j].Status = Skipped
-						t.CheckResults[j].Error = nil
+					for j := 1; j < len(t.Result.CheckResults); j++ {
+						t.Result.CheckResults[j].Status = Skipped
+						t.Result.CheckResults[j].Error = nil
 					}
 					done = true
 				}
 			}
 		} else {
-			t.CheckResults[i].Status = Pass
+			t.Result.CheckResults[i].Status = Pass
 			t.debugf("Check %d %s: Pass", i+1, NameOf(ck))
 		}
-		if t.CheckResults[i].Status > t.Status {
-			t.Status = t.CheckResults[i].Status
+		if t.Result.CheckResults[i].Status > t.Result.Status {
+			t.Result.Status = t.Result.CheckResults[i].Status
 		}
 		if done {
 			break
