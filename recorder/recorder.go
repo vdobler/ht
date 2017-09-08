@@ -24,7 +24,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -350,19 +349,6 @@ func process(events chan Event, opts Options) {
 	}
 }
 
-func printHeader(which string, header http.Header) {
-	hs := []string{}
-	for h := range header {
-		hs = append(hs, h)
-	}
-	sort.Strings(hs)
-	fmt.Println(which)
-	for _, h := range hs {
-		fmt.Printf("%20s :  %v\n", h, header[h])
-	}
-	fmt.Println()
-}
-
 // Test is a reduced version of ht.Test suitable for serialization to JSON.
 type Test struct {
 	Name        string
@@ -536,11 +522,7 @@ func writeTest(test *Test, filename string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filename, data, 0666)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ioutil.WriteFile(filename, data, 0666)
 }
 
 // TODO: combine with writeTest
@@ -549,11 +531,7 @@ func writeSuite(suite Suite, filename string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filename, data, 0666)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ioutil.WriteFile(filename, data, 0666)
 }
 
 // ----------------------------------------------------------------------------
