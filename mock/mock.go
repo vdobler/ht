@@ -84,9 +84,9 @@ type Mock struct {
 	//     C     4
 	ParseForm bool
 
-	// VarEx contains variable extraction definitions which are applied
+	// DataExtraction contains variable extraction definitions which are applied
 	// to the incomming request.
-	VarEx ht.ExtractorMap
+	DataExtraction ht.ExtractorMap
 
 	// Checks are applied to to the received HTTP request. This is done
 	// by conveting the request to a HTTP response and populating a synthetic
@@ -100,7 +100,8 @@ type Mock struct {
 	Variables scope.Variables
 
 	// Map is used to set variable values depending on other variables.
-	// It is executed after VarEx but before constructing the response.
+	// It is executed after DataExtraction but before constructing the
+	// response.
 	Map []Mapping
 
 	// Monitor is used to report invocations if this mock.
@@ -237,7 +238,7 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BodyStr:  string(body),
 			BodyErr:  bodyerr,
 		},
-		VarEx: m.VarEx,
+		DataExtraction: m.DataExtraction,
 	}
 	checkPrepareErr := faketest.PrepareChecks()
 	if checkPrepareErr == nil {

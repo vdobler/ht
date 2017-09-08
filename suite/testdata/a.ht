@@ -10,7 +10,7 @@
     Checks: [
         {Check: "StatusCode", Expect: 200, "comment": "222 is not good"},
     ],
-    VarEx: {
+    DataExtraction: {
         WAZ: {Extractor: "JSONExtractor", Element: "foo.bar.zip"},
     },
     Variables: {

@@ -19,7 +19,7 @@
     //   *  in the Variables section of the Suite (see showcase.suite)
     //   *  on the command line (with -D or Dfile)
     //   *  dynamicaly read from a HTTP response; some variants shown below
-    VarEx: {
+    DataExtraction: {
         // Populate SESSION variable from a cookie.
         "SESSION": {
             Extractor: "CookieExtractor", Name: "sessionid"

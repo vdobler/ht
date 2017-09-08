@@ -363,7 +363,7 @@ func TestMarshalExtractorMap(t *testing.T) {
 
 func TestPopulateExtractorMap(t *testing.T) {
 	j := []byte(`{
-VarEx: {
+DataExtraction: {
     Foo: {
         Extractor: "HTMLExtractor",
         Selector: "form input[type=password]",
@@ -382,14 +382,14 @@ VarEx: {
 	}
 
 	ve := struct {
-		VarEx ExtractorMap
+		DataExtraction ExtractorMap
 	}{}
 
 	err = populate.Strict(&ve, raw)
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	em := ve.VarEx
+	em := ve.DataExtraction
 
 	if len(em) != 2 {
 		t.Fatalf("Wrong len, got %d\n%#v", len(em), em)

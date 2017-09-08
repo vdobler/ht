@@ -945,8 +945,8 @@ var typeDoc = map[string]string{
 		"\t// Checks contains all checks to perform on the response to the HTTP request.\n" +
 		"\tChecks CheckList\n" +
 		"\n" +
-		"\t// VarEx may be used to popultate variables from the response. TODO: Rename.\n" +
-		"\tVarEx ExtractorMap // map[string]Extractor \n" +
+		"\t// DataExtraction may be used to extract data from the Response.\n" +
+		"\tDataExtraction ExtractorMap \n" +
 		"\n" +
 		"\t// Execution controls the test execution.\n" +
 		"\tExecution Execution \n" +
@@ -1073,9 +1073,9 @@ var typeDoc = map[string]string{
 		"\t//     C     4\n" +
 		"\tParseForm bool\n" +
 		"\n" +
-		"\t// VarEx contains variable extraction definitions which are applied\n" +
+		"\t// DataExtraction contains variable extraction definitions which are applied\n" +
 		"\t// to the incomming request.\n" +
-		"\tVarEx ht.ExtractorMap\n" +
+		"\tDataExtraction ht.ExtractorMap\n" +
 		"\n" +
 		"\t// Checks are applied to to the received HTTP request. This is done\n" +
 		"\t// by conveting the request to a HTTP response and populating a synthetic\n" +
@@ -1089,7 +1089,8 @@ var typeDoc = map[string]string{
 		"\tVariables scope.Variables\n" +
 		"\n" +
 		"\t// Map is used to set variable values depending on other variables.\n" +
-		"\t// It is executed after VarEx but before constructing the response.\n" +
+		"\t// It is executed after DataExtraction but before constructing the\n" +
+		"\t// response.\n" +
 		"\tMap []Mapping\n" +
 		"\n" +
 		"\t// Monitor is used to report invocations if this mock.\n" +

@@ -24,11 +24,12 @@ type Extractor interface {
 	Extract(t *Test) (string, error)
 }
 
-// Extract all values defined by VarEx from the successfully executed Test t.
+// Extract all values defined by DataExtraction from the successfully executed
+// Test t.
 func (t *Test) Extract() map[string]string {
 	data := make(map[string]string)
 	t.Result.Extractions = make(map[string]Extraction)
-	for varname, ex := range t.VarEx {
+	for varname, ex := range t.DataExtraction {
 		value, err := ex.Extract(t)
 		if err != nil {
 			t.Result.Extractions[varname] = Extraction{Error: err}

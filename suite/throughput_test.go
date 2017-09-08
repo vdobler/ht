@@ -147,7 +147,7 @@ var tpSuiteFast = `
     Name: Setup for fast
     Request: { URL: "{{URL}}" }
     Checks: [ {Check: "StatusCode", Expect: 200} ]
-    VarEx: {
+    DataExtraction: {
         DYNAMICVAL: {Extractor: "SetVariable", To: "foo123"}
     }
 }

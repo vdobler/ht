@@ -200,8 +200,8 @@ type Test struct {
 	// Checks contains all checks to perform on the response to the HTTP request.
 	Checks CheckList
 
-	// VarEx may be used to popultate variables from the response. TODO: Rename.
-	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
+	// DataExtraction may be used to extract data from the Response.
+	DataExtraction ExtractorMap `json:",omitempty"`
 
 	// Execution controls the test execution.
 	Execution Execution `json:",omitempty"`
@@ -387,7 +387,7 @@ outer:
 //       FollowRdr  Last wins
 //       Chunked    Last wins
 //     Checks       Append all checks
-//     VarEx        Merge, same keys must have same value
+//     DataExtraction Merge, same keys must have same value
 //     TestVars     Use values from first only.
 //     Poll
 //       Max        Use largest
@@ -418,7 +418,7 @@ func Merge(tests ...*Test) (*Test, error) {
 
 	m.Request.Params = make(url.Values)
 	m.Request.Header = make(http.Header)
-	m.VarEx = make(map[string]Extractor)
+	m.DataExtraction = make(map[string]Extractor)
 	for _, t := range tests {
 		err := mergeRequest(&m.Request, t.Request)
 		if err != nil {
@@ -440,11 +440,11 @@ func Merge(tests ...*Test) (*Test, error) {
 		m.Execution.PreSleep += t.Execution.PreSleep
 		m.Execution.InterSleep += t.Execution.InterSleep
 		m.Execution.PostSleep += t.Execution.PostSleep
-		for name, value := range t.VarEx {
-			if old, ok := m.VarEx[name]; ok && old != value {
+		for name, value := range t.DataExtraction {
+			if old, ok := m.DataExtraction[name]; ok && old != value {
 				return &m, fmt.Errorf("wont overwrite extractor for %s", name)
 			}
-			m.VarEx[name] = value
+			m.DataExtraction[name] = value
 		}
 	}
 

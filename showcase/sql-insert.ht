@@ -27,10 +27,10 @@
         {Check: "JSON", Element: "RowsAffected.Value", Equals: 3}
     ]
 
-    # Variable Extraction (VarEx) allows to extract values from the response
+    # Data Extraction allows to extract values from the response
     # and store them in a (global) variable which can be used in a
     # subsequent request.
-    VarEx: {
+    DataExtraction: {
         LAST_INSERT_ID: {Extractor: "JSONExtractor", Element: "LastInsertId.Value"}
     }
 }

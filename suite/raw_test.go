@@ -110,8 +110,8 @@ func TestRawTestToTest(t *testing.T) {
 	}
 
 	// Checks and Extractions
-	if len(test.Checks) != 1 || len(test.VarEx) != 1 {
-		t.Errorf("Got %d checks and %d extractions", len(test.Checks), len(test.VarEx))
+	if len(test.Checks) != 1 || len(test.DataExtraction) != 1 {
+		t.Errorf("Got %d checks and %d extractions", len(test.Checks), len(test.DataExtraction))
 	} else {
 		if sc, ok := test.Checks[0].(*ht.StatusCode); !ok {
 			t.Errorf("Bad type %T", test.Checks[0])
@@ -120,11 +120,11 @@ func TestRawTestToTest(t *testing.T) {
 				t.Errorf("Got StatusCode.Expect = %d", got)
 			}
 		}
-		if ex, ok := test.VarEx["WAZ"].(*ht.JSONExtractor); !ok {
-			t.Errorf("Bad type %T", test.VarEx["WAZ"])
+		if ex, ok := test.DataExtraction["WAZ"].(*ht.JSONExtractor); !ok {
+			t.Errorf("Bad type %T", test.DataExtraction["WAZ"])
 		} else {
 			if got := ex.Element; got != "foo.bar.zip" {
-				t.Errorf("Got (VarEx[WAZ].(JSONExtractor)).Path = %q", got)
+				t.Errorf("Got (VDataExtraction[WAZ].(JSONExtractor)).Path = %q", got)
 			}
 		}
 	}
@@ -222,7 +222,7 @@ func TestChecklist(t *testing.T) {
         }
         {Check: "Body", GreaterThan: 12.3}
     ]
-    VarEx: {
+    DataExtraction: {
         NAME: {Extractor: "JSONExtractor", Element: "foo.1"}
         SESSION: {Extractor: "CookieExtractor", Name: "JSESSIONID"} 
     }
@@ -310,22 +310,22 @@ func TestChecklist(t *testing.T) {
 	// Extractions
 	//
 
-	if len(test.VarEx) != 2 {
-		t.Fatalf("Got %d extractions, want 2", len(test.VarEx))
+	if len(test.DataExtraction) != 2 {
+		t.Fatalf("Got %d extractions, want 2", len(test.DataExtraction))
 	}
 
 	// NAME
-	json, ok := test.VarEx["NAME"].(*ht.JSONExtractor)
+	json, ok := test.DataExtraction["NAME"].(*ht.JSONExtractor)
 	if !ok {
-		t.Errorf("Wrong type, got %T", test.VarEx["NAME"])
+		t.Errorf("Wrong type, got %T", test.DataExtraction["NAME"])
 	} else if json.Element != "foo.1" {
 		t.Errorf("Got %s, want foo.1", json.Element)
 	}
 
 	// SESSION
-	cookie, ok := test.VarEx["SESSION"].(*ht.CookieExtractor)
+	cookie, ok := test.DataExtraction["SESSION"].(*ht.CookieExtractor)
 	if !ok {
-		t.Errorf("Wrong type, got %T", test.VarEx["SESSION"])
+		t.Errorf("Wrong type, got %T", test.DataExtraction["SESSION"])
 	} else if cookie.Name != "JSESSIONID" {
 		t.Errorf("Got %s, want JSESSIONID", cookie.Name)
 	}

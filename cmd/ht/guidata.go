@@ -548,6 +548,9 @@ func init() {
 			"Checks": gui.Fieldinfo{
 				Doc: "Checks contains all checks to perform on the response to the HTTP request.\n",
 			},
+			"DataExtraction": gui.Fieldinfo{
+				Doc: "DataExtraction may be used to extract data from the Response.\n",
+			},
 			"Description": gui.Fieldinfo{
 				Doc: "Description what this test's intentions are.\n",
 			},
@@ -571,9 +574,6 @@ func init() {
 			},
 			"Result": gui.Fieldinfo{
 				Doc: "Result contains details of a test run. It is filled by the Run method and\nExecuteChecks.\n",
-			},
-			"VarEx": gui.Fieldinfo{
-				Doc: "VarEx may be used to popultate variables from the response. TODO: Rename.\n// map[string]Extractor `json:\",omitempty\"`",
 			},
 			"Variables": gui.Fieldinfo{
 				Doc: "Variables contains name/value-pairs used for variable substitution in files read\nin, e.g. for Request.Body = \"@vfile:/path/to/file\".\n",

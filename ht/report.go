@@ -71,8 +71,8 @@ var DefaultTestTemplate = `{{define "TEST"}}{{ToUpper .Result.Status.String}}: {
 {{if eq .Result.Status 2 3 4 5}}  {{if .Result.CheckResults}}Checks:
 {{range $i, $c := .Result.CheckResults}}{{printf "    %2d. " $i}}{{template "CHECK" .}}
 {{end}}{{end}}{{end}}{{if .Variables}}  Variables:
-{{range $k, $v := .Variables}}{{printf "    %s == %q\n" $k $v}}{{end}}{{end}}{{if .ExValues}}  Extracted:
-{{range $k, $v := .ExValues}}{{if $v.Error}}{{printf "    %s : %s\n" $k $v.Error}}{{else}}{{printf "    %s == %q\n" $k $v.Value}}{{end}}{{end}}{{end}}{{end}}`
+{{range $k, $v := .Variables}}{{printf "    %s == %q\n" $k $v}}{{end}}{{end}}{{if .Result.Extractions}}  Extracted:
+{{range $k, $v := .Result.Extractions}}{{if $v.Error}}{{printf "    %s : %s\n" $k $v.Error}}{{else}}{{printf "    %s == %q\n" $k $v.Value}}{{end}}{{end}}{{end}}{{end}}`
 
 var ShortTestTemplate = `{{define "SHORTTEST"}}{{.Result.Status.String}}: {{.Name}}{{if .Request.Request}}
     {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{range .Response.Redirections}}
@@ -80,7 +80,7 @@ var ShortTestTemplate = `{{define "SHORTTEST"}}{{.Result.Status.String}}: {{.Nam
     {{.Response.Response.Proto}} {{.Response.Response.Status}}{{end}}{{if gt .Result.Status 3}}
     Error: {{.Result.Error}}{{end}}{{if gt .Result.Status 2}}{{if .Result.CheckResults}}{{range .Result.CheckResults}}{{if gt .Status 2}}
         {{.Status}} {{.Name}}{{range .Error}}
-            {{.Error}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .ExValues}}{{range $k, $v := .ExValues}}{{if $v.Error}}
+            {{.Error}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .Result.Extractions}}{{range $k, $v := .Result.Extractions}}{{if $v.Error}}
     {{printf "Extraction of %s : %s\n" $k $v.Error}}{{end}}{{end}}{{end}}
 {{end}}`
 

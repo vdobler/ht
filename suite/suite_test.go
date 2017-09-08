@@ -223,7 +223,7 @@ func TestVariableExtraction(t *testing.T) {
 {
     Name: Test of variable extraction
     Request: { URL: "file:///etc/passwd" }
-    VarEx: {
+    DataExtraction: {
         A: {Extractor: "SetVariable", To: "fixed-A" }
         B: {Extractor: "SetVariable", To: "{{B}} {{B}}" }
         D: {Extractor: "SetVariable", To: "D={{C}}" }
