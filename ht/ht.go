@@ -203,9 +203,6 @@ type Test struct {
 	// VarEx may be used to popultate variables from the response. TODO: Rename.
 	VarEx ExtractorMap // map[string]Extractor `json:",omitempty"`
 
-	// ExValues contains the result of the extractions.
-	ExValues map[string]Extraction `json:",omitempty"`
-
 	// Execution controls the test execution.
 	Execution Execution `json:",omitempty"`
 
@@ -233,13 +230,14 @@ type Test struct {
 
 // Result contains information about an (executed) Test.
 type Result struct {
-	Status       Status        `json:"-"` // Status of the Test.
-	Started      time.Time     `json:"-"` // Start time.
-	Error        error         `json:"-"` // Error/Failures
-	Duration     time.Duration `json:"-"` // Duration of last execution/last try
-	FullDuration time.Duration `json:"-"` // Full duration of all tries.
-	Tries        int           `json:"-"` // Number of tries executed.
-	CheckResults []CheckResult `json:"-"` // The individual checks result.
+	Status       Status                `json:"-"` // Status of the Test.
+	Started      time.Time             `json:"-"` // Start time.
+	Error        error                 `json:"-"` // Error/Failures
+	Duration     time.Duration         `json:"-"` // Duration of last execution/last try
+	FullDuration time.Duration         `json:"-"` // Full duration of all tries.
+	Tries        int                   `json:"-"` // Number of tries executed.
+	CheckResults []CheckResult         `json:"-"` // The individual checks result.
+	Extractions  map[string]Extraction `json:"-"` // Result of DataExtractions
 }
 
 // Disable disables t by setting the maximum number of tries to -1.

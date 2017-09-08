@@ -948,9 +948,6 @@ var typeDoc = map[string]string{
 		"\t// VarEx may be used to popultate variables from the response. TODO: Rename.\n" +
 		"\tVarEx ExtractorMap // map[string]Extractor \n" +
 		"\n" +
-		"\t// ExValues contains the result of the extractions.\n" +
-		"\tExValues map[string]Extraction \n" +
-		"\n" +
 		"\t// Execution controls the test execution.\n" +
 		"\tExecution Execution \n" +
 		"\n" +

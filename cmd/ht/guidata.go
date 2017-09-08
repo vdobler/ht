@@ -551,9 +551,6 @@ func init() {
 			"Description": gui.Fieldinfo{
 				Doc: "Description what this test's intentions are.\n",
 			},
-			"ExValues": gui.Fieldinfo{
-				Doc: "ExValues contains the result of the extractions.\n",
-			},
 			"Execution": gui.Fieldinfo{
 				Doc: "Execution controls the test execution.\n",
 			},

@@ -27,17 +27,17 @@ type Extractor interface {
 // Extract all values defined by VarEx from the successfully executed Test t.
 func (t *Test) Extract() map[string]string {
 	data := make(map[string]string)
-	t.ExValues = make(map[string]Extraction)
+	t.Result.Extractions = make(map[string]Extraction)
 	for varname, ex := range t.VarEx {
 		value, err := ex.Extract(t)
 		if err != nil {
-			t.ExValues[varname] = Extraction{Error: err}
+			t.Result.Extractions[varname] = Extraction{Error: err}
 			t.errorf("Problems extracting %q in %q: %s",
 				varname, t.Name, err)
 			continue
 		}
 		data[varname] = value
-		t.ExValues[varname] = Extraction{Value: value}
+		t.Result.Extractions[varname] = Extraction{Value: value}
 	}
 	return data
 }

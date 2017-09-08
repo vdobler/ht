@@ -115,7 +115,7 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		// Clear stuff from test whcih is not part of a Hjson test definition.
 		test := val.Current.(ht.Test)
 		test.Response = ht.Response{}
-		test.ExValues = make(map[string]ht.Extraction)
+		test.Result.Extractions = make(map[string]ht.Extraction)
 		test.Result.CheckResults = nil
 
 		// Serialize to JSON as this honours json:",omitempty" and uses

@@ -21,7 +21,7 @@ func registerGUITypes() {
 	setFieldSpecials(
 		ht.Test{},
 		"Jar,Log",
-		"Error,Duration,FullDuration,Tries,CheckResults,ExValues",
+		"Result",
 		"Description",
 	)
 

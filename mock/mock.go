@@ -315,9 +315,9 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			FullDuration: time.Since(started),
 			Tries:        1,
 			CheckResults: faketest.Result.CheckResults,
+			Extractions:  faketest.Result.Extractions,
 		},
 		Variables: scope,
-		ExValues:  faketest.ExValues,
 	}
 
 	// We want to analyse if this mock was called, so we need a way to

@@ -80,7 +80,7 @@ var htmlTestTmpl = `{{define "TEST"}}
       {{if .Request.Request}}{{template "REQUEST" .}}{{end}}
       {{if .Response.Response}}{{template "RESPONSE" .}}{{end}}
       {{if .Request.SentParams}}{{template "FORMDATA" dict "Params" .Request.SentParams "SeqNo" $seqno}}{{end}}
-      {{if or .Variables .ExValues}}{{template "VARIABLES" .}}{{end}}
+      {{if or .Variables .Result.Extractions}}{{template "VARIABLES" .}}{{end}}
       {{if eq .Result.Status 2 3 4 5}}{{if .Result.CheckResults}}
         <div class="checks">
           {{range $i, $e := .Result.CheckResults}}
@@ -211,8 +211,8 @@ var htmlVariablesTmpl = `{{define "VARIABLES"}}
             <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
           {{end}}
         {{end}}
-        {{if .ExValues}}Extractions:<br/>
-          {{range $k, $v := .ExValues}}
+        {{if .Result.Extractions}}Extractions:<br/>
+          {{range $k, $v := .Result.Extractions}}
             <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
           {{end}}
         {{end}}
