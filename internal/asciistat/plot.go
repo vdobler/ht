@@ -235,7 +235,7 @@ func niceloglabel(x int) string {
 		return fmt.Sprintf("%dk", x/1e3)
 	} else if x < 1e9 {
 		return fmt.Sprintf("%dM", x/1e6)
-	} else if x < 1e6 {
+	} else if x < 1e12 {
 		return fmt.Sprintf("%dG", x/1e9)
 	}
 	return fmt.Sprintf("%dT", x/1e12)
