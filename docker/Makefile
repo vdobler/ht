@@ -4,8 +4,8 @@
 
 SHELL=/bin/bash
 
-image: ht ca-certificates.crt zoneinfo.tar.gz
-	docker build -t vodo/ht:latest .
+image:
+	cd .. && docker build -f docker/Dockerfile -t vodo/ht:latest .
 
 tag: image
 	v=$$(git describe) \
@@ -32,22 +32,4 @@ push: tag
 	&& v="$$(echo "$$v" | sed "s/\.[0-9]\+$$//")" \
 	&& docker push vodo/ht:$$v \
 
-ht:
-	cd ../cmd/ht && \
-	go run gendoc.go && \
-	go run gengui.go && \
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ht -ldflags "-X main.version=$$(git describe) -s"
-	cp ../cmd/ht/ht .
-	goupx --strip-binary ht
-
-ca-certificates.crt:
-	curl -o $@ https://curl.haxx.se/ca/cacert.pem
-
-zoneinfo.tar.gz:
-	tar cfz $@ /usr/share/zoneinfo
-
-
-clean:
-	rm -f ht ca-certificates.crt zoneinfo.tar.gz
-
-.PHONY: clean image tag push
+.PHONY: image tag push
