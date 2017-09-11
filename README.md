@@ -34,6 +34,8 @@ ht is not the jack of all trades in testing web applications:
 * Simulating different browsers is not done.
 * Simulating interactions in a browser is not done.
 * Load testing capabilities are very limited.
+* Recording click-paths in a web application is not the intended way
+  of producing tests.
 
 
 Installation
@@ -51,6 +53,8 @@ Installing ht should be simple if Go 1.8 and git are available and working:
 
 If you want to run checks on rendered HTML pages you need a local installation
 of (PhantomJS)[http://phantomjs.org] in version >= 2.0.
+
+(Ht vendors it dependencies _except_ dependencies from golang.org/x/...).
 
 
 Nomenclature
@@ -255,9 +259,11 @@ Please refer to the help (`ht help gui`) for more details.
 How to write proper tests?
 --------------------------
 
-The main starting point to write proper automated test is to have a good
-model of how your application should work, what it is expected to do:
-What is the proper response to a certain stimulus (a request)?
+The main starting point to write proper automated test with h is to have a
+good model of how your application should work, what it is expected to do:
+What is the proper response to a certain stimulus, a certain a request?
+(A simple "If I click here and there and enter this an click taht button
+then I see the result" is not enough.)
 
 Let's assume you have to check that the Search functionality "works properly".
 Break down this generic "works properly" into testable parts, e.g. like this:
@@ -282,8 +288,8 @@ Tests for this could look like this:
         {Check: "StatusCode", Expect: 200}
         {Check: "ContentType", Is: "text/html"}
 
-        // Start looking for the search box. Become more and more specific.
-	// This makes tracking problems easier.
+        // Start looking for the search box. Become more and more specific,
+	// this makes tracking problems easier.
 	{Check: "HTMLTag", Selector: "form.search"}
 	{Check: "HTMLTag", Selector: "form.search input[type=search\"]"}
 	{Check: "HTMLTag", Selector: "form.search input[type=search][placeholder=\"search website\"]"}
@@ -295,7 +301,7 @@ Tests for this could look like this:
 ```
 
 Speed of search must be tested for different query terms, so make the query
-a variable.
+a variable:
 
 ```
 # searchspeed.ht
@@ -316,7 +322,7 @@ a variable.
 ```
 
 To test the results of a search it is convenient to have magic phrase which is
-used only in controlled places with: All these places (and none else should)
+used only in controlled places with: All these places (and none else) should
 turn up in the lsit of search results.
 
 ```
@@ -373,7 +379,7 @@ Documentation
 
 For a start have a look at the 
 
-Tutorial https://github.com/vdobler/ht/blob/master/cmd/ht/Tutorial.md
+Tutorial https://github.com/vdobler/ht/blob/master/TUTORIAL.md
 
 or the 
 
@@ -409,9 +415,9 @@ For details see the the godoc for reference:
 How does it compare to ...
 --------------------------
 
-In direct comparison to specialiesd tools like Selenium, Scalatest, JMeter,
+In direct comparison to specialized tools like Selenium, Scalatest, JMeter,
 httpexpect, Gatlin etc. pp. ht will lack. Ht's ability to drive a headless browser
-is totally inferiour to Selenium/Webdriver/YourFavoriteTool. Ht's capabilities
+is totally inferour to Selenium/Webdriver/YourFavoriteTool. Ht's capabilities
 in generating load is far worse than JMeter or Gatlin.
 
 Ht's strength lies in providing high-level checks suitable to detect problems

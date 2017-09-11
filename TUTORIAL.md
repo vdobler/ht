@@ -47,7 +47,7 @@ Note that acronyms will be in all caps, e.g. "URL"
 
 ### HJSON actually
 
-The files are not JSON but human json (hjson)[http://hjson.org): Commas are
+The files are not JSON but human json (Hjson)[http://hjson.org): Commas are
 optional before linebreaks, quotation marks are optional, comments work and
 multiline strings are avialable:
 
@@ -69,20 +69,22 @@ complete URL including schema, host (optional port) and path. The URL may
 contain a fragment, but this won't be sent to the server.
 
     {
-        Name:    "Unic homepage german"
+        Name:    "Homepage"
         Request: {
-            URL: "https://www.unic.com/de.html"
+            URL: "https://www.example.org/"
         },
         Checks:  [ ]
     }
 
 TLS (SSL) secured request can be made, https:// is supported.
-Save this as unic-hp1.ht and execute the request:
+Save this as test1.ht and execute the request:
 
-    $ ./ht run unic-hp1.ht
+    $ ./ht run test1.ht
 
 This should work, i.e. produce a request and print some output indicating
-success but it is almost pointless as no checks are done.
+success (if you replaced www.example.org with an existing host) but it is
+almost pointless as no checks are done.
+
 
 Files on the local host may be accessed via the `file://` protocol schema:
  - GET method reads the given file and returns its content as
@@ -99,13 +101,13 @@ some might even trigger additional request and check these.
 We'll start with low-level checks as these are easier to understand.
 
     {
-        Name:    "Unic homepage german"
+        Name:    "Homepage"
         Request: {
-            URL: "https://www.unic.com/de.html"
-        }
+            URL: "https://www.example.org/"
+        },
         Checks:  [
             { Check: "StatusCode", Expect: 200 }
-            { Check: "Body", Contains: "Unic" }
+            { Check: "Body", Contains: "Hello World!" }
         ]
     }
 
@@ -116,13 +118,14 @@ These other fields names have been chosen to allow "reading" the
 check definition almost as clear text:
 
  * Check the status code and expect a value of 200.
- * Check the request body, it must contain "Unic".
+ * Check the request body, it must contain "Hello World".
 
-You may want to run it (after saving to unic-hp2.ht):
+You may want to run it (after saving to test2.ht):
 
-    $ ./ht run unic-hp2.ht
+    $ ./ht run test2.ht
 
-You should see the passed checks.
+You should see the passed checks (if you replaced the canonical Hello World
+with something actually present in the response).
 
 
 Details of the `Request` object
@@ -139,19 +142,16 @@ The default for a request is `GET`.  If you want to create a different
 type of request just specify the `Method`:
 
     {
-        Name:    "Unic homepage german"
+        Name:    "Homepage"
         Request: {
             Method: "HEAD",   //  Note: ALLCAPS as in the actual request
-            URL: "https://www.unic.com/de.html"
-        }
+            URL: "https://www.example.org/"
+        },
         Checks:  [
             { Check: "StatusCode", Expect: 200 }
-            { Check: "Body", Contains: "Unic" }
+            { Check: "Body", Contains: "Hello World" }
         ]
     }
-
-If you run this test you will see that the second checks fails: Well the
-body of a HEAD request is empty and does not contain "Unic".
 
 If `Method` is unset it defaults to `GET`.
 
@@ -162,9 +162,9 @@ Sending parameters is quite simple as `ht` does all the heavy lifting of
 encoding the parameters:
 
     {
-        Name:    "Unic search",
+        Name:    "Search",
         Request: {
-            URL: "https://www.unic.com/de/tools/suche.html",
+            URL: "https://www.example.com/search",
             Params: {
                 q: "Magento",
                 foo: "a b+c%d",
@@ -186,10 +186,10 @@ the URL.
 How the parameters are sent is controlled with the `ParamsAs` field of `Request`:
 
     {
-        Name:    "Unic search",
+        Name:    "Search",
         Request: {
             Method: "POST",
-            URL: "https://www.unic.com/de/tools/suche.html",
+            URL: "https://www.example.com/search",
             ParamsAs: "body",  //  -->  application/x-www-form-urlencoded
             Params: {
                 q: "Magento",
@@ -205,9 +205,6 @@ How the parameters are sent is controlled with the `ParamsAs` field of `Request`
 This will make a POST-request and send the parameters urlencoded in the request
 body. It will automatically set the appropriate Content-Type header to
 "application/x-www-form-urlencoded".
-
-Running this will fail as your Adobe AEM does not allow POST requests on
-this URL.
 
 If `ParamsAs` is unset it defaults to `URL` which indicates to send as query
 parameters in the URL.
@@ -243,7 +240,7 @@ merge partial tests -- call "mixins" -- into the actual test.
 
 ### Including partial tests
 
-Assume you have the following JSON5 file which is a partial test (as it
+Assume you have the following Hjson file which is a partial test (as it
 has no URL):
 
     std-headers.mixin:
@@ -263,10 +260,10 @@ and a "real test":
 
     real-test.ht
     {
-        Name:    "Unic homepage german"
+        Name:    "Homepage"
         Mixin:   [ "std-headers.mixin" ],  //  <<-- here
-        Request: { URL: "https://www.unic.com/de.html" }
-        Checks:  [ {Check:"StatusCode",Expect:200}, {Check:"Body",Contains: "Unic"} ]
+        Request: { URL: "https://www.example.com/" }
+        Checks:  [ {Check:"StatusCode",Expect:200}, {Check:"Body",Contains: "Hello"} ]
     }
 
 The settings made in std-headers.mixin are incorporated into the real-test.ht as
@@ -287,7 +284,7 @@ Running several tests in one batch is possible by
 But these tests are executed completely unrelated. For more control tests
 can be combined into "Suites". 
 
-Suites are stored on disc as JSON5 files like tests are. The following
+Suites are stored on disc as Hjson files like tests are. The following
 shows everything a suite may contain.  As usual it starts with a Name
 and as Description field:
 
@@ -295,26 +292,23 @@ and as Description field:
         Name:        "Sample Suite",
         Description: "Optional verbose details for suite",
         KeepCookies: true,   //  handle cookies like a browser
-        OmitChecks:  false,  //  allows to do the requests but skip checking
         Verbosity:   2,      //  fix verbosity of all tests to 2
 
         Setup: [
-          {File: "reddit-homepage.ht"}
+          {File: "test1.ht"}
         ]
 
         Main: [
-            {File: "unic-search.ht"}
-            {File: "google-homepage.ht"}
-            {File: "../common/unic-logo.ht"}
+            {File: "test2.ht"}
+            {File: "../common/test3.ht"}
         ]
 
         Teardown: [
-           {File: "reddit-golang.ht"}
-           {File: "reddit-programming.ht"}
+           {File: "test4.ht"}
         ]
 
         Variables: {
-           HOST: "www.unic.com"
+           HOST: "www.example.com"
            FOOBAR: "Something else here"
         }
     }   
@@ -369,7 +363,7 @@ parameter values to fields in checks. Variable replacements are written like
 
     "This is fixed {{VARNAME}} rest is fixed too."
 
-If `VARNAME="foo 123" the resulting string will be:
+If `VARNAME="foo 123"` the resulting string will be:
 
     "This is fixed foo 123 rest is fixed too."
 
@@ -405,28 +399,16 @@ The `-Dfile` flags are handled first, you can overwrite the values with `-D`.
     $ ./ht -Dfile uat.json -D HOST=127.0.0.1:8080 
  
 
-### Replacing integer values with variable value
-
-Yes, this can be done, even if not recommended. Just a small example:
-
-    { Check: "Body", Contains: "Foo", Count: 9999 }
-
-Checks that body contains exactly 9999 instances of "Foo". You can replace
-this 9999 with a variable amount by defining a variable `#9999` (that is the
-name!) and value 4.
-
-This is a deadly hack, just think what you'll be testing when running a
-suite with `-D "#200=900"`. But this hack has its use when unrolling tests (see
-table driven tests below).
-
-
 ### Extracting values from the response
 
 Variables get their full power from being settable from received responses.
 This is done through different "Extractors" which populate variables from
 data extracted from the response. The following are available:
 
-    BodyExtractor, CookieExtractor, HTMLExtractor, JSONExtrator, JSExtrcator
+    BodyExtractor, CookieExtractor, HTMLExtractor, JSONExtrator,
+    JSExtrcator, SetVariable
+
+( Run `ht help extractors` to print this list.)
 
 An example might be helpfull:
 
@@ -466,7 +448,7 @@ Some variables are preset on a per Test basis if loaded from a .ht file:
 
 ### Special variables
 
-There are twospecial variables `RANDOM` and `COUNTER` which provide 
+There are two special variables `RANDOM` and `COUNTER` which provide 
 6-digit random numbers and an ever increasing counter.
 
 
@@ -542,7 +524,6 @@ do something else (run some DB tools, etc.) and "continue" the suite.
 
 Note that running several suites in parallel works, but the values for cookies
 and variables saved might not be what yoi might expect naively.
-
 
 
 
