@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  
+<style>
+
+.toggle {
+	margin: 0 auto;
+        padding-top: 0.2em;
+        padding-bottom: 0.2em;
+}
+
+.toggle-label {
+	cursor: pointer;
+	display: block;
+}
+
+.toggle-label:after {
+	content: " ▾";
+}
+
+.toggle-content {
+	margin-bottom: 0.5ex;
+}
+
+.toggle-input {
+	display: none;
+}
+
+.toggle-input:not(checked) ~ .toggle-content {
+	display: none;
+}
+
+.toggle-input:checked ~ .toggle-content {
+	display: block;
+}
+
+.toggle-input:checked ~ .toggle-label:after {
+	content: " ▹";
+}
+
+.summary {
+  padding: 1ex 0 1ex 0;
+}
+
+.checks {
+  padding: 1ex 0 1ex 0;
+}
+
+h2 { 
+  margin-top: 0.5em;
+  margin-bottom: 0.2em;
+  display: inline;
+}
+
+h3 { 
+  font-size: 1em;
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+  display: inline;
+}
+.testDetails { margin-left: 1em; }
+.checkDetails { margin-left: 2em; }
+.requestDetails { margin-left: 2em; }
+.responseDetails { margin-left: 2em; }
+.formdataDetails { margin-left: 2em; }
+
+.PASS { color: green; }
+.FAIL { color: red; }
+.ERROR { color: magenta; }
+.NOTRUN { color: grey; }
+
+pre.description { font-family: serif; margin: 0px; }
+
+div.subsuite {
+  margin-left: 2em;
+  padding: 0.5ex 1em 0.5ex 2em;
+  background-color: lightblue;
+}
+
+div.subsuite h1 { font-size: 1.2em; }
+div.subsuite h2 { font-size: 1.1em; }
+div.subsuite h3 { font-size: 1em; }
+
+ul.error-list { margin-top: 0; margin-bottom: 0; }
+
+</style>
+
+  <title>Suite HTML Report Suite</title>
+</head>
+<body>
+<a href="../">Up/Back/Home</a>
+
+
+<h1>Results of Suite "HTML Report Suite"</h1>
+
+Test generation of _Report_.html file
+and the appropriate bodyfiles
+
+<div class="summary">
+  Status: <span class="FAIL">FAIL</span> <br/>
+  Started: 2017-09-08 09:48:00.123456789 &#43;0000 UTC <br/>
+  Full Duration: 2.35s
+</div>
+
+
+
+<div class="toggle">
+  <input type="checkbox" value="selected" 
+         id="test-1" class="toggle-input">
+  <label for="test-1" class="toggle-label">
+    <h2>1:
+      <span class="PASS">PASS</span> 
+      "Test 1" <small>(<code>test1.ht</code>, 220ms)</small>
+    </h2>
+  </label>
+  <div class="toggle-content">
+    <div class="testDetails">
+      <div class="reqresp"><code>
+        
+          <strong>GET</strong> http://www.example.org/foo/bar?baz=wuz<br/>
+          
+            <strong>GET</strong> http://www.example.org/login<br/>
+          
+            <strong>GET</strong> http://www.example.org/auth<br/>
+          
+        
+        
+          HTTP/1.1 <strong>200 OK</strong>
+        
+      </code></div>
+      <div class="summary">
+        <pre class="description">The first test</pre>
+	Started: 2017-09-08 09:48:01 &#43;0000 UTC<br/>
+	Full Duration: 220ms <br/>
+        Number of tries: 1 <br/>
+        Request Duration: 210ms <br/>
+        
+      </div>
+      
+
+<div class="toggle">
+  <input type="checkbox" value="selected"
+         id="req-1" class="toggle-input">
+  <label for="req-1" class="toggle-label"><h3>HTTP Request</h3></label>
+  <div class="toggle-content">
+    <div class="requestDetails">
+      <code><strong>GET</strong> http://www.example.org/foo/bar?baz=wuz
+          <br>GET http://www.example.org/login<br>GET http://www.example.org/auth
+      </code>
+      
+<div class="httpheader">
+  
+    
+      <code><strong>                   Accept: </strong> text/html</code><br>
+    
+  
+    
+      <code><strong>                 X-Custom: </strong> Sonne</code><br>
+    
+      <code><strong>                 X-Custom: </strong> Mond</code><br>
+    
+  
+</div>
+
+<pre></pre>
+    </div>
+  </div>
+</div>
+
+      
+
+<div class="toggle">
+  <input type="checkbox" value="selected" checked
+         id="resp-1" class="toggle-input">
+  <label for="resp-1" class="toggle-label"><h3>HTTP Response</h3></label>
+  <div class="toggle-content">
+    <div class="responseDetails">
+      
+        HTTP/1.1 <strong>200 OK</strong><br/>
+        
+<div class="httpheader">
+  
+    
+      <code><strong>             Content-Type: </strong> text/xhtml</code><br>
+    
+  
+</div>
+
+      
+      
+        
+<pre class="responseBodySummary">
+Hello World!
+</pre>
+        <a href="1.ResponseBody.txt" target="_blank">Response Body</a>
+        
+      
+    </div>
+  </div>
+</div>
+
+      
+      
+      
+        <div class="checks">
+          
+
+<div class="toggle22">
+  <input type="checkbox" value="selected" 
+         id="check-1-0" class="toggle-input">
+  <label for="check-1-0" class="toggle-label">
+    <h3><span class="PASS">PASS</span>
+      <code>StatusCode</code></h3>
+  </label>
+  <div class="toggle-content">
+    <div class="checkDetails">
+      <div>Checking took 20ms</div>
+      <div><code>{Expect: 200}</code></div>
+      
+    </div>
+  </div>
+</div>
+
+          
+        </div>
+      
+      <div>
+        <div class="toggle">
+          <input type="checkbox" value="selected"
+                 id="curl-1" class="toggle-input">
+          <label for="curl-1" class="toggle-label"><h3>Curl Call</h3></label>
+          <div class="toggle-content">
+            <div>
+<pre>
+curl -X GET &#39;http://www.example.org/foo/bar?baz=wuz&#39;
+</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="toggle">
+  <input type="checkbox" value="selected" checked
+         id="test-2" class="toggle-input">
+  <label for="test-2" class="toggle-label">
+    <h2>2:
+      <span class="FAIL">FAIL</span> 
+      "Test 2" <small>(<code>test2.ht</code>, 320ms)</small>
+    </h2>
+  </label>
+  <div class="toggle-content">
+    <div class="testDetails">
+      <div class="reqresp"><code>
+        
+          <strong>POST</strong> http://www.example.org/api/user<br/>
+          
+        
+        
+          HTTP/1.1 <strong>200 OK</strong>
+        
+      </code></div>
+      <div class="summary">
+        <pre class="description">The second test</pre>
+	Started: 2017-09-08 09:48:01 &#43;0000 UTC<br/>
+	Full Duration: 320ms <br/>
+        Number of tries: 1 <br/>
+        Request Duration: 310ms <br/>
+        
+      </div>
+      
+
+<div class="toggle">
+  <input type="checkbox" value="selected"
+         id="req-2" class="toggle-input">
+  <label for="req-2" class="toggle-label"><h3>HTTP Request</h3></label>
+  <div class="toggle-content">
+    <div class="requestDetails">
+      <code><strong>POST</strong> http://www.example.org/api/user
+          
+      </code>
+      
+<div class="httpheader">
+  
+    
+      <code><strong>                   Accept: </strong> application/json</code><br>
+    
+  
+</div>
+
+<pre>{&#34;command&#34;: &#34;doWork&#34;}</pre>
+    </div>
+  </div>
+</div>
+
+      
+
+<div class="toggle">
+  <input type="checkbox" value="selected" checked
+         id="resp-2" class="toggle-input">
+  <label for="resp-2" class="toggle-label"><h3>HTTP Response</h3></label>
+  <div class="toggle-content">
+    <div class="responseDetails">
+      
+        HTTP/1.1 <strong>200 OK</strong><br/>
+        
+<div class="httpheader">
+  
+    
+      <code><strong>             Content-Type: </strong> application/json</code><br>
+    
+  
+</div>
+
+      
+      
+        
+<pre class="responseBodySummary">
+true
+</pre>
+        <a href="2.ResponseBody.json" target="_blank">Response Body</a>
+        
+      
+    </div>
+  </div>
+</div>
+
+      
+      
+      
+        <div class="checks">
+          
+
+<div class="toggle22">
+  <input type="checkbox" value="selected" 
+         id="check-2-0" class="toggle-input">
+  <label for="check-2-0" class="toggle-label">
+    <h3><span class="PASS">PASS</span>
+      <code>StatusCode</code></h3>
+  </label>
+  <div class="toggle-content">
+    <div class="checkDetails">
+      <div>Checking took 30ms</div>
+      <div><code>{Expect: 200}</code></div>
+      
+    </div>
+  </div>
+</div>
+
+          
+
+<div class="toggle2Visible2">
+  <input type="checkbox" value="selected" checked
+         id="check-2-1" class="toggle-input">
+  <label for="check-2-1" class="toggle-label">
+    <h3><span class="FAIL">FAIL</span>
+      <code>Body</code></h3>
+  </label>
+  <div class="toggle-content">
+    <div class="checkDetails">
+      <div>Checking took 31ms</div>
+      <div><code>{Prefix: &#34;super&#34;, Contains: &#34;okay&#34;}</code></div>
+      <code>Error: <ul class="error-list">
+    <li>bad Prefix</li>
+<li>missing okay</li>
+
+</ul>
+</code>
+    </div>
+  </div>
+</div>
+
+          
+        </div>
+      
+      <div>
+        <div class="toggle">
+          <input type="checkbox" value="selected"
+                 id="curl-2" class="toggle-input">
+          <label for="curl-2" class="toggle-label"><h3>Curl Call</h3></label>
+          <div class="toggle-content">
+            <div>
+<pre>
+curl -X POST --data-binary &#39;{&#34;command&#34;: &#34;doWork&#34;}&#39; &#39;http://www.example.org/api/user&#39;
+</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="toggle">
+  <input type="checkbox" value="selected" 
+         id="test-3" class="toggle-input">
+  <label for="test-3" class="toggle-label">
+    <h2>3:
+      <span class="NOTRUN">NOTRUN</span> 
+      "Test 3" <small>(<code>test3.ht</code>, 0s)</small>
+    </h2>
+  </label>
+  <div class="toggle-content">
+    <div class="testDetails">
+      <div class="reqresp"><code>
+        
+        
+      </code></div>
+      <div class="summary">
+        <pre class="description">The third test</pre>
+	Started: 0001-01-01 00:00:00 &#43;0000 UTC<br/>
+	Full Duration: 0s <br/>
+        Number of tries: 0 <br/>
+        Request Duration: 0s <br/>
+        
+      </div>
+      
+      
+      
+      
+      
+      <div>
+        <div class="toggle">
+          <input type="checkbox" value="selected"
+                 id="curl-3" class="toggle-input">
+          <label for="curl-3" class="toggle-label"><h3>Curl Call</h3></label>
+          <div class="toggle-content">
+            <div>
+<pre>
+curl &#39;&#39;
+</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="toggle">
+  <input type="checkbox" value="selected" 
+         id="test-4" class="toggle-input">
+  <label for="test-4" class="toggle-label">
+    <h2>4:
+      <span class="SKIPPED">SKIPPED</span> 
+      "Test 4" <small>(<code>test4.ht</code>, 0s)</small>
+    </h2>
+  </label>
+  <div class="toggle-content">
+    <div class="testDetails">
+      <div class="reqresp"><code>
+        
+        
+      </code></div>
+      <div class="summary">
+        <pre class="description">The fourth test</pre>
+	Started: 0001-01-01 00:00:00 &#43;0000 UTC<br/>
+	Full Duration: 0s <br/>
+        Number of tries: 0 <br/>
+        Request Duration: 0s <br/>
+        
+      </div>
+      
+      
+      
+      
+      
+      <div>
+        <div class="toggle">
+          <input type="checkbox" value="selected"
+                 id="curl-4" class="toggle-input">
+          <label for="curl-4" class="toggle-label"><h3>Curl Call</h3></label>
+          <div class="toggle-content">
+            <div>
+<pre>
+curl &#39;&#39;
+</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+</body>
+</html>
