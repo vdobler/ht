@@ -213,7 +213,11 @@ var htmlVariablesTmpl = `{{define "VARIABLES"}}
         {{end}}
         {{if .Result.Extractions}}Extractions:<br/>
           {{range $k, $v := .Result.Extractions}}
-            <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v}}</code><br/>
+            {{if $v.Error}}
+              <code class="ERROR">&nbsp;&nbsp;{{printf "%s: Error during extraction: %s" $k $v.Error}}</code><br/>
+            {{else}}
+              <code>&nbsp;&nbsp;{{printf "%s = %q" $k $v.Value}}</code><br/>
+            {{end}}
           {{end}}
         {{end}}
     </div>

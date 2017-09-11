@@ -164,6 +164,11 @@ func TestHTMLReport(t *testing.T) {
 					},
 				},
 			},
+			Extractions: map[string]ht.Extraction{
+				"Simple":  {Value: "Simple Extracted Data"},
+				"Complex": {Value: "Fancy & Cool\n\"Stuff\""},
+				"Bad":     {Error: fmt.Errorf("Error Message")},
+			},
 		},
 	}
 	test2.SetMetadata("Filename", "test2.ht")
