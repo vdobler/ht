@@ -29,13 +29,12 @@ func init() {
 //   * 'lang':      ill-formed lang attributes
 //   * 'attr':      duplicate attributes
 //   * 'escaping':  unescaped &, < and > characters or unknown entities
-//   * 'attresc':   like escaping but limited to attributes
 //   * 'label':     reference to nonexisting ids in a label tags
 //   * 'url':       malformed URLs
 //
 // Notes:
 //  - HTML5 allows unescaped & in several circumstances but ValidHTML
-//    reports all stray & as an error.
+//    reports most stray & as an error.
 //  - The lang attributes are parse very lax, e.g. the non-canonical form
 //    'de_CH' is considered valid (and equivalent to 'de-CH'). I don't
 //    know how browser handle this.
@@ -78,8 +77,8 @@ done:
 		case html.StartTagToken, html.SelfClosingTagToken:
 			raw := string(z.Raw())
 			// <p class="foo">  ==> raw==`p class="foo"`
-			if len(raw) > 3 && state.ignore&issueAttrEsc == 0 {
-				state.checkEscaping(raw[1 : len(raw)-1])
+			if len(raw) > 3 {
+				state.checkAttributeEscaping(raw[1 : len(raw)-1])
 			}
 			tn, hasAttr := z.TagName()
 			// Some tags are empty and may be written in the self-closing
@@ -204,12 +203,11 @@ const (
 	issueEscaping
 	issueLabelRef
 	issueURL
-	issueAttrEsc
 )
 
 func ignoreMask(s string) (htmlIssue, error) {
 	// what an ugly hack
-	const issueNames = "doctype  structureuniqueidslang     attr     escaping label    url      attresc"
+	const issueNames = "doctype  structureuniqueidslang     attr     escaping label    url"
 	mask := issueIgnoreNone
 	s = strings.ToLower(s)
 	for _, p := range strings.Split(s, " ") {
@@ -300,6 +298,57 @@ func (s *htmlState) recordLabel(id string) {
 	s.labelFor = append(s.labelFor, id)
 }
 
+func isAlphanumericASCII(b byte) bool {
+	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '0')
+}
+
+// checkEscaping of stuff inside a tag like
+//     p class="important" title="Foo & Bar"
+// Look for ambiguous apersand as defined in
+// https://w3c.github.io/html/syntax.html#ambiguous-ampersand :
+//
+//   An ambiguous ampersand is a U+0026 AMPERSAND character (&) that is
+//   followed by one or more alphanumeric ASCII characters, followed by
+//   a U+003B SEMICOLON character (;), where these characters do not match
+//   any of the names given in the §8.5 Named character references section.
+//
+//   The alphanumeric ASCII characters are those that are either uppercase
+//   ASCII letters, lowercase ASCII letters, or ASCII digits.
+func (s *htmlState) checkAttributeEscaping(text string) {
+	if s.ignore&issueEscaping != 0 {
+		return
+	}
+
+	for len(text) > 0 {
+		// fmt.Println(text)
+		i := strings.Index(text, "&")
+		if i == -1 {
+			break
+		}
+		text = text[i:]
+		if strings.HasPrefix(text, "&amp;") {
+			text = text[5:]
+			continue
+		}
+
+		i = 1
+		for i < len(text) && isAlphanumericASCII(text[i]) {
+			i++
+		}
+		if i < len(text) && text[i] == ';' {
+			i++
+			cr := text[0:i] // character reference like &Prime;
+			ue := html.UnescapeString(cr)
+			if strings.HasPrefix(ue, "&") {
+				// Then cr was not defined.
+				s.err(fmt.Errorf("Unknown entity %s", cr))
+				return
+			}
+		}
+		text = text[i+1:]
+	}
+}
+
 // checkEscaping of text
 func (s *htmlState) checkEscaping(text string) {
 	// fmt.Println("checkEscpaing of", text)
@@ -321,23 +370,46 @@ func (s *htmlState) checkEscaping(text string) {
 	if strings.Contains(text, ">") {
 		s.err(fmt.Errorf("Unescaped '>'"))
 	}
+
 	for len(text) > 0 {
-		if i := strings.Index(text, "&"); i != -1 {
-			text = text[i:]
-			if strings.HasPrefix(text, "&amp;") {
-				text = text[5:]
-			} else {
-				ue := html.UnescapeString(text)
-				if strings.HasPrefix(ue, "&") {
-					s.err(fmt.Errorf("Unescaped '&' or unknow entity"))
-					break
-				}
-				text = text[1:]
-			}
-		} else {
+		i := strings.Index(text, "&")
+		if i == -1 {
 			break
 		}
+
+		text = text[i:]
+		if strings.HasPrefix(text, "&amp;") {
+			// &amp; is fine and would produce a & which confuses
+			// the check for improper escaping below.
+			text = text[5:]
+			continue
+		}
+
+		ue := html.UnescapeString(text)
+		if strings.HasPrefix(ue, "&") {
+			s.err(fmt.Errorf("Unescaped '&' or unknow entity in %s",
+				trimUnescapedText(text)))
+			break
+		}
+		text = text[1:]
 	}
+}
+
+func trimUnescapedText(s string) string {
+	i := strings.IndexFunc(s, func(r rune) bool {
+		if r <= ' ' || r == ';' {
+			return true
+		}
+		return false
+	})
+	if i != -1 {
+		s = s[:i]
+	}
+
+	if len(s) < 20 {
+		return s
+	}
+	return s[:20] + "\u2026"
 }
 
 // checkLang tries to parse the language tag lang.

@@ -35,6 +35,7 @@ var brokenHTML = `<html>
     <a href="mailto:info-example_org">write us</a>
     <a href="tel:+(0012)-345 67/89">call us</a>
     <p data-selector="h1 > span"></p>
+    <p title="A&glubs;B"></p>
 </body>
 </html>
 `
@@ -47,15 +48,14 @@ var expectedErrorsInBrokenHTML = []struct {
 	{"attr", "Line 8: Duplicate attribute 'class'"},
 	{"escaping", "Line 10: Unescaped '>'"},
 	{"url", "Line 11: Unencoded space in URL"},
-	{"escaping", "Line 13: Unescaped '&' or unknow entity"},
+	{"escaping", "Line 13: Unescaped '&' or unknow entity in &fLTzzk"},
 	{"url", "Line 17: Bad URL part '://example.org:3456/'"},
-	{"attresc escaping", "Line 20: Unescaped '&' or unknow entity"},
 	{"structure", "Line 21: Tag 'li' closed by 'div'"},
 	{"url", "Line 23: Not an email address"},
 	{"url", "Line 24: Not a telephone number"},
-	{"attresc escaping", "Line 25: Unescaped '>'"},
-	{"doctype", "Line 28: Found 0 DOCTYPE"},
-	{"label", "Line 28: Label references unknown id 'other'"},
+	{"escaping", "Line 26: Unknown entity &glubs;"},
+	{"doctype", "Line 29: Found 0 DOCTYPE"},
+	{"label", "Line 29: Label references unknown id 'other'"},
 }
 
 func TestValidHTMLBroken(t *testing.T) {
@@ -63,7 +63,7 @@ func TestValidHTMLBroken(t *testing.T) {
 		Response: Response{BodyStr: brokenHTML},
 	}
 
-	for _, ignore := range []string{"", "doctype", "structure", "uniqueids", "lang", "attr", "escaping", "label", "url", "attresc"} {
+	for _, ignore := range []string{"", "doctype", "structure", "uniqueids", "lang", "attr", "escaping", "label", "url"} {
 		t.Run("ignore="+ignore, func(t *testing.T) {
 			check := ValidHTML{Ignore: ignore}
 			err := check.Prepare(test)
@@ -100,7 +100,7 @@ func TestValidHTMLBroken(t *testing.T) {
 				}
 				got, es = es[0], es[1:]
 				if got != expect.err {
-					t.Errorf("Ignore %s: Got %s, want %s", ignore, got, expect.err)
+					t.Errorf("Ignore %s: Got %q, want %q", ignore, got, expect.err)
 				}
 			}
 			if len(es) != 0 {
@@ -162,6 +162,36 @@ func TestValidHTMLOkay(t *testing.T) {
 		}
 	}
 
+}
+
+func TestCheckAttributeEscaping(t *testing.T) {
+	for _, tc := range []struct {
+		name, in, msg string
+	}{
+		{"no-amp", `p class="foo"`, ""},
+		{"trailing", `p class="foo&"`, ""},
+		{"no-ascii", `p class="foo&--;"`, ""},
+		{"no-semicolon", `p class="foo&circ"`, ""},
+		{"several", `p class="foo&circ&circ-a;&t=a;"`, ""},
+		{"proper-amp", `p title="foo&amp;bar"`, ""},
+		{"proper-circ", `p title="e&circ;2pi"`, ""},
+		{"bad1", `a href="/foo&circa;bar"`, "Unknown entity &circa;"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &htmlState{}
+			s.checkAttributeEscaping(tc.in)
+			if len(s.errors) > 1 {
+				t.Fatalf("Too many errors %#v", s.errors)
+			}
+			got := ""
+			if len(s.errors) > 0 {
+				got = s.errors[0].Error()
+			}
+			if got != tc.msg {
+				t.Errorf("Got %q, want %q", got, tc.msg)
+			}
+		})
+	}
 }
 
 func TestCheckHTMLEscaping(t *testing.T) {
