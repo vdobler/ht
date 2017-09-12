@@ -18,7 +18,4 @@ cmd/ht/testdata/*.ht
 cmd/ht/testdata/*.suite
 _Report_.html
 suite/testdata/Scen*
-docker/ht
-docker/ca-certificates.crt
-docker/zoneinfo.tar.gz
 
