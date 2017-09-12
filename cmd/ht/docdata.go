@@ -989,14 +989,13 @@ var typeDoc = map[string]string{
 		"    * 'lang':      ill-formed lang attributes\n" +
 		"    * 'attr':      duplicate attributes\n" +
 		"    * 'escaping':  unescaped &, < and > characters or unknown entities\n" +
-		"    * 'attresc':   like escaping but limited to attributes\n" +
 		"    * 'label':     reference to nonexisting ids in a label tags\n" +
 		"    * 'url':       malformed URLs\n" +
 		"\n" +
 		"    Notes:\n" +
 		"\n" +
 		"    - HTML5 allows unescaped & in several circumstances but ValidHTML\n" +
-		"      reports all stray & as an error.\n" +
+		"      reports most stray & as an error.\n" +
 		"    - The lang attributes are parse very lax, e.g. the non-canonical form\n" +
 		"      'de_CH' is considered valid (and equivalent to 'de-CH'). I don't\n" +
 		"      know how browser handle this.",
