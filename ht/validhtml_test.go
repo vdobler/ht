@@ -235,6 +235,11 @@ func TestURLEscaping(t *testing.T) {
 		{"tel:004112345678", "Telephone numbers must start with +"},
 		{"tel:+", "Missing actual telephone number"},
 		{"tel:+++ticker+++", "Not a telephone number"},
+		{"data:,Hello%2C%20World!", ""},
+		{"data:text/plain;base64,SGVsbG8sIFdvcmxkIQ==", ""},
+		{"data:MissingComma", "Missing , before actual data"},
+		{"data:text/plain;base64,SGVsbG8gV29ybG",
+			"illegal base64 data at input byte 12 in SGVsbG8gV29ybG"},
 	}
 
 	for i, tc := range testcases {

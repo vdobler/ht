@@ -7,8 +7,10 @@
 package ht
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
+	"mime"
 	"net/url"
 	"strings"
 
@@ -444,18 +446,11 @@ func (s *htmlState) checkURL(raw string) {
 		return
 	}
 	if strings.HasPrefix(raw, "tel:") {
-		raw = raw[4:]
-		if !strings.HasPrefix(raw, "+") {
-			s.err(fmt.Errorf("Telephone numbers must start with +"))
-		}
-		raw := raw[1:]
-		if len(raw) == 0 {
-			s.err(fmt.Errorf("Missing actual telephone number"))
-		}
-		raw = strings.TrimLeft(raw, "0123456789-")
-		if len(raw) != 0 {
-			s.err(fmt.Errorf("Not a telephone number"))
-		}
+		s.checkTelURL(raw[4:])
+		return
+	}
+	if strings.HasPrefix(raw, "data:") {
+		s.checkDataURL(raw[5:])
 		return
 	}
 
@@ -471,6 +466,65 @@ func (s *htmlState) checkURL(raw string) {
 
 	if strings.Contains(raw, " ") {
 		s.err(fmt.Errorf("Unencoded space in URL"))
+	}
+}
+
+func (s *htmlState) checkTelURL(raw string) {
+	if !strings.HasPrefix(raw, "+") {
+		s.err(fmt.Errorf("Telephone numbers must start with +"))
+	}
+	raw = raw[1:]
+	if len(raw) == 0 {
+		s.err(fmt.Errorf("Missing actual telephone number"))
+	}
+	raw = strings.TrimLeft(raw, "0123456789-")
+	if len(raw) != 0 {
+		s.err(fmt.Errorf("Not a telephone number"))
+	}
+}
+
+func (s *htmlState) checkDataURL(raw string) {
+	// Data URLS have the format:
+	//    data:[<mediatype>][;base64],<data>
+	// The "data:" prefix has been stripped by the caller.
+
+	comma := strings.Index(raw, ",")
+	if comma == -1 {
+		s.err(fmt.Errorf("Missing , before actual data"))
+		return
+	}
+
+	rawMT, data := raw[:comma], raw[comma+1:]
+
+	// TODO: QueryUnescape is not the perfect solution as data: urls
+	// should use RFC 2397 URL encoding which encodes spaces as %20.
+	// But the unencoding should work (at least for valid data: urls).
+	escaped, err := url.QueryUnescape(data)
+	if err != nil {
+		s.err(fmt.Errorf("Badly escaped data section: %s", err))
+		return
+	}
+
+	b64 := strings.HasSuffix(rawMT, ";base64")
+	if b64 {
+		rawMT = rawMT[:len(rawMT)-len(";base64")]
+	}
+
+	if rawMT != "" {
+		_, _, err = mime.ParseMediaType(rawMT)
+		if err != nil {
+			s.err(fmt.Errorf("Problems parsing media type in %q: %s",
+				rawMT, err))
+			return
+		}
+	}
+
+	if b64 {
+		_, err := base64.StdEncoding.DecodeString(escaped)
+		if err != nil {
+			s.err(fmt.Errorf("%s in %s", err, data))
+			return
+		}
 	}
 }
 
