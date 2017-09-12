@@ -133,8 +133,8 @@ func TestMockSuite(t *testing.T) {
 	s := raw.Execute(map[string]string{"BASEURL": ts.URL}, nil, logger())
 
 	if *verboseTest {
-		os.MkdirAll("./testdata/mockreport", 0766)
-		err = HTMLReport("./testdata/mockreport", s)
+		os.MkdirAll("./testdata/out/mockreport", 0766)
+		err = HTMLReport("./testdata/out/mockreport", s)
 		if err != nil {
 			t.Fatalf("Unexpected error %s", err)
 		}

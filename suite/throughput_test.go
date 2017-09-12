@@ -235,7 +235,7 @@ func TestThroughput(t *testing.T) {
 		},
 	}
 
-	livefile, err := os.Create("testdata/live.csv")
+	livefile, err := os.Create("testdata/out/live.csv")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -280,7 +280,7 @@ func TestThroughput(t *testing.T) {
 	}
 	fmt.Println("Recorded ", len(data), "points")
 
-	file, err := os.Create("testdata/throughput.csv")
+	file, err := os.Create("testdata/out/throughput.csv")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -320,7 +320,7 @@ p <- ggplot(d, aes(x=Elapsed, y=Rate))
 p <- p + geom_point(size=3) + geom_smooth()
 ggsave("rate.png", plot=p, width=10, height=8, dpi=100)
 `
-	ioutil.WriteFile("testdata/throughput.R", []byte(script), 0666)
+	ioutil.WriteFile("testdata/out/throughput.R", []byte(script), 0666)
 }
 
 // ###############################################################
@@ -384,7 +384,7 @@ func TestThroughput2(t *testing.T) {
 
 	fmt.Println("Recorded ", len(data), "points")
 
-	file, err := os.Create("testdata/throughput2.csv")
+	file, err := os.Create("testdata/out/throughput2.csv")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -430,7 +430,7 @@ p <- p + facet_grid(Test ~ ., scales="free_y")
 p <- p + fillScale
 ggsave("hist.png", plot=p, width=10, height=8, dpi=100)
 `
-	ioutil.WriteFile("testdata/throughput2.R", []byte(script), 0666)
+	ioutil.WriteFile("testdata/out/throughput2.R", []byte(script), 0666)
 }
 
 // ----------------------------------------------------------------------------
