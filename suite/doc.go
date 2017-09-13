@@ -41,7 +41,7 @@
 //
 // It might be helpful to think from the inside out: Given a test on disk
 //     {
-//         Request: { URL: "{{A}}{{B}}{{C}}" }
+//         Request: { URL: "{{A}}{{B}}{{C}}{{D}}" }
 //         Variables: {
 //             A: "http://"
 //             B: "example.org"
