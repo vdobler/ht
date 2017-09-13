@@ -12,7 +12,9 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/Knetic/govaluate"
 	"github.com/andybalholm/cascadia"
 	"github.com/robertkrimen/otto"
 	"github.com/vdobler/ht/populate"
@@ -67,6 +69,7 @@ func init() {
 	RegisterExtractor(CookieExtractor{})
 	RegisterExtractor(JSExtractor{})
 	RegisterExtractor(SetVariable{})
+	RegisterExtractor(SetTimestamp{})
 }
 
 // ----------------------------------------------------------------------------
@@ -461,13 +464,150 @@ func (e JSExtractor) Extract(t *Test) (string, error) {
 // ----------------------------------------------------------------------------
 // SetVariable
 
-// SetVariable allows to pragmatically "extract" a fixed value.
+// SetVariable allows to progmatically "extract" a fixed value
+// or evaluate and arithmetic expression.
+//
 type SetVariable struct {
-	// To is the value to extract.
-	To string
+	// To is the constant, fixed value to extract.
+	To string `json:",omitempty"`
+
+	// Eval is a arithmetic expression evaluated by
+	// github.com/Knetic/govaluate if To is empty.
+	// The test is available as the parameter Test.
+	//
+	// The following functions are available:
+	//   seconds(d):         convert time.Duration d to seconds
+	//   strlen(s):          length of s in bytes
+	//   substring(s,a,e):   substring [a,e[ of s
+	//   replace(s,old,new): replace old with new in s
+	//   strindex(s,n):      index of n in s (or -1)
+	//
+	// Eval is experimental and might go away without notice.
+	Eval string `json:",omitempty"`
+}
+
+// ExpressionFunctions are functions for use in SetVariable.Eval.
+var ExpressionFunctions = map[string]govaluate.ExpressionFunction{
+	"strlen": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return 0, fmt.Errorf("strlen takes exactly one argument, got %d", len(args))
+		}
+		s, ok := args[0].(string)
+		if !ok {
+			return 0, fmt.Errorf("strlen needs string argument, got %T", args[0])
+		}
+		return float64(len(s)), nil
+	},
+	"seconds": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return 0, fmt.Errorf("seconds takes exactly one argument, got %d", len(args))
+		}
+		d, ok := args[0].(time.Duration)
+		if !ok {
+			return 0, fmt.Errorf("seconds needs time.Duration argument, got %T", args[0])
+		}
+		return float64(d / time.Second), nil
+	},
+	"substring": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 3 {
+			return 0, fmt.Errorf("substring takes exactly three arguments, got %d", len(args))
+		}
+		s, ok := args[0].(string)
+		if !ok {
+			return 0, fmt.Errorf("substring needs string as first argument, got %T", args[0])
+		}
+		a, ok := args[1].(float64)
+		if !ok {
+			return 0, fmt.Errorf("substring needs number as second argument, got %T", args[1])
+		}
+		e, ok := args[2].(float64)
+		if !ok {
+			return 0, fmt.Errorf("substring needs number as third argument, got %T", args[2])
+		}
+		return s[int(a):int(e)], nil
+	},
+	"replace": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 3 {
+			return 0, fmt.Errorf("replace takes exactly three arguments, got %d", len(args))
+		}
+		s, ok := args[0].(string)
+		a, oka := args[1].(string)
+		b, okb := args[2].(string)
+		if !ok || !oka || !okb {
+			return 0, fmt.Errorf("replace needs strings as argument")
+		}
+		return strings.Replace(s, a, b, -1), nil
+	},
+	"strindex": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return 0, fmt.Errorf("strindex takes exactly two arguments, got %d", len(args))
+		}
+		s, ok := args[0].(string)
+		a, oka := args[1].(string)
+		if !ok || !oka {
+			return 0, fmt.Errorf("strindex needs strings as argument")
+		}
+		return float64(strings.Index(s, a)), nil
+	},
 }
 
 // Extract implements Extractor's Extract method.
-func (e SetVariable) Extract(t *Test) (string, error) {
-	return e.To, nil
+func (e SetVariable) Extract(test *Test) (string, error) {
+	if e.To == "" && e.Eval == "" {
+		return "", nil
+	}
+
+	if e.To != "" {
+		return e.To, nil
+	}
+
+	expression, err := govaluate.NewEvaluableExpressionWithFunctions(e.Eval, ExpressionFunctions)
+	if err != nil {
+		return "", err
+	}
+
+	parameters := map[string]interface{}{
+		"Test": test,
+		"pi":   3.141,
+	}
+
+	result, err := expression.Evaluate(parameters)
+	return fmt.Sprintf("%v", result), err
+}
+
+// ----------------------------------------------------------------------------
+// SetTimestamp
+
+// SetTimestap allows to progmatically extract the current time
+// optionaly offset by a certain duration in a user selected layout.
+// To round the extracted timestamp e.g. to mutliple of hours use
+// a format like "2006-01-02 15:00:00" with fixed minutes and seconds.
+//
+// The test and the response are ignored.
+type SetTimestamp struct {
+	// DeltaT is the difference to now.
+	DeltaT time.Duration `json:",omitempty"`
+
+	// DeltaYear, DeltaMonth and DeltaDay are deltas to
+	// now but for whole years, month and days.
+	DeltaYear, DeltaMonth, DeltaDay int `json:",omitempty"`
+
+	// Format is the time layout string (as used by time.Format).
+	// It defaults to "2006-01-02T15:04:05Z07:00" (RFC3339)
+	Format string `json:",omitempty"`
+}
+
+// Extract implements Extractor's Extract method.
+func (t SetTimestamp) Extract(*Test) (string, error) {
+	now := time.Now()
+
+	now = now.AddDate(t.DeltaYear, t.DeltaMonth, t.DeltaDay)
+	now = now.Add(t.DeltaT)
+
+	format := t.Format
+	if format == "" {
+		format = time.RFC3339
+	}
+
+	return now.Format(format), nil
 }
