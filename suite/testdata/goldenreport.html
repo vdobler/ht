@@ -72,6 +72,7 @@ h3 {
 .NOTRUN { color: grey; }
 
 pre.description { font-family: serif; margin: 0px; }
+pre.clipped { background-color: #FFE4B5; }
 
 div.subsuite {
   margin-left: 2em;
@@ -512,6 +513,156 @@ curl &#39;&#39;
             <div>
 <pre>
 curl &#39;&#39;
+</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="toggle">
+  <input type="checkbox" value="selected" 
+         id="test-5" class="toggle-input">
+  <label for="test-5" class="toggle-label">
+    <h2>5:
+      <span class="PASS">PASS</span> 
+      "Test 5" <small>(<code>test5.ht</code>, 0s)</small>
+    </h2>
+  </label>
+  <div class="toggle-content">
+    <div class="testDetails">
+      <div class="reqresp"><code>
+        
+          <strong>GET</strong> http://www.example.org/foo/bar?baz=wuz<br/>
+          
+        
+        
+          HTTP/1.1 <strong>200 OK</strong>
+        
+      </code></div>
+      <div class="summary">
+        <pre class="description"></pre>
+	Started: 0001-01-01 00:00:00 &#43;0000 UTC<br/>
+	Full Duration: 0s <br/>
+        Number of tries: 0 <br/>
+        Request Duration: 0s <br/>
+        
+      </div>
+      
+
+<div class="toggle">
+  <input type="checkbox" value="selected"
+         id="req-5" class="toggle-input">
+  <label for="req-5" class="toggle-label"><h3>HTTP Request</h3></label>
+  <div class="toggle-content">
+    <div class="requestDetails">
+      <code><strong>GET</strong> http://www.example.org/foo/bar?baz=wuz
+          
+      </code>
+      
+<div class="httpheader">
+  
+    
+      <code><strong>                   Accept: </strong> text/html</code><br>
+    
+  
+    
+      <code><strong>                 X-Custom: </strong> Sonne</code><br>
+    
+      <code><strong>                 X-Custom: </strong> Mond</code><br>
+    
+  
+</div>
+
+<pre></pre>
+    </div>
+  </div>
+</div>
+
+      
+
+<div class="toggle">
+  <input type="checkbox" value="selected" checked
+         id="resp-5" class="toggle-input">
+  <label for="resp-5" class="toggle-label"><h3>HTTP Response</h3></label>
+  <div class="toggle-content">
+    <div class="responseDetails">
+      
+        HTTP/1.1 <strong>200 OK</strong><br/>
+        
+<div class="httpheader">
+  
+</div>
+
+      
+      
+        
+<pre class="responseBodySummary clipped" title="Body is clipped!">
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+⋮
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+The End.
+</pre>
+        <a href="5.ResponseBody.txt" target="_blank">Response Body</a>
+        
+      
+    </div>
+  </div>
+</div>
+
+      
+      
+      
+      <div>
+        <div class="toggle">
+          <input type="checkbox" value="selected"
+                 id="curl-5" class="toggle-input">
+          <label for="curl-5" class="toggle-label"><h3>Curl Call</h3></label>
+          <div class="toggle-content">
+            <div>
+<pre>
+curl -X GET &#39;http://www.example.org/foo/bar?baz=wuz&#39;
 </pre>
             </div>
           </div>

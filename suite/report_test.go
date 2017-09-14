@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -191,6 +192,32 @@ func TestHTMLReport(t *testing.T) {
 	}
 	test4.SetMetadata("Filename", "test4.ht")
 
+	// --------------------------------------------------------------------
+	// Test 5
+	test5 := &ht.Test{
+		Name: "Test 5",
+		Request: ht.Request{
+			Method:  "GET",
+			URL:     "http://www.example.org/",
+			Request: request1,
+		},
+		Response: ht.Response{
+			Response: &http.Response{
+				Status:     "200 OK",
+				StatusCode: 200,
+				Proto:      "HTTP/1.1",
+			},
+			Duration: 200 * time.Millisecond,
+			// Long and wide body
+			BodyStr: strings.Repeat("A", 200) +
+				strings.Repeat("aaaa\n", 90) +
+				"The End.",
+			BodyErr: nil,
+		},
+		Result: ht.Result{Status: ht.Pass},
+	}
+	test5.SetMetadata("Filename", "test5.ht")
+
 	suite := Suite{
 		Name: "HTML Report Suite",
 		Description: "Test generation of _Report_.html file\n" +
@@ -202,7 +229,7 @@ func TestHTMLReport(t *testing.T) {
 		},
 		Started:  time.Date(2017, 9, 8, 9, 48, 0, 123456789, time.UTC),
 		Duration: 2345 * time.Millisecond,
-		Tests:    []*ht.Test{test1, test2, test3, test4},
+		Tests:    []*ht.Test{test1, test2, test3, test4, test5},
 	}
 
 	os.RemoveAll("testdata/testreport")

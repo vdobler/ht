@@ -119,3 +119,15 @@ func clipLines(s string, maxLines, maxCols int) string {
 }
 
 func typeIndicator(t string) string { return "\u2014\u2003" + t + "\u2003\u2014" }
+
+// SummaryIsClipped return whether applying Summary to s
+// will produce an clipped or pretty-printed output.
+func SummaryIsClipped(s string) bool {
+	summary := Summary(s)
+	if strings.HasPrefix(s, "\u2014\u2003") &&
+		strings.HasSuffix(s, "\u2003\u2014") {
+		return false // Type indicators do not qualify as "clipped"
+	}
+
+	return summary != s
+}

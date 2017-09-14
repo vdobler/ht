@@ -146,7 +146,7 @@ var htmlResponseTmpl = `{{define "RESPONSE"}}
       {{if .Response.BodyErr}}Error reading body: {{.Response.BodyErr.Error}}
       {{else}}
         {{if .Response.BodyStr}}
-<pre class="responseBodySummary">
+<pre class="responseBodySummary{{if SummaryIsClipped .Response.BodyStr}} clipped" title="Body is clipped!{{end}}">
 {{Summary .Response.BodyStr}}
 </pre>
         <a href="{{$seqno}}.ResponseBody.{{fileext .}}" target="_blank">Response Body</a>
@@ -308,6 +308,7 @@ h3 {
 .NOTRUN { color: grey; }
 
 pre.description { font-family: serif; margin: 0px; }
+pre.clipped { background-color: #FFE4B5; }
 
 div.subsuite {
   margin-left: 2em;
@@ -568,18 +569,19 @@ func init() {
 
 	HtmlSuiteTmpl = htmltemplate.New("DOCUMENT")
 	HtmlSuiteTmpl.Funcs(htmltemplate.FuncMap{
-		"ToUpper":      strings.ToUpper,
-		"Summary":      ht.Summary,
-		"loop":         loopIteration,
-		"dict":         dict,
-		"clean":        cleanSentBody,
-		"nicetime":     roundTimeToMS,
-		"niceduration": roundDuration,
-		"identifier":   identifier,
-		"filename":     filename,
-		"fileext":      fileext,
-		"subsuite":     subsuite,
-		"errlist":      ErrorList,
+		"ToUpper":          strings.ToUpper,
+		"Summary":          ht.Summary,
+		"SummaryIsClipped": ht.SummaryIsClipped,
+		"loop":             loopIteration,
+		"dict":             dict,
+		"clean":            cleanSentBody,
+		"nicetime":         roundTimeToMS,
+		"niceduration":     roundDuration,
+		"identifier":       identifier,
+		"filename":         filename,
+		"fileext":          fileext,
+		"subsuite":         subsuite,
+		"errlist":          ErrorList,
 	})
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlDocumentTmpl))
 	HtmlSuiteTmpl = htmltemplate.Must(HtmlSuiteTmpl.Parse(htmlStyleTmpl))
