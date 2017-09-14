@@ -83,12 +83,13 @@ func walk(form url.Values, path string, val reflect.Value) (reflect.Value, error
 
 func walkBool(form url.Values, path string, val reflect.Value) (reflect.Value, errorlist.List) {
 	cpy := reflect.New(val.Type()).Elem()
-	cpy.SetBool(val.Bool())
 
-	if newVals, ok := form[path]; ok {
+	// Checkbox sends only if checked.
+	if _, ok := form[path]; ok {
 		delete(form, path)
-		newVal := newVals[0]
-		cpy.SetBool(newVal == "true")
+		cpy.SetBool(true)
+	} else {
+		cpy.SetBool(false)
 	}
 
 	return cpy, nil

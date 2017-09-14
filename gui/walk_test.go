@@ -23,21 +23,12 @@ func TestWalkBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := cpy.Bool(); got != s {
-		t.Fatalf("got %t, want %t", got, s)
+	if got := cpy.Bool(); got != false {
+		t.Fatalf("got %t, want false", got)
 	}
 
 	// With update.
-	form.Set("s", "")
-	cpy, err = walkBool(form, "s", reflect.ValueOf(s))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cpy.Bool() != false {
-		t.Fatal("bad value")
-	}
-
-	form.Set("s", "true")
+	form.Set("s", "whatever")
 	cpy, err = walkBool(form, "s", reflect.ValueOf(s))
 	if err != nil {
 		t.Fatal(err)
@@ -45,6 +36,7 @@ func TestWalkBool(t *testing.T) {
 	if cpy.Bool() != true {
 		t.Fatal("bad value")
 	}
+
 }
 
 func TestWalkString(t *testing.T) {
@@ -393,7 +385,7 @@ func TestWalkNamedTypes(t *testing.T) {
 		C MyString
 		D MyFloat
 	}
-	mt := MyType{A: MyBool(true), B: MyInt(5), C: MyString("foo"), D: MyFloat(3.141)}
+	mt := MyType{A: MyBool(false), B: MyInt(5), C: MyString("foo"), D: MyFloat(3.141)}
 
 	form := make(url.Values)
 
@@ -406,12 +398,12 @@ func TestWalkNamedTypes(t *testing.T) {
 		t.Fatal(cpy.Kind().String())
 	}
 	c := cpy.Interface().(MyType)
-	if got := fmt.Sprintf("%v", c); got != "{true 5 foo 3.141}" {
+	if got := fmt.Sprintf("%v", c); got != "{false 5 foo 3.141}" {
 		t.Fatal(got)
 	}
 
 	// With update.
-	form.Set("mt.A", "false")
+	form.Set("mt.A", "true")
 	form.Set("mt.B", "-12")
 	form.Set("mt.C", "xyz")
 	form.Set("mt.D", "2.718")
@@ -423,7 +415,7 @@ func TestWalkNamedTypes(t *testing.T) {
 		t.Fatal(cpy.Kind().String())
 	}
 	c = cpy.Interface().(MyType)
-	if got := fmt.Sprintf("%v", c); got != "{false -12 xyz 2.718}" {
+	if got := fmt.Sprintf("%v", c); got != "{true -12 xyz 2.718}" {
 		t.Fatal(got)
 	}
 

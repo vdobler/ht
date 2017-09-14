@@ -133,8 +133,7 @@ func (v *Value) renderBool(path string, depth int, readonly bool, val reflect.Va
 		checked = " checked"
 	}
 	v.printf("<input type=\"checkbox\" name=\"%s\" value=\"true\" %s/>\n",
-		template.HTMLEscapeString(path),
-		checked)
+		template.HTMLEscapeString(path), checked)
 
 	return nil
 }
