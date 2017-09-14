@@ -79,6 +79,7 @@ func dumpCommonTypes(buf *bytes.Buffer) {
 	dumpData(buf, reflect.TypeOf(ht.Execution{}))
 	dumpData(buf, reflect.TypeOf(ht.Cookie{}))
 	dumpData(buf, reflect.TypeOf(ht.Condition{}))
+	dumpData(buf, reflect.TypeOf(ht.Browser{}))
 	dumpData(buf, reflect.TypeOf(url.Values{}))
 	dumpData(buf, reflect.TypeOf(http.Header{}))
 	dumpData(buf, reflect.TypeOf(http.Response{}))

@@ -759,6 +759,25 @@ func init() {
 				Doc: "Time checks whether the string is a valid time if parsed with Time as the layout\nstring.\n",
 			}}})
 
+	gui.RegisterType(ht.Browser{}, gui.Typeinfo{
+		Doc: "Browser collects information needed for the checks Screenshot, RenderedHTML and\nRenderingTime which use PhantomJS as a headless browser.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Geometry": gui.Fieldinfo{
+				Doc: "Geometry of the screenshot in the form\n\n    <width> x <height> [ + <left> + <top> [ * <zoom> ] ]\n\nwhich generates a screenshot (width x height) pixels located at (left,top) while\nsimulating a browser viewport of again (width x height) at a zoom level of zoom\n%.\n\nIt defaults to DefaultGeometry if unset.\n",
+			},
+			"Script": gui.Fieldinfo{
+				Doc: "Script is JavaScript code to be evaluated after page loading but before\nrendering the page. You can use it e.g. to hide elements which are\nnon-deterministic using code like:\n\n    $(\"#keyvisual > div.slides\").css(\"visibility\", \"hidden\");\n",
+			},
+			"Timeout": gui.Fieldinfo{
+				Doc: "Timeout is the maximum duration to wait for the headless browser to prepare the\npage. Defaults to 5 seconds if unset.\n",
+			},
+			"WaitUntilInvisible": gui.Fieldinfo{
+				Doc: "WaitUntilInvisible selects (via CSS selectors) those elements in the DOM which\nmust be invisible before rendering the screenshot.\n",
+			},
+			"WaitUntilVisible": gui.Fieldinfo{
+				Doc: "WaitUntilVisible selects (via CSS selectors) those elements in the DOM which\nmust be visible before rendering the screenshot.\n",
+			}}})
+
 	gui.RegisterType(url.Values{}, gui.Typeinfo{
 		Doc:   "Values maps a string key to a list of values. It is typically used for query\nparameters and form values. Unlike in the http.Header map, the keys in a Values\nmap are case-sensitive.\n",
 		Field: map[string]gui.Fieldinfo{}})
