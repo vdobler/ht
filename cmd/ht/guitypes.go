@@ -43,6 +43,9 @@ func registerGUITypes() {
 		"", "",
 	)
 
+	setFieldSpecials(ht.CustomJS{}, "", "", "Script")
+	setFieldSpecials(ht.JSExtractor{}, "", "", "Script")
+
 	/*
 		This is too much. This field in Condition is used rarely
 		and the GUI is overloaded with all these checkboxes as
