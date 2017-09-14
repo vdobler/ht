@@ -535,11 +535,33 @@ func init() {
 				Doc: "Sep is the separator in the element path. A zero value is equivalent to \".\"\n",
 			}}})
 
-	gui.RegisterType(ht.SetVariable{}, gui.Typeinfo{
-		Doc: "SetVariable allows to pragmatically \"extract\" a fixed value.\n",
+	gui.RegisterType(ht.SetTimestamp{}, gui.Typeinfo{
+		Doc: "SetTimestap allows to progmatically extract the current time optionaly offset by\na certain duration in a user selected layout. To round the extracted timestamp\ne.g. to mutliple of hours use a format like \"2006-01-02 15:00:00\" with fixed\nminutes and seconds.\n\nThe test and the response are ignored.\n",
 		Field: map[string]gui.Fieldinfo{
+			"DeltaDay": gui.Fieldinfo{
+				Doc: "DeltaYear, DeltaMonth and DeltaDay are deltas to now but for whole years, month\nand days.\n",
+			},
+			"DeltaMonth": gui.Fieldinfo{
+				Doc: "DeltaYear, DeltaMonth and DeltaDay are deltas to now but for whole years, month\nand days.\n",
+			},
+			"DeltaT": gui.Fieldinfo{
+				Doc: "DeltaT is the difference to now.\n",
+			},
+			"DeltaYear": gui.Fieldinfo{
+				Doc: "DeltaYear, DeltaMonth and DeltaDay are deltas to now but for whole years, month\nand days.\n",
+			},
+			"Format": gui.Fieldinfo{
+				Doc: "Format is the time layout string (as used by time.Format). It defaults to\n\"2006-01-02T15:04:05Z07:00\" (RFC3339)\n",
+			}}})
+
+	gui.RegisterType(ht.SetVariable{}, gui.Typeinfo{
+		Doc: "SetVariable allows to progmatically \"extract\" a fixed value or evaluate and\narithmetic expression.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Eval": gui.Fieldinfo{
+				Doc: "Eval is a arithmetic expression evaluated by github.com/Knetic/govaluate if To\nis empty. The test is available as the parameter Test.\n\nThe following functions are available:\n\n    seconds(d):         convert time.Duration d to seconds\n    strlen(s):          length of s in bytes\n    substring(s,a,e):   substring [a,e[ of s\n    replace(s,old,new): replace old with new in s\n    strindex(s,n):      index of n in s (or -1)\n\nEval is experimental and might go away without notice.\n",
+			},
 			"To": gui.Fieldinfo{
-				Doc: "To is the value to extract.\n",
+				Doc: "To is the constant, fixed value to extract.\n",
 			}}})
 
 	gui.RegisterType(ht.Test{}, gui.Typeinfo{

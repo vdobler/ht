@@ -898,11 +898,44 @@ var typeDoc = map[string]string{
 		"    SetCookie checks for cookies being properly set. Note that the Path and\n" +
 		"    Domain conditions are checked on the received Path and/or Domain and not on\n" +
 		"    the interpreted values according to RFC 6265.",
-	"setvariable": "type SetVariable struct {\n" +
-		"\t// To is the value to extract.\n" +
-		"\tTo string\n" +
+	"settimestamp": "type SetTimestamp struct {\n" +
+		"\t// DeltaT is the difference to now.\n" +
+		"\tDeltaT time.Duration \n" +
+		"\n" +
+		"\t// DeltaYear, DeltaMonth and DeltaDay are deltas to\n" +
+		"\t// now but for whole years, month and days.\n" +
+		"\tDeltaYear, DeltaMonth, DeltaDay int \n" +
+		"\n" +
+		"\t// Format is the time layout string (as used by time.Format).\n" +
+		"\t// It defaults to \"2006-01-02T15:04:05Z07:00\" (RFC3339)\n" +
+		"\tFormat string \n" +
 		"}\n" +
-		"    SetVariable allows to pragmatically \"extract\" a fixed value.",
+		"    SetTimestap allows to progmatically extract the current time optionaly\n" +
+		"    offset by a certain duration in a user selected layout. To round the\n" +
+		"    extracted timestamp e.g. to mutliple of hours use a format like \"2006-01-02\n" +
+		"    15:00:00\" with fixed minutes and seconds.\n" +
+		"\n" +
+		"    The test and the response are ignored.",
+	"setvariable": "type SetVariable struct {\n" +
+		"\t// To is the constant, fixed value to extract.\n" +
+		"\tTo string \n" +
+		"\n" +
+		"\t// Eval is a arithmetic expression evaluated by\n" +
+		"\t// github.com/Knetic/govaluate if To is empty.\n" +
+		"\t// The test is available as the parameter Test.\n" +
+		"\t//\n" +
+		"\t// The following functions are available:\n" +
+		"\t//   seconds(d):         convert time.Duration d to seconds\n" +
+		"\t//   strlen(s):          length of s in bytes\n" +
+		"\t//   substring(s,a,e):   substring [a,e[ of s\n" +
+		"\t//   replace(s,old,new): replace old with new in s\n" +
+		"\t//   strindex(s,n):      index of n in s (or -1)\n" +
+		"\t//\n" +
+		"\t// Eval is experimental and might go away without notice.\n" +
+		"\tEval string \n" +
+		"}\n" +
+		"    SetVariable allows to progmatically \"extract\" a fixed value or evaluate and\n" +
+		"    arithmetic expression.",
 	"sorted": "type Sorted struct {\n" +
 		"\t// Text is the list of text fragments to look for in the\n" +
 		"\t// response body or the normalized text content of the\n" +
