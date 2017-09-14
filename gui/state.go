@@ -123,6 +123,11 @@ table.map>tbody>tr>th, table.map>tbody>tr>td {
   padding-bottom: 4px;  
 }
 
+form>fieldset>table>tbody>tr>td {
+    padding-top: 1ex;
+    padding-bottom: 1ex;
+}
+
 th {
     text-align: right;
 }
