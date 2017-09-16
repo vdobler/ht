@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Knetic/govaluate"
 	"github.com/andybalholm/cascadia"
 	"github.com/robertkrimen/otto"
 	"github.com/vdobler/ht/populate"
@@ -464,115 +463,17 @@ func (e JSExtractor) Extract(t *Test) (string, error) {
 // ----------------------------------------------------------------------------
 // SetVariable
 
-// SetVariable allows to progmatically "extract" a fixed value
-// or evaluate and arithmetic expression.
+// SetVariable allows to progmatically "extract" a fixed value.
 //
+// The test and the response are ignored.
 type SetVariable struct {
-	// To is the constant, fixed value to extract.
+	// To is the constant, fixed value to "extract".
 	To string `json:",omitempty"`
-
-	// Eval is a arithmetic expression evaluated by
-	// github.com/Knetic/govaluate if To is empty.
-	// The test is available as the parameter Test.
-	//
-	// The following functions are available:
-	//   seconds(d):         convert time.Duration d to seconds
-	//   strlen(s):          length of s in bytes
-	//   substring(s,a,e):   substring [a,e[ of s
-	//   replace(s,old,new): replace old with new in s
-	//   strindex(s,n):      index of n in s (or -1)
-	//
-	// Eval is experimental and might go away without notice.
-	Eval string `json:",omitempty"`
-}
-
-// ExpressionFunctions are functions for use in SetVariable.Eval.
-var ExpressionFunctions = map[string]govaluate.ExpressionFunction{
-	"strlen": func(args ...interface{}) (interface{}, error) {
-		if len(args) != 1 {
-			return 0, fmt.Errorf("strlen takes exactly one argument, got %d", len(args))
-		}
-		s, ok := args[0].(string)
-		if !ok {
-			return 0, fmt.Errorf("strlen needs string argument, got %T", args[0])
-		}
-		return float64(len(s)), nil
-	},
-	"seconds": func(args ...interface{}) (interface{}, error) {
-		if len(args) != 1 {
-			return 0, fmt.Errorf("seconds takes exactly one argument, got %d", len(args))
-		}
-		d, ok := args[0].(time.Duration)
-		if !ok {
-			return 0, fmt.Errorf("seconds needs time.Duration argument, got %T", args[0])
-		}
-		return float64(d / time.Second), nil
-	},
-	"substring": func(args ...interface{}) (interface{}, error) {
-		if len(args) != 3 {
-			return 0, fmt.Errorf("substring takes exactly three arguments, got %d", len(args))
-		}
-		s, ok := args[0].(string)
-		if !ok {
-			return 0, fmt.Errorf("substring needs string as first argument, got %T", args[0])
-		}
-		a, ok := args[1].(float64)
-		if !ok {
-			return 0, fmt.Errorf("substring needs number as second argument, got %T", args[1])
-		}
-		e, ok := args[2].(float64)
-		if !ok {
-			return 0, fmt.Errorf("substring needs number as third argument, got %T", args[2])
-		}
-		return s[int(a):int(e)], nil
-	},
-	"replace": func(args ...interface{}) (interface{}, error) {
-		if len(args) != 3 {
-			return 0, fmt.Errorf("replace takes exactly three arguments, got %d", len(args))
-		}
-		s, ok := args[0].(string)
-		a, oka := args[1].(string)
-		b, okb := args[2].(string)
-		if !ok || !oka || !okb {
-			return 0, fmt.Errorf("replace needs strings as argument")
-		}
-		return strings.Replace(s, a, b, -1), nil
-	},
-	"strindex": func(args ...interface{}) (interface{}, error) {
-		if len(args) != 2 {
-			return 0, fmt.Errorf("strindex takes exactly two arguments, got %d", len(args))
-		}
-		s, ok := args[0].(string)
-		a, oka := args[1].(string)
-		if !ok || !oka {
-			return 0, fmt.Errorf("strindex needs strings as argument")
-		}
-		return float64(strings.Index(s, a)), nil
-	},
 }
 
 // Extract implements Extractor's Extract method.
 func (e SetVariable) Extract(test *Test) (string, error) {
-	if e.To == "" && e.Eval == "" {
-		return "", nil
-	}
-
-	if e.To != "" {
-		return e.To, nil
-	}
-
-	expression, err := govaluate.NewEvaluableExpressionWithFunctions(e.Eval, ExpressionFunctions)
-	if err != nil {
-		return "", err
-	}
-
-	parameters := map[string]interface{}{
-		"Test": test,
-		"pi":   3.141,
-	}
-
-	result, err := expression.Evaluate(parameters)
-	return fmt.Sprintf("%v", result), err
+	return e.To, nil
 }
 
 // ----------------------------------------------------------------------------
