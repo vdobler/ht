@@ -8,14 +8,13 @@ RUN apt-get update \
     && go get -v github.com/pwaller/goupx
 RUN go get -v golang.org/x/crypto/... \
     golang.org/x/net/... \
-    golang.org/x/text/...
+    golang.org/x/text/... \
+    github.com/vdobler/ht/...
 
 
 ADD . /go/src/github.com/vdobler/ht
 
 WORKDIR /go/src/github.com/vdobler/ht/cmd/ht
-RUN ls -l
-RUN bash -c pwd
 RUN go run gendoc.go \
     && go run gengui.go
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ht -ldflags "-X main.version=$(git describe) -s"
