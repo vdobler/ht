@@ -4,6 +4,10 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  The file://-Pseudorequest work on localhost only which is a bit lame given
+   that the Logfile check can access remote files via ssh. The AuthMethods
+   could be passed in the HTTP header in a quite natural way.
+
 *  Generating and storing the type doc twice is overkill. The GUI data could be
    used to generate the `go doc` output.
 
