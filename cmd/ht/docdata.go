@@ -917,25 +917,12 @@ var typeDoc = map[string]string{
 		"\n" +
 		"    The test and the response are ignored.",
 	"setvariable": "type SetVariable struct {\n" +
-		"\t// To is the constant, fixed value to extract.\n" +
+		"\t// To is the constant, fixed value to \"extract\".\n" +
 		"\tTo string \n" +
-		"\n" +
-		"\t// Eval is a arithmetic expression evaluated by\n" +
-		"\t// github.com/Knetic/govaluate if To is empty.\n" +
-		"\t// The test is available as the parameter Test.\n" +
-		"\t//\n" +
-		"\t// The following functions are available:\n" +
-		"\t//   seconds(d):         convert time.Duration d to seconds\n" +
-		"\t//   strlen(s):          length of s in bytes\n" +
-		"\t//   substring(s,a,e):   substring [a,e[ of s\n" +
-		"\t//   replace(s,old,new): replace old with new in s\n" +
-		"\t//   strindex(s,n):      index of n in s (or -1)\n" +
-		"\t//\n" +
-		"\t// Eval is experimental and might go away without notice.\n" +
-		"\tEval string \n" +
 		"}\n" +
-		"    SetVariable allows to progmatically \"extract\" a fixed value or evaluate and\n" +
-		"    arithmetic expression.",
+		"    SetVariable allows to progmatically \"extract\" a fixed value.\n" +
+		"\n" +
+		"    The test and the response are ignored.",
 	"sorted": "type Sorted struct {\n" +
 		"\t// Text is the list of text fragments to look for in the\n" +
 		"\t// response body or the normalized text content of the\n" +

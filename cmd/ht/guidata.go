@@ -555,13 +555,10 @@ func init() {
 			}}})
 
 	gui.RegisterType(ht.SetVariable{}, gui.Typeinfo{
-		Doc: "SetVariable allows to progmatically \"extract\" a fixed value or evaluate and\narithmetic expression.\n",
+		Doc: "SetVariable allows to progmatically \"extract\" a fixed value.\n\nThe test and the response are ignored.\n",
 		Field: map[string]gui.Fieldinfo{
-			"Eval": gui.Fieldinfo{
-				Doc: "Eval is a arithmetic expression evaluated by github.com/Knetic/govaluate if To\nis empty. The test is available as the parameter Test.\n\nThe following functions are available:\n\n    seconds(d):         convert time.Duration d to seconds\n    strlen(s):          length of s in bytes\n    substring(s,a,e):   substring [a,e[ of s\n    replace(s,old,new): replace old with new in s\n    strindex(s,n):      index of n in s (or -1)\n\nEval is experimental and might go away without notice.\n",
-			},
 			"To": gui.Fieldinfo{
-				Doc: "To is the constant, fixed value to extract.\n",
+				Doc: "To is the constant, fixed value to \"extract\".\n",
 			}}})
 
 	gui.RegisterType(ht.Test{}, gui.Typeinfo{
