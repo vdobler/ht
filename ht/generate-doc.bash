@@ -4,7 +4,7 @@ set -eu
 
 checks=$(guru -scope  . implements "check.go:#350" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]" | sort)
 
-extractors=$(guru -scope  . implements "extractor.go:#458" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]" | sort)
+extractors=$(guru -scope  . implements "extractor.go:#466" | sed -n -e 's/.* //; s/*//; 2,$p' | grep -v -E "^[^*A-Z]" | sort)
 
 
 
