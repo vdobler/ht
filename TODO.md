@@ -4,6 +4,73 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  There is no builtin documentation for the file://, bash:// and sql://
+   pseudo-request at all. The builtin documentation for the "raw" tests
+   and suites is lacking. E.g. ht doc RawTest yields something like:
+       type RawTest struct {
+           *File
+           Mixins    []*Mixin          // Mixins of this test.
+           Variables map[string]string // Variables are the defaults of the variables.
+       }
+       RawTest is a raw for of a test as read from disk with its mixins and its
+       variables.
+   which is not helpful when writing a Test in Hjson disk format. Almost the
+   same with 'ht doc Test' which outputs all fields of a Tests, inculding the
+   "output" fields which are useless to set. Here the GUI documentation is
+   more helpful. But also this is missing documentation for the Mixins. This
+   problem is even worse for Suites.
+   The documentation is mostly there, but spread over Readme.md files, type
+   docs, package docs and sometimes even unit tests.
+   Basically 'ht doc' need not output what 'go doc' would print: 'ht doc' is
+   used while using cmd/ht and not the libraray ht. So ' go doc Test' should
+   display how to write a Hjson based test. I'm comfortable with 'ht doc Test'
+   outputing just the direct/toplevel fields of Test and the user has to run
+   'ht doc Request' to dig into the fields of Test. For CustomJS check and
+   JSExtractor it might be is important to know e.g. the details of how a
+   Response is structured. Maybe the documentation of these two has to be
+   augmented and should point to the official godoc of ht.Test.
+   For writing Hjson tests it is not really needed to know that Body is a
+   Condition: It is nice as a reference but you are interesetd in the details
+   for Min and Regexp so 'ht doc Body' should display the fields of a
+   Condition directly. This is already done in the GUI to some extent.
+
+*  Examples are missing.
+   Maybe this could also fix (or at least soften) the documentation problem:
+   Let 'ht example Test' produce an generic example test.ht in Hjson format
+   containing mixins, a request, execution, checks, variabels and extractors.
+   The user just deletes what seh doesn't need. Also output that specialised
+   sub-examples of Test are available like Test.JSON, Test.HTML, Test.MySQL,
+   Test.File. Running 'ht example Test.MySQL' would output an example of how
+   to do a sql:// pseudo-request. This can be enhannced to Test.MySQL.Query,
+   Test.MySQL.Insert and Test.MySQL.Update to provide even more detailed
+   examples. An example for Test.HTML could contain lots of checks suitable
+   for HTML pages (maybe all of them) and data extractions targeted at
+   HTML pages (BodyExtractor, HTMLExtractor, HeaderExtractor).
+   Examples could be validated before baking into the ht example subcommand.
+   Examples might be much easier to understand than documentation which
+   requires to build a mental model of what will happen just from the factual
+   description (which is hard).
+       $ ht example
+       Available top-level examples
+         * Test      how to write a test
+         * Suite     how to write a suite of tests
+         * Scenario  define a scenario for a load test
+         * Mixin     example of a test-mixin
+
+       $ ht example Test
+       // Test Example
+       {
+           // Name used during reporting
+           Name: "Get Admin Bearer Token"
+           // ...
+       }
+       Available Subtopics to Test:
+         * Test.HTML   test a HTML document
+         * Test.JSON   test a JSON response
+         * Test.SQL    execute SQL and check result
+         * Test.Speed  how to check speed of an endpoint
+   This would provide valuable howtos and could replace the showcase.
+
 *  The file://-Pseudorequest work on localhost only which is a bit lame given
    that the Logfile check can access remote files via ssh. The AuthMethods
    could be passed in the HTTP header in a quite natural way.
