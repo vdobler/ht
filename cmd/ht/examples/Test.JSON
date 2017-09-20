@@ -1,0 +1,14 @@
+// A test for a JSON response
+{
+    Name: "Test of a JSON document"
+    Request: {
+        URL: "http://{{HOST}}/api.json"
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ResponseTime", Lower: "700ms"}
+        {Check: "ContentType", Is: "text/html"}
+        {Check: "UTF8Encoded"}
+        {Check: "JSON"}
+    ]
+}

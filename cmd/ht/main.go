@@ -63,6 +63,7 @@ func init() {
 		cmdVersion,
 		cmdHelp,
 		cmdDoc,
+		cmdExample,
 		cmdRecord,
 		cmdList,
 		cmdQuick,

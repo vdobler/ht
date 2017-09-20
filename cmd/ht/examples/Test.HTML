@@ -1,0 +1,28 @@
+// A test for a HTML page
+{
+    Name: "Test of HTML page"
+    Request: {
+        URL: "http://{{HOST}}/foo.html"
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ResponseTime", Lower: "700ms"}
+        {Check: "ContentType", Is: "text/html"}
+        {Check: "UTF8Encoded"}
+        {Check: "ValidHTML"}
+        {Check: "W3CValidHTML", AllowedErrors: 5}
+
+        // Make sure resources linked from the HTML document are accessable.
+        {Check: "Links"
+            Which: "a link img script"  // check only these tags
+            Head: true                  // HEAD request is enough
+            Concurrency: 8              // check 8 links in parallel
+            IgnoredLinks [
+                // No need to check these links
+                {Contains: "facebook.com"},
+                {Equals: "http://www.twitter.com/foo/bar"}
+            ]
+            FailMixedContent: true
+        }
+    ]
+}
