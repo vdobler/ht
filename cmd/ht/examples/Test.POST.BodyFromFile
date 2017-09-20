@@ -1,0 +1,26 @@
+// Reading a POST body from a file
+{
+    Name: "Test body read from file"
+    Request: {
+        Method:  "POST"
+        URL:     "http://{{HOST}}/post"
+	Header:  { "Content-Type": "application/json" }
+
+        // Body can use @file and @vfile just like Params:
+        // The @vfile version will perform variable substitution in the
+        // content of somefile. Note how somefile is read realtive to
+        // directory of this test-file.
+        Body: "@vfile:{{TEST_DIR}}/somefile"
+
+        // Use the @file form if no variable substitution inside somefile
+	// shal be performed.	
+        // Body: "@file:{{TEST_DIR}}/somefile"
+    }
+
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "Body", Contains: "TheFoo"}
+    ]
+
+    Variables: { FOO: "TheFoo" }
+}

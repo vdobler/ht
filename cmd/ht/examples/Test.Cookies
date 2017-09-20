@@ -1,0 +1,28 @@
+// Test Setting and Deleting Cookies
+{
+    Name: "Test SeCookie Headers"
+    Request: {
+        URL: "http://{{HOST}}/other"
+        Timeout: 2s
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+	
+	// Cookie cip was set to any value with any properties:
+        {Check: "SetCookie", Name: "cip"}
+
+	// Make sure cip's path is /
+        {Check: "SetCookie", Name: "cip", Path: {Equals: "/"}}
+
+        // Value is 20 to 32 alphanumeric characters
+        {Check: "SetCookie", Name: "cip", Value: {Regexp: "[[:alnum:]]{20,32}"}}
+
+	// cip is persistent (not a session cookie) with a lifetime of at
+	// least 10 minutes and Http-Only
+        {Check: "SetCookie", Name: "cip", MinLifetime: "10m"
+            Type: "persistent httpOnly"}
+
+        // Make sure cookie tzu gets deleted properly
+        {Check: "DeleteCookie", Name: "tzu"}
+    ]
+}

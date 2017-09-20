@@ -63,6 +63,7 @@ func init() {
 		cmdVersion,
 		cmdHelp,
 		cmdDoc,
+		cmdExample,
 		cmdRecord,
 		cmdList,
 		cmdQuick,
@@ -132,7 +133,11 @@ func main() {
 			suites := loadSuites(args)
 			cmd.RunSuites(cmd, suites)
 		case cmd.RunTests != nil:
-			tests := loadTests(args)
+			tests, err := loadTests(args)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(8)
+			}
 			cmd.RunTests(cmd, tests)
 		default:
 			cmd.RunArgs(cmd, args)
@@ -327,20 +332,19 @@ func setVerbosity(rs *suite.RawSuite) {
 // loadTests loads single Tests and combines them into an artificial
 // Suite, ready for execution. Unrolling happens, but only the first
 // unrolled test gets included into the suite.
-func loadTests(args []string) []*suite.RawTest {
+func loadTests(args []string) ([]*suite.RawTest, error) {
 	tt := []*suite.RawTest{}
 	// Input and setup tests from command line arguments.
 	for _, arg := range args {
 		fs, arg := filesystemFor(arg)
 		test, err := suite.LoadRawTest(arg, fs)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot read test %q: %s\n", arg, err)
-			os.Exit(8)
+			return nil, fmt.Errorf("Cannot read test %q: %s\n", arg, err)
 		}
 		tt = append(tt, test)
 	}
 
-	return tt
+	return tt, nil
 }
 
 // fillVariablesFlagFrom reads in the file variablesFile and sets the

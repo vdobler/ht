@@ -1,0 +1,27 @@
+// A generic Suite
+{
+    Name: "Suite for Testing Load"
+    KeepCookies: true
+    OmitChecks: false
+    Setup: [
+        { File: "a.ht"
+          Variables: {
+              VAR_A: "vala2",
+              VAR_C: "valc"
+          }
+        }
+    ],
+    comment: "see Foo. B et al., Journal of examples and Comments 123, p456",
+    Main: [
+        {File: "a.ht"}
+        {File: "b.ht", Variables: {"foo": "bar"}}
+	{File: "c/d.ht"}
+        {File: "a.ht", Mocks: ["m1.mock", "lastname.mock"]}
+    ],
+    Teardown: [
+       {File: "b.ht"}
+    ]
+    Variables: {
+       VARNAME: "varvalue"
+    }
+}

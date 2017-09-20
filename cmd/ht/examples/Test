@@ -1,0 +1,50 @@
+// A generic Test
+{
+    // Name is used during reporting. Make it short and printable.
+    Name: "Simple Test"
+
+    Description: '''
+        This description is not used but it is nice to
+        provide same background information on this test.
+    '''
+
+    // Details of the Request follow:
+    Request: {
+        // The HTTP method. Defaults to GET.
+        Method: "GET"    
+
+        // The URL of the request. Can contain query parameter (but these
+        // must be properly encoded).
+	// Notethe use a variable substitution: {{HOST}} is replaced with the
+        // current value of the HOST variable.
+        URL:    "http://{{HOST}}/html?q=xyz"
+	
+	// Header contains the specific http headers to be sent in this request.
+	// User-Agent and Accept headers are set automatically to what Chrome
+	// sends if not set explicitly.
+        Header: {
+            Accept-Language: "en,fr"
+        }
+
+        // Add URL parameter
+        Params: {
+            w: "why so?"      // automatic URL-encoding
+            u: [123, "abc"]   // can send multiple u
+        }
+
+        Timeout: "25s"   // Use longer timeout then the default 10s
+        FollowRedirects: true  // Follow redirect chain until non 30x is sent.
+    }
+
+    // The list of checks to apply.
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ResponseTime", Lower: "700ms"}
+    ]
+
+    // Variables provides default values for the variables. The default
+    // values can be overwritten from Suites and from the command line.
+    Variables: {
+        HOST: "www.example.org"
+    }
+}

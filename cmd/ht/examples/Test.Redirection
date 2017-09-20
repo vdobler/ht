@@ -1,0 +1,12 @@
+// Redirection requests
+{
+    Name: "Redirections"
+    Request: {
+        URL: "http://{{HOST}}/redirect1"
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 301}
+        {Check: "Redirect", To: ".../html"}
+        {Check: "Redirect", To: ".../html", StatusCode: 301}
+    ]
+}

@@ -1,0 +1,25 @@
+// Test of an image
+{
+    Name: "Test of a PNG image"
+    Request: {
+        URL: "http://{{HOST}}/lena"
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "Image"}  // response is an image
+        {Check: "Image", Format: "png"}  // it's a PNG image
+        {Check: "Image", Width: 20, Height: 20}  // proper size
+
+	// Check color fingerprint of image.
+        {Check: "Image", Fingerprint: "-P000000Zn0000l0100a030a", Threshold: 0.0025}
+
+	// Check block-mean-value (BMV) fingerprint of image
+        {Check: "Image", Fingerprint: "be1cbd8d0b0b0f8c"}
+
+        // Combined
+        {Check: "Image", Fingerprint: "be1cbd8d0b0b0f8c", Width: 20, Height: 20, Format: "png"}
+
+        // Check full binary identity:
+        {Check: "Identity", SHA1: "f2534d702f0b18907162d7017357608ab2a40e2b"}
+    ]
+}

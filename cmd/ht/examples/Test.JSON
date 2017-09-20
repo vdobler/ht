@@ -1,0 +1,31 @@
+// Testing JSON documents
+{
+    Name: "Test of a JSON document"
+    Request: {
+        URL: "http://{{HOST}}/json"
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ResponseTime", Lower: "700ms"}
+        {Check: "ContentType", Is: "application/json"}
+        {Check: "UTF8Encoded"}
+        {Check: "JSON"}  // valid JSON
+	{Check: "JSON", Element: "Date"}  // presence of field "Name", value ignored
+	{Check: "JSON", Element: "Date", Equals: "\"2017-09-20\""}
+	{Check: "JSON", Element: "Date", Contains: "2017-09-20"}
+	{Check: "JSON", Element: "Finished", Equals: "true"}
+	{Check: "JSON", Element: "Numbers.0", Equals: "6"}  // access to deeply nested elements
+	{Check: "JSON", Element: "Numbers.1", GreaterThan: 6, LessThan: 45}
+
+	// Check structure of JSON and type of data with Schema.
+	{Check: "JSON", Schema: '''{"Date": "", "Numbers": [0,0,0,0,0,0], "Finished": false}'''}
+
+        // Interpret and check strings which contain embedded JSON:
+	{Check: "JSON", Element: "Raw", Embedded: {Element: "coord.1", Equals: "-1"}}
+	{Check: "JSON", Element: "Raw", Embedded: {Element: "label", Equals: "\"X\""}}
+
+        // There's a different check for JSON: JSONExpr
+	{Check: "JSONExpr", Expression: "$len(.Numbers) > 4"}
+	{Check: "JSONExpr", Expression: "$max(.Numbers) == 38"}
+    ]
+}
