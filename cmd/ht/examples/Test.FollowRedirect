@@ -1,0 +1,20 @@
+// Follow redirections
+{
+    Name: "Follow Redirections"
+    Request: {
+        URL: "http://{{HOST}}/redirect2"
+        FollowRedirects: true
+    }
+    Checks: [
+        // FollowRedirects follows redirects until 200 is received.
+        {Check: "StatusCode", Expect: 200}
+
+        // Check intermediate locations.
+        {Check: "RedirectChain"
+            Via: [ ".../redirect1", ".../html" ]
+        }
+
+	// Apply condition to final URL. Here full equality.
+        {Check: "FinalURL", Equals: "http://{{HOST}}/html"}
+    ]
+}

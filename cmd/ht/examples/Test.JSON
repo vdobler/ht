@@ -2,13 +2,22 @@
 {
     Name: "Test of a JSON document"
     Request: {
-        URL: "http://{{HOST}}/api.json"
+        URL: "http://{{HOST}}/json"
     }
     Checks: [
         {Check: "StatusCode", Expect: 200}
         {Check: "ResponseTime", Lower: "700ms"}
-        {Check: "ContentType", Is: "text/html"}
+        {Check: "ContentType", Is: "application/json"}
         {Check: "UTF8Encoded"}
-        {Check: "JSON"}
+        {Check: "JSON"}  // valid JSON
+	{Check: "JSON", Element: "Date"}  // presenc of field "Name", value ignored
+	{Check: "JSON", Element: "Date", Equals: "\"2017-09-20\""}
+	{Check: "JSON", Element: "Date", Contains: "2017-09-20"}
+	{Check: "JSON", Element: "Finished", Equals: "true"}
+	{Check: "JSON", Element: "Numbers.0", Equals: "6"}  // access to deeply nested elements
+	{Check: "JSON", Element: "Numbers.1", GreaterThan: 6, LessThan: 45}
+
+	// check structure of JSON and type of data
+	{Check: "JSON", Schema: '''{"Date": "", "Numbers": [0,0,0,0,0,0], "Finished": false}'''}
     ]
 }

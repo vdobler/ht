@@ -17,7 +17,7 @@
         // must be properly encoded).
 	// Notethe use a variable substitution: {{HOST}} is replaced with the
         // current value of the HOST variable.
-        URL:    "http://{{HOST}}/foo/bar?q=xyz"
+        URL:    "http://{{HOST}}/html?q=xyz"
 	
 	// Header contains the specific http headers to be sent in this request.
 	// User-Agent and Accept headers are set automatically to what Chrome
@@ -32,7 +32,7 @@
             u: [123, "abc"]   // can send multiple u
         }
 
-        Timeout: 25s   // Use longer timeout then the default 10s
+        Timeout: "25s"   // Use longer timeout then the default 10s
         FollowRedirects: true  // Follow redirect chain until non 30x is sent.
     }
 

@@ -1,0 +1,18 @@
+// A test for a POST request
+{
+    Name: "Test a POST request"
+    Request: {
+        Method:   "POST"
+        URL:      "http://{{HOST}}/post"
+        ParamsAs: "body"   // send as application/x-www-form-urlencoded in body
+        Params: {
+            "action":      "update"  // simple
+            "data[1][7]":  12        // fancy parameter name
+            "what":        "automatic encoding+escaping!" // let ht do the hard stuff
+            "several": [ "foo", "bar", 123 ]  // multiple values
+        }
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+    ]
+}

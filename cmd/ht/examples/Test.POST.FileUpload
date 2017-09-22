@@ -1,0 +1,25 @@
+// Uploading files as multipart data
+{
+    Name: "Test file uploads"
+    Request: {
+        Method:   "POST"
+        URL:      "http://{{HOST}}/post"
+        ParamsAs: "multipart"   // send as multipart/form-data
+        Params: {
+            // action is a simple parameter
+            "action":  "update"
+ 
+            // upload exact content of Test.HTML from current folder as file1
+            "file1":  "@file:{{TEST_DIR}}/somefile"
+
+            // substitute variables in Test.HTML before uploading
+            "file2":  "@vfile:{{TEST_DIR}}/somefile"
+        }
+    }
+
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+    ]
+
+    Variables: { FOO: "TheFoo" }
+}
