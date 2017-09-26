@@ -210,13 +210,15 @@ func (L *Latency) Execute(t *Test) error {
 	if counters[Pass] == L.N {
 		completed = true
 	}
+	Z := 1 * time.Microsecond
 	for _, r := range data {
+		d := Z * ((r.duration + Z/2) / Z) // cut off nanosecond (=noise) part
 		csvWriter.Write([]string{
 			t.Name,
 			strconv.Itoa(L.Concurrent),
 			r.started.Format(time.RFC3339Nano),
 			r.status.String(),
-			(r.duration / time.Millisecond).String(),
+			d.String(),
 			fmt.Sprintf("%t", completed),
 		})
 	}
