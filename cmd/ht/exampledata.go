@@ -92,6 +92,37 @@ var RootExample = &Example{
 }`,
 			Sub: []*Example{
 				&Example{
+					Name:        "Test.Cookies",
+					Description: "Test Setting and Deleting Cookies",
+					Data: `// Test Setting and Deleting Cookies
+{
+    Name: "Test SeCookie Headers"
+    Request: {
+        URL: "http://{{HOST}}/other"
+        Timeout: 2s
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+
+	// Cookie cip was set to any value with any properties:
+        {Check: "SetCookie", Name: "cip"}
+
+	// Make sure cip's path is /
+        {Check: "SetCookie", Name: "cip", Path: {Equals: "/"}}
+
+        // Value is 20 to 32 alphanumeric characters
+        {Check: "SetCookie", Name: "cip", Value: {Regexp: "[[:alnum:]]{20,32}"}}
+
+	// cip is persistent (not a session cookie) with a lifetime of at
+	// least 10 minutes and Http-Only
+        {Check: "SetCookie", Name: "cip", MinLifetime: "10m"
+            Type: "persistent httpOnly"}
+
+        // Make sure cookie tzu gets deleted properly
+        {Check: "DeleteCookie", Name: "tzu"}
+    ]
+}`,
+				}, &Example{
 					Name:        "Test.FollowRedirect",
 					Description: "Follow redirections",
 					Data: `// Follow redirections
@@ -149,9 +180,37 @@ var RootExample = &Example{
     ]
 }`,
 				}, &Example{
+					Name:        "Test.Image",
+					Description: "Test of an image",
+					Data: `// Test of an image
+{
+    Name: "Test of a PNG image"
+    Request: {
+        URL: "http://{{HOST}}/lena"
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "Image"}  // response is an image
+        {Check: "Image", Format: "png"}  // it's a PNG image
+        {Check: "Image", Width: 20, Height: 20}  // proper size
+
+	// Check color fingerprint of image.
+        {Check: "Image", Fingerprint: "-P000000Zn0000l0100a030a", Threshold: 0.0025}
+
+	// Check block-mean-value (BMV) fingerprint of image
+        {Check: "Image", Fingerprint: "be1cbd8d0b0b0f8c"}
+
+        // Combined
+        {Check: "Image", Fingerprint: "be1cbd8d0b0b0f8c", Width: 20, Height: 20, Format: "png"}
+
+        // Check full binary identity:
+        {Check: "Identity", SHA1: "f2534d702f0b18907162d7017357608ab2a40e2b"}
+    ]
+}`,
+				}, &Example{
 					Name:        "Test.JSON",
-					Description: "A test for a JSON response",
-					Data: `// A test for a JSON response
+					Description: "Testing JSON documents",
+					Data: `// Testing JSON documents
 {
     Name: "Test of a JSON document"
     Request: {
@@ -159,19 +218,44 @@ var RootExample = &Example{
     }
     Checks: [
         {Check: "StatusCode", Expect: 200}
-        {Check: "ResponseTime", Lower: "700ms"}
-        {Check: "ContentType", Is: "application/json"}
         {Check: "UTF8Encoded"}
-        {Check: "JSON"}  // valid JSON
-	{Check: "JSON", Element: "Date"}  // presenc of field "Name", value ignored
-	{Check: "JSON", Element: "Date", Equals: "\"2017-09-20\""}
-	{Check: "JSON", Element: "Date", Contains: "2017-09-20"}
-	{Check: "JSON", Element: "Finished", Equals: "true"}
-	{Check: "JSON", Element: "Numbers.0", Equals: "6"}  // access to deeply nested elements
-	{Check: "JSON", Element: "Numbers.1", GreaterThan: 6, LessThan: 45}
+        {Check: "ContentType", Is: "application/json"}
 
-	// check structure of JSON and type of data
-	{Check: "JSON", Schema: '''{"Date": "", "Numbers": [0,0,0,0,0,0], "Finished": false}'''}
+        // Valid JSON, don't care about anything else.
+        {Check: "JSON"}
+
+        // Presence of field "Date", any value of any type is okay.
+        {Check: "JSON", Element: "Date"}
+
+        // Check value of Date fields. Pay attention to quotes of strings.
+        {Check: "JSON", Element: "Date", Equals: "\"2017-09-20\""}
+        {Check: "JSON", Element: "Date", Contains: "2017-09-20"}
+        {Check: "JSON", Element: "Finished", Equals: "true"}
+
+        // Access to deeply nested elements.
+        {Check: "JSON", Element: "Numbers.0", Equals: "6"}
+        {Check: "JSON", Element: "Numbers.1", GreaterThan: 6, LessThan: 45}
+        // Change field seperator if your field names contain the default "."
+        {Check: "JSON", Sep: "_@_",  Element: "a.b_@_wuz_@_1", Equals: "9"}
+
+        // Check structure of JSON and type of data with Schema.
+        {Check: "JSON", Schema: '''
+            {
+               "Date":     "",
+               "Numbers":  [0,0,0,0,0,0],
+               "Finished": false,
+               "Raw":      "",
+               "a.b":      { "wuz": [] }
+            }'''
+        }
+
+        // Interpret and check strings which contain embedded JSON:
+        {Check: "JSON", Element: "Raw", Embedded: {Element: "coord.1", Equals: "-1"}}
+        {Check: "JSON", Element: "Raw", Embedded: {Element: "label", Equals: "\"X\""}}
+
+        // There's a different check for JSON: JSONExpr
+        {Check: "JSONExpr", Expression: "$len(.Numbers) > 4"}
+        {Check: "JSONExpr", Expression: "$max(.Numbers) == 38"}
     ]
 }`,
 				}, &Example{
@@ -296,6 +380,37 @@ var RootExample = &Example{
         {Check: "StatusCode", Expect: 301}
         {Check: "Redirect", To: ".../html"}
         {Check: "Redirect", To: ".../html", StatusCode: 301}
+    ]
+}`,
+				}, &Example{
+					Name:        "Test.Speed",
+					Description: "Test speed of application",
+					Data: `// Test speed of application
+{
+    Name: "Test response time and latency"
+    Request: {
+        URL: "http://{{HOST}}/html"
+        Timeout: 2s
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+
+	// Response time of request from above
+        {Check: "ResponseTime", Lower: "100ms", Higher: "35ns"}
+        
+	// Make 200 extra request to the same URL, 4 in parallel.
+        {Check: "Latency", N: 200, Concurrent: 4, SkipChecks: true,
+            // Check percentiles of response time
+            Limits: "50% ≤ 100ms; 80% ≤ 150ms; 95% ≤ 200ms; 0.995 ≤ 0.75s"
+        }
+
+	// Dump data 
+        {Check: "Latency", N: 20, Concurrent: 4, SkipChecks: true,
+            DumpTo: "stdout",
+            Limits: "50% ≤ 100ms; 80% ≤ 150ms; 95% ≤ 200ms; 0.995 ≤ 0.75s"
+        }
+
+
     ]
 }`,
 				}},

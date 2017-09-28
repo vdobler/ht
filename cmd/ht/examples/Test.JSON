@@ -6,26 +6,43 @@
     }
     Checks: [
         {Check: "StatusCode", Expect: 200}
-        {Check: "ResponseTime", Lower: "700ms"}
-        {Check: "ContentType", Is: "application/json"}
         {Check: "UTF8Encoded"}
-        {Check: "JSON"}  // valid JSON
-	{Check: "JSON", Element: "Date"}  // presence of field "Name", value ignored
-	{Check: "JSON", Element: "Date", Equals: "\"2017-09-20\""}
-	{Check: "JSON", Element: "Date", Contains: "2017-09-20"}
-	{Check: "JSON", Element: "Finished", Equals: "true"}
-	{Check: "JSON", Element: "Numbers.0", Equals: "6"}  // access to deeply nested elements
-	{Check: "JSON", Element: "Numbers.1", GreaterThan: 6, LessThan: 45}
+        {Check: "ContentType", Is: "application/json"}
 
-	// Check structure of JSON and type of data with Schema.
-	{Check: "JSON", Schema: '''{"Date": "", "Numbers": [0,0,0,0,0,0], "Finished": false}'''}
+        // Valid JSON, don't care about anything else.
+        {Check: "JSON"}
+
+        // Presence of field "Date", any value of any type is okay.
+        {Check: "JSON", Element: "Date"}
+
+        // Check value of Date fields. Pay attention to quotes of strings.
+        {Check: "JSON", Element: "Date", Equals: "\"2017-09-20\""}
+        {Check: "JSON", Element: "Date", Contains: "2017-09-20"}
+        {Check: "JSON", Element: "Finished", Equals: "true"}
+
+        // Access to deeply nested elements.
+        {Check: "JSON", Element: "Numbers.0", Equals: "6"}
+        {Check: "JSON", Element: "Numbers.1", GreaterThan: 6, LessThan: 45}
+        // Change field seperator if your field names contain the default "."
+        {Check: "JSON", Sep: "_@_",  Element: "a.b_@_wuz_@_1", Equals: "9"}
+
+        // Check structure of JSON and type of data with Schema.
+        {Check: "JSON", Schema: '''
+            {
+               "Date":     "",
+               "Numbers":  [0,0,0,0,0,0],
+               "Finished": false,
+               "Raw":      "",
+               "a.b":      { "wuz": [] }
+            }'''
+        }
 
         // Interpret and check strings which contain embedded JSON:
-	{Check: "JSON", Element: "Raw", Embedded: {Element: "coord.1", Equals: "-1"}}
-	{Check: "JSON", Element: "Raw", Embedded: {Element: "label", Equals: "\"X\""}}
+        {Check: "JSON", Element: "Raw", Embedded: {Element: "coord.1", Equals: "-1"}}
+        {Check: "JSON", Element: "Raw", Embedded: {Element: "label", Equals: "\"X\""}}
 
         // There's a different check for JSON: JSONExpr
-	{Check: "JSONExpr", Expression: "$len(.Numbers) > 4"}
-	{Check: "JSONExpr", Expression: "$max(.Numbers) == 38"}
+        {Check: "JSONExpr", Expression: "$len(.Numbers) > 4"}
+        {Check: "JSONExpr", Expression: "$max(.Numbers) == 38"}
     ]
 }

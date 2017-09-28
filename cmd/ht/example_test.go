@@ -29,6 +29,7 @@ func allTestExamples() []string {
 		"Test.FollowRedirect",
 		"Test.Image",
 		"Test.Cookies",
+		"Test.Speed",
 	}
 }
 
@@ -51,7 +52,8 @@ var (
   "Date": "2017-09-20",
   "Numbers": [6, 25, 26, 27, 31, 38],
   "Finished": true,
-  "Raw": "{\"coord\":[3,-1,2], \"label\": \"X\"}"
+  "Raw": "{\"coord\":[3,-1,2], \"label\": \"X\"}",
+  "a.b": { "wuz": [-3, 9] }
 }
 `)
 

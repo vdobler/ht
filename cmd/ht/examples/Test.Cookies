@@ -7,7 +7,7 @@
     }
     Checks: [
         {Check: "StatusCode", Expect: 200}
-	
+
 	// Cookie cip was set to any value with any properties:
         {Check: "SetCookie", Name: "cip"}
 
