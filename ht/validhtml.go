@@ -62,7 +62,6 @@ func (v ValidHTML) Execute(t *Test) error {
 done:
 	for {
 		tt := z.Next()
-		// fmt.Println(tt)
 		switch tt {
 		case html.ErrorToken:
 			if z.Err() == io.EOF {
@@ -70,10 +69,7 @@ done:
 			}
 			return z.Err()
 		case html.TextToken:
-			// fmt.Println("Text", string(z.Text()))
-			// fmt.Println()
 			if depth > 0 {
-				// fmt.Println("Checked Text", string(z.Raw()))
 				state.checkEscaping(string(z.Raw()))
 			}
 		case html.StartTagToken, html.SelfClosingTagToken:
@@ -91,15 +87,12 @@ done:
 				depth++
 			}
 			tag := string(tn)
-			// fmt.Println("Tag", tag)
 			state.count(tag)
 			attrs := map[string]string{}
 			var bkey, bval []byte
 			for hasAttr {
 				bkey, bval, hasAttr = z.TagAttr()
 				key, val := string(bkey), string(bval)
-				// fmt.Printf("Attribute %q = %q\n", key, val)
-				// fmt.Printf("%s=%s ", key, val)
 				if _, ok := attrs[key]; ok {
 					if state.ignore&issueAttr == 0 {
 						state.err(fmt.Errorf("Duplicate attribute '%s'", key))
@@ -117,10 +110,8 @@ done:
 					state.checkURL(val)
 				}
 			}
-			// fmt.Println()
 		case html.EndTagToken:
 			tn, _ := z.TagName()
-			// fmt.Println(" End ", string(tn))
 			state.pop(string(tn))
 			depth--
 		case html.CommentToken:
@@ -130,10 +121,14 @@ done:
 	}
 
 	// Check for global errors.
-	state.line++ // Global errors are reported "after the last line".
+	state.line = -1 // Global errors are reported without line numbers.
 	if state.ignore&issueDoctype == 0 {
 		if d := state.elementCount["DOCTYPE"]; d != 1 {
-			state.err(fmt.Errorf("Found %d DOCTYPE", d))
+			if d > 1 {
+				state.err(fmt.Errorf("Found %d DOCTYPE declarations", d))
+			} else {
+				state.err(fmt.Errorf("Missing DOCTYPE declaration"))
+			}
 		}
 	}
 	if state.ignore&issueLabelRef == 0 {
@@ -142,10 +137,6 @@ done:
 				state.err(fmt.Errorf("Label references unknown id '%s'", id))
 			}
 		}
-	}
-
-	if len(state.errors) == 0 {
-		return nil
 	}
 
 	if len(state.errors) == 0 {
@@ -233,6 +224,7 @@ type htmlState struct {
 	body string
 	i    int
 	line int
+	col  int
 
 	elementCount map[string]int
 	seenIDs      map[string]bool
@@ -249,6 +241,7 @@ func newHTMLState(body string, ignore htmlIssue) *htmlState {
 		body:         body,
 		i:            0,
 		line:         0,
+		col:          0,
 		elementCount: make(map[string]int, 50),
 		seenIDs:      make(map[string]bool),
 		openTags:     make([]string, 0, 50),
@@ -260,24 +253,38 @@ func newHTMLState(body string, ignore htmlIssue) *htmlState {
 }
 
 func (s *htmlState) Read(buf []byte) (int, error) {
-	n := 0
-	last := byte(0)
-	for n < len(buf) && s.i < len(s.body) && last != '\n' {
-		buf[n] = s.body[s.i]
-		last = s.body[s.i]
-		n++
-		s.i++
-	}
-	s.line++
 	if s.i == len(s.body) {
-		return n, io.EOF
+		return 0, io.EOF
 	}
-	return n, nil
+
+	c := s.body[s.i]
+	buf[0] = c
+	if c == '\n' {
+		s.line++
+		s.col = 0
+	}
+	s.i++
+	s.col++
+
+	return 1, nil
 }
 
 // err records the error e.
 func (s *htmlState) err(e error) {
-	s.errors = append(s.errors, PosError{Err: e, Line: s.line})
+	pe := PosError{Err: e}
+	if s.line >= 0 {
+		pe.Line = s.line + 1
+	}
+	if s.col > 160 {
+		// Add column information only for "long" lines:
+		// the column is the column the probleem was detected, which
+		// is not necesarrily the real position or the start of the
+		// problem.  But in long lines, lets say 2 screen lines,
+		// it is just too hard to locate the error if you don't
+		// know where to start looking.
+		pe.Col = s.col
+	}
+	s.errors = append(s.errors, pe)
 }
 
 // count the tag
@@ -304,7 +311,7 @@ func isAlphanumericASCII(b byte) bool {
 	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '0')
 }
 
-// checkEscaping of stuff inside a tag like
+// checkAttributeEscaping of stuff inside a tag like
 //     p class="important" title="Foo & Bar"
 // Look for ambiguous apersand as defined in
 // https://w3c.github.io/html/syntax.html#ambiguous-ampersand :
@@ -322,7 +329,6 @@ func (s *htmlState) checkAttributeEscaping(text string) {
 	}
 
 	for len(text) > 0 {
-		// fmt.Println(text)
 		i := strings.Index(text, "&")
 		if i == -1 {
 			break
@@ -353,7 +359,6 @@ func (s *htmlState) checkAttributeEscaping(text string) {
 
 // checkEscaping of text
 func (s *htmlState) checkEscaping(text string) {
-	// fmt.Println("checkEscpaing of", text)
 	if s.ignore&issueEscaping != 0 {
 		return
 	}
@@ -369,8 +374,15 @@ func (s *htmlState) checkEscaping(text string) {
 	if strings.Contains(text, "<") {
 		s.err(fmt.Errorf("Unescaped '<'"))
 	}
-	if strings.Contains(text, ">") {
-		s.err(fmt.Errorf("Unescaped '>'"))
+	if i := strings.Index(text, ">"); i != -1 {
+		a, e := i-15, i+15
+		if a < 0 {
+			a = 0
+		}
+		if e > len(text) {
+			e = len(text)
+		}
+		s.err(fmt.Errorf("Unescaped '>'")) //  in %q", strings.TrimSpace(text[a:e])))
 	}
 
 	for len(text) > 0 {

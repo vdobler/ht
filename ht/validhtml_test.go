@@ -6,9 +6,84 @@ package ht
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"testing"
 )
+
+var htmlStateLineNumberTests = []struct {
+	body  string
+	lines int
+}{
+	{
+		"1\n2\n3\n", 3,
+	},
+	{
+		"1\r\n2\r\n3\r\n", 3,
+	},
+	{
+		strings.Repeat("x", 2000) + "\n" +
+			strings.Repeat("y", 1000) + "\n" +
+			strings.Repeat("z", 3000) + "\n",
+		3,
+	},
+}
+
+func TestHTMLStateLineNumbering(t *testing.T) {
+	for i, tc := range htmlStateLineNumberTests {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			s := newHTMLState(tc.body, 0)
+			r, err := ioutil.ReadAll(s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(r) != tc.body {
+				t.Errorf("Got %s", string(r))
+			}
+			if s.line != tc.lines {
+				t.Errorf("Gote %d lines, want %d", s.line, tc.lines)
+			}
+		})
+	}
+}
+
+func TestValidHTMLLineNumbering(t *testing.T) {
+	test := &Test{
+		//                   Line:     1       2        3   4  5
+		Response: Response{BodyStr: "<html>\nfoobar\n</body>\n\n"},
+	}
+
+	check := ValidHTML{}
+	err := check.Prepare(test)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	err = check.Execute(test)
+	el, ok := err.(ErrorList)
+	if !ok {
+		t.Fatalf("Unexpected type %T of error %#v", err, err)
+	}
+	if len(el) != 2 {
+		t.Fatalf("Wrong number of errors %#v", el)
+	}
+
+	e0, ok := el[0].(PosError)
+	if !ok {
+		t.Errorf("Unexpected type %T of error 0 %#v", el[0], el[0])
+	}
+	if e0.Line != 3 {
+		t.Errorf("Got line %d, want 3 in %s", e0.Line, e0)
+	}
+
+	e1, ok := el[1].(PosError)
+	if !ok {
+		t.Errorf("Unexpected type %T of error 0 %#v", el[1], el[1])
+	}
+	if e1.Line != 0 {
+		t.Errorf("Got line %d, want 0 in %s", e1.Line, e1)
+	}
+}
 
 var brokenHTML = `<html>
 <head>
@@ -29,7 +104,7 @@ var brokenHTML = `<html>
             <a href="http:://example.org:3456/">Home</a>
         </li>
         <li>
-            <img src="/image?n=1&p=2" />
+            <img alt="pic" src="/image?n=1&p=2" />
         </div>
     </li>
     <a href="mailto:info-example_org">write us</a>
@@ -43,7 +118,7 @@ var brokenHTML = `<html>
 var expectedErrorsInBrokenHTML = []struct {
 	typ, err string
 }{
-	{"escaping", "Line 6: Unescaped '<'"},
+	{"escaping", "Line 6: Unescaped '<'"}, //  in \"\\n        World > Country\\n    \""},
 	{"uniqueids", "Line 7: Duplicate id 'foo'"},
 	{"attr", "Line 8: Duplicate attribute 'class'"},
 	{"escaping", "Line 10: Unescaped '>'"},
@@ -54,8 +129,8 @@ var expectedErrorsInBrokenHTML = []struct {
 	{"url", "Line 23: Not an email address"},
 	{"url", "Line 24: Not a telephone number"},
 	{"escaping", "Line 26: Unknown entity &glubs;"},
-	{"doctype", "Line 29: Found 0 DOCTYPE"},
-	{"label", "Line 29: Label references unknown id 'other'"},
+	{"doctype", "Missing DOCTYPE declaration"},
+	{"label", "Label references unknown id 'other'"},
 }
 
 func TestValidHTMLBroken(t *testing.T) {
@@ -112,6 +187,7 @@ func TestValidHTMLBroken(t *testing.T) {
 
 var okayHTML = `<!DOCTYPE html><html>
 <head>
+    <meta charset="utf-8"/>
     <title>CSS Selectors</title>
 </head>
 <body lang="de-CH">
@@ -122,17 +198,17 @@ var okayHTML = `<!DOCTYPE html><html>
     </div>
     <a href="/some%20path">
         Link &copy;
-    </a>
+    </a><!-- comments should work -->
     <label for="waz">Label:</label>
     <ul>
         <li>
             <a href="http://example.org:3456/">Home</a>
         </li>
         <li>
-            <img src="/image?n=1&amp;p=2" />
+            <img alt="pic" src="/image?n=1&amp;p=2" />
         </li>
     </ul>
-    <span data-css: "h1 &gt; span"></span>
+    <span data-css="h1 &gt; span"></span>
     <a href="mailto:info@example.org">write us</a>
     <a href="tel:+0012-345-6789">call us</a>
     <script>
@@ -175,7 +251,7 @@ func TestCheckAttributeEscaping(t *testing.T) {
 		{"several", `p class="foo&circ&circ-a;&t=a;"`, ""},
 		{"proper-amp", `p title="foo&amp;bar"`, ""},
 		{"proper-circ", `p title="e&circ;2pi"`, ""},
-		{"bad1", `a href="/foo&circa;bar"`, "Unknown entity &circa;"},
+		{"bad1", `a href="/foo&circa;bar"`, "Line 1: Unknown entity &circa;"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &htmlState{}

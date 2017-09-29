@@ -25,10 +25,16 @@ func (e PosError) Error() string {
 		s = e.File + ":"
 	}
 	if e.Line > 0 {
+		if s != "" {
+			s += " "
+		}
 		s += fmt.Sprintf("Line %d:", e.Line)
 	}
 	if e.Col > 0 {
-		s += fmt.Sprintf("col %d:", e.Col)
+		if s != "" {
+			s += " "
+		}
+		s += fmt.Sprintf("Detected on column %d:", e.Col)
 	}
 	if s != "" {
 		s += " "
