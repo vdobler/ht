@@ -118,10 +118,10 @@ var brokenHTML = `<html>
 var expectedErrorsInBrokenHTML = []struct {
 	typ, err string
 }{
-	{"escaping", "Line 6: Unescaped '<'"}, //  in \"\\n        World > Country\\n    \""},
+	{"escaping", "Line 6: Unescaped '<' in \"a < b\""},
 	{"uniqueids", "Line 7: Duplicate id 'foo'"},
 	{"attr", "Line 8: Duplicate attribute 'class'"},
-	{"escaping", "Line 10: Unescaped '>'"},
+	{"escaping", "Line 10: Unescaped '>' in \"World > Country\""},
 	{"url", "Line 11: Unencoded space in URL"},
 	{"escaping", "Line 13: Unescaped '&' or unknow entity in &fLTzzk"},
 	{"url", "Line 17: Bad URL part '://example.org:3456/'"},

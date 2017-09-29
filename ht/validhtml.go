@@ -371,8 +371,15 @@ func (s *htmlState) checkEscaping(text string) {
 		return
 	}
 
-	if strings.Contains(text, "<") {
-		s.err(fmt.Errorf("Unescaped '<'"))
+	if i := strings.Index(text, "<"); i != -1 {
+		a, e := i-15, i+15
+		if a < 0 {
+			a = 0
+		}
+		if e > len(text) {
+			e = len(text)
+		}
+		s.err(fmt.Errorf("Unescaped '<' in %q", strings.TrimSpace(text[a:e])))
 	}
 	if i := strings.Index(text, ">"); i != -1 {
 		a, e := i-15, i+15
@@ -382,7 +389,7 @@ func (s *htmlState) checkEscaping(text string) {
 		if e > len(text) {
 			e = len(text)
 		}
-		s.err(fmt.Errorf("Unescaped '>'")) //  in %q", strings.TrimSpace(text[a:e])))
+		s.err(fmt.Errorf("Unescaped '>' in %q", strings.TrimSpace(text[a:e])))
 	}
 
 	for len(text) > 0 {
