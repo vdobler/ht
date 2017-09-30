@@ -29,7 +29,7 @@ func init() {
 //   * 'structure': ill-formed tag nesting / tag closing
 //   * 'uniqueids': uniqness of id attribute values
 //   * 'lang':      ill-formed lang attributes
-//   * 'attr':      duplicate attributes
+//   * 'attr':      duplicate attributes in a tag
 //   * 'escaping':  unescaped &, < and > characters or unknown entities
 //   * 'label':     reference to nonexisting ids in a label tags
 //   * 'url':       malformed URLs
@@ -40,6 +40,8 @@ func init() {
 //  - The lang attributes are parse very lax, e.g. the non-canonical form
 //    'de_CH' is considered valid (and equivalent to 'de-CH'). I don't
 //    know how browser handle this.
+//  - Proper escaping of >, < and & is not checked inside script tags and
+//    not inside of iframes.
 type ValidHTML struct {
 	// Ignore is a space separated list of issues to ignore.
 	// You normally won't skip detection of these issues as all issues
@@ -76,7 +78,7 @@ done:
 			raw := string(z.Raw())
 			// <p class="foo">  ==> raw==`p class="foo"`
 			if len(raw) > 3 {
-				state.checkAttributeEscaping(raw[1 : len(raw)-1])
+				state.checkAmbiguousAmpersand(raw[1 : len(raw)-1])
 			}
 			tn, hasAttr := z.TagName()
 			// Some tags are empty and may be written in the self-closing
@@ -311,10 +313,14 @@ func isAlphanumericASCII(b byte) bool {
 	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '0')
 }
 
-// checkAttributeEscaping of stuff inside a tag like
+// checkAmbiguousAmpersand of stuff inside a tag like
 //     p class="important" title="Foo & Bar"
-// Look for ambiguous apersand as defined in
-// https://w3c.github.io/html/syntax.html#ambiguous-ampersand :
+//
+// Attributes may contain unquoted > and < so the only character which is
+// problematic are &. HTML 5 is pretty forgiving here, only "ambiguous
+// ampersands" as defined in
+// https://w3c.github.io/html/syntax.html#ambiguous-ampersand
+// need to be escaped:
 //
 //   An ambiguous ampersand is a U+0026 AMPERSAND character (&) that is
 //   followed by one or more alphanumeric ASCII characters, followed by
@@ -323,7 +329,7 @@ func isAlphanumericASCII(b byte) bool {
 //
 //   The alphanumeric ASCII characters are those that are either uppercase
 //   ASCII letters, lowercase ASCII letters, or ASCII digits.
-func (s *htmlState) checkAttributeEscaping(text string) {
+func (s *htmlState) checkAmbiguousAmpersand(text string) {
 	if s.ignore&issueEscaping != 0 {
 		return
 	}
@@ -392,45 +398,7 @@ func (s *htmlState) checkEscaping(text string) {
 		s.err(fmt.Errorf("Unescaped '>' in %q", strings.TrimSpace(text[a:e])))
 	}
 
-	for len(text) > 0 {
-		i := strings.Index(text, "&")
-		if i == -1 {
-			break
-		}
-
-		text = text[i:]
-		if strings.HasPrefix(text, "&amp;") {
-			// &amp; is fine and would produce a & which confuses
-			// the check for improper escaping below.
-			text = text[5:]
-			continue
-		}
-
-		ue := html.UnescapeString(text)
-		if strings.HasPrefix(ue, "&") {
-			s.err(fmt.Errorf("Unescaped '&' or unknow entity in %s",
-				trimUnescapedText(text)))
-			break
-		}
-		text = text[1:]
-	}
-}
-
-func trimUnescapedText(s string) string {
-	i := strings.IndexFunc(s, func(r rune) bool {
-		if r <= ' ' || r == ';' {
-			return true
-		}
-		return false
-	})
-	if i != -1 {
-		s = s[:i]
-	}
-
-	if len(s) < 20 {
-		return s
-	}
-	return s[:20] + "\u2026"
+	s.checkAmbiguousAmpersand(text)
 }
 
 // checkLang tries to parse the language tag lang.

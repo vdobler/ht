@@ -123,7 +123,7 @@ var expectedErrorsInBrokenHTML = []struct {
 	{"attr", "Line 8: Duplicate attribute 'class'"},
 	{"escaping", "Line 10: Unescaped '>' in \"World > Country\""},
 	{"url", "Line 11: Unencoded space in URL"},
-	{"escaping", "Line 13: Unescaped '&' or unknow entity in &fLTzzk"},
+	{"escaping", "Line 13: Unknown entity &fLTzzk;"},
 	{"url", "Line 17: Bad URL part '://example.org:3456/'"},
 	{"structure", "Line 21: Tag 'li' closed by 'div'"},
 	{"url", "Line 23: Not an email address"},
@@ -195,6 +195,9 @@ var okayHTML = `<!DOCTYPE html><html>
     <input type="radio" id="waz" name="radio" />
     <div class="a b">
         World &gt; Country
+        <span> pi > e </span>
+        <span> N < R </span>
+        <span> Hund & Katz </span>
     </div>
     <a href="/some%20path">
         Link &copy;
@@ -232,9 +235,7 @@ func TestOkayHTMLIsValid(t *testing.T) {
 }
 
 func TestValidHTMLOkay(t *testing.T) {
-	test := &Test{
-		Response: Response{BodyStr: okayHTML},
-	}
+	test := &Test{Response: Response{BodyStr: okayHTML}}
 
 	check := ValidHTML{}
 	err := check.Prepare(test)
@@ -244,13 +245,8 @@ func TestValidHTMLOkay(t *testing.T) {
 
 	err = check.Execute(test)
 	if err != nil {
-		if el, ok := err.(ErrorList); !ok {
-			t.Fatalf("Unexpected error: %#v\n%s", err, err)
-		} else {
-			t.Fatalf("Unexpected error: %ss", el.AsStrings())
-		}
+		t.Fatalf("Unexpected error: %#v\n%s", err, err)
 	}
-
 }
 
 func TestCheckAttributeEscaping(t *testing.T) {
@@ -268,7 +264,7 @@ func TestCheckAttributeEscaping(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &htmlState{}
-			s.checkAttributeEscaping(tc.in)
+			s.checkAmbiguousAmpersand(tc.in)
 			if len(s.errors) > 1 {
 				t.Fatalf("Too many errors %#v", s.errors)
 			}
