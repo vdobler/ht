@@ -218,6 +218,19 @@ var okayHTML = `<!DOCTYPE html><html>
 </html>
 `
 
+func TestOkayHTMLIsValid(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping W3C Validator based checks in short mode.")
+	}
+
+	test := &Test{Response: Response{BodyStr: okayHTML}}
+	check := W3CValidHTML{}
+	err := check.Execute(test)
+	if err != nil {
+		t.Fatalf("Oooops: W3C considers okayHTML as invalid: %s", err)
+	}
+}
+
 func TestValidHTMLOkay(t *testing.T) {
 	test := &Test{
 		Response: Response{BodyStr: okayHTML},
