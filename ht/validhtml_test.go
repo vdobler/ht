@@ -195,8 +195,6 @@ var okayHTML = `<!DOCTYPE html><html>
     <input type="radio" id="waz" name="radio" />
     <div class="a b">
         World &gt; Country
-        <span> pi > e </span>
-        <span> N < R </span>
         <span> Hund & Katz </span>
     </div>
     <a href="/some%20path">
@@ -287,11 +285,13 @@ func TestCheckHTMLEscaping(t *testing.T) {
 		{"", true},
 		{"foo", true},
 		{"1 &lt; 2", true},
+		{"A < B", false},
+		{"pi > e", false},
 		{"Hund &amp; Katz", true},
 		{"&copy; 2009", true},
-		{"A & B", false},
-		{"A < B", false},
-		{"x &fZtU4w; y", false},
+		{"A & B", true}, // not ambiguous
+		{"x &fZtUw; y", false},
+		{"x &fZ4tUw; y", false},
 	}
 
 	for i, tc := range testcases {

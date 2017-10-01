@@ -30,18 +30,21 @@ func init() {
 //   * 'uniqueids': uniqness of id attribute values
 //   * 'lang':      ill-formed lang attributes
 //   * 'attr':      duplicate attributes in a tag
-//   * 'escaping':  unescaped &, < and > characters or unknown entities
+//   * 'escaping':  unescaped &, > and < characters or unknown entities
 //   * 'label':     reference to nonexisting ids in a label tags
 //   * 'url':       malformed URLs
 //
 // Notes:
-//  - HTML5 allows unescaped & in several circumstances but ValidHTML
-//    reports most stray & as an error.
+//  - The HTML5 parsing model distinguishes between RAWTEXT and PLAINTEXT mode
+//    but this distinction is not done here: All unesacped < are considered
+//    an error even if a literal < is legal inside e.g. a textarea.
+//  - All unescaped > and < charcters in text nodes are considered a problem.
 //  - The lang attributes are parse very lax, e.g. the non-canonical form
 //    'de_CH' is considered valid (and equivalent to 'de-CH'). I don't
 //    know how browser handle this.
 //  - Proper escaping of >, < and & is not checked inside script tags and
 //    not inside of iframes.
+//  - Foreign content is not handled properly. TODO: ignore like script.
 type ValidHTML struct {
 	// Ignore is a space separated list of issues to ignore.
 	// You normally won't skip detection of these issues as all issues
@@ -309,8 +312,42 @@ func (s *htmlState) recordLabel(id string) {
 	s.labelFor = append(s.labelFor, id)
 }
 
-func isAlphanumericASCII(b byte) bool {
-	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '0')
+// checkEscaping of text
+func (s *htmlState) checkEscaping(text string) {
+	if s.ignore&issueEscaping != 0 {
+		return
+	}
+
+	// Javascript is full of unescaped <, > and && and content of 'noscript'
+	// and 'iframe' seems to be unparsed by package html: Skip check of
+	// proper escaping inside these elements.
+	if n := len(s.openTags); n > 0 &&
+		(s.openTags[n-1] == "script" || s.openTags[n-1] == "noscript" || s.openTags[n-1] == "iframe") {
+		return
+	}
+
+	if i := strings.Index(text, "<"); i != -1 {
+		a, e := i-15, i+15
+		if a < 0 {
+			a = 0
+		}
+		if e > len(text) {
+			e = len(text)
+		}
+		s.err(fmt.Errorf("Unescaped '<' in %q", strings.TrimSpace(text[a:e])))
+	}
+	if i := strings.Index(text, ">"); i != -1 {
+		a, e := i-15, i+15
+		if a < 0 {
+			a = 0
+		}
+		if e > len(text) {
+			e = len(text)
+		}
+		s.err(fmt.Errorf("Unescaped '>' in %q", strings.TrimSpace(text[a:e])))
+	}
+
+	s.checkAmbiguousAmpersand(text)
 }
 
 // checkAmbiguousAmpersand of stuff inside a tag like
@@ -363,42 +400,8 @@ func (s *htmlState) checkAmbiguousAmpersand(text string) {
 	}
 }
 
-// checkEscaping of text
-func (s *htmlState) checkEscaping(text string) {
-	if s.ignore&issueEscaping != 0 {
-		return
-	}
-
-	// Javascript is full of unescaped <, > and && and content of 'noscript'
-	// and 'iframe' seems to be unparsed by package html: Skip check of
-	// proper escaping inside these elements.
-	if n := len(s.openTags); n > 0 &&
-		(s.openTags[n-1] == "script" || s.openTags[n-1] == "noscript" || s.openTags[n-1] == "iframe") {
-		return
-	}
-
-	if i := strings.Index(text, "<"); i != -1 {
-		a, e := i-15, i+15
-		if a < 0 {
-			a = 0
-		}
-		if e > len(text) {
-			e = len(text)
-		}
-		s.err(fmt.Errorf("Unescaped '<' in %q", strings.TrimSpace(text[a:e])))
-	}
-	if i := strings.Index(text, ">"); i != -1 {
-		a, e := i-15, i+15
-		if a < 0 {
-			a = 0
-		}
-		if e > len(text) {
-			e = len(text)
-		}
-		s.err(fmt.Errorf("Unescaped '>' in %q", strings.TrimSpace(text[a:e])))
-	}
-
-	s.checkAmbiguousAmpersand(text)
+func isAlphanumericASCII(b byte) bool {
+	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9')
 }
 
 // checkLang tries to parse the language tag lang.
