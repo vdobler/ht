@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -23,8 +24,17 @@ var cmdExample = &Command{
 	Help: `Example prints examples for common tasks.
 
 Examples including comments are sometimes easier to understand and adopt
-than plain documentation.
+than plain documentation. This subcomand to ht allows to browse a hierarchical
+set of examples. The actual example is written to stdout while the list of
+sub-topics is displayed on stderr.
 `,
+}
+
+var listExamples bool
+
+func init() {
+	cmdExample.Flag.BoolVar(&listExamples, "list", false, "list all available examples")
+
 }
 
 // Examples in the example subcommand.
@@ -92,7 +102,36 @@ func findExample(needle []string, ex *Example) *Example {
 	return nil
 }
 
+func collectExamples(ex *Example, data []string) []string {
+	data = append(data, ex.Name+"\u001e"+ex.Description)
+	for _, sub := range ex.Sub {
+		data = collectExamples(sub, data)
+	}
+	return data
+}
+
+func listAllExamples() {
+	data := collectExamples(RootExample, nil)
+	m := 0
+	for _, n := range data {
+		if i := strings.Index(n, "\u001e"); i > m {
+			m = i
+		}
+	}
+
+	sort.Strings(data)
+	for _, e := range data[1:] {
+		p := strings.Split(e, "\u001e")
+		fmt.Fprintf(os.Stderr, "%-*s  %s\n", m, p[0], p[1])
+	}
+}
+
 func runExample(cmd *Command, args []string) {
+	if listExamples {
+		listAllExamples()
+		os.Exit(0)
+	}
+
 	if len(args) > 1 {
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", cmd.Usage)
 		os.Exit(9)
