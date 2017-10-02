@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/sanitize"
 	"github.com/vdobler/ht/scope"
@@ -82,7 +83,7 @@ func runExecute(cmd *Command, suites []*suite.RawSuite) {
 	jar := loadCookies()
 
 	prepareOutputDir()
-	var errors ht.ErrorList
+	var errors errorlist.List
 
 	outcome, err := executeSuites(suites, variablesFlag, jar)
 	errors = errors.Append(err)
@@ -148,7 +149,7 @@ func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *c
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 256)
 	defer bufferedStdout.Flush()
 	logger := log.New(bufferedStdout, "", 0)
-	errors := ht.ErrorList{}
+	errors := errorlist.List{}
 	var err error
 
 	if !mute {
@@ -214,7 +215,7 @@ func saveSingle(accum *accumulator, outputDir string, s *suite.Suite) error {
 		return err
 	}
 
-	errors := ht.ErrorList{}
+	errors := errorlist.List{}
 	err = suite.HTMLReport(dirname, s)
 	errors = errors.Append(err)
 
@@ -250,7 +251,7 @@ func saveSingle(accum *accumulator, outputDir string, s *suite.Suite) error {
 
 // reportOverall summary data to stdout and save final variables and cookies.
 func reportOverall(a *accumulator) error {
-	var errors ht.ErrorList
+	var errors errorlist.List
 	var err error
 	// Save consolidated variables if required.
 	if vardump != "" && !mute {
@@ -348,7 +349,7 @@ func saveOverallReport(dirname string, accum *accumulator) error {
 
 // terminate cmd/ht with proper exit status depending in present errors and
 // the outcome of the executed suites.
-func terminate(outcome *accumulator, errors ht.ErrorList) {
+func terminate(outcome *accumulator, errors errorlist.List) {
 	if errors.AsError() != nil {
 		fmt.Fprintln(os.Stderr, "Error encountered during execution:")
 		for _, msg := range errors.AsStrings() {

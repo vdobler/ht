@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/vdobler/ht/errorlist"
 )
 
 func init() {
@@ -155,7 +157,7 @@ type Redirect struct {
 
 // Execute implements Check's Execute method.
 func (r Redirect) Execute(t *Test) error {
-	err := ErrorList{}
+	err := errorlist.List{}
 
 	if t.Response.Response == nil {
 		return errors.New("No response to check")

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/ht"
 )
 
@@ -159,7 +160,7 @@ func TestHTMLReport(t *testing.T) {
 					JSON:     `{Prefix: "super", Contains: "okay"}`,
 					Status:   ht.Fail,
 					Duration: 31 * time.Millisecond,
-					Error: ht.ErrorList{
+					Error: errorlist.List{
 						fmt.Errorf("bad Prefix"),
 						fmt.Errorf("missing okay"),
 					},
@@ -223,7 +224,7 @@ func TestHTMLReport(t *testing.T) {
 		Description: "Test generation of _Report_.html file\n" +
 			"and the appropriate bodyfiles",
 		Status: ht.Fail,
-		Error: ht.ErrorList{
+		Error: errorlist.List{
 			fmt.Errorf("First Error"),
 			fmt.Errorf("Second Error"),
 		},

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/internal/tempfile"
 )
 
@@ -589,7 +590,7 @@ func (r *RenderedHTML) Prepare(t *Test) error {
 	}
 
 	// Prepare each sub-check.
-	errs := ErrorList{}
+	errs := errorlist.List{}
 	for i, check := range r.Checks {
 		if prep, ok := check.(Preparable); ok {
 			err := prep.Prepare(t)
@@ -630,7 +631,7 @@ func (r *RenderedHTML) Execute(t *Test) error {
 	}
 
 	// Execute all sub-checks, collecting the errors.
-	errs := ErrorList{}
+	errs := errorlist.List{}
 	for i, check := range r.Checks {
 		err := check.Execute(rt)
 		if err != nil {

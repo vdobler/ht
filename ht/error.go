@@ -8,7 +8,6 @@ package ht
 
 import (
 	"fmt"
-	"strings"
 )
 
 // PosError is an error with optinaly attached position information.
@@ -40,48 +39,5 @@ func (e PosError) Error() string {
 		s += " "
 	}
 	s += e.Err.Error()
-	return s
-}
-
-// ErrorList is a collection of errors.
-type ErrorList []error
-
-// Append err to el.
-func (el ErrorList) Append(err error) ErrorList {
-	if err == nil {
-		return el
-	}
-	if list, ok := err.(ErrorList); ok {
-		return append(el, list...)
-	}
-	return append(el, err)
-}
-
-// Error implements the Error method of error.
-func (el ErrorList) Error() string {
-	return strings.Join(el.AsStrings(), "; \u2029")
-}
-
-// AsError returns el properly returning nil for a empty el.
-func (el ErrorList) AsError() error {
-	if len(el) == 0 {
-		return nil
-	}
-	return el
-}
-
-// AsStrings returns the error list as as string slice.
-func (el ErrorList) AsStrings() []string {
-	s := []string{}
-	for _, e := range el {
-		if e == nil {
-			continue // TODO: this should never happen
-		}
-		if nel, ok := e.(ErrorList); ok {
-			s = append(s, nel.AsStrings()...)
-		} else {
-			s = append(s, e.Error())
-		}
-	}
 	return s
 }

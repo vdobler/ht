@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/vdobler/ht/errorlist"
 	"golang.org/x/net/html"
 	"golang.org/x/text/language"
 )
@@ -235,7 +236,7 @@ type htmlState struct {
 	seenIDs      map[string]bool
 	openTags     []string
 	labelFor     []string
-	errors       ErrorList
+	errors       errorlist.List
 
 	ignore     htmlIssue
 	badNesting bool
@@ -251,7 +252,7 @@ func newHTMLState(body string, ignore htmlIssue) *htmlState {
 		seenIDs:      make(map[string]bool),
 		openTags:     make([]string, 0, 50),
 		labelFor:     make([]string, 0, 10),
-		errors:       make(ErrorList, 0),
+		errors:       make(errorlist.List, 0),
 		badNesting:   false,
 		ignore:       ignore,
 	}

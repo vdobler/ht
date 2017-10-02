@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/mock"
@@ -446,7 +447,7 @@ func (rs *RawSuite) Validate(global map[string]string) error {
 	suiteScope["SUITE_DIR"] = rs.File.Dirname()
 	suiteScope["SUITE_NAME"] = rs.File.Basename()
 
-	el := ht.ErrorList{}
+	el := errorlist.List{}
 	for _, rt := range rs.tests {
 		callScope := scope.New(suiteScope, rt.contextVars, true)
 		testScope := scope.New(callScope, rt.Variables, false)
@@ -528,7 +529,7 @@ func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger
 	// Overall Suite status is computetd from Setup and Main tests only.
 	suite.Iterate(executor)
 	status := ht.NotRun
-	errors := ht.ErrorList{}
+	errors := errorlist.List{}
 	for i := 0; i < N-teardown && i < len(suite.Tests); i++ {
 		if ts := suite.Tests[i].Result.Status; ts > status {
 			status = ts

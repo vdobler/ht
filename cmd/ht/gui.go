@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/gui"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/hjson"
@@ -455,7 +456,7 @@ func augmentPrepareMessages(err error, val *gui.Value) {
 	if err == nil {
 		return
 	}
-	el, ok := err.(ht.ErrorList)
+	el, ok := err.(errorlist.List)
 	if !ok {
 		return
 	}

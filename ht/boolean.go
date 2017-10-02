@@ -4,7 +4,11 @@
 
 package ht
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/vdobler/ht/errorlist"
+)
 
 func init() {
 	RegisterCheck(AnyOne{})
@@ -31,7 +35,7 @@ type AnyOne struct {
 // Prepare implements Checks' Prepare method by forwarding to
 // the underlying checks.
 func (a AnyOne) Prepare(t *Test) error {
-	errs := ErrorList{}
+	errs := errorlist.List{}
 	for _, c := range a.Of {
 		if prep, ok := c.(Preparable); ok {
 			errs = errs.Append(prep.Prepare(t))
@@ -46,7 +50,7 @@ var _ Preparable = AnyOne{}
 // until the first passes. If all underlying checks fail the whole list of
 // failures is returned.
 func (a AnyOne) Execute(t *Test) error {
-	errs := ErrorList{}
+	errs := errorlist.List{}
 	for _, c := range a.Of {
 		err := c.Execute(t)
 		if err == nil {
@@ -75,7 +79,7 @@ type None struct {
 // Prepare implements Checks' Prepare method by forwarding to
 // the underlying checks.
 func (n None) Prepare(t *Test) error {
-	errs := ErrorList{}
+	errs := errorlist.List{}
 	for _, c := range n.Of {
 		if prep, ok := c.(Preparable); ok {
 			errs = errs.Append(prep.Prepare(t))

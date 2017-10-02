@@ -48,6 +48,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/internal/bender"
 )
@@ -544,7 +545,7 @@ func makeCollectedSuite(tests []*ht.Test, from ht.Status) *Suite {
 }
 
 func analyseOutcome(data []TestData, pools []*pool) error {
-	errors := ht.ErrorList{}
+	errors := errorlist.List{}
 
 	N := len(data)
 	if N == 0 {
@@ -574,7 +575,7 @@ func analyseOutcome(data []TestData, pools []*pool) error {
 }
 
 func analyseMisses(data []TestData, pools []*pool) error {
-	errors := ht.ErrorList{}
+	errors := errorlist.List{}
 	N := len(data)
 	for i, p := range pools {
 		expected := N * p.Scenario.Percentage / 100
@@ -591,8 +592,8 @@ func analyseMisses(data []TestData, pools []*pool) error {
 	return nil
 }
 
-func analyseDistribution(data []TestData, pools []*pool) ht.ErrorList {
-	errors := ht.ErrorList{}
+func analyseDistribution(data []TestData, pools []*pool) errorlist.List {
+	errors := errorlist.List{}
 	N := len(data)
 
 	cnt := make(map[int]int)

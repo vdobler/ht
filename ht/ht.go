@@ -25,6 +25,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/errorlist"
 )
 
 var (
@@ -290,11 +291,11 @@ func (t *Test) GetIntMetadata(key string) int {
 
 // CheckResult captures the outcome of a single check inside a test.
 type CheckResult struct {
-	Name     string        // Name of the check as registered.
-	JSON     string        // JSON serialization of check.
-	Status   Status        // Outcome of check. All status but Error
-	Duration time.Duration // How long the check took.
-	Error    ErrorList     // For a Status of Bogus or Fail.
+	Name     string         // Name of the check as registered.
+	JSON     string         // JSON serialization of check.
+	Status   Status         // Outcome of check. All status but Error
+	Duration time.Duration  // How long the check took.
+	Error    errorlist.List // For a Status of Bogus or Fail.
 }
 
 // Extraction captures the result of a variable extraction.
@@ -625,11 +626,11 @@ func (e ErrCheckPrepare) Error() string {
 // TODO: clear CheckResults before Prepare
 func (t *Test) PrepareChecks() error {
 	// Compile the checks.
-	var cel ErrorList
+	var cel errorlist.List
 	for i := range t.Checks {
 		if prep, ok := t.Checks[i].(Preparable); ok {
 			e := prep.Prepare(t)
-			// TODO: use ErrorList.Append
+			// TODO: use errorlist.List.Append
 			if e != nil {
 				cel = cel.Append(ErrCheckPrepare{
 					Nr:  i,
@@ -978,8 +979,8 @@ func (t *Test) ExecuteChecks() {
 			} else {
 				t.Result.CheckResults[i].Status = Fail
 			}
-			var errlist ErrorList
-			if el, ok := t.Result.Error.(ErrorList); ok {
+			var errlist errorlist.List
+			if el, ok := t.Result.Error.(errorlist.List); ok {
 				errlist = el
 			}
 			for _, pce := range t.Result.CheckResults[i].Error {

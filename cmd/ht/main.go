@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/internal/hjson"
 	"github.com/vdobler/ht/populate"
 	"github.com/vdobler/ht/suite"
@@ -225,7 +225,7 @@ func loadSuites(args []string) []*suite.RawSuite {
 		// }
 		err = s.Validate(variablesFlag)
 		if err != nil {
-			if el, ok := err.(ht.ErrorList); ok {
+			if el, ok := err.(errorlist.List); ok {
 				for _, msg := range el.AsStrings() {
 					fmt.Fprintln(os.Stderr, msg)
 				}

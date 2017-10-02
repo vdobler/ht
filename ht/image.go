@@ -14,6 +14,7 @@ import (
 	_ "image/jpeg" // register jpg format
 	_ "image/png"  // register png format
 
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/fingerprint"
 )
 
@@ -51,7 +52,7 @@ func (i Image) Execute(t *Test) error {
 		return CantCheck{err}
 	}
 
-	failures := ErrorList{}
+	failures := errorlist.List{}
 	if i.Format != "" && format != i.Format {
 		failures = append(failures,
 			fmt.Errorf("Got %s image, want %s", format, i.Format))

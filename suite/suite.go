@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/mock"
 	"github.com/vdobler/ht/scope"
@@ -114,7 +115,7 @@ func (suite *Suite) Iterate(executor Executor) {
 	suite.Started = now
 
 	overall := ht.NotRun
-	errors := ht.ErrorList{}
+	errors := errorlist.List{}
 
 	for _, rt := range suite.tests {
 		// suite.Log.Printf("Executing Test %q\n", rt.File.Name)
@@ -268,11 +269,11 @@ func (suite *Suite) updateStatusAndErr(test *ht.Test) {
 		return
 	}
 	if suite.Error == nil {
-		suite.Error = ht.ErrorList{test.Result.Error}
-	} else if el, ok := suite.Error.(ht.ErrorList); ok {
+		suite.Error = errorlist.List{test.Result.Error}
+	} else if el, ok := suite.Error.(errorlist.List); ok {
 		suite.Error = append(el, test.Result.Error)
 	} else {
-		suite.Error = ht.ErrorList{suite.Error, test.Result.Error}
+		suite.Error = errorlist.List{suite.Error, test.Result.Error}
 	}
 
 }

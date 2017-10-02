@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/errorlist"
 )
 
 // Collection is a set of Test for easy bulk execution
@@ -49,7 +50,7 @@ func (s *Collection) ExecuteConcurrent(maxConcurrent int, jar *cookiejar.Jar) er
 	close(c)
 	wg.Wait()
 
-	el := ErrorList{}
+	el := errorlist.List{}
 	for _, test := range s.Tests {
 		if test.Result.Status > s.Status {
 			s.Status = test.Result.Status

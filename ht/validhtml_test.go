@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"github.com/vdobler/ht/errorlist"
 )
 
 var htmlStateLineNumberTests = []struct {
@@ -60,7 +62,7 @@ func TestValidHTMLLineNumbering(t *testing.T) {
 	}
 
 	err = check.Execute(test)
-	el, ok := err.(ErrorList)
+	el, ok := err.(errorlist.List)
 	if !ok {
 		t.Fatalf("Unexpected type %T of error %#v", err, err)
 	}
@@ -147,7 +149,7 @@ func TestValidHTMLBroken(t *testing.T) {
 			}
 
 			err = check.Execute(test)
-			el, ok := err.(ErrorList)
+			el, ok := err.(errorlist.List)
 			if !ok {
 				t.Fatalf("Unexpected type %T of error %#v", err, err)
 			}
@@ -344,7 +346,7 @@ func TestURLEscaping(t *testing.T) {
 		} else if err != nil {
 			if tc.err == "" {
 				t.Errorf("%d. %q: unexpected error %s", i, tc.href, err)
-			} else if got := err.(ErrorList)[0].Error(); got != "Line 1: "+tc.err {
+			} else if got := err.(errorlist.List)[0].Error(); got != "Line 1: "+tc.err {
 				t.Errorf("%d. %q: got %q; want %q", i, tc.href, got, tc.err)
 			}
 		}

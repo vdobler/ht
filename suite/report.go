@@ -19,6 +19,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/ht"
 	mimelist "github.com/vdobler/ht/mime"
 )
@@ -525,14 +526,14 @@ var errorListTmpl = `<ul class="error-list">
 var errorListTemplate = htmltemplate.Must(htmltemplate.New("ERRLIST").Parse(errorListTmpl))
 
 // ErrorList renders err in HTML. It creates an <ul> if err is of
-// type ht.ErrorList and has more than one entry.
+// type errorlist.List and has more than one entry.
 func ErrorList(err error) htmltemplate.HTML {
 	if err == nil {
 		return htmltemplate.HTML("")
 	}
-	list, ok := err.(ht.ErrorList)
+	list, ok := err.(errorlist.List)
 	if !ok {
-		list = ht.ErrorList([]error{err})
+		list = errorlist.List([]error{err})
 	} else if len(list) == 0 {
 		return htmltemplate.HTML("")
 	}
@@ -631,7 +632,7 @@ func guessResponseExtension(test *ht.Test) string {
 // and it's attached subsuites. Especially SeqNo is made non-empty.
 // Dump all bodies while traversing.
 func augmentMetadataAndDumpBody(s *Suite, dir string, prefix string) error {
-	errs := ht.ErrorList{}
+	errs := errorlist.List{}
 
 	for i, test := range s.Tests {
 		if test.GetStringMetadata("Filename") == "" {
@@ -664,7 +665,7 @@ func augmentMetadataAndDumpBody(s *Suite, dir string, prefix string) error {
 
 // HTMLReport generates a report of the outcome of s to directory dir.
 func HTMLReport(dir string, s *Suite) error {
-	errs := ht.ErrorList{}
+	errs := errorlist.List{}
 
 	err := augmentMetadataAndDumpBody(s, dir, "")
 	errs = errs.Append(err)

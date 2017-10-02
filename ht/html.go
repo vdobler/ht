@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/andybalholm/cascadia"
+	"github.com/vdobler/ht/errorlist"
 	"golang.org/x/net/html"
 )
 
@@ -494,7 +495,7 @@ func (c *Links) Execute(t *Test) error {
 		upgrade = strings.Contains(csp, "upgrade-insecure-requests") // sorry
 	}
 
-	broken := ErrorList{} // List of all "broken links".
+	broken := errorlist.List{} // List of all "broken links".
 
 	// Check for mixed content if desired and needed
 	var urefs map[string]bool // links after possible upgrading

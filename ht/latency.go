@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/vdobler/ht/cookiejar"
+	"github.com/vdobler/ht/errorlist"
 )
 
 func init() {
@@ -232,7 +233,7 @@ func (L *Latency) Execute(t *Test) error {
 	}
 	sort.Ints(latencies)
 
-	errs := ErrorList{}
+	errs := errorlist.List{}
 	for _, lim := range L.limits {
 		lat := time.Millisecond * time.Duration(quantile(latencies, lim.q))
 		t.infof("Latency quantil (conc=%d) %0.2f%% ≤ %d ms",

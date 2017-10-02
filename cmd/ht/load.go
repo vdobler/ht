@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vdobler/ht/errorlist"
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/suite"
 )
@@ -231,7 +232,7 @@ func interpretLTerrors(lterr error) {
 	}
 
 	fmt.Println("Problems running this throughpout tests:")
-	if el, ok := lterr.(ht.ErrorList); ok {
+	if el, ok := lterr.(errorlist.List); ok {
 		for _, msg := range el.AsStrings() {
 			fmt.Println("    ", msg)
 		}
