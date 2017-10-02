@@ -36,6 +36,7 @@ func allTestExamples() []string {
 		"Test.Extraction.JSON",
 		"Test.Extraction.HTML",
 		"Test.CurrentTime",
+		"Test.AndOr",
 	}
 }
 

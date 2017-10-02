@@ -1,0 +1,33 @@
+// Logical AND and NOT of Checks
+{
+    Name: "Logical conjunctions"
+    Description: '''
+        Sometimes it is natural to express the desired state as the logical OR
+        or the logical NOT of several conditions. Two special Checks allow to
+        express this: AnyOne and None.
+        (The logical AND is the natural composition of the checks in a Test, so
+        there is no extra 'AllOf' check.)
+    '''
+    Request: { URL: "http://{{HOST}}/json" }
+    Checks: [
+        // The AnyOne-Of check is the logical of the the given sub checks:
+	// Only one of the sub-checks in the Of array must succeed:
+        // One out of the three content types makes the AnyOne check pass.
+        {Check: "AnyOne", Of: [
+            {Check: "ContentType", Is: "application/json"}
+            {Check: "ContentType", Is: "application/json5"}
+            {Check: "ContentType", Is: "application/jsonp"}
+	]}
+
+	// The check None expresses the condition that none of the sub
+	// checks may succeed. (This example is rather artificial).
+	{Check: "None", Of: [
+            {Check: "JSON", Element: "Numbers.0", Equals: "2"}
+            {Check: "JSON", Element: "Numbers.1", Equals: "40"}
+            {Check: "JSON", Element: "Numbers.3", Equals: "17"}
+        ]}
+    ]
+
+    // Both AnyOne and None are short cicuiting and evaluate only the
+    // sub-checks until the overall result is clear.
+}
