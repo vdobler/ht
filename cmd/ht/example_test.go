@@ -31,6 +31,10 @@ func allTestExamples() []string {
 		"Test.Speed",
 		"Test.XML",
 		"Test.Mixin",
+		"Test.Retry",
+		"Test.Extraction",
+		"Test.Extraction.JSON",
+		"Test.Extraction.HTML",
 	}
 }
 
@@ -50,10 +54,14 @@ var (
 </head>
 <body>
   <h1>Sample HTML</h1>
+  <p>Good Morning. It's 12:45 o'clock. have a good day!</p>
   <ul>
     <li><a href="/other">Other</a></li>
     <li><a href="/json">JSON</a></li>
   </ul>
+  <form id="mainform">
+    <input type="hidden" name="formkey" value="secret" />
+  </form>
 </body>
 </html>`)
 
@@ -284,7 +292,8 @@ func TestExampleTest(t *testing.T) {
 				t.Fatalf("Unexpected error: %s", err)
 			}
 			if acc.Status != ht.Pass {
-				t.Fatalf("Test did not pass: %s", acc.Status)
+				t.Fatalf("Test %s did not pass: %s",
+					testname, acc.Status)
 			}
 		})
 	}

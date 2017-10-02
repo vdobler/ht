@@ -1,0 +1,18 @@
+// Retrying failed tests and polling services.
+{
+    Name: "Retry a test several times"
+    
+    Request: { URL: "http://{{HOST}}/html" }
+    Checks: [ {Check: "StatusCode", Expect: 200} ]
+
+    // Execution controls timing and retrying of a test
+    Execution: {
+        // Try this test up to 7 times. If all 7 tries fail report a failure.
+        // Report pass after the first passing run.
+        Tries: 7
+        Wait: "800ms"   // Wait 0.8 seconds between retries.
+    }
+    // Retrying a test can also be used to poll a service-endpoint which takes
+    // some time to provide information: Instead of sleeping 60 seconds before
+    // querying the service poll it every 5 seconds for up to 15 tries.
+}

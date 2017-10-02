@@ -1,0 +1,31 @@
+// Extracting data from HTML documents, e.g. hidden form values
+{
+    Name: "Data extraction from HTML"
+    Request: { URL: "http://{{HOST}}/html" }
+    /* HTML has the following content:
+           <h1>Sample HTML</h1>
+           <form id="mainform">
+             <input type="hidden" name="formkey" value="secret" />
+           </form>
+    */
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+    ]
+
+    DataExtraction: {
+        FORM_KEY: {
+            Extractor: "HTMLExtractor"
+            // CSS selector of tag to extract data from
+            Selector: "#mainform input[name=\"formkey\"]"
+            Attribute: "value" // Extract content of this attribute.
+        }
+        TITLE: {
+            Extractor: "HTMLExtractor"
+            Selector: "h1"
+            // Do not extract data from attribute but the text content
+            // from the h1 tag
+            Attribute: "~text~"
+        }
+    }
+
+}

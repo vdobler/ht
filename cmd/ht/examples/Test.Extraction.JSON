@@ -1,0 +1,27 @@
+// Extracting data from a JSON document
+{
+    Name: "Data Extraction from JSON"
+
+    Request: { URL: "http://{{HOST}}/json" }
+    /* The returned JSON looks like this:
+         {
+            "Date": "2017-09-20",
+            "Numbers": [6, 25, 26, 27, 31, 38],
+            "Finished": true,
+         }
+    */     
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        // The following checks make sure that the tests fails if the
+        // extraction woudn't succeed.
+        {Check: "JSON", Element: "Date", Prefix: "\"", Suffix: "\"" }
+        {Check: "JSON", Element: "Finished", Regexp: "true|false" }
+        {Check: "JSON", Element: "Numbers.3", Is: "Int" }
+    ]
+
+    DataExtraction: {
+        DATE:     {Extractor: "JSONExtractor", Element: "Date" }  // 2017-09-20
+        FINISHED: {Extractor: "JSONExtractor", Element: "Finished" }   // true
+        THIRDNUM: {Extractor: "JSONExtractor", Element: "Numbers.3" }  // 27
+    }
+}

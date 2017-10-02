@@ -1,0 +1,46 @@
+// Extracting data from a Response
+{
+    Name: "Data Extraction"
+
+    Description: '''
+        Combining tests into larger suites is useful only if later requests
+        can depend on the result of earlier requests. This is like this in ht:
+          1. Extract some data from a response and store it in a variable
+          2. Use that variable in subsequent requests/tests
+        This examples shows the generic mechanism of step 1.
+    '''
+
+    Request: { URL: "http://{{HOST}}/html" }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+
+        // Data extraction does not influence the test state: If the given
+        // value could not be extracted the test is still in state Pass.
+        // If subsequent tests/request rely on a proper data axtraction: Add a
+        // check like the following to make sure the test fails if no suitable
+        // value is present
+        {Check: "Body", Regexp: "It's ([0-9:]+) o'clock"}
+    ]
+
+    // Define how variable values should be extracted from the response   
+    DataExtraction: {
+        // Set the value of SOME_VARIABLE. Use a generic "BodyExtractor"
+        // to extract a value from the response body via a regular expression.
+        SOME_VARIABLE: {
+            Extractor: "BodyExtractor"
+
+            // The regular expression to extract. This one would match e.g.
+            // It's 12:45 o'clock.
+            Regexp: "It's ([0-9:]+) o'clock"
+
+            // Do not use the full match but only the first submatch which
+            // will be the numerical time (here "12:45")
+            Submatch: 1  
+        }
+
+        // Extract the session from the Set-Cookie handler.
+        SESSION_ID: { Extractor: "CookieExtractor", Name: "SessionID" }
+    }
+
+    // Note that Data extraction happens only for Pass'ed test.
+}
