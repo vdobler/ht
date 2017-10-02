@@ -6,6 +6,8 @@
 package errorlist
 
 import (
+	"fmt"
+	"os"
 	"strings"
 )
 
@@ -47,4 +49,19 @@ func (el List) AsStrings() []string {
 		}
 	}
 	return s
+}
+
+// PrintlnStderr prints err to stderr. If err is a List it prints
+// several lines.
+func PrintlnStderr(err error) {
+	if err == nil {
+		return
+	}
+	if el, ok := err.(List); ok {
+		for _, msg := range el.AsStrings() {
+			fmt.Fprintln(os.Stderr, msg)
+		}
+	} else {
+		fmt.Fprintln(os.Stderr, err.Error())
+	}
 }

@@ -16,7 +16,6 @@ import (
 )
 
 func allTestExamples() []string {
-	// TODO: extract from RootExamples
 	return []string{
 		"Test",
 		"Test.HTML",
@@ -31,6 +30,12 @@ func allTestExamples() []string {
 		"Test.Cookies",
 		"Test.Speed",
 		"Test.XML",
+	}
+}
+
+func allSuiteExamples() []string {
+	return []string{
+		"Suite",
 	}
 }
 
@@ -277,6 +282,42 @@ func TestExampleTest(t *testing.T) {
 			}
 			if acc.Status != ht.Pass {
 				t.Fatalf("Test did not pass: %s", acc.Status)
+			}
+		})
+	}
+}
+
+func TestExampleSuite(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(exampleHandler))
+	defer ts.Close()
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	variablesFlag["HOST"] = u.Host
+	outputDir = "example-tests"
+	randomSeed = 57 // must be prime
+	silent = true
+	ssilent = true
+
+	for _, suitename := range allSuiteExamples() {
+		t.Run(suitename, func(t *testing.T) {
+			// Can be read in raw form:
+			suites, err := loadSuites([]string{"./examples/" + suitename})
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			// Execute the suite:
+			prepareHT()
+			prepareOutputDir()
+			acc, err := executeSuites(suites, variablesFlag, nil)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			if acc.Status != ht.Pass {
+				t.Fatalf("Suite did not pass: %s", acc.Status)
 			}
 		})
 	}

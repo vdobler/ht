@@ -12,27 +12,39 @@ var RootExample = &Example{
 			Description: "A generic Suite",
 			Data: `// A generic Suite
 {
-    Name: "Suite for Testing Load"
-    KeepCookies: true
-    OmitChecks: false
+    Name: "A generic Suite"
+    Description: "Explain the Setup, Main, Teardown and Variables fields."
+    KeepCookies: true  // Like a browser does, useful for sessions.
+    OmitChecks: false  // No, we want the checks to be executed!
+
+    // Setup and Main are the set of Tests executed and considered relevant
+    // for this suite's success. The difference is how Tests with failures or
+    // error impact suite execution:
+    // If any (executed) test in Setup failes, errors (or is bogus) the suite
+    // termiantes and none of the following tests from Setup, none from Main
+    // and none from Teardown are executed.
     Setup: [
-        { File: "a.ht"
-          Variables: {
-              VAR_A: "vala2",
-              VAR_C: "valc"
-          }
-        }
-    ],
-    comment: "see Foo. B et al., Journal of examples and Comments 123, p456",
-    Main: [
-        {File: "a.ht"}
-        {File: "b.ht", Variables: {"foo": "bar"}}
-	{File: "c/d.ht"}
-        {File: "a.ht", Mocks: ["m1.mock", "lastname.mock"]}
-    ],
-    Teardown: [
-       {File: "b.ht"}
+        { File: "Test" }
     ]
+
+    // Main Tests are executed if all Setup Tests pass. In which case all
+    // Tests are executed.
+    Main: [
+        {File: "Test.JSON"}
+        {File: "Test.HTML"}
+    ],
+
+    // Teardown Tests are executed after Main (i.e. only if all Setup Tests
+    // did pass). Their outcome is reported butdo not influence the Suite
+    // status: All teardown tests may fail and the Suite still can pass.
+    Teardown: [
+       {File: "Test.Image"}
+    ]
+
+    // Variables provides a set of variables for the individual Tests.
+    // variables defined here in the suite overwrite defaults set in the
+    // individual Test files. The values here are overwritten byvalues set
+    // on the command line.
     Variables: {
        VARNAME: "varvalue"
     }

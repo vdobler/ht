@@ -1,0 +1,18 @@
+// Inline Tests in a suite
+{
+    Name: "Suite with inline tests"
+    Main: [
+        // Most often a Suite reference a Test stored in a separate file.
+        {File: "Test.JSON"}
+            
+        // But a Test may be included directly into a Suite. (Drawback:
+        // such an inline test cannot be reused in a different suite).
+        {Test: {
+                   Name: "Test of HTML page"
+                   Request: { URL: "http://{{HOST}}/html" }
+                   Checks: [ {Check: "StatusCode", Expect: 200} ]
+               }           
+        }
+    ]
+    // Works the same for Setup and Teardown Tests.
+}

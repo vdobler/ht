@@ -130,7 +130,11 @@ func main() {
 		args = cmd.Flag.Args()
 		switch {
 		case cmd.RunSuites != nil:
-			suites := loadSuites(args)
+			suites, err := loadSuites(args)
+			if err != nil {
+				errorlist.PrintlnStderr(err)
+				os.Exit(8)
+			}
 			cmd.RunSuites(cmd, suites)
 		case cmd.RunTests != nil:
 			tests, err := loadTests(args)
@@ -201,7 +205,7 @@ func filesystemFor(arg string) (suite.FileSystem, string) {
 	return fs, arg
 }
 
-func loadSuites(args []string) []*suite.RawSuite {
+func loadSuites(args []string) ([]*suite.RawSuite, error) {
 	args = expandTrippleDots(args)
 
 	var suites []*suite.RawSuite
@@ -210,35 +214,23 @@ func loadSuites(args []string) []*suite.RawSuite {
 	only, skip := splitTestIDs(onlyFlag), splitTestIDs(skipFlag)
 
 	// Input and setup suites from command line arguments.
-	exit := false
+	el := errorlist.List{}
 	for _, arg := range args {
 		// Process arguments of the form <name>@<archive>.
 		fs, arg := filesystemFor(arg)
 		s, err := suite.LoadRawSuite(arg, fs)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot read suite %q: %s\n", arg, err)
-			exit = true
+			el.Append(fmt.Errorf("Cannot read suite %q: %s\n", arg, err))
 			continue
 		}
-		// for varName, varVal := range variablesFlag {
-		// 	suite.Variables[varName] = varVal
-		// }
 		err = s.Validate(variablesFlag)
 		if err != nil {
-			if el, ok := err.(errorlist.List); ok {
-				for _, msg := range el.AsStrings() {
-					fmt.Fprintln(os.Stderr, msg)
-				}
-			} else {
-				fmt.Fprintln(os.Stderr, err.Error())
-			}
-			exit = true
+			el.Append(fmt.Errorf("Cannot validate suite %q: %s\n", arg, err))
 		}
-		// setVerbosity(s)
 		suites = append(suites, s)
 	}
-	if exit {
-		os.Exit(8)
+	if len(el) > 0 {
+		return nil, el
 	}
 
 	// Merge only into skip.
@@ -269,7 +261,7 @@ func loadSuites(args []string) []*suite.RawSuite {
 		setVerbosity(s)
 	}
 
-	return suites
+	return suites, nil
 }
 
 func splitTestIDs(f string) map[string]bool {

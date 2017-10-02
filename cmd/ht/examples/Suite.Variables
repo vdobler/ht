@@ -1,0 +1,24 @@
+// Variable Handling
+{
+    Name: "Suite and Variables"
+
+    Main: [
+        // Without Variables field: Test.JSON uses it's own defaults if not
+        // overwritten from the Suite below if not overwritten from the
+        // command line:
+        {File: "Test.JSON"}  // FOO == 9876 from below
+
+        // Tests can be called with different values and/or new variabels.
+        // In this instance of Test.JSON:  FOO==1234 && BAR=="some other value"
+        {File: "Test.JSON"
+            Variables: {
+                FOO: 1234
+                BAR: "some other value"
+            }
+        }
+    ]
+
+    Variables: {
+        FOO: 9876
+    }
+}
