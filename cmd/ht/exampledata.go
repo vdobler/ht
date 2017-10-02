@@ -8,6 +8,51 @@ var RootExample = &Example{
 	Data:        ``,
 	Sub: []*Example{
 		&Example{
+			Name:        "Mixin",
+			Description: "Mixins allow to add stuff to a Test",
+			Data: `// Mixins allow to add stuff to a Test
+{
+    // A Mixin is technically a Test, it has the same fields. But it is
+    // not executed directly but mixed into a real Tests to add common
+    // stuff like headers or even Checks like this:
+    // {
+    //     Name: "Some Test"
+    //     Mixin: [ "Mixin" ]  // Load this mixin here.
+    //     Request: { URL: "http://example.org" }
+    // }
+    // Mixins are merged into the test through complicated rules.
+    // Consult https://godoc.org/github.com/vdobler/ht/ht#Merge for details.
+
+    Name: "German-Chrome"
+    Description: "Some headers of a German Chrome Browser"
+    Request: {
+        Header: {
+            User-Agent: "Chrome/41.0.2272.101"
+            Accept: "text/html,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            Accept-Language: "de-DE,de;q=0.8,en-US;q=0.6,en;q=0.4,fr;q=0.2"
+            Accept-Encoding: "gzip, deflate, sdch"
+        }
+    }
+}`,
+			Sub: []*Example{
+				&Example{
+					Name:        "Mixin.Checks",
+					Description: "A Mixin consisting for adding Checks to a Test",
+					Data: `// A Mixin consisting for adding Checks to a Test
+{
+    Name: "Standard Checks on HTML pages"
+    // Such a mixin makes it easy to have a default set of checks every
+    // HTML document is supposed to fulfill.
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ResponseTime", Lower: "700ms"}
+        {Check: "ContentType", Is: "text/html"}
+        {Check: "UTF8Encoded"}
+        {Check: "ValidHTML"}
+    ]
+}`,
+				}},
+		}, &Example{
 			Name:        "Suite",
 			Description: "A generic Suite",
 			Data: `// A generic Suite
@@ -32,7 +77,7 @@ var RootExample = &Example{
     Main: [
         {File: "Test.JSON"}
         {File: "Test.HTML"}
-    ],
+    ]
 
     // Teardown Tests are executed after Main (i.e. only if all Setup Tests
     // did pass). Their outcome is reported butdo not influence the Suite
@@ -49,6 +94,56 @@ var RootExample = &Example{
        VARNAME: "varvalue"
     }
 }`,
+			Sub: []*Example{
+				&Example{
+					Name:        "Suite.InlineTest",
+					Description: "Inline Tests in a suite",
+					Data: `// Inline Tests in a suite
+{
+    Name: "Suite with inline tests"
+    Main: [
+        // Most often a Suite reference a Test stored in a separate file.
+        {File: "Test.JSON"}
+            
+        // But a Test may be included directly into a Suite. (Drawback:
+        // such an inline test cannot be reused in a different suite).
+        {Test: {
+                   Name: "Test of HTML page"
+                   Request: { URL: "http://{{HOST}}/html" }
+                   Checks: [ {Check: "StatusCode", Expect: 200} ]
+               }           
+        }
+    ]
+    // Works the same for Setup and Teardown Tests.
+}`,
+				}, &Example{
+					Name:        "Suite.Variables",
+					Description: "Passing variables to Tests, parameterization of Tests",
+					Data: `// Passing variables to Tests, parameterization of Tests
+{
+    Name: "Suite and Variables"
+
+    Main: [
+        // Without Variables field: Test.JSON uses it's own defaults if not
+        // overwritten from the Suite below if not overwritten from the
+        // command line:
+        {File: "Test.JSON"}  // FOO == 9876 from below
+
+        // Tests can be called with different values and/or new variabels.
+        // In this instance of Test.JSON:  FOO==1234 && BAR=="some other value"
+        {File: "Test.JSON"
+            Variables: {
+                FOO: 1234
+                BAR: "some other value"
+            }
+        }
+    ]
+
+    Variables: {
+        FOO: 9876
+    }
+}`,
+				}},
 		}, &Example{
 			Name:        "Test",
 			Description: "A generic Test",
@@ -269,6 +364,26 @@ var RootExample = &Example{
         {Check: "JSONExpr", Expression: "$len(.Numbers) > 4"}
         {Check: "JSONExpr", Expression: "$max(.Numbers) == 38"}
     ]
+}`,
+				}, &Example{
+					Name:        "Test.Mixin",
+					Description: "A Test including Mixins",
+					Data: `// A Test including Mixins
+{
+    Name: "Test with Mixins"
+    Mixin: [
+        "Mixin"
+        "Mixin.Checks"
+    ]
+    Description: "Most parts of this Test com from the two Mixins above." 
+    Request: {
+        URL:    "http://{{HOST}}/html"
+        // Additional Request fields are loaded from Mixin
+    }
+    Checks: [
+        {Check: "Body", Contains: "e"}
+        // Additional Checks are loaded from Mixin.Checks
+    ] 
 }`,
 				}, &Example{
 					Name:        "Test.POST",

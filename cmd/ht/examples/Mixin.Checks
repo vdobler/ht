@@ -1,0 +1,13 @@
+// A Mixin consisting for adding Checks to a Test
+{
+    Name: "Standard Checks on HTML pages"
+    // Such a mixin makes it easy to have a default set of checks every
+    // HTML document is supposed to fulfill.
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "ResponseTime", Lower: "700ms"}
+        {Check: "ContentType", Is: "text/html"}
+        {Check: "UTF8Encoded"}
+        {Check: "ValidHTML"}
+    ]
+}

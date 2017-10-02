@@ -30,12 +30,15 @@ func allTestExamples() []string {
 		"Test.Cookies",
 		"Test.Speed",
 		"Test.XML",
+		"Test.Mixin",
 	}
 }
 
 func allSuiteExamples() []string {
 	return []string{
 		"Suite",
+		"Suite.InlineTest",
+		"Suite.Variables",
 	}
 }
 

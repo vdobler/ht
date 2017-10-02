@@ -1,0 +1,17 @@
+// A Test including Mixins
+{
+    Name: "Test with Mixins"
+    Mixin: [
+        "Mixin"
+        "Mixin.Checks"
+    ]
+    Description: "Most parts of this Test com from the two Mixins above." 
+    Request: {
+        URL:    "http://{{HOST}}/html"
+        // Additional Request fields are loaded from Mixin
+    }
+    Checks: [
+        {Check: "Body", Contains: "e"}
+        // Additional Checks are loaded from Mixin.Checks
+    ] 
+}

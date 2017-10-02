@@ -1,0 +1,24 @@
+// Mixins allow to add stuff to a Test
+{
+    // A Mixin is technically a Test, it has the same fields. But it is
+    // not executed directly but mixed into a real Tests to add common
+    // stuff like headers or even Checks like this:
+    // {
+    //     Name: "Some Test"
+    //     Mixin: [ "Mixin" ]  // Load this mixin here.
+    //     Request: { URL: "http://example.org" }
+    // }
+    // Mixins are merged into the test through complicated rules.
+    // Consult https://godoc.org/github.com/vdobler/ht/ht#Merge for details.
+
+    Name: "German-Chrome"
+    Description: "Some headers of a German Chrome Browser"
+    Request: {
+        Header: {
+            User-Agent: "Chrome/41.0.2272.101"
+            Accept: "text/html,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            Accept-Language: "de-DE,de;q=0.8,en-US;q=0.6,en;q=0.4,fr;q=0.2"
+            Accept-Encoding: "gzip, deflate, sdch"
+        }
+    }
+}

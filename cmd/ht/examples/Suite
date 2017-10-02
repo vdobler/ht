@@ -20,7 +20,7 @@
     Main: [
         {File: "Test.JSON"}
         {File: "Test.HTML"}
-    ],
+    ]
 
     // Teardown Tests are executed after Main (i.e. only if all Setup Tests
     // did pass). Their outcome is reported butdo not influence the Suite

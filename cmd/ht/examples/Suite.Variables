@@ -1,4 +1,4 @@
-// Variable Handling
+// Passing variables to Tests, parameterization of Tests
 {
     Name: "Suite and Variables"
 
