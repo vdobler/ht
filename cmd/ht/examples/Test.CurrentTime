@@ -1,0 +1,27 @@
+// Working with current time or date
+{
+    Name: "Current time and date"
+    Description: '''
+        Unfortunately it is not straight forward to include the current date
+        or time in a Test. But this can be simulated with Variables:
+        You can always inject e.g. the current date via the command line
+        as the value of a variable.
+        The solution here might be a bit more flexible: The SetTimestamp
+        data extractor can "extract" the current date/time (with arbitrary
+        offset) into a variable. The value of this variable can be used
+        in subsequent tests as the current date/time or some date/time
+        in the future or past with defined offset to now.
+        The Format string is the reference time Go's time package.
+    '''
+
+    // A dummy request: We are interested in the current date/time only.
+    Request: { URL: "http://{{HOST}}/html" }
+
+    DataExtraction: {
+        // Store the current date and time in NOW
+        NOW: {Extractor: "SetTimestamp", Format: "2006-01-02 15:04:05" }
+
+	// Store date of the day after tomorrow in FUTURE
+        FUTURE: {Extractor: "SetTimestamp", DeltaDay: 2, Format: "2006-01-02" }
+    }
+}

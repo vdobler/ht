@@ -35,6 +35,7 @@ func allTestExamples() []string {
 		"Test.Extraction",
 		"Test.Extraction.JSON",
 		"Test.Extraction.HTML",
+		"Test.CurrentTime",
 	}
 }
 

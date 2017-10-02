@@ -230,6 +230,151 @@ var RootExample = &Example{
     ]
 }`,
 				}, &Example{
+					Name:        "Test.CurrentTime",
+					Description: "Working with current time or date",
+					Data: `// Working with current time or date
+{
+    Name: "Current time and date"
+    Description: '''
+        Unfortunately it is not straight forward to include the current date
+        or time in a Test. But this can be simulated with Variables:
+        You can always inject e.g. the current date via the command line
+        as the value of a variable.
+        The solution here might be a bit more flexible: The SetTimestamp
+        data extractor can "extract" the current date/time (with arbitrary
+        offset) into a variable. The value of this variable can be used
+        in subsequent tests as the current date/time or some date/time
+        in the future or past with defined offset to now.
+        The Format string is the reference time Go's time package.
+    '''
+
+    // A dummy request: We are interested in the current date/time only.
+    Request: { URL: "http://{{HOST}}/html" }
+
+    DataExtraction: {
+        // Store the current date and time in NOW
+        NOW: {Extractor: "SetTimestamp", Format: "2006-01-02 15:04:05" }
+
+	// Store date of the day after tomorrow in FUTURE
+        FUTURE: {Extractor: "SetTimestamp", DeltaDay: 2, Format: "2006-01-02" }
+    }
+}`,
+				}, &Example{
+					Name:        "Test.Extraction",
+					Description: "Extracting data from a Response",
+					Data: `// Extracting data from a Response
+{
+    Name: "Data Extraction"
+
+    Description: '''
+        Combining tests into larger suites is useful only if later requests
+        can depend on the result of earlier requests. This is like this in ht:
+          1. Extract some data from a response and store it in a variable
+          2. Use that variable in subsequent requests/tests
+        This examples shows the generic mechanism of step 1.
+    '''
+
+    Request: { URL: "http://{{HOST}}/html" }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+
+        // Data extraction does not influence the test state: If the given
+        // value could not be extracted the test is still in state Pass.
+        // If subsequent tests/request rely on a proper data axtraction: Add a
+        // check like the following to make sure the test fails if no suitable
+        // value is present
+        {Check: "Body", Regexp: "It's ([0-9:]+) o'clock"}
+    ]
+
+    // Define how variable values should be extracted from the response   
+    DataExtraction: {
+        // Set the value of SOME_VARIABLE. Use a generic "BodyExtractor"
+        // to extract a value from the response body via a regular expression.
+        SOME_VARIABLE: {
+            Extractor: "BodyExtractor"
+
+            // The regular expression to extract. This one would match e.g.
+            // It's 12:45 o'clock.
+            Regexp: "It's ([0-9:]+) o'clock"
+
+            // Do not use the full match but only the first submatch which
+            // will be the numerical time (here "12:45")
+            Submatch: 1  
+        }
+
+        // Extract the session from the Set-Cookie handler.
+        SESSION_ID: { Extractor: "CookieExtractor", Name: "SessionID" }
+    }
+
+    // Note that Data extraction happens only for Pass'ed test.
+}`,
+					Sub: []*Example{
+						&Example{
+							Name:        "Test.Extraction.HTML",
+							Description: "Extracting data from HTML documents, e.g. hidden form values",
+							Data: `// Extracting data from HTML documents, e.g. hidden form values
+{
+    Name: "Data extraction from HTML"
+    Request: { URL: "http://{{HOST}}/html" }
+    /* HTML has the following content:
+           <h1>Sample HTML</h1>
+           <form id="mainform">
+             <input type="hidden" name="formkey" value="secret" />
+           </form>
+    */
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+    ]
+
+    DataExtraction: {
+        FORM_KEY: {
+            Extractor: "HTMLExtractor"
+            // CSS selector of tag to extract data from
+            Selector: "#mainform input[name=\"formkey\"]"
+            Attribute: "value" // Extract content of this attribute.
+        }
+        TITLE: {
+            Extractor: "HTMLExtractor"
+            Selector: "h1"
+            // Do not extract data from attribute but the text content
+            // from the h1 tag
+            Attribute: "~text~"
+        }
+    }
+
+}`,
+						}, &Example{
+							Name:        "Test.Extraction.JSON",
+							Description: "Extracting data from a JSON document",
+							Data: `// Extracting data from a JSON document
+{
+    Name: "Data Extraction from JSON"
+
+    Request: { URL: "http://{{HOST}}/json" }
+    /* The returned JSON looks like this:
+         {
+            "Date": "2017-09-20",
+            "Numbers": [6, 25, 26, 27, 31, 38],
+            "Finished": true,
+         }
+    */     
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        // The following checks make sure that the tests fails if the
+        // extraction woudn't succeed.
+        {Check: "JSON", Element: "Date", Prefix: "\"", Suffix: "\"" }
+        {Check: "JSON", Element: "Finished", Regexp: "true|false" }
+        {Check: "JSON", Element: "Numbers.3", Is: "Int" }
+    ]
+
+    DataExtraction: {
+        DATE:     {Extractor: "JSONExtractor", Element: "Date" }  // 2017-09-20
+        FINISHED: {Extractor: "JSONExtractor", Element: "Finished" }   // true
+        THIRDNUM: {Extractor: "JSONExtractor", Element: "Numbers.3" }  // 27
+    }
+}`,
+						}},
+				}, &Example{
 					Name:        "Test.FollowRedirect",
 					Description: "Automatic follow of redirects and suitable tests ",
 					Data: `// Automatic follow of redirects and suitable tests 
@@ -508,6 +653,27 @@ var RootExample = &Example{
         {Check: "Redirect", To: ".../html"}
         {Check: "Redirect", To: ".../html", StatusCode: 301}
     ]
+}`,
+				}, &Example{
+					Name:        "Test.Retry",
+					Description: "Retrying failed tests and polling services.",
+					Data: `// Retrying failed tests and polling services.
+{
+    Name: "Retry a test several times"
+    
+    Request: { URL: "http://{{HOST}}/html" }
+    Checks: [ {Check: "StatusCode", Expect: 200} ]
+
+    // Execution controls timing and retrying of a test
+    Execution: {
+        // Try this test up to 7 times. If all 7 tries fail report a failure.
+        // Report pass after the first passing run.
+        Tries: 7
+        Wait: "800ms"   // Wait 0.8 seconds between retries.
+    }
+    // Retrying a test can also be used to poll a service-endpoint which takes
+    // some time to provide information: Instead of sleeping 60 seconds before
+    // querying the service poll it every 5 seconds for up to 15 tries.
 }`,
 				}, &Example{
 					Name:        "Test.Speed",
