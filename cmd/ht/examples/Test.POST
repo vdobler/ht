@@ -1,4 +1,4 @@
-// A test for a POST request
+// Generating POST requests
 {
     Name: "Test a POST request"
     Request: {

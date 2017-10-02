@@ -1007,18 +1007,23 @@ var typeDoc = map[string]string{
 		"    * 'structure': ill-formed tag nesting / tag closing\n" +
 		"    * 'uniqueids': uniqness of id attribute values\n" +
 		"    * 'lang':      ill-formed lang attributes\n" +
-		"    * 'attr':      duplicate attributes\n" +
-		"    * 'escaping':  unescaped &, < and > characters or unknown entities\n" +
+		"    * 'attr':      duplicate attributes in a tag\n" +
+		"    * 'escaping':  unescaped &, > and < characters or unknown entities\n" +
 		"    * 'label':     reference to nonexisting ids in a label tags\n" +
 		"    * 'url':       malformed URLs\n" +
 		"\n" +
 		"    Notes:\n" +
 		"\n" +
-		"    - HTML5 allows unescaped & in several circumstances but ValidHTML\n" +
-		"      reports most stray & as an error.\n" +
+		"    - The HTML5 parsing model distinguishes between RAWTEXT and PLAINTEXT mode\n" +
+		"      but this distinction is not done here: All unesacped < are considered\n" +
+		"      an error even if a literal < is legal inside e.g. a textarea.\n" +
+		"    - All unescaped > and < charcters in text nodes are considered a problem.\n" +
 		"    - The lang attributes are parse very lax, e.g. the non-canonical form\n" +
 		"      'de_CH' is considered valid (and equivalent to 'de-CH'). I don't\n" +
-		"      know how browser handle this.",
+		"      know how browser handle this.\n" +
+		"    - Proper escaping of >, < and & is not checked inside script tags and\n" +
+		"      not inside of iframes.\n" +
+		"    - Foreign content is not handled properly. TODO: ignore like script.",
 	"w3cvalidhtml": "type W3CValidHTML struct {\n" +
 		"\t// AllowedErrors is the number of allowed errors (after ignoring errors).\n" +
 		"\tAllowedErrors int \n" +

@@ -93,8 +93,8 @@ var RootExample = &Example{
 			Sub: []*Example{
 				&Example{
 					Name:        "Test.Cookies",
-					Description: "Test Setting and Deleting Cookies",
-					Data: `// Test Setting and Deleting Cookies
+					Description: "Testing setting and deleting Cookies in Set-Cookie headers",
+					Data: `// Testing setting and deleting Cookies in Set-Cookie headers
 {
     Name: "Test SeCookie Headers"
     Request: {
@@ -124,8 +124,8 @@ var RootExample = &Example{
 }`,
 				}, &Example{
 					Name:        "Test.FollowRedirect",
-					Description: "Follow redirections",
-					Data: `// Follow redirections
+					Description: "Automatic follow of redirects and suitable tests ",
+					Data: `// Automatic follow of redirects and suitable tests 
 {
     Name: "Follow Redirections"
     Request: {
@@ -147,8 +147,8 @@ var RootExample = &Example{
 }`,
 				}, &Example{
 					Name:        "Test.HTML",
-					Description: "A test for a HTML page",
-					Data: `// A test for a HTML page
+					Description: "Testing HTML documents",
+					Data: `// Testing HTML documents
 {
     Name: "Test of HTML page"
     Request: {
@@ -181,8 +181,8 @@ var RootExample = &Example{
 }`,
 				}, &Example{
 					Name:        "Test.Image",
-					Description: "Test of an image",
-					Data: `// Test of an image
+					Description: "Testing images",
+					Data: `// Testing images
 {
     Name: "Test of a PNG image"
     Request: {
@@ -260,8 +260,8 @@ var RootExample = &Example{
 }`,
 				}, &Example{
 					Name:        "Test.POST",
-					Description: "A test for a POST request",
-					Data: `// A test for a POST request
+					Description: "Generating POST requests",
+					Data: `// Generating POST requests
 {
     Name: "Test a POST request"
     Request: {
@@ -369,8 +369,8 @@ var RootExample = &Example{
 						}},
 				}, &Example{
 					Name:        "Test.Redirection",
-					Description: "Redirection requests",
-					Data: `// Redirection requests
+					Description: "Testing redirect responses",
+					Data: `// Testing redirect responses
 {
     Name: "Redirections"
     Request: {
@@ -384,8 +384,8 @@ var RootExample = &Example{
 }`,
 				}, &Example{
 					Name:        "Test.Speed",
-					Description: "Test speed of application",
-					Data: `// Test speed of application
+					Description: "Testing the response speed of an application",
+					Data: `// Testing the response speed of an application
 {
     Name: "Test response time and latency"
     Request: {
@@ -411,6 +411,37 @@ var RootExample = &Example{
         }
 
 
+    ]
+}`,
+				}, &Example{
+					Name:        "Test.XML",
+					Description: "Testing XML documents",
+					Data: `// Testing XML documents
+{
+    Name: "Test of a XML document"
+    Request: {
+        URL: "http://{{HOST}}/xml"
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "UTF8Encoded"}
+        {Check: "ContentType", Is: "application/xml"}
+
+        // Presence of element, no condition imposed on value.
+        {Check: "XML", Path: "/library/book/character[2]/name" },
+
+        // Check existance and value.
+        {Check: "XML"
+            Path: "/library/book/character[2]/name"
+            Equals: "Snoopy"
+         }
+
+        // Check several Conditions on the value:
+        {Check: "XML"
+            Path: "//book[author/@id='CMS']/title"
+            Prefix: "Being"
+            Contains: "Dog"
+         }
     ]
 }`,
 				}},

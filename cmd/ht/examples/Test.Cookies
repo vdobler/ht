@@ -1,4 +1,4 @@
-// Test Setting and Deleting Cookies
+// Testing setting and deleting Cookies in Set-Cookie headers
 {
     Name: "Test SeCookie Headers"
     Request: {

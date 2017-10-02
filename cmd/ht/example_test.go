@@ -30,6 +30,7 @@ func allTestExamples() []string {
 		"Test.Image",
 		"Test.Cookies",
 		"Test.Speed",
+		"Test.XML",
 	}
 }
 

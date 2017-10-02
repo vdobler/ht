@@ -1,4 +1,4 @@
-// Redirection requests
+// Testing redirect responses
 {
     Name: "Redirections"
     Request: {

@@ -1,0 +1,28 @@
+// Testing XML documents
+{
+    Name: "Test of a XML document"
+    Request: {
+        URL: "http://{{HOST}}/xml"
+    }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+        {Check: "UTF8Encoded"}
+        {Check: "ContentType", Is: "application/xml"}
+
+        // Presence of element, no condition imposed on value.
+        {Check: "XML", Path: "/library/book/character[2]/name" },
+
+        // Check existance and value.
+        {Check: "XML"
+            Path: "/library/book/character[2]/name"
+            Equals: "Snoopy"
+         }
+
+        // Check several Conditions on the value:
+        {Check: "XML"
+            Path: "//book[author/@id='CMS']/title"
+            Prefix: "Being"
+            Contains: "Dog"
+         }
+    ]
+}

@@ -1,4 +1,4 @@
-// Follow redirections
+// Automatic follow of redirects and suitable tests 
 {
     Name: "Follow Redirections"
     Request: {

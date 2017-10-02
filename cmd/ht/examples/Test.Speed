@@ -1,4 +1,4 @@
-// Test speed of application
+// Testing the response speed of an application
 {
     Name: "Test response time and latency"
     Request: {
