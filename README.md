@@ -18,12 +18,14 @@ ht tries to achieve the following:
 * Make generating all common HTTP requests easy.
 * Provide high- and low-level checks on the received response.
 * Make measuring response times easy.
-* Provide a library (Go packages) to programmatically generate requests
-  and test the responses.
 * Provide a standalone executable which reads requests/checks from disk and
   runs them.
 * Provide good diagnostics on the generated request, the received response
   and on potential failed checks for ease of debugging.
+* Make the tests and checks understandable and readable. Ease of writing is
+  a secondary goal only.
+* Provide a library (Go packages) to programmatically generate requests
+  and test the responses.
 * Provide basic functionalities to mock responses.
 
 
@@ -262,7 +264,7 @@ How to write proper tests?
 The main starting point to write proper automated test with h is to have a
 good model of how your application should work, what it is expected to do:
 What is the proper response to a certain stimulus, a certain a request?
-(A simple "If I click here and there and enter this an click taht button
+(A simple "If I click here and there and enter this an click that button
 then I see the result" is not enough.)
 
 Let's assume you have to check that the Search functionality "works properly".
@@ -377,39 +379,81 @@ suite inside an archive works like `ht exec search.suite@search.archive`.
 Documentation
 -------------
 
-For a start have a look at the 
+### Examples
 
-Tutorial https://github.com/vdobler/ht/blob/master/TUTORIAL.md
+Ht comes with a broad set of examples built in.
+To list all available topics or all available examples run:
 
-or the 
+    $ ht example
+    $ ht example -list
 
-Showcase here https://github.com/vdobler/ht/tree/master/showcase
+The examples are organised hierarchically: To learn how to write a Test start
+of with an example of a generic Test:
+
+    $ ht example Test
+
+and work your way through the available sub-topics, e.g. 
+
+    $ ht example Test.POST
+    $ ht example Test.POST.FileUpload
+
+The examples are executed during `go test github.com/vdobler/ht/cmd/ht`.
+The output reports are written to the folder example-tests and provide
+additional insight so try the exampels and take a look at their output.
+
+
+### Builtin reference
+
+Ht has a `doc` subcommand which shows reference documentation for the types
+and fields used to construct Tests and Checks. Use this to find out all the
+details not explained in the examples
+
+    $ ht doc Test          #  show godoc of type Test
+    $ ht doc Request       #  show godoc of type Request
+    $ ht doc Redirect      #  show godoc of Redirect check
+    $ ht doc JSON          #  show godoc of JSON check
+
+This doc subcommand (as well as the exaple subcommand) does not rely on the
+Go tools or the source of ht beeing installed and can be used from the Docker
+image.
+
+
+### Help subcommand
+
+The `help` subcommand explains the available subcommands and their command
+line flags. It can be used to list all available Checks and data Extractors:
+
+    $ ht help exec         #  describe how to use the exec subcommand
+    $ ht help checks       #  list short overview of available checks
+    $ ht help extractors   #  list short overview of available extractors
+
+
+### Normative references
+
+The `ht doc` output is generated from the normative source code and can serve
+as the go to reference for most questions. For more detailed stuff see the
+godoc of the individual packages, especially
+
+* Tests, Checks and their options:
+  https://godoc.org/github.com/vdobler/ht/ht
+* Image fingerprinting:
+  https://godoc.org/github.com/vdobler/ht/fingerprint
+* Suites and Loadtesting:
+  https://godoc.org/github.com/vdobler/ht/suite
+
+
+### Outdated stuff (which might be still helpful)
+
+Both the 
+  *  Tutorial  https://github.com/vdobler/ht/blob/master/TUTORIAL.md and the
+  *  Showcase  https://github.com/vdobler/ht/tree/master/showcase
+are no longer maintained. Use the `ht example <topic>` feature.
 
 The showcase is pretty nonsensical but show almost all features
 in just a few files.  You might want to `$ go run showcase.go` to
 have a dummy server listening on localhost:8080 to run the tests
 against: `$ ht exec showcase.suite`
 
-The builtin help to cmd/ht is useful too:
-
-    $ ht help checks       #  list short overview of available checks
-    $ ht help extractors   #  list short overview of available extractors
-    $ ht doc Test          #  show godoc of type Test
-    $ ht doc Redirect      #  show godoc of redirect check
-    $ ht doc RawTest       #  show details of disk format of a test
-    $ ht doc RawSuite      #  show details of disk format of a suite
-
-For details see the the godoc for reference:
-
-* Tests, Checks and their options:
-  https://godoc.org/github.com/vdobler/ht/ht
-* Image fingerprinting:
-  https://godoc.org/github.com/vdobler/ht/fingerprint
-* The ht command itself:
-  https://godoc.org/github.com/vdobler/ht/cmd/ht
-  Run `ht help` for details
-* An example test suite can be found in
-  https://github.com/vdobler/ht/blob/master/testdata/sample.suite
 
 
 How does it compare to ...
