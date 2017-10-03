@@ -113,6 +113,18 @@ func prepareHT() {
 		}
 		ht.Transport.TLSClientConfig.InsecureSkipVerify = true
 	}
+	if _, ok := variablesFlag["CWD"]; !ok {
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot set CWD variable: %s", err)
+		} else {
+			variablesFlag["CWD"] = cwd
+		}
+		if !silent {
+			fmt.Printf("Setting CWD (current working dir) to %s.\n",
+				variablesFlag["CWD"])
+		}
+	}
 
 	if !silent {
 		// Log variables and values sorted by variable name.
