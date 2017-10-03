@@ -1,0 +1,57 @@
+// Querying a MySQL database
+{
+    Name: "SQL Execute"
+
+    Request: {
+        // POST executes SQL statements like CREATE or INSERT.
+        // For SELECT queries use GET.
+        Method: "POST"
+
+        // The 'sql://' schema makes this a SQL pseudo-request.
+        // The host of the URL select the database driver.
+	// Currently only mysql is "supported"
+        URL: "sql://mysql"
+
+        Header: {
+            // Mandatory: The data source name is for the data base driver
+            // is passed in this header field
+            "Data-Source-Name": "test:test@tcp(127.0.0.1:7799)/test?multiStatements=true"
+        }
+
+        // The Body contains the SQL Query
+        Body: '''
+            DROP TABLE IF EXISTS orders;
+            CREATE TABLE orders (
+               id INT NOT NULL AUTO_INCREMENT UNIQUE PRIMARY KEY,
+               product VARCHAR(30),
+               price DECIMAL(4,2)
+             );
+             INSERT INTO orders
+               (product,price)
+             VALUES
+               ("Badetuch", 17.10),
+               ("Taschenmesser", 24.00),
+               ("Puzzle", 9.70)
+             ;
+
+        '''
+
+        // All other fields of Request are ignored.
+    }
+
+    // The result of a SQL pseudo-request POST is always a JSON document.
+    // It has the following form:
+    //   {
+    //      "LastInsertId": {"Value": 1234, "Error": "message"},
+    //      "RowsAffected": {"Value": 0,    "Error": "something went wrong"}
+    //   }
+    Checks: [
+        {Check: "JSON"}
+        {Check: "JSON", Element: "LastInsertId.Value", Is: "Int"}
+    ]
+
+    // Extract the last insert id into a variable for use in subsequent tests.
+    DataExtraction: {
+        LAST_ID: {Extractor: "JSONExtractor", Element: "LastInsertId.Value" }
+    }
+}

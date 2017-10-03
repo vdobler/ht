@@ -199,6 +199,42 @@ var RootExample = &Example{
 }`,
 			Sub: []*Example{
 				&Example{
+					Name:        "Test.AndOr",
+					Description: "Logical AND and NOT of Checks",
+					Data: `// Logical AND and NOT of Checks
+{
+    Name: "Logical conjunctions"
+    Description: '''
+        Sometimes it is natural to express the desired state as the logical OR
+        or the logical NOT of several conditions. Two special Checks allow to
+        express this: AnyOne and None.
+        (The logical AND is the natural composition of the checks in a Test, so
+        there is no extra 'AllOf' check.)
+    '''
+    Request: { URL: "http://{{HOST}}/json" }
+    Checks: [
+        // The AnyOne-Of check is the logical of the the given sub checks:
+	// Only one of the sub-checks in the Of array must succeed:
+        // One out of the three content types makes the AnyOne check pass.
+        {Check: "AnyOne", Of: [
+            {Check: "ContentType", Is: "application/json"}
+            {Check: "ContentType", Is: "application/json5"}
+            {Check: "ContentType", Is: "application/jsonp"}
+	]}
+
+	// The check None expresses the condition that none of the sub
+	// checks may succeed. (This example is rather artificial).
+	{Check: "None", Of: [
+            {Check: "JSON", Element: "Numbers.0", Equals: "2"}
+            {Check: "JSON", Element: "Numbers.1", Equals: "40"}
+            {Check: "JSON", Element: "Numbers.3", Equals: "17"}
+        ]}
+    ]
+
+    // Both AnyOne and None are short cicuiting and evaluate only the
+    // sub-checks until the overall result is clear.
+}`,
+				}, &Example{
 					Name:        "Test.Cookies",
 					Description: "Testing setting and deleting Cookies in Set-Cookie headers",
 					Data: `// Testing setting and deleting Cookies in Set-Cookie headers
@@ -432,6 +468,23 @@ var RootExample = &Example{
     ]
 }`,
 				}, &Example{
+					Name:        "Test.Header",
+					Description: "Testing HTTP response headers",
+					Data: `// Testing HTTP response headers
+{
+    Name: "Test of HTTP response header"
+    Request: { URL: "http://{{HOST}}/xml" }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+
+	// Check presence of Content-Type header, value is ignored.
+        {Check: "Header", Header: "Content-Type"}
+
+	// Check Value of X-Licence header: Must start withd "BSD"
+        {Check: "Header", Header: "X-Licence", Prefix: "BSD"}
+    ]
+}`,
+				}, &Example{
 					Name:        "Test.Image",
 					Description: "Testing images",
 					Data: `// Testing images
@@ -530,6 +583,328 @@ var RootExample = &Example{
         // Additional Checks are loaded from Mixin.Checks
     ] 
 }`,
+				}, &Example{
+					Name:        "Test.NoneHTTP",
+					Description: "Reading files, querying databases and executing bash scripts",
+					Data: `// Reading files, querying databases and executing bash scripts
+{
+    Name: "Pseudo-requests"
+
+    Description: '''
+        A normal Test makes a HTTP request but ht also allows to query a
+        database, read a file or execute a bash script and perform checks
+        on their output. Such 'pseudo-requests' are triggered via special
+        schemas in the Request.URL:
+
+          file://  allows to read, write and delete files
+          bash://  allows to execute a bash script
+          sql://   allows to execute SQL statements against a database
+
+        This example here is a stub, please consult the sub topics.
+    '''
+
+    Request: {
+        // The 'file://' schema makes this a File pseudo-request.
+        URL: "file://localhost/etc/passwd"
+    }
+
+    Checks: [
+        {Check: "Body", Contains: ":root:"}  // to be expected in /etc/passwd
+    ]
+}`,
+					Sub: []*Example{
+						&Example{
+							Name:        "Test.NoneHTTP.Bash",
+							Description: "Reading files, querying databases and executing bash scripts",
+							Data: `// Reading files, querying databases and executing bash scripts
+{
+    Name: "Pseudo-requests"
+
+    Description: '''
+        A normal Test makes a HTTP request but ht also allows to query a
+        database, read a file or execute a bash script and perform checks
+        on their output. Such 'pseudo-requests' are triggered via special
+        schemas in the Request.URL:
+
+          file://  allows to read, write and delete files
+          bash://  allows to execute a bash script
+          sql://   allows to execute SQL statements against a database
+
+        This example test here describes executing a bash script.
+    '''
+
+    Request: {
+        // The 'bash://' schema makes this a Bash-pseudo-request.
+        // Bash scripts can be executed only on the same machine (localhost).
+        // The Working Directory in which the script is executed is the path
+        // of the URL. So you cannot use relative paths.
+        URL:    "bash://localhost/usr/local/go"
+
+        // The request params are used as environment in which the script
+        // executes: Inside the script the bash variables ENVVAR1 and ENVVAR2
+        // will be set with the given values.
+        Params: {
+            ENVVAR1: "some value"
+            ENVVAR2: "12345"
+        }
+
+        // The script's running time is limited to Timeout
+	Timeout: "25s"
+
+        // The body contains the bash script. This is just an example.
+        // The body could be read from a file with the @[v]file-syntax:
+        //     Body: "@vfile:{{TEST_DIR}}/script.bash"
+        // For this simple example we provide it directly.
+        Body: '''
+            # Run the ls command in long form
+	    ls -l 
+        '''
+
+        // All other fields of Request are ignored for bash pseudo-requests.
+    }
+
+    Checks: [
+        // Bash pseudo-request report in the  HTTP status code:
+        //    - 200 if the script's exit code is 0.
+        //    - 408 if the script was canceled due to timeout
+        //    - 500 if the exit code is != 0.
+        {Check: "StatusCode", Expect: 200}
+
+        // The numerial exits status itself is reported in the response
+        // header Exit-Status:
+        {Check: "Header", Header: "Exit-Status", Equals: "exit status 0"}
+
+        // The combined output (stdout and stderr) of the script is returned
+        // as the response body:
+        {Check: "Body", Contains: "LICENSE"}
+    ]
+}`,
+						}, &Example{
+							Name:        "Test.NoneHTTP.File",
+							Description: "Reading, writing and deleting files",
+							Data: `// Reading, writing and deleting files
+{
+    Name: "File Pseudo-requests"
+
+    Description: '''
+        Files on the local machine can be read, written or deleted
+        with file pseudo-request.
+    '''
+
+    Request: {
+        Method: "GET"  // GET reads the files
+
+        // The 'file://' schema makes this a File pseudo-request.
+        // The path of the URL is the path path of the file.
+        URL: "file://localhost/etc/passwd"
+
+        // All other fields of Request are ignored for bash pseudo-requests.
+    }
+
+    Checks: [
+        // File pseudo-request report in the  HTTP status code:
+        //    - 200 if the file was readable
+        //    - 404 otherwise
+        {Check: "StatusCode", Expect: 200}
+
+        // The file content is returned as the response body:
+        {Check: "Body", Contains: ":root:"}
+    ]
+}`,
+						}, &Example{
+							Name:        "Test.NoneHTTP.FileDelete",
+							Description: "Deleting files",
+							Data: `// Deleting files
+{
+    Name: "Deleting Files"
+
+    Request: {
+        Method: "DELETE"  // DELETE request delete files.
+
+        // The 'file://' schema makes this a File pseudo-request.
+        // The path of the URL is the path path of the file.
+        URL: "file://localhost/tmp/somefile"
+
+        // All other fields of Request are ignored.
+    }
+
+    Checks: [
+        // File pseudo-request report in the  HTTP status code:
+        //    - 200 if the file was deleted
+        //    - 403 if it was not deleted
+        //    - 404 if there was no such file in the first place
+        {Check: "StatusCode", Expect: 200}
+    ]
+}`,
+						}, &Example{
+							Name:        "Test.NoneHTTP.FileRead",
+							Description: "Reading files",
+							Data: `// Reading files
+{
+    Name: "Reading Files"
+
+    Request: {
+        Method: "GET"  // GET reads the files
+
+        // The 'file://' schema makes this a File pseudo-request.
+        // The path of the URL is the path path of the file.
+        URL: "file://localhost/tmp/somefile"
+
+        // All other fields of Request are ignored.
+    }
+
+    Checks: [
+        // File pseudo-request report in the  HTTP status code:
+        //    - 200 if the file was readable
+        //    - 404 otherwise
+        {Check: "StatusCode", Expect: 200}
+
+        // The file content is returned as the response body:
+        {Check: "Body", Contains: "Nothing more"}
+    ]
+}`,
+						}, &Example{
+							Name:        "Test.NoneHTTP.FileWrite",
+							Description: "Writing files",
+							Data: `// Writing files
+{
+    Name: "Writing Files"
+
+    Request: {
+        Method: "PUT"  // PUT request write files
+
+        // The 'file://' schema makes this a File pseudo-request.
+        // The path of the URL is the path path of the file.
+        URL: "file://localhost/tmp/somefile"
+
+        Body: '''
+            The request body is written to the file.
+            Nothing more to see here.
+        '''
+
+        // All other fields of Request are ignored.
+    }
+
+    Checks: [
+        // File pseudo-request report in the  HTTP status code:
+        //    - 200 if the file was written
+        //    - 404 otherwise
+        {Check: "StatusCode", Expect: 200}
+    ]
+}`,
+						}, &Example{
+							Name:        "Test.NoneHTTP.SQLExec",
+							Description: "Querying a MySQL database",
+							Data: `// Querying a MySQL database
+{
+    Name: "SQL Execute"
+
+    Request: {
+        // POST executes SQL statements like CREATE or INSERT.
+        // For SELECT queries use GET.
+        Method: "POST"
+
+        // The 'sql://' schema makes this a SQL pseudo-request.
+        // The host of the URL select the database driver.
+	// Currently only mysql is "supported"
+        URL: "sql://mysql"
+
+        Header: {
+            // Mandatory: The data source name is for the data base driver
+            // is passed in this header field
+            "Data-Source-Name": "test:test@tcp(127.0.0.1:7799)/test?multiStatements=true"
+        }
+
+        // The Body contains the SQL Query
+        Body: '''
+            DROP TABLE IF EXISTS orders;
+            CREATE TABLE orders (
+               id INT NOT NULL AUTO_INCREMENT UNIQUE PRIMARY KEY,
+               product VARCHAR(30),
+               price DECIMAL(4,2)
+             );
+             INSERT INTO orders
+               (product,price)
+             VALUES
+               ("Badetuch", 17.10),
+               ("Taschenmesser", 24.00),
+               ("Puzzle", 9.70)
+             ;
+
+        '''
+
+        // All other fields of Request are ignored.
+    }
+
+    // The result of a SQL pseudo-request POST is always a JSON document.
+    // It has the following form:
+    //   {
+    //      "LastInsertId": {"Value": 1234, "Error": "message"},
+    //      "RowsAffected": {"Value": 0,    "Error": "something went wrong"}
+    //   }
+    Checks: [
+        {Check: "JSON"}
+        {Check: "JSON", Element: "LastInsertId.Value", Is: "Int"}
+    ]
+
+    // Extract the last insert id into a variable for use in subsequent tests.
+    DataExtraction: {
+        LAST_ID: {Extractor: "JSONExtractor", Element: "LastInsertId.Value" }
+    }
+}`,
+						}, &Example{
+							Name:        "Test.NoneHTTP.SQLQuery",
+							Description: "Querying a MySQL database",
+							Data: `// Querying a MySQL database
+{
+    Name: "SQL Queries"
+
+    Request: {
+        Method: "GET"  //  GET performs a SQLQuery
+
+        // The 'sql://' schema makes this a SQL pseudo-request.
+        // The host of the URL select the database driver.
+	// Currently only mysql is "supported"
+        URL: "sql://mysql"
+
+        Header: {
+            // Mandatory: The data source name is for the data base driver
+            // is passed in this header field
+            "Data-Source-Name": "test:test@tcp(127.0.0.1:7799)/test"
+
+            // The format of the response body is determined by the
+	    // Accept header:
+            //   - "application/json"
+            //     JSON array with the rows as objectswith the table columns
+            //     as fields
+            //   - "text/csv; header=present"
+            //     Csv file with column headers (the column names)
+            //   - "text/csv"
+            //     Csv file without header, just the data
+            //   - "text/plain"
+            //     Plain text file columns separated by "\t"
+            //   - "text/plain; fieldsep=X"
+            //     Plain text file columns separated by "X"
+            "Accept": "text/csv; header=present"
+
+        }
+
+        // The Body contains the SQL Query
+        Body: '''
+            SELECT id AS orderID, product, price
+            FROM orders
+            ORDER BY price DESC;
+        '''
+
+        // All other fields of Request are ignored.
+    }
+
+    Checks: [
+        {Check: "Body", Prefix: "orderID,product,price"}
+        {Check: "Body", Contains:"2,Taschenmesser,24.00" }
+    ]
+}`,
+						}},
 				}, &Example{
 					Name:        "Test.POST",
 					Description: "Generating POST requests",

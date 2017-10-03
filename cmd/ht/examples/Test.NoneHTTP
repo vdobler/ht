@@ -1,0 +1,26 @@
+// Reading files, querying databases and executing bash scripts
+{
+    Name: "Pseudo-requests"
+
+    Description: '''
+        A normal Test makes a HTTP request but ht also allows to query a
+        database, read a file or execute a bash script and perform checks
+        on their output. Such 'pseudo-requests' are triggered via special
+        schemas in the Request.URL:
+
+          file://  allows to read, write and delete files
+          bash://  allows to execute a bash script
+          sql://   allows to execute SQL statements against a database
+
+        This example here is a stub, please consult the sub topics.
+    '''
+
+    Request: {
+        // The 'file://' schema makes this a File pseudo-request.
+        URL: "file://localhost/etc/passwd"
+    }
+
+    Checks: [
+        {Check: "Body", Contains: ":root:"}  // to be expected in /etc/passwd
+    ]
+}

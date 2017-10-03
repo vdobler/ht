@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -15,8 +16,13 @@ import (
 	"github.com/vdobler/ht/suite"
 )
 
+// To test against a MySQL database:
+//
+var runmysql = flag.Bool("run-mysql", false,
+	"Run the MySQL tests. Needs docker run -rm -d -e MYSQL_USER=test -e MYSQL_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_ALLOW_EMPTY_PASSWORD=true -p 7799:3306 mysql:5.6")
+
 func allTestExamples() []string {
-	return []string{
+	internal := []string{
 		"Test",
 		"Test.HTML",
 		"Test.JSON",
@@ -37,7 +43,22 @@ func allTestExamples() []string {
 		"Test.Extraction.HTML",
 		"Test.CurrentTime",
 		"Test.AndOr",
+		"Test.Header",
+		"Test.NoneHTTP",
+		"Test.NoneHTTP.Bash",
+		"Test.NoneHTTP.FileWrite",  // Write must go first...
+		"Test.NoneHTTP.FileRead",   // .. then the file can be read
+		"Test.NoneHTTP.FileDelete", // and we clean up.
 	}
+
+	if *runmysql {
+		internal = append(internal, []string{
+			"Test.NoneHTTP.SQLExec",
+			"Test.NoneHTTP.SQLQuery",
+		}...)
+	}
+
+	return internal
 }
 
 func allSuiteExamples() []string {
@@ -221,6 +242,7 @@ func exampleHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(exampleJSON)
 	case "/xml":
 		w.Header().Set("Content-Type", "application/xml")
+		w.Header().Set("X-Licence", "BSD-3")
 		w.WriteHeader(200)
 		w.Write(exampleXML)
 	case "/lena":

@@ -1,0 +1,49 @@
+// Querying a MySQL database
+{
+    Name: "SQL Queries"
+
+    Request: {
+        Method: "GET"  //  GET performs a SQLQuery
+
+        // The 'sql://' schema makes this a SQL pseudo-request.
+        // The host of the URL select the database driver.
+	// Currently only mysql is "supported"
+        URL: "sql://mysql"
+
+        Header: {
+            // Mandatory: The data source name is for the data base driver
+            // is passed in this header field
+            "Data-Source-Name": "test:test@tcp(127.0.0.1:7799)/test"
+
+            // The format of the response body is determined by the
+	    // Accept header:
+            //   - "application/json"
+            //     JSON array with the rows as objectswith the table columns
+            //     as fields
+            //   - "text/csv; header=present"
+            //     Csv file with column headers (the column names)
+            //   - "text/csv"
+            //     Csv file without header, just the data
+            //   - "text/plain"
+            //     Plain text file columns separated by "\t"
+            //   - "text/plain; fieldsep=X"
+            //     Plain text file columns separated by "X"
+            "Accept": "text/csv; header=present"
+
+        }
+
+        // The Body contains the SQL Query
+        Body: '''
+            SELECT id AS orderID, product, price
+            FROM orders
+            ORDER BY price DESC;
+        '''
+
+        // All other fields of Request are ignored.
+    }
+
+    Checks: [
+        {Check: "Body", Prefix: "orderID,product,price"}
+        {Check: "Body", Contains:"2,Taschenmesser,24.00" }
+    ]
+}

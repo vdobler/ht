@@ -1,0 +1,22 @@
+// Deleting files
+{
+    Name: "Deleting Files"
+
+    Request: {
+        Method: "DELETE"  // DELETE request delete files.
+
+        // The 'file://' schema makes this a File pseudo-request.
+        // The path of the URL is the path path of the file.
+        URL: "file://localhost/tmp/somefile"
+
+        // All other fields of Request are ignored.
+    }
+
+    Checks: [
+        // File pseudo-request report in the  HTTP status code:
+        //    - 200 if the file was deleted
+        //    - 403 if it was not deleted
+        //    - 404 if there was no such file in the first place
+        {Check: "StatusCode", Expect: 200}
+    ]
+}

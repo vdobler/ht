@@ -1,0 +1,26 @@
+// Writing files
+{
+    Name: "Writing Files"
+
+    Request: {
+        Method: "PUT"  // PUT request write files
+
+        // The 'file://' schema makes this a File pseudo-request.
+        // The path of the URL is the path path of the file.
+        URL: "file://localhost/tmp/somefile"
+
+        Body: '''
+            The request body is written to the file.
+            Nothing more to see here.
+        '''
+
+        // All other fields of Request are ignored.
+    }
+
+    Checks: [
+        // File pseudo-request report in the  HTTP status code:
+        //    - 200 if the file was written
+        //    - 404 otherwise
+        {Check: "StatusCode", Expect: 200}
+    ]
+}

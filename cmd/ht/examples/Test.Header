@@ -1,0 +1,14 @@
+// Testing HTTP response headers
+{
+    Name: "Test of HTTP response header"
+    Request: { URL: "http://{{HOST}}/xml" }
+    Checks: [
+        {Check: "StatusCode", Expect: 200}
+
+	// Check presence of Content-Type header, value is ignored.
+        {Check: "Header", Header: "Content-Type"}
+
+	// Check Value of X-Licence header: Must start withd "BSD"
+        {Check: "Header", Header: "X-Licence", Prefix: "BSD"}
+    ]
+}
