@@ -7,7 +7,10 @@
 
         // The 'file://' schema makes this a File pseudo-request.
         // The path of the URL is the path path of the file.
-        URL: "file://localhost/tmp/somefile"
+        // Here we are reading the current file.
+        // Note that absolute paths have to be used (as releative
+        // paths cannot be encoded in the URL.
+        URL: "file://localhost/{{CWD}}/{{TEST_DIR}}/Test.NoneHTTP.FileRead"
 
         // All other fields of Request are ignored.
     }
@@ -19,6 +22,6 @@
         {Check: "StatusCode", Expect: 200}
 
         // The file content is returned as the response body:
-        {Check: "Body", Contains: "Nothing more"}
+        {Check: "Body", Prefix: "// Reading files", Suffix: "} // eof"}
     ]
-}
+} // eof
