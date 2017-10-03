@@ -189,7 +189,7 @@
 //      The format of the response body is determined by the Accept header:
 //         - "application/json":         a JSON array with the rows as objects
 //         - "text/csv; header=present": as a csv file with column headers
-//         - "text/csv":                 as a csv file withput header
+//         - "text/csv":                 as a csv file without header
 //         - "text/plain":               plain text file columns separated by \t
 //         - "text/plain; fieldsep=X":   plain text file columns separated by X
 //     The result if the query is returned in the Response.BodyStr
