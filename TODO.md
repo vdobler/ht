@@ -4,6 +4,12 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
+*  Instetad of Hjson with variable replacement it could be much nicer to use
+   a real configuration language for Checks, Tests and Suite.
+   Maybe Skylark github.com/google/skylark might be a nice option as it
+   has Python syntax which allows a natural representation of Go structs
+   and advanced string procesing routines.
+
 *  There is no builtin documentation for the file://, bash:// and sql://
    pseudo-request at all. The builtin documentation for the "raw" tests
    and suites is lacking. E.g. ht doc RawTest yields something like:
