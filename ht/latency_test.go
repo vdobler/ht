@@ -2,11 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// +build !race
+
 package ht
+
+// The different Latency tests tend to fail under the race detector, not
+// because they are racy but because they are too slow.
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -18,28 +22,6 @@ import (
 
 	"github.com/vdobler/ht/cookiejar"
 )
-
-func TestQuantile(t *testing.T) {
-	x := []int{1, 2, 3, 4, 5}
-	want := []float64{1.000000, 1.000000, 1.400000, 1.933333, 2.466667,
-		3.000000, 3.533333, 4.066667, 4.600000, 5.000000, 5.000000}
-	for i, p := range []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1} {
-		if got := quantile(x, p); math.Abs(got-want[i]) > 0.00001 {
-			t.Errorf("quantile(1:5, %.2f, type=8): got %.ff, want %.f",
-				p, got, want[i])
-		}
-	}
-
-	x = []int{3, 3, 5, 6, 7, 10, 10, 12, 12, 18, 22}
-	want = []float64{3.000000, 3.000000, 4.200000, 5.733333, 6.866667,
-		10.000000, 10.266667, 12.000000, 14.400000, 20.133333, 22.000000}
-	for i, p := range []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1} {
-		if got := quantile(x, p); math.Abs(got-want[i]) > 0.00001 {
-			t.Errorf("quantile(x, %.2f, type=8): got %.ff, want %.f",
-				p, got, want[i])
-		}
-	}
-}
 
 func primeHandler(w http.ResponseWriter, r *http.Request) {
 	n := intFormValue(r, "n")
@@ -108,10 +90,6 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestLatency(t *testing.T) {
-	if os.Getenv("TRAVIS_GO_VERSION") != "" {
-		t.Skip("Latency tests fail on Travis")
-	}
-
 	ts := httptest.NewServer(http.HandlerFunc(primeHandler))
 	defer ts.Close()
 
@@ -159,10 +137,6 @@ func TestLatency(t *testing.T) {
 }
 
 func TestLatencyFail(t *testing.T) {
-	if os.Getenv("TRAVIS_GO_VERSION") != "" {
-		t.Skip("Latency tests fail on Travis")
-	}
-
 	ts := httptest.NewServer(http.HandlerFunc(primeHandler))
 	defer ts.Close()
 
@@ -202,10 +176,6 @@ func TestLatencyFail(t *testing.T) {
 }
 
 func TestSessionLatency(t *testing.T) {
-	if os.Getenv("TRAVIS_GO_VERSION") != "" {
-		t.Skip("Latency tests fail on Travis")
-	}
-
 	ts := httptest.NewServer(http.HandlerFunc(sessionHandler))
 	defer ts.Close()
 
