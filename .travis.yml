@@ -29,3 +29,4 @@ script:
 after_script:
   - golint $(go list ./... | grep -v /vendor/)
   - go test -run=🤐 -bench=. -count=1 -benchmem $(go list ./... | grep -v /vendor/)
+  - cat cmd/ht/example-tests/1_Test.NoneHTTP.Bash/result.txt
