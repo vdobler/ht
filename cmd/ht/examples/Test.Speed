@@ -18,7 +18,7 @@
         }
 
 	// Dump data 
-        {Check: "Latency", N: 20, Concurrent: 4, SkipChecks: true,
+        {Check: "Latency", N: 40, Concurrent: 4, SkipChecks: true,
             DumpTo: "stdout",
             Limits: "50% ≤ 100ms; 80% ≤ 150ms; 95% ≤ 200ms; 0.995 ≤ 0.75s"
         }
