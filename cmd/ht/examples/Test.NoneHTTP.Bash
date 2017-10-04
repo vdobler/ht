@@ -20,7 +20,7 @@
         // Bash scripts can be executed only on the same machine (localhost).
         // The Working Directory in which the script is executed is the path
         // of the URL. So you cannot use relative paths.
-        URL:    "bash://localhost/usr/local/go"
+        URL:    "bash://localhost/{{CWD}}/{{TEST_DIR}}"
 
         // The request params are used as environment in which the script
         // executes: Inside the script the bash variables ENVVAR1 and ENVVAR2
@@ -58,6 +58,6 @@
 
         // The combined output (stdout and stderr) of the script is returned
         // as the response body:
-        {Check: "Body", Contains: "LICENSE"}
+        {Check: "Body", Contains: "Suite.Variables"}
     ]
 }
