@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/vdobler/ht/ht"
@@ -34,7 +35,6 @@ func allTestExamples() []string {
 		"Test.FollowRedirect",
 		"Test.Image",
 		"Test.Cookies",
-		"Test.Speed",
 		"Test.XML",
 		"Test.Mixin",
 		"Test.Retry",
@@ -56,6 +56,10 @@ func allTestExamples() []string {
 			"Test.NoneHTTP.SQLExec",
 			"Test.NoneHTTP.SQLQuery",
 		}...)
+	}
+
+	if os.Getenv("TRAVIS_GO_VERSION") == "" {
+		internal = append(internal, "Test.Speed")
 	}
 
 	return internal
