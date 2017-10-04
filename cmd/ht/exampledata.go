@@ -680,38 +680,6 @@ var RootExample = &Example{
     ]
 }`,
 						}, &Example{
-							Name:        "Test.NoneHTTP.File",
-							Description: "Reading, writing and deleting files",
-							Data: `// Reading, writing and deleting files
-{
-    Name: "File Pseudo-requests"
-
-    Description: '''
-        Files on the local machine can be read, written or deleted
-        with file pseudo-request.
-    '''
-
-    Request: {
-        Method: "GET"  // GET reads the files
-
-        // The 'file://' schema makes this a File pseudo-request.
-        // The path of the URL is the path path of the file.
-        URL: "file://localhost/etc/passwd"
-
-        // All other fields of Request are ignored for bash pseudo-requests.
-    }
-
-    Checks: [
-        // File pseudo-request report in the  HTTP status code:
-        //    - 200 if the file was readable
-        //    - 404 otherwise
-        {Check: "StatusCode", Expect: 200}
-
-        // The file content is returned as the response body:
-        {Check: "Body", Contains: ":root:"}
-    ]
-}`,
-						}, &Example{
 							Name:        "Test.NoneHTTP.FileDelete",
 							Description: "Deleting files",
 							Data: `// Deleting files
@@ -748,7 +716,10 @@ var RootExample = &Example{
 
         // The 'file://' schema makes this a File pseudo-request.
         // The path of the URL is the path path of the file.
-        URL: "file://localhost/tmp/somefile"
+        // Here we are reading the current file.
+        // Note that absolute paths have to be used (as releative
+        // paths cannot be encoded in the URL.
+        URL: "file://localhost/{{CWD}}/{{TEST_DIR}}/Test.NoneHTTP.FileRead"
 
         // All other fields of Request are ignored.
     }
@@ -760,9 +731,9 @@ var RootExample = &Example{
         {Check: "StatusCode", Expect: 200}
 
         // The file content is returned as the response body:
-        {Check: "Body", Contains: "Nothing more"}
+        {Check: "Body", Prefix: "// Reading files", Suffix: "} // eof"}
     ]
-}`,
+} // eof`,
 						}, &Example{
 							Name:        "Test.NoneHTTP.FileWrite",
 							Description: "Writing files",
