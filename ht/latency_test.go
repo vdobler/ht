@@ -94,7 +94,7 @@ func TestLatency(t *testing.T) {
 	defer ts.Close()
 
 	concLevels := []int{1, 4, 16}
-	if !testing.Short() {
+	if !testing.Short() && os.Getenv("TRAVIS_GO_VERSION") == "" {
 		concLevels = append(concLevels, 64)
 	}
 
@@ -180,7 +180,7 @@ func TestSessionLatency(t *testing.T) {
 	defer ts.Close()
 
 	concLevels := []int{1, 4}
-	if !testing.Short() {
+	if !testing.Short() && os.Getenv("TRAVIS_GO_VERSION") == "" {
 		concLevels = append(concLevels, 16)
 	}
 

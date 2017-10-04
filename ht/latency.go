@@ -141,7 +141,6 @@ func (L *Latency) Execute(t *Test) error {
 					select {
 					case resultCh <- lr:
 					default:
-						println("Dropped!")
 					}
 				}
 			}

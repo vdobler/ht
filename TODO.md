@@ -4,7 +4,13 @@ Collection of TODOs and Ideas for HT
 Open Issues
 -----------
 
-*  Instetad of Hjson with variable replacement it could be much nicer to use
+*  The Latency checks should be made runnable everywhere, e.g. by first
+   measuring the "speed" of the system and scaling the tolerable limits
+   before jumping into the test. A table would be good enough to start:
+     normal limit, limits under race, normal on Travis, Travis under race.
+
+
+*  Instead of Hjson with variable replacement it could be much nicer to use
    a real configuration language for Checks, Tests and Suite.
    Maybe Skylark github.com/google/skylark might be a nice option as it
    has Python syntax which allows a natural representation of Go structs
@@ -39,43 +45,6 @@ Open Issues
    Condition: It is nice as a reference but you are interesetd in the details
    for Min and Regexp so 'ht doc Body' should display the fields of a
    Condition directly. This is already done in the GUI to some extent.
-
-*  Examples are missing.
-   Maybe this could also fix (or at least soften) the documentation problem:
-   Let 'ht example Test' produce an generic example test.ht in Hjson format
-   containing mixins, a request, execution, checks, variabels and extractors.
-   The user just deletes what seh doesn't need. Also output that specialised
-   sub-examples of Test are available like Test.JSON, Test.HTML, Test.MySQL,
-   Test.File. Running 'ht example Test.MySQL' would output an example of how
-   to do a sql:// pseudo-request. This can be enhannced to Test.MySQL.Query,
-   Test.MySQL.Insert and Test.MySQL.Update to provide even more detailed
-   examples. An example for Test.HTML could contain lots of checks suitable
-   for HTML pages (maybe all of them) and data extractions targeted at
-   HTML pages (BodyExtractor, HTMLExtractor, HeaderExtractor).
-   Examples could be validated before baking into the ht example subcommand.
-   Examples might be much easier to understand than documentation which
-   requires to build a mental model of what will happen just from the factual
-   description (which is hard).
-       $ ht example
-       Available top-level examples
-         * Test      how to write a test
-         * Suite     how to write a suite of tests
-         * Scenario  define a scenario for a load test
-         * Mixin     example of a test-mixin
-
-       $ ht example Test
-       // Test Example
-       {
-           // Name used during reporting
-           Name: "Get Admin Bearer Token"
-           // ...
-       }
-       Available Subtopics to Test:
-         * Test.HTML   test a HTML document
-         * Test.JSON   test a JSON response
-         * Test.SQL    execute SQL and check result
-         * Test.Speed  how to check speed of an endpoint
-   This would provide valuable howtos and could replace the showcase.
 
 *  The file://-Pseudorequest work on localhost only which is a bit lame given
    that the Logfile check can access remote files via ssh. The AuthMethods
@@ -264,3 +233,41 @@ Resolved TODOs
        current values with {{name}}.
    Both "solutions" are just heuristics.
    --> But seems to work "good enough".
+
+*  Examples are missing.
+   Maybe this could also fix (or at least soften) the documentation problem:
+   Let 'ht example Test' produce an generic example test.ht in Hjson format
+   containing mixins, a request, execution, checks, variabels and extractors.
+   The user just deletes what seh doesn't need. Also output that specialised
+   sub-examples of Test are available like Test.JSON, Test.HTML, Test.MySQL,
+   Test.File. Running 'ht example Test.MySQL' would output an example of how
+   to do a sql:// pseudo-request. This can be enhannced to Test.MySQL.Query,
+   Test.MySQL.Insert and Test.MySQL.Update to provide even more detailed
+   examples. An example for Test.HTML could contain lots of checks suitable
+   for HTML pages (maybe all of them) and data extractions targeted at
+   HTML pages (BodyExtractor, HTMLExtractor, HeaderExtractor).
+   Examples could be validated before baking into the ht example subcommand.
+   Examples might be much easier to understand than documentation which
+   requires to build a mental model of what will happen just from the factual
+   description (which is hard).
+       $ ht example
+       Available top-level examples
+         * Test      how to write a test
+         * Suite     how to write a suite of tests
+         * Scenario  define a scenario for a load test
+         * Mixin     example of a test-mixin
+
+       $ ht example Test
+       // Test Example
+       {
+           // Name used during reporting
+           Name: "Get Admin Bearer Token"
+           // ...
+       }
+       Available Subtopics to Test:
+         * Test.HTML   test a HTML document
+         * Test.JSON   test a JSON response
+         * Test.SQL    execute SQL and check result
+         * Test.Speed  how to check speed of an endpoint
+   This would provide valuable howtos and could replace the showcase.
+   --> implemented
