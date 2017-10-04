@@ -55,6 +55,12 @@ func primeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	er := intFormValue(r, "errrate")
+	if x := rand.Intn(100); x < er {
+		http.Error(w, text, http.StatusInternalServerError)
+		return
+	}
+
 	http.Error(w, text, http.StatusOK)
 }
 
@@ -125,14 +131,14 @@ func TestLatency(t *testing.T) {
 						Params: url.Values{
 							"n": []string{"100000"},
 						},
-						Timeout: 100 * time.Millisecond,
+						Timeout: 200 * time.Millisecond,
 					},
 					Checks: []Check{
 						StatusCode{200},
 						&Latency{
 							N:          200 * conc,
 							Concurrent: conc,
-							Limits:     "50% ≤ 35ms; 75% ≤ 45ms; 0.995 ≤ 55ms",
+							Limits:     "50% ≤ 45ms; 75% ≤ 75ms; 0.995 ≤ 155ms",
 							// DumpTo:     "foo.xxx",
 						},
 					},
@@ -142,11 +148,56 @@ func TestLatency(t *testing.T) {
 					test.Execution.Verbosity = 1
 				}
 				test.Run()
-
+				if test.Result.Status != Pass {
+					t.Fatalf("%s: %s", test.Result.Status, test.Result.Error)
+				}
 				if *verboseTest {
 					test.PrintReport(os.Stdout)
 				}
 			})
+	}
+}
+
+func TestLatencyFail(t *testing.T) {
+	if os.Getenv("TRAVIS_GO_VERSION") != "" {
+		t.Skip("Latency tests fail on Travis")
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(primeHandler))
+	defer ts.Close()
+
+	test := Test{
+		Name: "Prime-Handler with errors",
+		Request: Request{
+			Method: "GET",
+			URL:    ts.URL + "/",
+			Params: url.Values{
+				"n":       []string{"100000"},
+				"errrate": []string{"10"},
+			},
+			Timeout: 100 * time.Millisecond,
+		},
+		Checks: []Check{
+			StatusCode{200},
+			&Latency{
+				N:          100,
+				Concurrent: 3,
+				Limits:     "50% ≤ 35ms; 75% ≤ 45ms; 0.995 ≤ 55ms",
+				DumpTo:     "foo.xxx",
+			},
+		},
+		Execution: Execution{Verbosity: 0},
+	}
+	if *verboseTest {
+		test.Execution.Verbosity = 1
+	}
+	test.Run()
+	if test.Result.Status != Fail {
+		t.Fatalf("%s: %s", test.Result.Status, test.Result.Error)
+	}
+
+	if *verboseTest {
+		test.PrintReport(os.Stdout)
 	}
 }
 
