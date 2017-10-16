@@ -183,15 +183,14 @@ func LoadRawTest(filename string, fs FileSystem) (*RawTest, error) {
 	}{}
 	err = raw.decodeLaxTo(x)
 	if err != nil {
-		return nil, err // better error message here
+		return nil, err
 	}
 
 	// Load all mixins from disk.
 	testdir := raw.Dirname()
 	mixins, err := loadMixins(x.Mixin, testdir, fs)
 	if err != nil {
-		return nil, fmt.Errorf("cannot load test %s: %s",
-			filename, err)
+		return nil, err
 	}
 
 	return &RawTest{
@@ -207,7 +206,7 @@ func loadMixins(mixs []string, dir string, fs FileSystem) ([]*Mixin, error) {
 		mixpath := path.Join(dir, file)
 		mixin, err := loadMixin(mixpath, fs)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read mixin %s: %s",
+			return nil, fmt.Errorf("cannot load mixin %q: %s",
 				file, err)
 		}
 		mixins = append(mixins, mixin)
@@ -366,7 +365,7 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 				filename = path.Join(dir, elem.File)
 				rt, err = LoadRawTest(filename, fs)
 				if err != nil {
-					return fmt.Errorf("unable to load %s (%d. %s): %s",
+					return fmt.Errorf("cannot load test %q (%d. %s): %s",
 						filename, i+1, which, err)
 				}
 			} else if len(elem.Test) != 0 {
@@ -374,7 +373,7 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 					rs.File.Name, i+1, which)
 				rt, err = rawTestFromInline(name, dir, fs, elem.Test)
 				if err != nil {
-					return fmt.Errorf("unable to parse inline test (%d. %s): %s",
+					return fmt.Errorf("cannot parse inline test (%d. %s): %s",
 						i+1, which, err)
 
 				}
@@ -385,7 +384,8 @@ func LoadRawSuite(filename string, fs FileSystem) (*RawSuite, error) {
 			for _, mockname := range elem.Mocks {
 				mf, err := LoadRawMock(path.Join(dir, mockname), fs)
 				if err != nil {
-					return fmt.Errorf("unable to load mock: %s", err)
+					return fmt.Errorf("cannot instantiate test (%d. %s): cannot load mock %q: %s",
+						i+1, which, mockname, err)
 				}
 				rt.mocks = append(rt.mocks, mf)
 			}
@@ -659,7 +659,7 @@ func LoadRawLoadtest(filename string, fs FileSystem) (*RawLoadTest, error) {
 			filename := path.Join(dir, s.File)
 			rs, err := LoadRawSuite(filename, fs)
 			if err != nil {
-				return nil, fmt.Errorf("unable to load suite %s (%d. scenario): %s",
+				return nil, fmt.Errorf("cannot load suite %q (%d. scenario): %s",
 					filename, i+1, err)
 			}
 			rlt.Scenarios[i].rawSuite = rs
