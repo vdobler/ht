@@ -52,7 +52,7 @@ cat > req1.ht <<EOF
         {Check: "JSON", Element: "args.z", Equals: "\"suite-A\""},
         {Check: "JSON", Element: "args.w", Equals: "\"cmdline-U\""},
     ],
-    VarEx: {
+    DataExtraction: {
         VAR_D: {Extractor: "BodyExtractor", Regexp: "remote-."},
     }
     Variables: {
