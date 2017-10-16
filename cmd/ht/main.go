@@ -220,12 +220,12 @@ func loadSuites(args []string) ([]*suite.RawSuite, error) {
 		fs, arg := filesystemFor(arg)
 		s, err := suite.LoadRawSuite(arg, fs)
 		if err != nil {
-			el.Append(fmt.Errorf("Cannot read suite %q: %s\n", arg, err))
+			el = el.Append(fmt.Errorf("Cannot read suite %q: %s\n", arg, err))
 			continue
 		}
 		err = s.Validate(variablesFlag)
 		if err != nil {
-			el.Append(fmt.Errorf("Cannot validate suite %q: %s\n", arg, err))
+			el = el.Append(fmt.Errorf("Cannot validate suite %q: %s\n", arg, err))
 		}
 		suites = append(suites, s)
 	}
