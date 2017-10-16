@@ -261,7 +261,7 @@ Please refer to the help (`ht help gui`) for more details.
 How to write proper tests?
 --------------------------
 
-The main starting point to write proper automated test with h is to have a
+The main starting point to write proper automated test with ht is to have a
 good model of how your application should work, what it is expected to do:
 What is the proper response to a certain stimulus, a certain a request?
 (A simple "If I click here and there and enter this an click that button
