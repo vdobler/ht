@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/scope"
 )
 
@@ -152,9 +153,16 @@ var client = &http.Client{
 }
 
 // get the URL u and return status code and body. Uses client to skip
-// TLS certificate verification.
-func get(u string) (int, string, error) {
-	resp, err := client.Get(u)
+// TLS certificate verification. Sends the optional cookie header c.
+func get(u string, c string) (int, string, error) {
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return 0, "", err
+	}
+	if c != "" {
+		req.Header.Set("Cookie", c)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, "", err
 	}
@@ -212,6 +220,18 @@ func TestServe(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name:   "Mock E",
+			Method: "GET",
+			URL:    "https://localhost:8443/me/",
+			DataExtraction: ht.ExtractorMap{
+				"CV": &ht.CookieExtractor{Name: "session"},
+			},
+			Response: Response{
+				StatusCode: 200,
+				Body:       "Session {{CV}}",
+			},
+		},
 	}
 
 	stop, err := Serve(mocks, nil, logger, "./testdata/dummy.cert", "./testdata/dummy.key")
@@ -219,24 +239,29 @@ func TestServe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	status, body, err := get("http://localhost:8080/ma/Foo")
+	status, body, err := get("http://localhost:8080/ma/Foo", "")
 	if status != 200 || body != "Hello Foo" || err != nil {
 		t.Errorf("Mock A: got %d %q %v", status, body, err)
 	}
 
-	status, body, err = get("https://localhost:8443/mb/Bar")
+	status, body, err = get("https://localhost:8443/mb/Bar", "")
 	if status != 202 || body != "Hola Bar" || err != nil {
 		t.Errorf("Mock B: got %d %q %v", status, body, err)
 	}
 
-	status, body, err = get("http://localhost:8080/xyz")
+	status, body, err = get("http://localhost:8080/xyz", "")
 	if status != 404 || body != "404 page not found\n" || err != nil {
 		t.Errorf("404: got %d %q %v", status, body, err)
 	}
 
-	status, body, err = get("https://localhost:8443/redirect")
+	status, body, err = get("https://localhost:8443/redirect", "")
 	if status != 200 || body != "Hello Charly" || err != nil {
 		t.Errorf("Mock D: got %d %q %v", status, body, err)
+	}
+
+	status, body, err = get("https://localhost:8443/me/", "session=1234abcd")
+	if status != 200 || body != "Session 1234abcd" || err != nil {
+		t.Errorf("Mock E: got %d %q %v", status, body, err)
 	}
 
 	stop <- true

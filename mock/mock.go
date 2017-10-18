@@ -54,8 +54,18 @@ type Log interface {
 }
 
 // Mock allows to mock a HTTP response for a certain request.
+//
+// It reuses functionality from github.com/vdobler/ht/ht, namely Checks
+// to test if the request looks okay and Extractors to extract dat from
+// the request to generate a dynamic response based on the request.
+// Unfortunately both (Checks and Extractors) work on HTTP responses and
+// not on requests. TO make this work the incoming request to a mock is
+// rewritten as a response in the following way:
+//   - The HTTP Status is fixed to "200 OK".
+//   - The response duration is fixed to 1ms.
+//   - The Cookie header is rewriten to Set-Cookie header(s).
 type Mock struct {
-	// Name of this mock
+	// Name of this mock.
 	Name string
 
 	// Description of this mock.
@@ -224,6 +234,20 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, bodyerr := ioutil.ReadAll(r.Body)
 	// Restore r.Body for form parsing.
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
+	// Rewrite Cookie headers to Set-Cookie headers to allow standard ht
+	// checks to validate the cookies sent and the standard CookieExtractor
+	// to extract values.
+	fakeHeader := make(http.Header, len(r.Header))
+	for _, cookie := range r.Cookies() {
+		fakeHeader["Set-Cookie"] = append(fakeHeader["Set-Cookie"],
+			fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
+	}
+	for k, v := range r.Header {
+		if k == "Cookie" {
+			continue
+		}
+		fakeHeader[k] = v
+	}
 	faketest := &ht.Test{
 		Name:   "Fake Test for Mock " + m.Name,
 		Checks: m.Checks,
@@ -231,7 +255,7 @@ func (m *Mock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Response: &http.Response{
 				Status:        "200 OK", // fake
 				StatusCode:    200,      // fake
-				Header:        r.Header,
+				Header:        fakeHeader,
 				ContentLength: int64(len(body)),
 			},
 			Duration: 1 * time.Millisecond, // something nonzero
@@ -546,7 +570,7 @@ type Control struct {
 }
 
 // Provide starts the given mocks, it returns a control handle which
-// allows to stop the mocks and analyse if all where properly called.
+// allows to stop the mocks and analyse if all where called properly.
 // Stray calls not hitting a defined and enabled mock will be catched
 // and recorded.
 // The returned control handle must be Analyze'd to stop data collection
