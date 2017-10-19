@@ -1,4 +1,6 @@
 // A generic Test
+// Typically Tests are combined into Suites and the suite is executed via
+// `ht exec <suite>` but you can executes a test via `ht run <test>`.
 {
     // Name is used during reporting. Make it short and printable.
     Name: "Simple Test"

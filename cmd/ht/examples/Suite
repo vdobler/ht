@@ -1,4 +1,5 @@
 // A generic Suite
+// Suites are executed via `ht exec <suite>`.
 {
     Name: "A generic Suite"
     Description: "Explain the Setup, Main, Teardown and Variables fields."
