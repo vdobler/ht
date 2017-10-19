@@ -141,6 +141,11 @@ func (em *ExtractorMap) Populate(src interface{}) error {
 	exes := make(map[string]Extractor)
 	for name, ex := range types {
 		exName := ex.Extractor
+		if exName == "" {
+			// This happens if Extractor was misspelled, e.g. in
+			//    {Extratcor: "CookieExtractor", Name: "sessionid"}
+			return fmt.Errorf("missing Extractor name")
+		}
 		typ, ok := ExtractorRegistry[exName]
 		if !ok {
 			return noSuchExtractorError(exName)
@@ -151,7 +156,7 @@ func (em *ExtractorMap) Populate(src interface{}) error {
 		extractor := reflect.New(typ)
 		err = populate.Strict(extractor.Interface(), raw[name])
 		if err != nil {
-			return fmt.Errorf("ht: cannot build extractor for %q: %s", name, err)
+			return fmt.Errorf("cannot build extractor for %q: %s", name, err)
 		}
 		exes[name] = extractor.Interface().(Extractor)
 
@@ -166,10 +171,10 @@ func noSuchExtractorError(name string) error {
 		exNames = append(exNames, en)
 	}
 	if suggestions := possibleNames(name, exNames); len(suggestions) > 0 {
-		return fmt.Errorf("ht: no such extractor %s (did you mean %s?)", name,
+		return fmt.Errorf("no such extractor %s (did you mean %s?)", name,
 			strings.Join(suggestions, ", "))
 	}
-	return fmt.Errorf("ht: no such extractor %s", name)
+	return fmt.Errorf("no such extractor %s", name)
 }
 
 // ----------------------------------------------------------------------------
