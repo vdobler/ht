@@ -1,0 +1,45 @@
+// Complex table based substitutions
+{
+    Name: "Simulating if/else with tables"
+    Description: '''
+        Some backend services show a wide range of answers and you would need
+        some sort of if/else construct to select the appropriate response
+        based on the combination input data.
+        This can be simulated byuse of a Map table: The last variable's value
+        is selected on the combinaten of the other variables'values. Together
+        with wildcars complex answers can be simulated.
+    '''
+
+    Method: "GET"
+    URL: "http://localhost:8880/data/{{HOUSE}}/{{ROOM}}"
+    
+    // Map is used to map combinations of several variables to a single result.
+    Map: {
+        // This map maps tuples of (HOUSE,ROOM) to SIZE
+        Variables: ["HOUSE", "ROOM", "SIZE" ]
+        
+        // Table is the mapping table as a flattened array.
+        // Some examples might explain best how this table works:
+        //   HOUSE==Ilisos and ROOM=Pantry  --> SIZE=7.5m²
+        //   HOUSE==Isthmia and ROOM=Pantry --> SIZE=-??-
+        //   HOUSE==Appolo and ROOM=Office  --> SIZE=15m²
+        //   HOUSE==Appolo and ROOM=Pantry  --> SIZE=20m²
+        // The * works as a wildcard.
+        Table: [
+            // HOUSE , ROOM     , SIZE
+            "Isthmia", "Kitchen", "12m²",
+            "Isthmia", "Living" , "19m²",
+            "Isthmia", "*"      , "-??-",  // all other rooms in Isthima
+            "Ilisos",  "Pantry" , "7.5m²",
+            "Ilisos",  "Kitchen", "32m²",
+            "Ilisos",  "Office",  "9.7m²",
+            "*"     ,  "Office",  "15m²",  // all other offices are 12m²
+            "*"     ,  "*",       "20m²",  // default
+        ]
+    } 
+
+    Response: {
+        StatusCode: 200
+        Body: "{{SIZE}}"  // Return the room's size here.
+    }
+}

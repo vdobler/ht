@@ -1,0 +1,21 @@
+// Reading the response body from a file
+{
+    Name: "Body from file"
+    Description: '''
+       It is possible to read in the body from a file: use the
+       "@file:" or "@vfile" syntax as shown below. The difference between
+       them is: @file: sends the file as read while @vfile: performs
+       variable replacement in the file before sending it as a response.
+    '''
+
+    Method: "GET"
+    URL: "http://localhost:8880/org/{{CMPNY}}/{{DEPTMNT}}"
+    
+    Response: {
+        StatusCode: 200
+        // Depending in the value of CMPNY different files will be used as
+        // the response body. Additional variable replacement happens again
+        // in the file content.
+        Body: "@vfile:mockdata/staff_{{CMPNY}}.csv"
+    }
+}

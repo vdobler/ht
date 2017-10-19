@@ -1,0 +1,55 @@
+// Dynamic responses based on the request
+{
+    Name: "Dynamic response via Data Extractions"
+    Description: '''
+        Static responses are often too simple and some dependence on the
+        incomming request has to be provided. A mock provides three ways to
+        extract data from the request:
+          1. from the request URL
+          2. parsing query form parameters
+          3. via explicit data extraction
+    '''
+
+    Method: "POST"
+
+    // Variant 1: gorilla mux style path templates:
+    URL: "http://localhost:8880/greet/{NAME}"
+ 
+    // Variant 2: parsing query and form parameter
+    // A request to http://localhost:8880/greet/Joe?age=12&foo=bar&foo=waz"
+    // would extract
+    //   NAME=Joe    (from Variant 1)
+    //   age=12      (simple query parameter)
+    //   foo[0]=bar  (multiple query parameter)
+    //   foo[1]=waz 
+    // and all POST form data (from application/x-www-form-urlencoded or
+    // multipart/form-data POSTS).
+    ParseForm: true
+
+    // Variant 3: Explicit data extraction
+    // This allows to use the same Extractors as in Tests. See the example
+    // Test.Extraction and its sub-examples for additional extractors.
+    DataExtraction: {
+        SESSION: {Extractor: "CookieExtractor", Name: "sessionid"}
+    }
+    
+    // The response is populated from dynamicaly values read from variables.
+    Response: {
+        StatusCode: 200
+        Header: {
+            "Content-Type": "text/plain"
+            "Set-Cookie":   "sessionid={{SESSIONID}}; Max-Age=600"
+        }
+        Body: '''
+           {{GREETING}} {{NAME}}! You are {{age}} years old.
+           Your main foo is {{foo[0]}} and your session is {{SESSION}}.
+        '''
+    }
+
+    // Variables contain default variables which can be changed from data
+    // extracted from the response or from the command line.
+    Variables: {
+        GREETING: "Hello"
+        SESSION:  "--unknown--"
+    }
+}

@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/vdobler/ht/ht"
+	"github.com/vdobler/ht/scope"
 	"github.com/vdobler/ht/suite"
 )
 
@@ -70,6 +71,16 @@ func allSuiteExamples() []string {
 		"Suite",
 		"Suite.InlineTest",
 		"Suite.Variables",
+	}
+}
+
+func allMockExamples() []string {
+	return []string{
+		"Mock",
+		"Mock.Dynamic",
+		"Mock.Dynamic.Body",
+		"Mock.Dynamic.Complex",
+		"Mock.Dynamic.Timestamps",
 	}
 }
 
@@ -358,6 +369,24 @@ func TestExampleSuite(t *testing.T) {
 			}
 			if acc.Status != ht.Pass {
 				t.Fatalf("Suite did not pass: %s", acc.Status)
+			}
+		})
+	}
+}
+
+func TestExampleMock(t *testing.T) {
+	for _, mockname := range allMockExamples() {
+		t.Run(mockname, func(t *testing.T) {
+			raw, err := suite.LoadRawMock("./examples/"+mockname, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mockScope := scope.New(nil, raw.Variables, false)
+			mockScope["MOCK_DIR"] = raw.Dirname()
+			mockScope["MOCK_NAME"] = raw.Basename()
+			_, err = raw.ToMock(mockScope, false)
+			if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

@@ -1,0 +1,35 @@
+// Providing Mock Responses
+// Mocks have two uses: They can be run as independent, long-running  mock
+// services via `ht mock <mock>` or be part of a single Test execution inside
+// a Suite. The following show geeneral parts common to both types.
+{
+    Name: "Mock Service for Foobar" // Give it a short, informative name.
+    Description: '''
+        This description is not used but it is nice to
+        provide same background information on this mock.
+    '''
+
+    // This mock is invoked only for GET requests.
+    Method: "GET"
+
+    // This mock is invoked if schema (http), hostname (localhost:8080) and
+    // patch (/greet/something) match the request.
+    // The Variable NAME is exctracted from the path automatically.
+    URL: "http://localhost:8880/greet/{NAME}"
+    
+    // If method and URL trigger this mock, then send the following response.
+    // Only the shown three fields are available and should be self explaining.
+    Response: {
+        StatusCode: 200
+        Header: {
+            "Content-Type": "text/plain"
+        }
+        Body: "{{GREETING}} {{NAME}}!" 
+    }
+
+    // Variables contain default variables which can be changed from data
+    // extracted from the response or from the command line.
+    Variables: {
+        GREETING: "Hello"
+    }
+}

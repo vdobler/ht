@@ -1,0 +1,33 @@
+// Dynamic timestamps, random IDs and counters
+{
+    Name: "Dynamic timestamps"
+    Description: '''
+        Sometimes sone needs the current date/time: There is a data Extractor
+        for that: SetTimestamp which allows arbitary formating and arbitrary
+        offsets.
+        If you need a random number use the pre declared variable RANDOM.
+        A gloabl counter is available as the pre declared variable COUNTER.
+        COUNTER is ever increasing but global; don't assume the next value
+        will be the current plus one (it could be plus anything).
+    '''
+
+    Method: "GET"
+    URL: "http://localhost:8880/some/path"
+ 
+    DataExtraction: {
+        DATETIME: {Extractor: "SetTimestamp"
+                      // Format is a Go packae time layout.
+                      Format: "02. Jan. 2006 15:04:05"
+                      // The current time can be adjusted through deltas.
+                      DeltaMonth: 2, DeltaDay: 5, DeltaT: "96s"
+                  }
+    }
+    
+    Response: {
+        StatusCode: 200
+        Body: '''
+           In two months and five days and 96 seconds it is {{DATETIME}}.
+           Some random 6 digit number: {{RANDOM}} 
+        '''
+    }
+}
