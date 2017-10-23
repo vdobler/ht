@@ -5,9 +5,9 @@
         Some backend services show a wide range of answers and you would need
         some sort of if/else construct to select the appropriate response
         based on the combination input data.
-        This can be simulated byuse of a Map table: The last variable's value
-        is selected on the combinaten of the other variables'values. Together
-        with wildcars complex answers can be simulated.
+        This can be simulated by use of a Map table: The last variable's value
+        is selected on the combination of the other variables'values. Together
+        with wildcards complex answers can be simulated.
     '''
 
     Method: "GET"

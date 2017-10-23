@@ -2,11 +2,11 @@
 {
     Name: "Dynamic timestamps"
     Description: '''
-        Sometimes sone needs the current date/time: There is a data Extractor
-        for that: SetTimestamp which allows arbitary formating and arbitrary
+        Sometimes one needs the current date/time: There is a data Extractor
+        for that: SetTimestamp which allows arbitray formatting and arbitrary
         offsets.
-        If you need a random number use the pre declared variable RANDOM.
-        A gloabl counter is available as the pre declared variable COUNTER.
+        If you need a random number use the predeclared variable RANDOM.
+        A global counter is available as the predeclared variable COUNTER.
         COUNTER is ever increasing but global; don't assume the next value
         will be the current plus one (it could be plus anything).
     '''

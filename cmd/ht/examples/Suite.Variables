@@ -8,7 +8,7 @@
         // command line:
         {File: "Test.JSON"}  // FOO == 9876 from below
 
-        // Tests can be called with different values and/or new variabels.
+        // Tests can be called with different values and/or new variables.
         // In this instance of Test.JSON:  FOO==1234 && BAR=="some other value"
         {File: "Test.JSON"
             Variables: {

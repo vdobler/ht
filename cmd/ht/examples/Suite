@@ -9,7 +9,7 @@
     // Setup and Main are the set of Tests executed and considered relevant
     // for this suite's success. The difference is how Tests with failures or
     // error impact suite execution:
-    // If any (executed) test in Setup failes, errors (or is bogus) the suite
+    // If any (executed) test in Setup fails, errors (or is bogus) the suite
     // termiantes and none of the following tests from Setup, none from Main
     // and none from Teardown are executed.
     Setup: [

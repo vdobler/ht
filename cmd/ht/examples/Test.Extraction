@@ -16,7 +16,7 @@
 
         // Data extraction does not influence the test state: If the given
         // value could not be extracted the test is still in state Pass.
-        // If subsequent tests/request rely on a proper data axtraction: Add a
+        // If subsequent tests/request rely on a proper data extraction: Add a
         // check like the following to make sure the test fails if no suitable
         // value is present
         {Check: "Body", Regexp: "It's ([0-9:]+) o'clock"}

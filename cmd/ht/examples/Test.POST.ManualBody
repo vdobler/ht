@@ -1,4 +1,4 @@
-// Manualy defining a POST body.
+// Manually defining a POST body.
 {
     Name: "Test POST body"
     Request: {
@@ -11,12 +11,12 @@
 
         // Body can use @file and @vfile just like Params:
         // The @vfile version will perform variable substitution in the
-        // content of somefile. Note how somefile is read realtive to
+        // content of somefile. Note how somefile is read relative to
         // directory of this test-file.
         // Body: "@vfile:{{TEST_DIR}}/somefile"
 
         // Use the @file form if no variable substitution inside somefile
-	// shal be performed.	
+	// shell be performed.	
         // Body: "@file:{{TEST_DIR}}/somefile"
     }
     Checks: [

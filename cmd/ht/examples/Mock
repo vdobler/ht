@@ -1,7 +1,7 @@
 // Providing Mock Responses
 // Mocks have two uses: They can be run as independent, long-running  mock
 // services via `ht mock <mock>` or be part of a single Test execution inside
-// a Suite. The following show geeneral parts common to both types.
+// a Suite. The following shows general parts common to both types of mocks.
 {
     Name: "Mock Service for Foobar" // Give it a short, informative name.
     Description: '''
@@ -14,7 +14,7 @@
 
     // This mock is invoked if schema (http), hostname (localhost:8080) and
     // patch (/greet/something) match the request.
-    // The Variable NAME is exctracted from the path automatically.
+    // The Variable NAME is extracted from the path automatically.
     URL: "http://localhost:8880/greet/{NAME}"
     
     // If method and URL trigger this mock, then send the following response.

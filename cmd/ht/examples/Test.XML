@@ -12,7 +12,7 @@
         // Presence of element, no condition imposed on value.
         {Check: "XML", Path: "/library/book/character[2]/name" },
 
-        // Check existance and value.
+        // Check existence and value.
         {Check: "XML"
             Path: "/library/book/character[2]/name"
             Equals: "Snoopy"

@@ -52,7 +52,7 @@
         //    - 500 if the exit code is != 0.
         {Check: "StatusCode", Expect: 200}
 
-        // The numerial exits status itself is reported in the response
+        // The numerical exits status itself is reported in the response
         // header Exit-Status:
         {Check: "Header", Header: "Exit-Status", Equals: "exit status 0"}
 

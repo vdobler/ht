@@ -8,7 +8,7 @@
         // The 'file://' schema makes this a File pseudo-request.
         // The path of the URL is the path path of the file.
         // Here we are reading the current file.
-        // Note that absolute paths have to be used (as releative
+        // Note that absolute paths have to be used (as relative
         // paths cannot be encoded in the URL.
         URL: "file://localhost/{{CWD}}/{{TEST_DIR}}/Test.NoneHTTP.FileRead"
 

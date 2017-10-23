@@ -3,7 +3,7 @@
     Name: "SQL Queries"
 
     Request: {
-        Method: "GET"  //  GET performs a SQLQuery
+        Method: "GET"  //  GET performs a SQL Query (SELECT FROM WHERE)
 
         // The 'sql://' schema makes this a SQL pseudo-request.
         // The host of the URL select the database driver.
@@ -18,7 +18,7 @@
             // The format of the response body is determined by the
 	    // Accept header:
             //   - "application/json"
-            //     JSON array with the rows as objectswith the table columns
+            //     JSON array with the rows as objects with the table columns
             //     as fields
             //   - "text/csv; header=present"
             //     Csv file with column headers (the column names)

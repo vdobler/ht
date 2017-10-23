@@ -3,7 +3,7 @@
     Name: "Dynamic response via Data Extractions"
     Description: '''
         Static responses are often too simple and some dependence on the
-        incomming request has to be provided. A mock provides three ways to
+        incoming request has to be provided. A mock provides three ways to
         extract data from the request:
           1. from the request URL
           2. parsing query form parameters
@@ -30,10 +30,10 @@
     // This allows to use the same Extractors as in Tests. See the example
     // Test.Extraction and its sub-examples for additional extractors.
     DataExtraction: {
-        SESSION: {Extractor: "CookieExtractor", Name: "sessionid"}
+        SESSION: {Extrsactor: "CookieExtractor", Name: "sessionid"}
     }
     
-    // The response is populated from dynamicaly values read from variables.
+    // The response is populated from dynamically values read from variables.
     Response: {
         StatusCode: 200
         Header: {
