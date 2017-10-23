@@ -1068,7 +1068,7 @@ var typeDoc = map[string]string{
 		"    \"John Miller\" would be 45 years old and \"Sue Carter\" 25 because \"*\" matches\n" +
 		"    any value. \"John Brown\" is 45 because matching happens left to right,",
 	"mock": "type Mock struct {\n" +
-		"\t// Name of this mock\n" +
+		"\t// Name of this mock.\n" +
 		"\tName string\n" +
 		"\n" +
 		"\t// Description of this mock.\n" +
@@ -1129,7 +1129,18 @@ var typeDoc = map[string]string{
 		"\n" +
 		"\t// Has unexported fields.\n" +
 		"}\n" +
-		"    Mock allows to mock a HTTP response for a certain request.",
+		"    Mock allows to mock a HTTP response for a certain request.\n" +
+		"\n" +
+		"    It reuses functionality from github.com/vdobler/ht/ht, namely Checks to test\n" +
+		"    if the request looks okay and Extractors to extract dat from the request to\n" +
+		"    generate a dynamic response based on the request. Unfortunately both (Checks\n" +
+		"    and Extractors) work on HTTP responses and not on requests. TO make this\n" +
+		"    work the incoming request to a mock is rewritten as a response in the\n" +
+		"    following way:\n" +
+		"\n" +
+		"    - The HTTP Status is fixed to \"200 OK\".\n" +
+		"    - The response duration is fixed to 1ms.\n" +
+		"    - The Cookie header is rewriten to Set-Cookie header(s).",
 	"variables": "type Variables map[string]string\n" +
 		"    Variables represents a set of (variable-name, variable-value)-pairs.",
 	"rawelement": "type RawElement struct {\n" +

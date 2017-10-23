@@ -53,9 +53,222 @@ var RootExample = &Example{
 }`,
 				}},
 		}, &Example{
+			Name:        "Mock",
+			Description: "Providing Mock Responses",
+			Data: `// Providing Mock Responses
+// Mocks have two uses: They can be run as independent, long-running  mock
+// services via ` + "`" +
+				`ht mock <mock>` + "`" +
+				` or be part of a single Test execution inside
+// a Suite. The following shows general parts common to both types of mocks.
+{
+    Name: "Mock Service for Foobar" // Give it a short, informative name.
+    Description: '''
+        This description is not used but it is nice to
+        provide same background information on this mock.
+    '''
+
+    // This mock is invoked only for GET requests.
+    Method: "GET"
+
+    // This mock is invoked if schema (http), hostname (localhost:8080) and
+    // patch (/greet/something) match the request.
+    // The Variable NAME is extracted from the path automatically.
+    URL: "http://localhost:8880/greet/{NAME}"
+    
+    // If method and URL trigger this mock, then send the following response.
+    // Only the shown three fields are available and should be self explaining.
+    Response: {
+        StatusCode: 200
+        Header: {
+            "Content-Type": "text/plain"
+        }
+        Body: "{{GREETING}} {{NAME}}!" 
+    }
+
+    // Variables contain default variables which can be changed from data
+    // extracted from the response or from the command line.
+    Variables: {
+        GREETING: "Hello"
+    }
+}`,
+			Sub: []*Example{
+				&Example{
+					Name:        "Mock.Dynamic",
+					Description: "Dynamic responses based on the request",
+					Data: `// Dynamic responses based on the request
+{
+    Name: "Dynamic response via Data Extractions"
+    Description: '''
+        Static responses are often too simple and some dependence on the
+        incoming request has to be provided. A mock provides three ways to
+        extract data from the request:
+          1. from the request URL
+          2. parsing query form parameters
+          3. via explicit data extraction
+    '''
+
+    Method: "POST"
+
+    // Variant 1: gorilla mux style path templates:
+    URL: "http://localhost:8880/greet/{NAME}"
+ 
+    // Variant 2: parsing query and form parameter
+    // A request to http://localhost:8880/greet/Joe?age=12&foo=bar&foo=waz"
+    // would extract
+    //   NAME=Joe    (from Variant 1)
+    //   age=12      (simple query parameter)
+    //   foo[0]=bar  (multiple query parameter)
+    //   foo[1]=waz 
+    // and all POST form data (from application/x-www-form-urlencoded or
+    // multipart/form-data POSTS).
+    ParseForm: true
+
+    // Variant 3: Explicit data extraction
+    // This allows to use the same Extractors as in Tests. See the example
+    // Test.Extraction and its sub-examples for additional extractors.
+    DataExtraction: {
+        SESSION: {Extractor: "CookieExtractor", Name: "sessionid"}
+    }
+    
+    // The response is populated from dynamically values read from variables.
+    Response: {
+        StatusCode: 200
+        Header: {
+            "Content-Type": "text/plain"
+            "Set-Cookie":   "sessionid={{SESSIONID}}; Max-Age=600"
+        }
+        Body: '''
+           {{GREETING}} {{NAME}}! You are {{age}} years old.
+           Your main foo is {{foo[0]}} and your session is {{SESSION}}.
+        '''
+    }
+
+    // Variables contain default variables which can be changed from data
+    // extracted from the response or from the command line.
+    Variables: {
+        GREETING: "Hello"
+        SESSION:  "--unknown--"
+    }
+}`,
+					Sub: []*Example{
+						&Example{
+							Name:        "Mock.Dynamic.Body",
+							Description: "Reading the response body from a file",
+							Data: `// Reading the response body from a file
+{
+    Name: "Body from file"
+    Description: '''
+       It is possible to read in the body from a file: use the
+       "@file:" or "@vfile" syntax as shown below. The difference between
+       them is: @file: sends the file as read while @vfile: performs
+       variable replacement in the file before sending it as a response.
+    '''
+
+    Method: "GET"
+    URL: "http://localhost:8880/org/{{CMPNY}}/{{DEPTMNT}}"
+    
+    Response: {
+        StatusCode: 200
+        // Depending in the value of CMPNY different files will be used as
+        // the response body. Additional variable replacement happens again
+        // in the file content.
+        Body: "@vfile:mockdata/staff_{{CMPNY}}.csv"
+    }
+}`,
+						}, &Example{
+							Name:        "Mock.Dynamic.Complex",
+							Description: "Complex table based substitutions",
+							Data: `// Complex table based substitutions
+{
+    Name: "Simulating if/else with tables"
+    Description: '''
+        Some backend services show a wide range of answers and you would need
+        some sort of if/else construct to select the appropriate response
+        based on the combination input data.
+        This can be simulated by use of a Map table: The last variable's value
+        is selected on the combination of the other variables'values. Together
+        with wildcards complex answers can be simulated.
+    '''
+
+    Method: "GET"
+    URL: "http://localhost:8880/data/{{HOUSE}}/{{ROOM}}"
+    
+    // Map is used to map combinations of several variables to a single result.
+    Map: {
+        // This map maps tuples of (HOUSE,ROOM) to SIZE
+        Variables: ["HOUSE", "ROOM", "SIZE" ]
+        
+        // Table is the mapping table as a flattened array.
+        // Some examples might explain best how this table works:
+        //   HOUSE==Ilisos and ROOM=Pantry  --> SIZE=7.5m²
+        //   HOUSE==Isthmia and ROOM=Pantry --> SIZE=-??-
+        //   HOUSE==Appolo and ROOM=Office  --> SIZE=15m²
+        //   HOUSE==Appolo and ROOM=Pantry  --> SIZE=20m²
+        // The * works as a wildcard.
+        Table: [
+            // HOUSE , ROOM     , SIZE
+            "Isthmia", "Kitchen", "12m²",
+            "Isthmia", "Living" , "19m²",
+            "Isthmia", "*"      , "-??-",  // all other rooms in Isthima
+            "Ilisos",  "Pantry" , "7.5m²",
+            "Ilisos",  "Kitchen", "32m²",
+            "Ilisos",  "Office",  "9.7m²",
+            "*"     ,  "Office",  "15m²",  // all other offices are 12m²
+            "*"     ,  "*",       "20m²",  // default
+        ]
+    } 
+
+    Response: {
+        StatusCode: 200
+        Body: "{{SIZE}}"  // Return the room's size here.
+    }
+}`,
+						}, &Example{
+							Name:        "Mock.Dynamic.Timestamps",
+							Description: "Dynamic timestamps, random IDs and counters",
+							Data: `// Dynamic timestamps, random IDs and counters
+{
+    Name: "Dynamic timestamps"
+    Description: '''
+        Sometimes one needs the current date/time: There is a data Extractor
+        for that: SetTimestamp which allows arbitray formatting and arbitrary
+        offsets.
+        If you need a random number use the predeclared variable RANDOM.
+        A global counter is available as the predeclared variable COUNTER.
+        COUNTER is ever increasing but global; don't assume the next value
+        will be the current plus one (it could be plus anything).
+    '''
+
+    Method: "GET"
+    URL: "http://localhost:8880/some/path"
+ 
+    DataExtraction: {
+        DATETIME: {Extractor: "SetTimestamp"
+                      // Format is a Go packae time layout.
+                      Format: "02. Jan. 2006 15:04:05"
+                      // The current time can be adjusted through deltas.
+                      DeltaMonth: 2, DeltaDay: 5, DeltaT: "96s"
+                  }
+    }
+    
+    Response: {
+        StatusCode: 200
+        Body: '''
+           In two months and five days and 96 seconds it is {{DATETIME}}.
+           Some random 6 digit number: {{RANDOM}} 
+        '''
+    }
+}`,
+						}},
+				}},
+		}, &Example{
 			Name:        "Suite",
 			Description: "A generic Suite",
 			Data: `// A generic Suite
+// Suites are executed via ` + "`" +
+				`ht exec <suite>` + "`" +
+				`.
 {
     Name: "A generic Suite"
     Description: "Explain the Setup, Main, Teardown and Variables fields."
@@ -65,7 +278,7 @@ var RootExample = &Example{
     // Setup and Main are the set of Tests executed and considered relevant
     // for this suite's success. The difference is how Tests with failures or
     // error impact suite execution:
-    // If any (executed) test in Setup failes, errors (or is bogus) the suite
+    // If any (executed) test in Setup fails, errors (or is bogus) the suite
     // termiantes and none of the following tests from Setup, none from Main
     // and none from Teardown are executed.
     Setup: [
@@ -129,7 +342,7 @@ var RootExample = &Example{
         // command line:
         {File: "Test.JSON"}  // FOO == 9876 from below
 
-        // Tests can be called with different values and/or new variabels.
+        // Tests can be called with different values and/or new variables.
         // In this instance of Test.JSON:  FOO==1234 && BAR=="some other value"
         {File: "Test.JSON"
             Variables: {
@@ -148,6 +361,12 @@ var RootExample = &Example{
 			Name:        "Test",
 			Description: "A generic Test",
 			Data: `// A generic Test
+// Typically Tests are combined into Suites and the suite is executed via
+// ` + "`" +
+				`ht exec <suite>` + "`" +
+				` but you can executes a test via ` + "`" +
+				`ht run <test>` + "`" +
+				`.
 {
     // Name is used during reporting. Make it short and printable.
     Name: "Simple Test"
@@ -316,7 +535,7 @@ var RootExample = &Example{
 
         // Data extraction does not influence the test state: If the given
         // value could not be extracted the test is still in state Pass.
-        // If subsequent tests/request rely on a proper data axtraction: Add a
+        // If subsequent tests/request rely on a proper data extraction: Add a
         // check like the following to make sure the test fails if no suitable
         // value is present
         {Check: "Body", Regexp: "It's ([0-9:]+) o'clock"}
@@ -490,6 +709,14 @@ var RootExample = &Example{
 					Data: `// Testing images
 {
     Name: "Test of a PNG image"
+    Description: '''
+        The Image check allows to check the file format and the size of an
+        image. It also knows about block mean value and color histogram
+        fingerprints for images which are nsensitive against some image
+        transformations and can be computed via the fingerprint subcommand.
+        If you whant to ensure that exacty a certain file is served you
+        should use the Identity check.
+    '''
     Request: {
         URL: "http://{{HOST}}/lena"
     }
@@ -638,7 +865,7 @@ var RootExample = &Example{
         // Bash scripts can be executed only on the same machine (localhost).
         // The Working Directory in which the script is executed is the path
         // of the URL. So you cannot use relative paths.
-        URL:    "bash://localhost/usr/local/go"
+        URL:    "bash://localhost/{{CWD}}/{{TEST_DIR}}"
 
         // The request params are used as environment in which the script
         // executes: Inside the script the bash variables ENVVAR1 and ENVVAR2
@@ -670,13 +897,13 @@ var RootExample = &Example{
         //    - 500 if the exit code is != 0.
         {Check: "StatusCode", Expect: 200}
 
-        // The numerial exits status itself is reported in the response
+        // The numerical exits status itself is reported in the response
         // header Exit-Status:
         {Check: "Header", Header: "Exit-Status", Equals: "exit status 0"}
 
         // The combined output (stdout and stderr) of the script is returned
         // as the response body:
-        {Check: "Body", Contains: "LICENSE"}
+        {Check: "Body", Contains: "Suite.Variables"}
     ]
 }`,
 						}, &Example{
@@ -717,7 +944,7 @@ var RootExample = &Example{
         // The 'file://' schema makes this a File pseudo-request.
         // The path of the URL is the path path of the file.
         // Here we are reading the current file.
-        // Note that absolute paths have to be used (as releative
+        // Note that absolute paths have to be used (as relative
         // paths cannot be encoded in the URL.
         URL: "file://localhost/{{CWD}}/{{TEST_DIR}}/Test.NoneHTTP.FileRead"
 
@@ -831,7 +1058,7 @@ var RootExample = &Example{
     Name: "SQL Queries"
 
     Request: {
-        Method: "GET"  //  GET performs a SQLQuery
+        Method: "GET"  //  GET performs a SQL Query (SELECT FROM WHERE)
 
         // The 'sql://' schema makes this a SQL pseudo-request.
         // The host of the URL select the database driver.
@@ -846,7 +1073,7 @@ var RootExample = &Example{
             // The format of the response body is determined by the
 	    // Accept header:
             //   - "application/json"
-            //     JSON array with the rows as objectswith the table columns
+            //     JSON array with the rows as objects with the table columns
             //     as fields
             //   - "text/csv; header=present"
             //     Csv file with column headers (the column names)
@@ -911,12 +1138,12 @@ var RootExample = &Example{
 
         // Body can use @file and @vfile just like Params:
         // The @vfile version will perform variable substitution in the
-        // content of somefile. Note how somefile is read realtive to
+        // content of somefile. Note how somefile is read relative to
         // directory of this test-file.
         Body: "@vfile:{{TEST_DIR}}/somefile"
 
         // Use the @file form if no variable substitution inside somefile
-	// shal be performed.	
+	// shell be performed.	
         // Body: "@file:{{TEST_DIR}}/somefile"
     }
 
@@ -957,8 +1184,8 @@ var RootExample = &Example{
 }`,
 						}, &Example{
 							Name:        "Test.POST.ManualBody",
-							Description: "Manualy defining a POST body.",
-							Data: `// Manualy defining a POST body.
+							Description: "Manually defining a POST body.",
+							Data: `// Manually defining a POST body.
 {
     Name: "Test POST body"
     Request: {
@@ -971,12 +1198,12 @@ var RootExample = &Example{
 
         // Body can use @file and @vfile just like Params:
         // The @vfile version will perform variable substitution in the
-        // content of somefile. Note how somefile is read realtive to
+        // content of somefile. Note how somefile is read relative to
         // directory of this test-file.
         // Body: "@vfile:{{TEST_DIR}}/somefile"
 
         // Use the @file form if no variable substitution inside somefile
-	// shal be performed.	
+	// shell be performed.	
         // Body: "@file:{{TEST_DIR}}/somefile"
     }
     Checks: [
@@ -1044,7 +1271,7 @@ var RootExample = &Example{
         }
 
 	// Dump data 
-        {Check: "Latency", N: 20, Concurrent: 4, SkipChecks: true,
+        {Check: "Latency", N: 40, Concurrent: 4, SkipChecks: true,
             DumpTo: "stdout",
             Limits: "50% ≤ 100ms; 80% ≤ 150ms; 95% ≤ 200ms; 0.995 ≤ 0.75s"
         }
@@ -1069,7 +1296,7 @@ var RootExample = &Example{
         // Presence of element, no condition imposed on value.
         {Check: "XML", Path: "/library/book/character[2]/name" },
 
-        // Check existance and value.
+        // Check existence and value.
         {Check: "XML"
             Path: "/library/book/character[2]/name"
             Equals: "Snoopy"

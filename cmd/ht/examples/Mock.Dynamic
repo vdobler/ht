@@ -30,7 +30,7 @@
     // This allows to use the same Extractors as in Tests. See the example
     // Test.Extraction and its sub-examples for additional extractors.
     DataExtraction: {
-        SESSION: {Extrsactor: "CookieExtractor", Name: "sessionid"}
+        SESSION: {Extractor: "CookieExtractor", Name: "sessionid"}
     }
     
     // The response is populated from dynamically values read from variables.

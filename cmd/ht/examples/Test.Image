@@ -1,14 +1,14 @@
 // Testing images
 {
     Name: "Test of a PNG image"
-    Description: """
+    Description: '''
         The Image check allows to check the file format and the size of an
         image. It also knows about block mean value and color histogram
         fingerprints for images which are nsensitive against some image
         transformations and can be computed via the fingerprint subcommand.
         If you whant to ensure that exacty a certain file is served you
         should use the Identity check.
-    """
+    '''
     Request: {
         URL: "http://{{HOST}}/lena"
     }
