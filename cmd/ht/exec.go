@@ -30,7 +30,7 @@ import (
 var cmdExec = &Command{
 	RunSuites:   runExecute,
 	Usage:       "exec [options] <suite>...",
-	Description: "generate request and test response",
+	Description: "execute suites of tests",
 	Flag:        flag.NewFlagSet("run", flag.ContinueOnError),
 	Help: `Exec loads the given suites and executes them.
 

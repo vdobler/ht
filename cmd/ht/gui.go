@@ -31,7 +31,7 @@ import (
 var cmdGUI = &Command{
 	RunTests:    runGUI,
 	Usage:       "gui [<test>]",
-	Description: "Edit and debug a test in a GUI",
+	Description: "edit and debug a test in a GUI",
 	Flag:        flag.NewFlagSet("gui", flag.ContinueOnError),
 	Help: `Gui provides a HTML GUI to create, edit and modifiy test.
 
