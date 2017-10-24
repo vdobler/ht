@@ -450,7 +450,7 @@ func TestExampleLoad(t *testing.T) {
 			if len(failures.Tests) > 0 {
 				t.Fatal(failures.Tests)
 			}
-			if len(data) < 150 || len(data) > 250 {
+			if len(data) < 130 || len(data) > 280 {
 				t.Fatalf("Got %d request", len(data))
 			}
 		})
