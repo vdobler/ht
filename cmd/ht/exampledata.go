@@ -8,6 +8,46 @@ var RootExample = &Example{
 	Data:        ``,
 	Sub: []*Example{
 		&Example{
+			Name:        "Load",
+			Description: "Throughput Load-Testing",
+			Data: `// Throughput Load-Testing
+{
+    Name: "A simple Throughput Test"
+    Description: '''
+        
+    '''
+    Scenarios: [
+        {
+            File:       "Suite.InlineTest"
+            Percentage: 20
+            MaxThreads: 10
+	    OmitChecks: true
+            Variables: {
+                SCENVAR1: "scenvar1",
+                SCENVAR2: "scenvar1+{{TTVAR2}}",
+            }
+        },
+        {
+            File:       "Suite"
+            Percentage: 30
+            MaxThreads: 15
+	    OmitChecks: false
+        },
+        {
+            File:       "Suite.Variables"
+            Percentage: 50
+            MaxThreads: 15
+	    OmitChecks: false
+        },
+
+
+    ]
+
+    Variables: {
+        SOME_VAR: "someValue"
+    }
+}`,
+		}, &Example{
 			Name:        "Mixin",
 			Description: "Mixins allow to add stuff to a Test",
 			Data: `// Mixins allow to add stuff to a Test
@@ -61,6 +101,10 @@ var RootExample = &Example{
 				`ht mock <mock>` + "`" +
 				` or be part of a single Test execution inside
 // a Suite. The following shows general parts common to both types of mocks.
+// (Technically the first use should be called Fakes instead of Mocks).
+// See example Suite.Mock for how to provide a mock for a single Test inside
+// a Suite and validate this Mock actually is called. See example Mock.Checks
+// to see how to validate the incomming request.
 {
     Name: "Mock Service for Foobar" // Give it a short, informative name.
     Description: '''
@@ -94,6 +138,42 @@ var RootExample = &Example{
 }`,
 			Sub: []*Example{
 				&Example{
+					Name:        "Mock.Check",
+					Description: "Validating the incomming request",
+					Data: `// Validating the incomming request
+{
+    Name: "Validating Incoming Request"
+    Description: '''
+        If a Mock is used for a Test in a Suite (see example Suite.Mock) it
+        allows to check the incomming request. This is done by Checks like it
+        is done inside a Test. Most Checks do not make much sense but some
+        do.
+    '''
+
+    Method: "POST"
+    URL: "http://localhost:8880/apiv1/events"
+
+    // The Checks are applied to the incomming request, so only some make
+    // sense in this context. The incomming request should be a JSON document.
+    Checks: [
+        {Check: "ContentType", Is: "application/json"}
+        {Check: "JSON", Element: "created_at"}
+        {Check: "JSON", Element: "user"}
+        {Check: "JSON", Element: "message", Contains: "foobastic"}
+    ]
+
+    // We extract the user property and construct a dynamic response with it.
+    DataExtraction: {
+        USER: {Extractor: "JSONExtractor", Element: "user"}
+    }
+    
+    Response: {
+        StatusCode: 201
+        Header: {"Content-Type": "application/json"}
+        Body: ''''{"eventId": {{COUNTER}}, "state": "new", "user": "{{USER}}"}'''
+    }
+}`,
+				}, &Example{
 					Name:        "Mock.Dynamic",
 					Description: "Dynamic responses based on the request",
 					Data: `// Dynamic responses based on the request
@@ -328,6 +408,32 @@ var RootExample = &Example{
         }
     ]
     // Works the same for Setup and Teardown Tests.
+}`,
+				}, &Example{
+					Name:        "Suite.Mock",
+					Description: "A suite can provide mock services to a Test",
+					Data: `// A suite can provide mock services to a Test
+{
+    Name: "Mock Services for Tests"
+    Description: '''
+        If sucessful fullfilment of a Test request requires some calls to
+        third-party systems a suite may provide mocks for this systems and
+        evaluate that the mocked services were called properly by the given
+        Test.
+    '''
+    Main: [
+        {
+            File: "Test.JSON"
+            // Start the following two mocks before executing this test (and
+            // stop them afterwards). Both mock services must be called and
+            // their checks must pass) for the Test to pass.
+            Mocks: [ "Mock.Check", "Mock.Dynamic" ]
+        }
+        {
+            // A different tests with a different set of mock services.
+            File: "Test.HTML", Mocks: [ "Mock.Dynamic.Body" ]
+        }
+    ]
 }`,
 				}, &Example{
 					Name:        "Suite.Variables",
