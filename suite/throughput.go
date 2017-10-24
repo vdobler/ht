@@ -38,6 +38,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -333,7 +334,7 @@ type ThroughputOptions struct {
 	CollectFrom ht.Status
 }
 
-// Throughput runs a throughput load test with request taken from the given
+// Throughput runs a throughput load test with requests taken from the given
 // scenarios.
 // During the ramp the request rate is linearely increased until it reaches
 // the desired rate of requests/second (QPS). This rate is kept for the
@@ -355,7 +356,7 @@ type ThroughputOptions struct {
 // repetition looks strange given that each repetition is isolated and
 // independent from the thread it occors, but it is not: Repetitions are
 // unbound and an endurance test running for 8 hours might repeate the Main
-// test severla thousend times but maybe just using 15 threads which allows
+// test several thousend times but maybe just using 15 threads which allows
 // to prepare the system under test e.g. with 15 numbered user-accounts.
 // It will aggregate all executed Test with a Status higher (bader) or equal
 // to CollectFrom.
@@ -366,6 +367,13 @@ type ThroughputOptions struct {
 func Throughput(scenarios []Scenario, opts ThroughputOptions, csvout io.Writer) ([]TestData, *Suite, error) {
 	bufferedStdout := bufio.NewWriterSize(os.Stdout, 1)
 	logger := log.New(bufferedStdout, "", 256)
+	if csvout == nil {
+		// TODO: Instead of discarding writes it might be more sensible
+		// and effective to not write to csvout at all if nil. As the
+		// csv encoding takes some time this would allow to safe valuable
+		// computing power.
+		csvout = ioutil.Discard
+	}
 
 	// Make sure all request come from some scenario.
 	sum := 0
