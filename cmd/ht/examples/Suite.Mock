@@ -1,0 +1,23 @@
+// A suite can provide mock services to a Test
+{
+    Name: "Mock Services for Tests"
+    Description: '''
+        If sucessful fullfilment of a Test request requires some calls to
+        third-party systems a suite may provide mocks for this systems and
+        evaluate that the mocked services were called properly by the given
+        Test.
+    '''
+    Main: [
+        {
+            File: "Test.JSON"
+            // Start the following two mocks before executing this test (and
+            // stop them afterwards). Both mock services must be called and
+            // their checks must pass) for the Test to pass.
+            Mocks: [ "Mock.Check", "Mock.Dynamic" ]
+        }
+        {
+            // A different tests with a different set of mock services.
+            File: "Test.HTML", Mocks: [ "Mock.Dynamic.Body" ]
+        }
+    ]
+}

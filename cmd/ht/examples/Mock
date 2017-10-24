@@ -2,6 +2,10 @@
 // Mocks have two uses: They can be run as independent, long-running  mock
 // services via `ht mock <mock>` or be part of a single Test execution inside
 // a Suite. The following shows general parts common to both types of mocks.
+// (Technically the first use should be called Fakes instead of Mocks).
+// See example Suite.Mock for how to provide a mock for a single Test inside
+// a Suite and validate this Mock actually is called. See example Mock.Checks
+// to see how to validate the incomming request.
 {
     Name: "Mock Service for Foobar" // Give it a short, informative name.
     Description: '''

@@ -23,67 +23,6 @@ import (
 var runmysql = flag.Bool("run-mysql", false,
 	"Run the MySQL tests. Needs docker run -rm -d -e MYSQL_USER=test -e MYSQL_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_ALLOW_EMPTY_PASSWORD=true -p 7799:3306 mysql:5.6")
 
-func allTestExamples() []string {
-	internal := []string{
-		"Test",
-		"Test.HTML",
-		"Test.JSON",
-		"Test.POST",
-		"Test.POST.FileUpload",
-		"Test.POST.ManualBody",
-		"Test.POST.BodyFromFile",
-		"Test.Redirection",
-		"Test.FollowRedirect",
-		"Test.Image",
-		"Test.Cookies",
-		"Test.XML",
-		"Test.Mixin",
-		"Test.Retry",
-		"Test.Extraction",
-		"Test.Extraction.JSON",
-		"Test.Extraction.HTML",
-		"Test.CurrentTime",
-		"Test.AndOr",
-		"Test.Header",
-		"Test.NoneHTTP",
-		"Test.NoneHTTP.Bash",
-		"Test.NoneHTTP.FileWrite",  // Write must go first...
-		"Test.NoneHTTP.FileRead",   // .. then the file can be read
-		"Test.NoneHTTP.FileDelete", // and we clean up.
-	}
-
-	if *runmysql {
-		internal = append(internal, []string{
-			"Test.NoneHTTP.SQLExec",
-			"Test.NoneHTTP.SQLQuery",
-		}...)
-	}
-
-	if os.Getenv("TRAVIS_GO_VERSION") == "" {
-		internal = append(internal, "Test.Speed")
-	}
-
-	return internal
-}
-
-func allSuiteExamples() []string {
-	return []string{
-		"Suite",
-		"Suite.InlineTest",
-		"Suite.Variables",
-	}
-}
-
-func allMockExamples() []string {
-	return []string{
-		"Mock",
-		"Mock.Dynamic",
-		"Mock.Dynamic.Body",
-		"Mock.Dynamic.Complex",
-		"Mock.Dynamic.Timestamps",
-	}
-}
-
 var (
 	exampleHTML = []byte(`<!DOCTYPE html>
 <html>
@@ -282,6 +221,52 @@ func exampleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ----------------------------------------------------------------------------
+// Tests
+
+func allTestExamples() []string {
+	internal := []string{
+		"Test",
+		"Test.HTML",
+		"Test.JSON",
+		"Test.POST",
+		"Test.POST.FileUpload",
+		"Test.POST.ManualBody",
+		"Test.POST.BodyFromFile",
+		"Test.Redirection",
+		"Test.FollowRedirect",
+		"Test.Image",
+		"Test.Cookies",
+		"Test.XML",
+		"Test.Mixin",
+		"Test.Retry",
+		"Test.Extraction",
+		"Test.Extraction.JSON",
+		"Test.Extraction.HTML",
+		"Test.CurrentTime",
+		"Test.AndOr",
+		"Test.Header",
+		"Test.NoneHTTP",
+		"Test.NoneHTTP.Bash",
+		"Test.NoneHTTP.FileWrite",  // Write must go first...
+		"Test.NoneHTTP.FileRead",   // .. then the file can be read
+		"Test.NoneHTTP.FileDelete", // and we clean up.
+	}
+
+	if *runmysql {
+		internal = append(internal, []string{
+			"Test.NoneHTTP.SQLExec",
+			"Test.NoneHTTP.SQLQuery",
+		}...)
+	}
+
+	if os.Getenv("TRAVIS_GO_VERSION") == "" {
+		internal = append(internal, "Test.Speed")
+	}
+
+	return internal
+}
+
 func TestExampleTest(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(exampleHandler))
 	defer ts.Close()
@@ -338,6 +323,19 @@ func TestExampleTest(t *testing.T) {
 	}
 }
 
+// ----------------------------------------------------------------------------
+// Suites
+
+var suiteExampleTests = []struct {
+	file string
+	want ht.Status
+}{
+	{"Suite", ht.Pass},
+	{"Suite.InlineTest", ht.Pass},
+	{"Suite.Mock", ht.Fail},
+	{"Suite.Variables", ht.Pass},
+}
+
 func TestExampleSuite(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(exampleHandler))
 	defer ts.Close()
@@ -352,7 +350,8 @@ func TestExampleSuite(t *testing.T) {
 	silent = true
 	ssilent = true
 
-	for _, suitename := range allSuiteExamples() {
+	for _, tc := range suiteExampleTests {
+		suitename := tc.file
 		t.Run(suitename, func(t *testing.T) {
 			// Can be read in raw form:
 			suites, err := loadSuites([]string{"./examples/" + suitename})
@@ -367,15 +366,27 @@ func TestExampleSuite(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
-			if acc.Status != ht.Pass {
-				t.Fatalf("Suite did not pass: %s", acc.Status)
+			if acc.Status != tc.want {
+				t.Fatalf("Got %s, want %s", acc.Status, tc.want)
 			}
 		})
 	}
 }
 
+// ----------------------------------------------------------------------------
+// Mocks
+
+var mockExampleTests = []string{
+	"Mock",
+	"Mock.Check",
+	"Mock.Dynamic",
+	"Mock.Dynamic.Body",
+	"Mock.Dynamic.Complex",
+	"Mock.Dynamic.Timestamps",
+}
+
 func TestExampleMock(t *testing.T) {
-	for _, mockname := range allMockExamples() {
+	for _, mockname := range mockExampleTests {
 		t.Run(mockname, func(t *testing.T) {
 			raw, err := suite.LoadRawMock("./examples/"+mockname, nil)
 			if err != nil {
