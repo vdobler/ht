@@ -1,0 +1,37 @@
+// Throughput Load-Testing
+{
+    Name: "A simple Throughput Test"
+    Description: '''
+        
+    '''
+    Scenarios: [
+        {
+            File:       "Suite.InlineTest"
+            Percentage: 20
+            MaxThreads: 10
+	    OmitChecks: true
+            Variables: {
+                SCENVAR1: "scenvar1",
+                SCENVAR2: "scenvar1+{{TTVAR2}}",
+            }
+        },
+        {
+            File:       "Suite"
+            Percentage: 30
+            MaxThreads: 15
+	    OmitChecks: false
+        },
+        {
+            File:       "Suite.Variables"
+            Percentage: 50
+            MaxThreads: 15
+	    OmitChecks: false
+        },
+
+
+    ]
+
+    Variables: {
+        SOME_VAR: "someValue"
+    }
+}

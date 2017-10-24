@@ -59,29 +59,26 @@ func init() {
 	addVarsFlags(cmdLoad.Flag)
 }
 
-func readRawLoadtest(arg string) *suite.RawLoadTest {
+func readRawLoadtest(arg string) (*suite.RawLoadTest, error) {
 	// Process arguments of the form <name>@<archive>.
 	var fs suite.FileSystem
 	if i := strings.Index(arg, "@"); i != -1 {
 		blob, err := ioutil.ReadFile(arg[i+1:])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
-			os.Exit(9)
+			return nil, fmt.Errorf("Cannot load %q: %s\n", arg[i+1:], err)
 		}
 		fs, err = suite.NewFileSystem(string(blob))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg[i+1:], err)
-			os.Exit(9)
+			return nil, fmt.Errorf("Cannot load %q: %s\n", arg[i+1:], err)
 		}
 		arg = arg[:i]
 	}
 	raw, err := suite.LoadRawLoadtest(arg, fs)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot load %q: %s\n", arg, err)
-		os.Exit(9)
+		return nil, fmt.Errorf("Cannot load %q: %s\n", arg, err)
 	}
 
-	return raw
+	return raw, nil
 }
 
 func runLoad(cmd *Command, args []string) {
@@ -95,7 +92,11 @@ func runLoad(cmd *Command, args []string) {
 		os.Exit(9)
 	}
 
-	raw := readRawLoadtest(args[0])
+	raw, err := readRawLoadtest(args[0])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(9)
+	}
 
 	// Prepare scenarios, output folder and the live data log.
 	scenarios := raw.ToScenario(variablesFlag)
@@ -106,13 +107,8 @@ func runLoad(cmd *Command, args []string) {
 			i+1, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads,
 			scen.Verbosity)
 	}
-	if outputDir == "" {
-		outputDir = time.Now().Format("2006-01-02_15h04m05s")
-	}
-	err := os.MkdirAll(outputDir, 0766)
-	if err != nil {
-		log.Panic(err)
-	}
+
+	prepareOutputDir()
 	livefile, err := os.Create(filepath.Join(outputDir, "live.csv"))
 	if err != nil {
 		log.Panic(err)

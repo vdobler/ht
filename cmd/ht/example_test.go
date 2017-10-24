@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/vdobler/ht/ht"
 	"github.com/vdobler/ht/scope"
@@ -398,6 +399,59 @@ func TestExampleMock(t *testing.T) {
 			_, err = raw.ToMock(mockScope, false)
 			if err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+// ----------------------------------------------------------------------------
+// Load
+
+var loadExampleTests = []string{
+	"Load",
+}
+
+func TestExampleLoad(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(exampleHandler))
+	defer ts.Close()
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	variablesFlag["HOST"] = u.Host
+	outputDir = "example-tests"
+	randomSeed = 57 // must be prime
+	silent = true
+	ssilent = true
+
+	prepareOutputDir()
+
+	for _, loadname := range loadExampleTests {
+		t.Run(loadname, func(t *testing.T) {
+			raw, err := readRawLoadtest("./examples/" + loadname)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scenarios := raw.ToScenario(variablesFlag)
+			prepareHT()
+			opts := suite.ThroughputOptions{
+				Rate:         50,              //  \
+				Duration:     5 * time.Second, //   > ~ 200 request
+				Ramp:         2 * time.Second, //  /
+				CollectFrom:  ht.Error,
+				MaxErrorRate: -1,
+			}
+			data, failures, lterr := suite.Throughput(scenarios, opts, nil)
+			saveLoadtestData(data, failures, scenarios)
+			if lterr != nil {
+				t.Fatal(lterr)
+			}
+			if len(failures.Tests) > 0 {
+				t.Fatal(failures.Tests)
+			}
+			if len(data) < 150 || len(data) > 250 {
+				t.Fatalf("Got %d request", len(data))
 			}
 		})
 	}
