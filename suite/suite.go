@@ -134,8 +134,8 @@ func (suite *Suite) Iterate(executor Executor) {
 
 		// Mocks requested for this test: We expect each mock to be
 		// called exactly once (and this call should pass).
-		mocks := make([]*mock.Mock, len(rt.mocks))
-		for i, m := range rt.mocks {
+		mocks := make([]*mock.Mock, 0, len(rt.mocks))
+		for _, m := range rt.mocks {
 			mockScope := scope.New(testScope, rt.Variables, false)
 			mockScope["MOCK_DIR"] = m.Dirname()
 			mockScope["MOCK_NAME"] = m.Basename()
@@ -145,7 +145,7 @@ func (suite *Suite) Iterate(executor Executor) {
 				test.Result.Error = err
 				break
 			}
-			mocks[i] = mk
+			mocks = append(mocks, mk)
 		}
 
 		ctrl, merr := mock.Provide(mocks, suite.Log)
