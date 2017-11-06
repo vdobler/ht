@@ -78,7 +78,7 @@ func Filename(name string) string {
 	name = buf.String()
 
 	// Collaps multiple _ to a single one.
-	for strings.Index(name, "__") != -1 {
+	for strings.Contains(name, "__") {
 		name = strings.Replace(name, "__", "_", -1)
 	}
 	// trim leading and trailing -

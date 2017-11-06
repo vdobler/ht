@@ -36,8 +36,6 @@ const (
 	EndRequestEvent
 )
 
-var eventName = []string{"Begin", "Finish", "Wait", "StartReq", "EndReq"}
-
 type Event struct {
 	Typ           EventType
 	Start, End    int64

@@ -280,12 +280,8 @@ func mightBeDuration(n int64) bool {
 		n /= 10
 	}
 
-	if n >= 1000 {
-		// More than 3 significant digits
-		return false
-	}
-
-	return true
+	// More than 3 significant digits are uncommon durations.
+	return n < 1000
 }
 
 func binaryHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request) {
