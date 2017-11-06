@@ -63,6 +63,8 @@ type Latency struct {
 
 	// DumpTo is the filename where the latencies are reported.
 	// The special values "stdout" and "stderr" are recognized.
+	// The columns are:
+	//   Test-Name,Concurrent,Completed,Test-Status,Thread,Started,Duration
 	DumpTo string `json:",omitempty"`
 
 	limits []latLimit
@@ -175,17 +177,22 @@ func (L *Latency) Execute(t *Test) error {
 			L.Concurrent, seen))
 	}
 
-	Z := 1 * time.Microsecond
-	fields := make([]string, 6)
-	fields[1] = fmt.Sprintf("%d", L.Concurrent)
-	fields[5] = fmt.Sprintf("%t", len(data) == L.N)
-	for _, r := range data {
-		d := Z * ((r.duration + Z/2) / Z) // cut off nanosecond (=noise) part
+	if L.DumpTo != "" {
+		fields := make([]string, 7)
 		fields[0] = t.Name
-		fields[2] = r.started.Format(time.RFC3339Nano)
-		fields[3] = r.status.String()
-		fields[4] = d.String()
-		csvWriter.Write(fields)
+		fields[1] = fmt.Sprintf("%d", L.Concurrent)
+		if len(data) == L.N {
+			fields[2] = "check completed"
+		} else {
+			fields[2] = "stopped early"
+		}
+		for _, d := range data {
+			fields[3] = d.status.String()
+			fields[4] = fmt.Sprintf("%d", d.execBy)
+			fields[5] = d.started.Format(time.RFC3339Nano)
+			fields[6] = d.duration.Truncate(10 * time.Microsecond).String()
+			csvWriter.Write(fields)
+		}
 	}
 
 	latencies := make([]int, len(data))
