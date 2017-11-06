@@ -7,10 +7,8 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -45,37 +43,7 @@ type Example struct {
 	Sub         []*Example // Subtopics below this Example
 }
 
-func subexamples(names []string, prefix string, level int) []*Example {
-	var subs []*Example
-	for _, name := range names {
-		if !strings.HasPrefix(name, prefix) ||
-			strings.Count(name, ".") != level ||
-			strings.HasSuffix(name, "~") {
-			// fmt.Println("  skipping", name)
-			continue
-		}
-
-		bdata, err := ioutil.ReadFile("./examples/" + name)
-		if err != nil {
-			panic(err)
-		}
-		bdata = bytes.TrimRight(bdata, " \n\t")
-
-		example := Example{
-			Name: name,
-			Data: string(bdata),
-			Sub:  subexamples(names, name+".", level+1),
-		}
-		eol := strings.Index(example.Data, "\n")
-		example.Description = example.Data[3:eol]
-
-		subs = append(subs, &example)
-	}
-
-	return subs
-}
-
-// findExample looks up an example needle like ["test", "post", "upload]
+// findExample looks up an example needle like ["test", "post", "upload"]
 func findExample(needle []string, ex *Example) *Example {
 	level := strings.Count(ex.Name, ".")
 	if ex.Name != "" {
