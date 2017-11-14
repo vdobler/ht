@@ -15,6 +15,7 @@ import (
 	"github.com/vdobler/ht/errorlist"
 )
 
+// Message is a typed text message.
 type Message struct {
 	Type string
 	Text string

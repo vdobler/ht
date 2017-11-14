@@ -32,8 +32,10 @@ func RegisterImplementation(iface interface{}, typ interface{}) {
 // ----------------------------------------------------------------------------
 // Type Data
 
+// Typedata is the global registry to look up infos for types.
 var Typedata = make(map[reflect.Type]Typeinfo)
 
+// RegisterType registers the given info for typ in Typedata.
 func RegisterType(typ interface{}, info Typeinfo) {
 	Typedata[reflect.TypeOf(typ)] = info
 }
@@ -47,7 +49,7 @@ type Typeinfo struct {
 	Field map[string]Fieldinfo
 }
 
-// Fielddata contains metadata to fields of structs.
+// Fieldinfo contains metadata to fields of structs.
 type Fieldinfo struct {
 	Doc       string         // Doc is the field documentation
 	Multiline bool           // Multiline allows multiline strings

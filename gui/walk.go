@@ -15,7 +15,7 @@ import (
 	"github.com/vdobler/ht/errorlist"
 )
 
-// valueError is an error from invalid form input, e.g. "foo" to an
+// ValueError is an error from invalid form input, e.g. "foo" to an
 // time.Duration field.
 type ValueError struct {
 	Path string // path of field

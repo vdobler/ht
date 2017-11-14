@@ -502,16 +502,19 @@ type TestIdentifier struct {
 	TestName     string
 }
 
+// NumericalID formats ti like "3/5/2/7".
 func (ti TestIdentifier) NumericalID() string {
 	return fmt.Sprintf("%d/%d/%d/%d",
 		ti.Scenario, ti.Thread, ti.Repetition, ti.Test)
 }
 
+// String returns a human readable representation of ti.
 func (ti TestIdentifier) String() string {
 	return fmt.Sprintf("%s%s%s%s%s",
 		ti.NumericalID(), IDSep, ti.ScenarioName, IDSep, ti.TestName)
 }
 
+// TestIDFromString is the inverse of TestIdentifier.String.
 func TestIDFromString(s string) (TestIdentifier, error) {
 	// Must be kept in sync with TestIdentifier.String().
 	// TODO: sprinkle with error handling

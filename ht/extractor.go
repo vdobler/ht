@@ -484,7 +484,7 @@ func (e SetVariable) Extract(test *Test) (string, error) {
 // ----------------------------------------------------------------------------
 // SetTimestamp
 
-// SetTimestap allows to progmatically extract the current time
+// SetTimestamp allows to progmatically extract the current time
 // optionaly offset by a certain duration in a user selected layout.
 // To round the extracted timestamp e.g. to multiple of hours use
 // a format like "2006-01-02 15:00:00" with fixed minutes and seconds.

@@ -57,10 +57,12 @@ func (s Status) MarshalText() ([]byte, error) {
 // ----------------------------------------------------------------------------
 // Templates to output
 
+// DefaultCheckTemplate is used by DefaultTestTemplate to print the checks.
 var DefaultCheckTemplate = `{{define "CHECK"}}{{printf "%-7s %-15s %s" .Status .Name .JSON}}` +
 	`{{if eq .Status 3 5}}{{range .Error}}
                 {{.Error}}{{end}}{{end}}{{end}}`
 
+// DefaultTestTemplate is source for TestTmpl.
 var DefaultTestTemplate = `{{define "TEST"}}{{ToUpper .Result.Status.String}}: {{.Name}}{{if gt .Result.Tries 1}}
   {{printf "(after %d tries)" .Result.Tries}}{{end}}
   Started: {{.Result.Started}}   Duration: {{.Result.FullDuration}}   Request: {{.Result.Duration}}{{if .Request.Request}}
@@ -74,6 +76,7 @@ var DefaultTestTemplate = `{{define "TEST"}}{{ToUpper .Result.Status.String}}: {
 {{range $k, $v := .Variables}}{{printf "    %s == %q\n" $k $v}}{{end}}{{end}}{{if .Result.Extractions}}  Extracted:
 {{range $k, $v := .Result.Extractions}}{{if $v.Error}}{{printf "    %s : %s\n" $k $v.Error}}{{else}}{{printf "    %s == %q\n" $k $v.Value}}{{end}}{{end}}{{end}}{{end}}`
 
+// ShortTestTemplate is the source for ShortTestTmpl.
 var ShortTestTemplate = `{{define "SHORTTEST"}}{{.Result.Status.String}}: {{.Name}}{{if .Request.Request}}
     {{.Request.Request.Method}} {{.Request.Request.URL.String}}{{range .Response.Redirections}}
     GET {{.}}{{end}}{{end}}{{if .Response.Response}}
@@ -85,8 +88,8 @@ var ShortTestTemplate = `{{define "SHORTTEST"}}{{.Result.Status.String}}: {{.Nam
 {{end}}`
 
 var (
-	ShortTestTmpl *template.Template
-	TestTmpl      *template.Template
+	TestTmpl      *template.Template // TestTmpl is used by Test.PrintReport
+	ShortTestTmpl *template.Template // ShortTestTmpl is used by Test.PrintShortReport
 )
 
 func init() {
@@ -105,12 +108,12 @@ func init() {
 	TestTmpl = template.Must(TestTmpl.Parse(DefaultCheckTemplate))
 }
 
-// PrintReport of t to w.
+// PrintReport of t to w use the template TestTempl.
 func (t *Test) PrintReport(w io.Writer) error {
 	return TestTmpl.Execute(w, t)
 }
 
-// PrintShortReport of t to w.
+// PrintShortReport of t to w using the template ShortTestTempl.
 func (t *Test) PrintShortReport(w io.Writer) error {
 	return ShortTestTmpl.Execute(w, t)
 }
