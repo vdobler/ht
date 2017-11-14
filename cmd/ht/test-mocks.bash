@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Start of mock service
-../ht mock -D POST="Ciao" -cert ../../../mock/testdata/dummy.cert -key ../../../mock/testdata/dummy.key ../../../mock/testdata/body.mock &
+./ht mock -D POST="Ciao" -cert ../../mock/testdata/dummy.cert -key ../../mock/testdata/dummy.key ../../mock/testdata/body.mock &
 pid=$!
 sleep 2
 kill -0 $pid || (echo "Problems running mock server."; echo "FAIL"; exit 1;)

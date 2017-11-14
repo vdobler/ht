@@ -40,7 +40,7 @@ echo "General Suite Execution"
 echo "======================="
 
 rm -rf three
-../ht exec -ss -output three get3.suite get3.suite get3.suite || \
+./ht exec -ss -output three get3.suite get3.suite get3.suite || \
     (echo "FAIL: exec get3.suite $?"; exit 1;)
 
 tree three > got

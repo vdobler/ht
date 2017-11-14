@@ -88,7 +88,7 @@ echo
 echo "General Variable Handling"
 echo "========================="
 
-../ht exec -Dfile vars1.json -D VAR_C=cmdline-C \
+./ht exec -Dfile vars1.json -D VAR_C=cmdline-C \
     -vardump vars2.json -D VAR_U=cmdline-U \
     -cookiedump cookies.json suite1.suite || \
     (echo "FAIL: suite1 returned $?"; exit 1;)
@@ -146,7 +146,7 @@ echo
 echo "Loading of Cookies and Dumped Variables"
 echo "======================================="
 
-../ht exec -Dfile vars2.json -cookies cookies.json suite2.suite || \
+./ht exec -Dfile vars2.json -cookies cookies.json suite2.suite || \
     (echo "FAIL: suite2 returned $?"; exit 1;)
 
 
@@ -189,10 +189,10 @@ echo
 echo "Seeding RANDOM and COUNTER"
 echo "=========================="
 
-../ht exec -seed 123 -counter 31415 -D WANT1=616249 -D WANT2=505403 suite3.suite || \
+./ht exec -seed 123 -counter 31415 -D WANT1=616249 -D WANT2=505403 suite3.suite || \
     (echo "FAIL: suite3 run 1 returned $?"; exit 1;)
 
-../ht exec -seed 987  -counter 31415 -D WANT1=848308 -D WANT2=143250 suite3.suite || \
+./ht exec -seed 987  -counter 31415 -D WANT1=848308 -D WANT2=143250 suite3.suite || \
     (echo "FAIL: suite3 run 2 returned $?"; exit 1;)
 
 
@@ -262,7 +262,7 @@ echo
 echo "RANDOM and COUNTER Variables"
 echo "============================"
 
-../ht exec -seed 123 suite4.suite || \
+./ht exec -seed 123 suite4.suite || \
     (echo "FAIL: suite4 returned $?"; exit 1;)
 
 

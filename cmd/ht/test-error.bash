@@ -13,7 +13,7 @@ cat > buggy.suite <<EOF
     Name: "Make three arbitrary GET request"
     Setup:    {File: "a.ht"}
     Main:     {File: "b.ht"}
-    Teardown: {File: "c.ht"} 
+    Teardown: {File: "c.ht"}
 }
 EOF
 
@@ -34,7 +34,7 @@ cp x.ht b.ht
 cp x.ht c.ht
 
 rm -rf okay
-../ht exec -ss -output okay buggy.suite || \
+./ht exec -ss -output okay buggy.suite || \
     (echo "FAIL: exec buggy.suite $?"; exit 1;)
 rm -f a.ht b.ht c.ht
 
@@ -42,7 +42,7 @@ echo
 echo "Missing Suite"
 echo "============="
 rm -rf error
-../ht exec -ss -output error buggyXXX.suite && \
+./ht exec -ss -output error buggyXXX.suite && \
     (echo "FAIL: exec buggyXXX.suite $?"; exit 1;)
 rm -f a.ht b.ht c.ht
 
@@ -54,7 +54,7 @@ cp x.ht b.ht
 cp x.ht c.ht
 
 rm -rf error
-../ht exec -ss -output error buggy.suite && \
+./ht exec -ss -output error buggy.suite && \
     (echo "FAIL: exec buggy.suite $?"; exit 1;)
 rm -f a.ht b.ht c.ht
 
@@ -66,7 +66,7 @@ rm -f   b.ht
 cp x.ht c.ht
 
 rm -rf error
-../ht exec -ss -output error buggy.suite && \
+./ht exec -ss -output error buggy.suite && \
     (echo "FAIL: exec buggy.suite $?"; exit 1;)
 rm -f a.ht b.ht c.ht
 
@@ -78,7 +78,7 @@ cp x.ht b.ht
 rm -f   c.ht
 
 rm -rf error
-../ht exec -ss -output error buggy.suite && \
+./ht exec -ss -output error buggy.suite && \
     (echo "FAIL: exec buggy.suite $?"; exit 1;)
 rm -f a.ht b.ht c.ht
 
@@ -96,7 +96,7 @@ cat > b.ht <<EOF
 EOF
 
 rm -rf error
-../ht exec -ss -output error buggy.suite && \
+./ht exec -ss -output error buggy.suite && \
     (echo "FAIL: exec buggy.suite $?"; exit 1;)
 rm -f a.ht b.ht c.ht
 
@@ -112,7 +112,7 @@ cat > buggy.suite <<EOF
 EOF
 
 rm -rf error
-../ht exec -ss -output error buggy.suite && \
+./ht exec -ss -output error buggy.suite && \
     (echo "FAIL: exec buggy.suite $?"; exit 1;)
 rm -f a.ht b.ht c.ht
 
