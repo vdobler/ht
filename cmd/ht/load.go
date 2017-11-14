@@ -57,6 +57,11 @@ func init() {
 		"abort load test if error rate exceeds `rate`")
 	addOutputFlag(cmdLoad.Flag)
 	addVarsFlags(cmdLoad.Flag)
+	addSeedFlag(cmdLoad.Flag)
+	addCounterFlag(cmdLoad.Flag)
+	addSkiptlsverifyFlag(cmdLoad.Flag)
+	addPhantomJSFlag(cmdLoad.Flag)
+	addTimeoutFlag(cmdLoad.Flag)
 }
 
 func readRawLoadtest(arg string) (*suite.RawLoadTest, error) {
