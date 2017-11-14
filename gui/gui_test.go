@@ -94,27 +94,27 @@ func registerTestTypes() {
 	RegisterType(Test{}, Typeinfo{
 		Doc: "Test to perform.",
 		Field: map[string]Fieldinfo{
-			"Name":        Fieldinfo{Doc: "Must be unique."},
-			"Description": Fieldinfo{Multiline: true},
-			"Output":      Fieldinfo{Const: true},
-			"Result":      Fieldinfo{Const: true},
+			"Name":        {Doc: "Must be unique."},
+			"Description": {Multiline: true},
+			"Output":      {Const: true},
+			"Result":      {Const: true},
 		},
 	})
 
 	RegisterType(Execution{}, Typeinfo{
 		Doc: "Controles test execution",
 		Field: map[string]Fieldinfo{
-			"Method": Fieldinfo{
+			"Method": {
 				Doc:  "The HTTP method",
 				Only: []string{"GET", "POST", "HEAD"},
 			},
-			"Tries": Fieldinfo{
+			"Tries": {
 				Doc: "Number of retries.",
 			},
-			"Wait": Fieldinfo{
+			"Wait": {
 				Doc: "Sleep duration between retries.",
 			},
-			"Hash": Fieldinfo{
+			"Hash": {
 				Doc:      "Hash in hex",
 				Validate: regexp.MustCompile("^[[:xdigit:]]{4,8}$"),
 			},
@@ -124,10 +124,10 @@ func registerTestTypes() {
 	RegisterType(Options{}, Typeinfo{
 		Doc: "Options captures basic settings\nfor this piece of code.",
 		Field: map[string]Fieldinfo{
-			"Simple":   Fieldinfo{Doc: "Simple is the common name."},
-			"Advanced": Fieldinfo{Doc: "Advanced contains admin options."},
-			"Complex":  Fieldinfo{Doc: "Complex allows fancy customisations."},
-			"Ignore": Fieldinfo{
+			"Simple":   {Doc: "Simple is the common name."},
+			"Advanced": {Doc: "Advanced contains admin options."},
+			"Complex":  {Doc: "Complex allows fancy customisations."},
+			"Ignore": {
 				Doc: "Ignore some weather conditions:\n" +
 					"Space seperated list of 'rain', 'darkness', 'snow' and 'hail'",
 				Any: []string{"rain", "rainfall", "snow", "hail"},
@@ -142,22 +142,22 @@ func registerTestTypes() {
 	RegisterType(AbcWriter{}, Typeinfo{
 		Doc: "AbcWriter is for latin scripts",
 		Field: map[string]Fieldinfo{
-			"Name": Fieldinfo{Doc: "How to address this Writer."},
+			"Name": {Doc: "How to address this Writer."},
 		},
 	})
 
 	RegisterType(XyzWriter{}, Typeinfo{
 		Doc: "XyZWriter is a useless\ndummy type for testing",
 		Field: map[string]Fieldinfo{
-			"Count": Fieldinfo{Doc: "Ignored."},
+			"Count": {Doc: "Ignored."},
 		},
 	})
 
 	RegisterType(PtrWriter{}, Typeinfo{
 		Doc: "PtrWriter: Only *PtrWriter are Writers",
 		Field: map[string]Fieldinfo{
-			"Full":     Fieldinfo{Doc: "Full check"},
-			"Fraction": Fieldinfo{Doc: "0 <= Fraction <=1"},
+			"Full":     {Doc: "Full check"},
+			"Fraction": {Doc: "0 <= Fraction <=1"},
 		},
 	})
 
@@ -209,8 +209,8 @@ func TestGUI(t *testing.T) {
 	var x int = 17
 	test.Pointer = &x
 	test.Fancy = map[string][]string{
-		"Hund":  []string{"doof", "dreckig"},
-		"katze": []string{"schlau"},
+		"Hund":  {"doof", "dreckig"},
+		"katze": {"schlau"},
 	}
 	test.Writer = AbcWriter{"Heinz"}
 	test.Writers = []Writer{XyzWriter{8}, AbcWriter{"Anna"}, &PtrWriter{}}
