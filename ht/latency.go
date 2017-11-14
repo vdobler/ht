@@ -270,7 +270,7 @@ func (L *Latency) warmup(tests []*Test) time.Duration {
 		wg.Wait()
 	}
 	// Warump is also used to determine how long a single request takes in
-	// average. This average devided by L.Concurrent determines the offset
+	// average. This average divided by L.Concurrent determines the offset
 	// to start the worker threads
 	// For L.Concurent==4 and  average response time==12  ==>  offset==3
 	//   1 +---------+ +---------+ +---------+ +---------+

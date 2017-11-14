@@ -102,7 +102,7 @@ func registerTestTypes() {
 	})
 
 	RegisterType(Execution{}, Typeinfo{
-		Doc: "Controles test execution",
+		Doc: "Controls test execution",
 		Field: map[string]Fieldinfo{
 			"Method": {
 				Doc:  "The HTTP method",
@@ -129,7 +129,7 @@ func registerTestTypes() {
 			"Complex":  {Doc: "Complex allows fancy customisations."},
 			"Ignore": {
 				Doc: "Ignore some weather conditions:\n" +
-					"Space seperated list of 'rain', 'darkness', 'snow' and 'hail'",
+					"Space separated list of 'rain', 'darkness', 'snow' and 'hail'",
 				Any: []string{"rain", "rainfall", "snow", "hail"},
 			},
 		},

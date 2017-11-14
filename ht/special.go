@@ -248,9 +248,12 @@ func (t *Test) executeBash() error {
 		t.Response.Response.Header.Set("Exit-Status", emsg)
 		// Append error message to body too: Most likely we do not
 		// have any body anyway and "normal" HTTP request add the
-		// error message to the body. This hopefuly helps debugging
-		// too
-		//
+		// error message to the body. This hopefully helps debugging
+		// too.
+		if len(t.Response.BodyStr) > 0 {
+			t.Response.BodyStr += "\n"
+		}
+		t.Response.BodyStr += emsg
 	} else {
 		t.Response.Response.Header.Set("Exit-Status", "exit status 0")
 	}

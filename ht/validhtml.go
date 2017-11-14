@@ -283,7 +283,7 @@ func (s *htmlState) err(e error) {
 	}
 	if s.col > 160 {
 		// Add column information only for "long" lines:
-		// the column is the column the probleem was detected, which
+		// the column is the column the problem was detected, which
 		// is not necesarrily the real position or the start of the
 		// problem.  But in long lines, lets say 2 screen lines,
 		// it is just too hard to locate the error if you don't

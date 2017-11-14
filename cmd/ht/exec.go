@@ -57,7 +57,7 @@ objects as described in the main help (run '$ ht help').
 The TestIDs used in the -only and -skip flags have the format <suite>.<test>
 with <suite> and <test> the sequential numbers of the suite and the test
 inside the suite.  <test> maybe a single number like "3" or a range like
-"3-7" and the "<suite>." part can be omited if only one suite is executed.
+"3-7" and the "<suite>." part can be omitted if only one suite is executed.
 `,
 }
 

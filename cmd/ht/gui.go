@@ -46,7 +46,7 @@ Then open the GUI for the fith test reading in this state:
 
 Please note that the exported tests are not suitable for direct execution:
 All durations are in nanoseconds you have to change these manually,
-variables have been replaced unconditionaly during loading of the test
+variables have been replaced unconditionally during loading of the test
 and have to be reintroduced.
 	`,
 }
@@ -115,7 +115,7 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 		req.ParseForm()
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
-		// Clear stuff from test whcih is not part of a Hjson test definition.
+		// Clear stuff from test which is not part of a Hjson test definition.
 		test := val.Current.(ht.Test)
 		test.Response = ht.Response{}
 		test.Result.Extractions = make(map[string]ht.Extraction)
@@ -190,7 +190,7 @@ func exportHandler(val *gui.Value) func(w http.ResponseWriter, req *http.Request
 
 // Invert the variable replacement in data.
 // If variables contains CURRENT_DIR="." then inverting this would
-// replace every occurence of "." with "{{CURRENT_DIR}}, e.g.:
+// replace every occurrence of "." with "{{CURRENT_DIR}}, e.g.:
 //     URL: "http://www{{CURRENT_DIR}}example{{CURRENT_DIR}}org/"
 // which is not what we want. We thus replace longer strings first and
 // skip unsuitibale replacements

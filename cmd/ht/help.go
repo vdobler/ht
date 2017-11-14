@@ -88,7 +88,7 @@ func displayArchiveHelp() {
 	fmt.Println(`
 Several commands accept archive files which combine everything into one
 large file. Such an archive file consists of the concatenation of the
-different Hjson documents where each document is preceeded by a comment
+different Hjson documents where each document is preceded by a comment
 stating the filename of the document. Any Hjson document can be accessed
 with the syntax <filename>@<archive>. Inside the archive the plain filename
 is sufficient.

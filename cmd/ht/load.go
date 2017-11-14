@@ -33,7 +33,7 @@ The length of the throuput test can be set with the 'duration' command line
 flag. The desired target rate of requests/seconds (QPS) is set with the
 'rate' command line flag.
 The results are collected in the folder setable via the -output flag, the
-main performace results are stored to 'live.csv' which can be analysed by
+main performance results are stored to 'live.csv' which can be analysed by
 running 'ht stat <live.csv>'.
 `,
 }
