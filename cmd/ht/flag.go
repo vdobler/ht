@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // cmdlVar captures name=value pairs settable on the command line
@@ -45,6 +46,7 @@ var (
 	cookiedump       string          // flag -cookiedump
 	cookie           string          // flag -cookie
 	port             string          // flag -port
+	timeout          time.Duration   // flag -timeout
 
 )
 
@@ -62,6 +64,7 @@ func addTestFlags(fs *flag.FlagSet) {
 	addPhantomJSFlag(fs)
 	addDumpFlag(fs)
 	addCookieFlag(fs)
+	addTimeoutFlag(fs)
 }
 
 func addDfileFlag(fs *flag.FlagSet) {
@@ -131,4 +134,8 @@ func addCookieFlag(fs *flag.FlagSet) {
 
 func addPortFlag(fs *flag.FlagSet) {
 	fs.StringVar(&port, "port", ":8888", "http service address, e.g. ")
+}
+
+func addTimeoutFlag(fs *flag.FlagSet) {
+	fs.DurationVar(&timeout, "timeout", 10*time.Second, "default HTTP client timeout")
 }

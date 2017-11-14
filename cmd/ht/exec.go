@@ -102,10 +102,12 @@ func prepareHT() {
 	scope.ResetCounter <- counterSeed
 	scope.Random = rand.New(rand.NewSource(randomSeed))
 	ht.PhantomJSExecutable = phantomjs
+	ht.DefaultClientTimeout = timeout
 	if !silent {
 		fmt.Printf("Seeding random number generator with %d.\n", randomSeed)
 		fmt.Printf("Resetting global counter to %d.\n", counterSeed)
 		fmt.Printf("Using %q as PhantomJS executable.\n", phantomjs)
+		fmt.Printf("Default client timeout is %s.\n", timeout)
 	}
 	if skipTLSVerify {
 		if !silent {
