@@ -251,7 +251,7 @@ func init() {
 				Doc: "Concurrent is the number of concurrent requests in flight. Defaults to 2.\n",
 			},
 			"DumpTo": gui.Fieldinfo{
-				Doc: "DumpTo is the filename where the latencies are reported. The special values\n\"stdout\" and \"stderr\" are recognized.\n",
+				Doc: "DumpTo is the filename where the latencies are reported. The special values\n\"stdout\" and \"stderr\" are recognized. The columns are:\n\n    Test-Name,Concurrent,Completed,Test-Status,Thread,Started,Duration\n",
 			},
 			"IndividualSessions": gui.Fieldinfo{
 				Doc: "IndividualSessions tries to run the concurrent requests in individual sessions:\nA new one for each of the Concurrent many requests (not N many sessions). This\nis done by using a fresh cookiejar so it won't work if the request requires\nprior login.\n",
@@ -529,14 +529,14 @@ func init() {
 				Doc: "Element path to extract.\n",
 			},
 			"Embedded": gui.Fieldinfo{
-				Doc: "Embedded parses the nonempty string selected by Element as a new JSON document\nand applies the extraction to this embedded JSON. E.g. if the overal JSON is\n\n    {\"data\": \"[123,456,789]\"}\n\nthe value if \"data\" is a string which itself is a JSON document. to extract its\nsecond array element you can use\n\n    JSONExtractor{\n        Element: \"data\",\n        Embeded: &JSONExtractor{Element: 1},\n    }\n",
+				Doc: "Embedded parses the nonempty string selected by Element as a new JSON document\nand applies the extraction to this embedded JSON. E.g. if the overal JSON is\n\n    {\"data\": \"[123,456,789]\"}\n\nthe value if \"data\" is a string which itself is a JSON document. to extract its\nsecond array element you can use\n\n    JSONExtractor{\n        Element: \"data\",\n        Embedded: &JSONExtractor{Element: 1},\n    }\n",
 			},
 			"Sep": gui.Fieldinfo{
 				Doc: "Sep is the separator in the element path. A zero value is equivalent to \".\"\n",
 			}}})
 
 	gui.RegisterType(ht.SetTimestamp{}, gui.Typeinfo{
-		Doc: "SetTimestap allows to progmatically extract the current time optionaly offset by\na certain duration in a user selected layout. To round the extracted timestamp\ne.g. to mutliple of hours use a format like \"2006-01-02 15:00:00\" with fixed\nminutes and seconds.\n\nThe test and the response are ignored.\n",
+		Doc: "SetTimestamp allows to progmatically extract the current time optionaly offset\nby a certain duration in a user selected layout. To round the extracted\ntimestamp e.g. to multiple of hours use a format like \"2006-01-02 15:00:00\" with\nfixed minutes and seconds.\n\nThe test and the response are ignored.\n",
 		Field: map[string]gui.Fieldinfo{
 			"DeltaDay": gui.Fieldinfo{
 				Doc: "DeltaYear, DeltaMonth and DeltaDay are deltas to now but for whole years, month\nand days.\n",

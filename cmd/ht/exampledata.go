@@ -898,19 +898,27 @@ var RootExample = &Example{
 }`,
 				}, &Example{
 					Name:        "Test.Mixin",
-					Description: "A Test including Mixins",
-					Data: `// A Test including Mixins
+					Description: "A Test including some Mixins",
+					Data: `// A Test including some Mixins
 {
     Name: "Test with Mixins"
+    Description: """
+        Most parts of this Test come from the two Mixins below
+        which are combined/mixed into the current test.
+        Take a look at 'ht example Mixin' and 'ht example.Mixin.Checks'
+        to see what gets mixed in.
+    """"
+
     Mixin: [
         "Mixin"
         "Mixin.Checks"
     ]
-    Description: "Most parts of this Test com from the two Mixins above." 
+
     Request: {
         URL:    "http://{{HOST}}/html"
         // Additional Request fields are loaded from Mixin
     }
+
     Checks: [
         {Check: "Body", Contains: "e"}
         // Additional Checks are loaded from Mixin.Checks
@@ -948,22 +956,15 @@ var RootExample = &Example{
 					Sub: []*Example{
 						&Example{
 							Name:        "Test.NoneHTTP.Bash",
-							Description: "Reading files, querying databases and executing bash scripts",
-							Data: `// Reading files, querying databases and executing bash scripts
+							Description: "Executing bash scripts",
+							Data: `// Executing bash scripts
 {
-    Name: "Pseudo-requests"
+    Name: "bash pseudo-requests"
 
     Description: '''
-        A normal Test makes a HTTP request but ht also allows to query a
-        database, read a file or execute a bash script and perform checks
-        on their output. Such 'pseudo-requests' are triggered via special
-        schemas in the Request.URL:
-
-          file://  allows to read, write and delete files
-          bash://  allows to execute a bash script
-          sql://   allows to execute SQL statements against a database
-
-        This example test here describes executing a bash script.
+        It is possible to have a Test execute a Bash script instead of making
+        a HTTP request. The checks (and extractions) are applied to the
+        output of the script.
     '''
 
     Request: {
@@ -1098,19 +1099,26 @@ var RootExample = &Example{
 }`,
 						}, &Example{
 							Name:        "Test.NoneHTTP.SQLExec",
-							Description: "Querying a MySQL database",
-							Data: `// Querying a MySQL database
+							Description: "Execute SQL statements against a MySQL database",
+							Data: `// Execute SQL statements against a MySQL database
 {
     Name: "SQL Execute"
 
+    Description: """
+        Instead of making a HTTP request such a test executes SQL statements
+        against a MySQL database.
+        SQL SELECT queries can be executed too: See
+            ht example Test.NoneHTTP.SQLQuery
+        for an example.
+    """
+
     Request: {
         // POST executes SQL statements like CREATE or INSERT.
-        // For SELECT queries use GET.
         Method: "POST"
 
         // The 'sql://' schema makes this a SQL pseudo-request.
         // The host of the URL select the database driver.
-	// Currently only mysql is "supported"
+	// Currently only mysql is supported.
         URL: "sql://mysql"
 
         Header: {
@@ -1119,7 +1127,7 @@ var RootExample = &Example{
             "Data-Source-Name": "test:test@tcp(127.0.0.1:7799)/test?multiStatements=true"
         }
 
-        // The Body contains the SQL Query
+        // The Body contains the SQL Query.
         Body: '''
             DROP TABLE IF EXISTS orders;
             CREATE TABLE orders (
@@ -1162,6 +1170,15 @@ var RootExample = &Example{
 							Data: `// Querying a MySQL database
 {
     Name: "SQL Queries"
+
+    Description: """
+        Instead of making a HTTP request such a test executes SQL queries
+        i.e. SELECTs against a MySQL database.
+        Other statements like INSERT or CREATE can be executed too: See
+            ht example Test.NoneHTTP.SQLExec
+        for an example.
+    """
+
 
     Request: {
         Method: "GET"  //  GET performs a SQL Query (SELECT FROM WHERE)

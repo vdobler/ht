@@ -466,7 +466,7 @@ var typeDoc = map[string]string{
 		"\t// to extract its second array element you can use\n" +
 		"\t//     JSONExtractor{\n" +
 		"\t//         Element: \"data\",\n" +
-		"\t//         Embeded: &JSONExtractor{Element: 1},\n" +
+		"\t//         Embedded: &JSONExtractor{Element: 1},\n" +
 		"\t//     }\n" +
 		"\tEmbedded *JSONExtractor\n" +
 		"}\n" +
@@ -517,6 +517,8 @@ var typeDoc = map[string]string{
 		"\n" +
 		"\t// DumpTo is the filename where the latencies are reported.\n" +
 		"\t// The special values \"stdout\" and \"stderr\" are recognized.\n" +
+		"\t// The columns are:\n" +
+		"\t//   Test-Name,Concurrent,Completed,Test-Status,Thread,Started,Duration\n" +
 		"\tDumpTo string \n" +
 		"\n" +
 		"\t// Has unexported fields.\n" +
@@ -910,9 +912,9 @@ var typeDoc = map[string]string{
 		"\t// It defaults to \"2006-01-02T15:04:05Z07:00\" (RFC3339)\n" +
 		"\tFormat string \n" +
 		"}\n" +
-		"    SetTimestap allows to progmatically extract the current time optionaly\n" +
+		"    SetTimestamp allows to progmatically extract the current time optionaly\n" +
 		"    offset by a certain duration in a user selected layout. To round the\n" +
-		"    extracted timestamp e.g. to mutliple of hours use a format like \"2006-01-02\n" +
+		"    extracted timestamp e.g. to multiple of hours use a format like \"2006-01-02\n" +
 		"    15:00:00\" with fixed minutes and seconds.\n" +
 		"\n" +
 		"    The test and the response are ignored.",
