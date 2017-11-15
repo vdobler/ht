@@ -18,4 +18,4 @@ cmd/ht/testdata/*.ht
 cmd/ht/testdata/*.suite
 _Report_.html
 suite/testdata/out/*
-
+cmd/ht/example-tests/*
