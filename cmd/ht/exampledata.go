@@ -14,33 +14,42 @@ var RootExample = &Example{
 {
     Name: "A simple Throughput Test"
     Description: '''
-        
+        Throughput load tests can be done through the 'load' subcommand.
+        The input to 'ht load' is a file describing how different scenarios
+        contribute to the overall load generated. The scenarios are based
+        on "normal" ht Suites.
+        In addition to the standard automatic variables like TEST_DIR or
+        RANDOM a load test provides THREAD and REPETITION which number the
+        instance of the suite and how often a suite has been repeated.
+        See 'go doc github.com/vdobler/ht/suite.Throughput' for details.
     '''
+
     Scenarios: [
         {
-            File:       "Suite.InlineTest"
-            Percentage: 20
-            MaxThreads: 10
-	    OmitChecks: true
-            Variables: {
+            Name:       "Recurring Customer"  //  Name of this scenario.
+            File:       "Suite.InlineTest"    //  Suite to execute.
+            Percentage: 20    //  20% of request will come from this suite.
+            MaxThreads: 10    //  Start at most 10 instances of this suite.
+	    OmitChecks: true  //  Omit the checks in the tests.
+            Variables: {      //  Set variables für this suite.
                 SCENVAR1: "scenvar1",
-                SCENVAR2: "scenvar1+{{TTVAR2}}",
+                SCENVAR2: "scenvar1+{{SOMEVAR}}",
             }
-        },
+        }
         {
+            Name:       "Typical Surfer"
             File:       "Suite"
             Percentage: 30
             MaxThreads: 15
 	    OmitChecks: false
-        },
+        }
         {
+            Name:       "Search Engine Bot"
             File:       "Suite.Variables"
-            Percentage: 50
+            Percentage: 50     // Half of all request are taken from this one.
             MaxThreads: 15
-	    OmitChecks: false
-        },
-
-
+	    OmitChecks: false  // Checks are executed
+        }
     ]
 
     Variables: {
@@ -902,12 +911,12 @@ var RootExample = &Example{
 					Data: `// A Test including some Mixins
 {
     Name: "Test with Mixins"
-    Description: """
+    Description: '''
         Most parts of this Test come from the two Mixins below
         which are combined/mixed into the current test.
         Take a look at 'ht example Mixin' and 'ht example.Mixin.Checks'
         to see what gets mixed in.
-    """"
+    '''
 
     Mixin: [
         "Mixin"
@@ -1385,18 +1394,18 @@ var RootExample = &Example{
         {Check: "StatusCode", Expect: 200}
 
 	// Response time of request from above
-        {Check: "ResponseTime", Lower: "100ms", Higher: "35ns"}
+        {Check: "ResponseTime", Lower: "120ms", Higher: "35ns"}
         
 	// Make 200 extra request to the same URL, 4 in parallel.
         {Check: "Latency", N: 200, Concurrent: 4, SkipChecks: true,
             // Check percentiles of response time
-            Limits: "50% ≤ 100ms; 80% ≤ 150ms; 95% ≤ 200ms; 0.995 ≤ 0.75s"
+            Limits: "50% ≤ 120ms; 80% ≤ 190ms; 95% ≤ 240ms; 0.995 ≤ 0.85s"
         }
 
 	// Dump data 
-        {Check: "Latency", N: 40, Concurrent: 4, SkipChecks: true,
+        {Check: "Latency", N: 20, Concurrent: 1, SkipChecks: true,
             DumpTo: "stdout",
-            Limits: "50% ≤ 100ms; 80% ≤ 150ms; 95% ≤ 200ms; 0.995 ≤ 0.75s"
+            Limits: "50% ≤ 120ms; 80% ≤ 190ms; 95% ≤ 240ms; 0.995 ≤ 0.85s"
         }
 
 
