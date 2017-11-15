@@ -366,6 +366,9 @@ outer:
 	if err := onlyOneMayBeNonempty(&(m.BasicAuthUser), r.BasicAuthUser); err != nil {
 		return err
 	}
+	if err := onlyOneMayBeNonempty(&(m.BasicAuthPass), r.BasicAuthPass); err != nil {
+		return err
+	}
 
 	return nil
 }
