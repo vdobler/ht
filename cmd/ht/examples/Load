@@ -2,33 +2,42 @@
 {
     Name: "A simple Throughput Test"
     Description: '''
-        
+        Throughput load tests can be done through the 'load' subcommand.
+        The input to 'ht load' is a file describing how different scenarios
+        contribute to the overall load generated. The scenarios are based
+        on "normal" ht Suites.
+        In addition to the standard automatic variables like TEST_DIR or
+        RANDOM a load test provides THREAD and REPETITION which number the
+        instance of the suite and how often a suite has been repeated.
+        See 'go doc github.com/vdobler/ht/suite.Throughput' for details.
     '''
+
     Scenarios: [
         {
-            File:       "Suite.InlineTest"
-            Percentage: 20
-            MaxThreads: 10
-	    OmitChecks: true
-            Variables: {
+            Name:       "Recurring Customer"  //  Name of this scenario.
+            File:       "Suite.InlineTest"    //  Suite to execute.
+            Percentage: 20    //  20% of request will come from this suite.
+            MaxThreads: 10    //  Start at most 10 instances of this suite.
+	    OmitChecks: true  //  Omit the checks in the tests.
+            Variables: {      //  Set variables für this suite.
                 SCENVAR1: "scenvar1",
-                SCENVAR2: "scenvar1+{{TTVAR2}}",
+                SCENVAR2: "scenvar1+{{SOMEVAR}}",
             }
-        },
+        }
         {
+            Name:       "Typical Surfer"
             File:       "Suite"
             Percentage: 30
             MaxThreads: 15
 	    OmitChecks: false
-        },
+        }
         {
+            Name:       "Search Engine Bot"
             File:       "Suite.Variables"
-            Percentage: 50
+            Percentage: 50     // Half of all request are taken from this one.
             MaxThreads: 15
-	    OmitChecks: false
-        },
-
-
+	    OmitChecks: false  // Checks are executed
+        }
     ]
 
     Variables: {
