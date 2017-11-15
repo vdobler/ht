@@ -6,20 +6,26 @@ set -e
 GO=/usr/local/go/bin/go
 echo "### Using $($GO version)"
 
-echo "### Generating godoc data"
-go run gendoc.go
+echo
+echo "### Generating data"
+$GO generate -x 
 
-echo "### Generating gui data"
-go run gengui.go
+echo
+echo "### Build"
+$GO build
+
+echo
+echo "### Smoketests"
+./test-all.bash
 
 version=$(git describe)
 rm -f ht*
 
-LDFLAGS="-X main.version=$version -s"
+LDFLAGS="-X main.version=$version -s -w"
 
 echo
 echo "### Linux version"
-GOOS=linux GOARCH=amd64 go build -o ht_linux -ldflags "$LDFLAGS"
+GOOS=linux GOARCH=amd64 $GO build -o ht_linux -ldflags "$LDFLAGS"
 # Pack binaries with goupx (github.com/pwaller/goupx) which
 # uses upx (http://upx.sourceforge.net)
 goupx --strip-binary ht_linux
@@ -41,4 +47,10 @@ ls -l Documentation.{html,pdf}
 source <($GO env)
 echo
 echo "Successfully built $(./ht_$GOHOSTOS version)"
+echo "Source $(grep -F "version = " version.go)"
+
+if ! git diff-index --quiet HEAD --; then
+    echo
+    echo "Uncommited files present. Should not release."
+fi
 
