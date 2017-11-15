@@ -9,18 +9,18 @@
         {Check: "StatusCode", Expect: 200}
 
 	// Response time of request from above
-        {Check: "ResponseTime", Lower: "100ms", Higher: "35ns"}
+        {Check: "ResponseTime", Lower: "120ms", Higher: "35ns"}
         
 	// Make 200 extra request to the same URL, 4 in parallel.
         {Check: "Latency", N: 200, Concurrent: 4, SkipChecks: true,
             // Check percentiles of response time
-            Limits: "50% ≤ 100ms; 80% ≤ 150ms; 95% ≤ 200ms; 0.995 ≤ 0.75s"
+            Limits: "50% ≤ 120ms; 80% ≤ 190ms; 95% ≤ 240ms; 0.995 ≤ 0.85s"
         }
 
 	// Dump data 
         {Check: "Latency", N: 40, Concurrent: 4, SkipChecks: true,
             DumpTo: "stdout",
-            Limits: "50% ≤ 100ms; 80% ≤ 150ms; 95% ≤ 200ms; 0.995 ≤ 0.75s"
+            Limits: "50% ≤ 120ms; 80% ≤ 190ms; 95% ≤ 240ms; 0.995 ≤ 0.85s"
         }
 
 
