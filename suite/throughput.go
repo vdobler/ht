@@ -627,7 +627,11 @@ func analyseDistribution(data []TestData, pools []*pool) errorlist.List {
 		fullExecution[sn] = fullExecution[sn] + r - 1
 	}
 
-	// Check scenario percentages
+	// Check scenario percentages: Each scenario should contribute
+	// approximately as much as given in its Percentage field.
+	// Statistical fluctuations happen and are larger if only a few
+	// request are made.
+	tolerance := percentageTolerance(N)
 	for i, p := range pools {
 		actual := cnt[i]
 		fmt.Printf("Scenario %d %q: %d requests = %.1f%% (target %d%%), %d threads created, %d thread misses, repetitions",
@@ -639,8 +643,11 @@ func analyseDistribution(data []TestData, pools []*pool) errorlist.List {
 			fmt.Printf(" %d", repPerThread[i][t])
 		}
 		fmt.Println()
-		low := N * (p.Scenario.Percentage - 5) / 100
-		high := N * (p.Scenario.Percentage + 5) / 100
+		low := N * (p.Scenario.Percentage - tolerance) / 100
+		if low <= 0 {
+			low = 1
+		}
+		high := N * (p.Scenario.Percentage + tolerance) / 100
 		if low <= actual && actual <= high {
 			continue
 		}
@@ -665,6 +672,15 @@ func analyseDistribution(data []TestData, pools []*pool) errorlist.List {
 	}
 
 	return nil
+}
+
+func percentageTolerance(N int) int {
+	if N < 400 {
+		return 10
+	} else if N < 800 {
+		return 5
+	}
+	return 3
 }
 
 func analyseOverage(data []TestData) error {
