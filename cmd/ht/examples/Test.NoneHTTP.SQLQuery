@@ -2,6 +2,15 @@
 {
     Name: "SQL Queries"
 
+    Description: """
+        Instead of making a HTTP request such a test executes SQL queries
+        i.e. SELECTs against a MySQL database.
+        Other statements like INSERT or CREATE can be executed too: See
+            ht example Test.NoneHTTP.SQLExec
+        for an example.
+    """
+
+
     Request: {
         Method: "GET"  //  GET performs a SQL Query (SELECT FROM WHERE)
 

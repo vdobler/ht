@@ -1,18 +1,11 @@
-// Reading files, querying databases and executing bash scripts
+// Executing bash scripts
 {
-    Name: "Pseudo-requests"
+    Name: "bash pseudo-requests"
 
     Description: '''
-        A normal Test makes a HTTP request but ht also allows to query a
-        database, read a file or execute a bash script and perform checks
-        on their output. Such 'pseudo-requests' are triggered via special
-        schemas in the Request.URL:
-
-          file://  allows to read, write and delete files
-          bash://  allows to execute a bash script
-          sql://   allows to execute SQL statements against a database
-
-        This example test here describes executing a bash script.
+        It is possible to have a Test execute a Bash script instead of making
+        a HTTP request. The checks (and extractions) are applied to the
+        output of the script.
     '''
 
     Request: {

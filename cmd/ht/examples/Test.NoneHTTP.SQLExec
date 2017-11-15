@@ -1,15 +1,22 @@
-// Querying a MySQL database
+// Execute SQL statements against a MySQL database
 {
     Name: "SQL Execute"
 
+    Description: """
+        Instead of making a HTTP request such a test executes SQL statements
+        against a MySQL database.
+        SQL SELECT queries can be executed too: See
+            ht example Test.NoneHTTP.SQLQuery
+        for an example.
+    """
+
     Request: {
         // POST executes SQL statements like CREATE or INSERT.
-        // For SELECT queries use GET.
         Method: "POST"
 
         // The 'sql://' schema makes this a SQL pseudo-request.
         // The host of the URL select the database driver.
-	// Currently only mysql is "supported"
+	// Currently only mysql is supported.
         URL: "sql://mysql"
 
         Header: {
@@ -18,7 +25,7 @@
             "Data-Source-Name": "test:test@tcp(127.0.0.1:7799)/test?multiStatements=true"
         }
 
-        // The Body contains the SQL Query
+        // The Body contains the SQL Query.
         Body: '''
             DROP TABLE IF EXISTS orders;
             CREATE TABLE orders (

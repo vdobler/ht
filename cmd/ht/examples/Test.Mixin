@@ -1,15 +1,23 @@
-// A Test including Mixins
+// A Test including some Mixins
 {
     Name: "Test with Mixins"
+    Description: """
+        Most parts of this Test come from the two Mixins below
+        which are combined/mixed into the current test.
+        Take a look at 'ht example Mixin' and 'ht example.Mixin.Checks'
+        to see what gets mixed in.
+    """"
+
     Mixin: [
         "Mixin"
         "Mixin.Checks"
     ]
-    Description: "Most parts of this Test com from the two Mixins above." 
+
     Request: {
         URL:    "http://{{HOST}}/html"
         // Additional Request fields are loaded from Mixin
     }
+
     Checks: [
         {Check: "Body", Contains: "e"}
         // Additional Checks are loaded from Mixin.Checks
