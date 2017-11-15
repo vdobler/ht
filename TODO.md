@@ -16,36 +16,6 @@ Open Issues
    has Python syntax which allows a natural representation of Go structs
    and advanced string procesing routines.
 
-*  There is no builtin documentation for the file://, bash:// and sql://
-   pseudo-request at all. The builtin documentation for the "raw" tests
-   and suites is lacking. E.g. ht doc RawTest yields something like:
-       type RawTest struct {
-           *File
-           Mixins    []*Mixin          // Mixins of this test.
-           Variables map[string]string // Variables are the defaults of the variables.
-       }
-       RawTest is a raw for of a test as read from disk with its mixins and its
-       variables.
-   which is not helpful when writing a Test in Hjson disk format. Almost the
-   same with 'ht doc Test' which outputs all fields of a Tests, inculding the
-   "output" fields which are useless to set. Here the GUI documentation is
-   more helpful. But also this is missing documentation for the Mixins. This
-   problem is even worse for Suites.
-   The documentation is mostly there, but spread over Readme.md files, type
-   docs, package docs and sometimes even unit tests.
-   Basically 'ht doc' need not output what 'go doc' would print: 'ht doc' is
-   used while using cmd/ht and not the libraray ht. So ' go doc Test' should
-   display how to write a Hjson based test. I'm comfortable with 'ht doc Test'
-   outputing just the direct/toplevel fields of Test and the user has to run
-   'ht doc Request' to dig into the fields of Test. For CustomJS check and
-   JSExtractor it might be is important to know e.g. the details of how a
-   Response is structured. Maybe the documentation of these two has to be
-   augmented and should point to the official godoc of ht.Test.
-   For writing Hjson tests it is not really needed to know that Body is a
-   Condition: It is nice as a reference but you are interesetd in the details
-   for Min and Regexp so 'ht doc Body' should display the fields of a
-   Condition directly. This is already done in the GUI to some extent.
-
 *  The file://-Pseudorequest work on localhost only which is a bit lame given
    that the Logfile check can access remote files via ssh. The AuthMethods
    could be passed in the HTTP header in a quite natural way.
@@ -271,3 +241,35 @@ Resolved TODOs
          * Test.Speed  how to check speed of an endpoint
    This would provide valuable howtos and could replace the showcase.
    --> implemented
+
+*  There is no builtin documentation for the file://, bash:// and sql://
+   pseudo-request at all. The builtin documentation for the "raw" tests
+   and suites is lacking. E.g. ht doc RawTest yields something like:
+       type RawTest struct {
+           *File
+           Mixins    []*Mixin          // Mixins of this test.
+           Variables map[string]string // Variables are the defaults of the variables.
+       }
+       RawTest is a raw for of a test as read from disk with its mixins and its
+       variables.
+   which is not helpful when writing a Test in Hjson disk format. Almost the
+   same with 'ht doc Test' which outputs all fields of a Tests, inculding the
+   "output" fields which are useless to set. Here the GUI documentation is
+   more helpful. But also this is missing documentation for the Mixins. This
+   problem is even worse for Suites.
+   The documentation is mostly there, but spread over Readme.md files, type
+   docs, package docs and sometimes even unit tests.
+   Basically 'ht doc' need not output what 'go doc' would print: 'ht doc' is
+   used while using cmd/ht and not the libraray ht. So ' go doc Test' should
+   display how to write a Hjson based test. I'm comfortable with 'ht doc Test'
+   outputing just the direct/toplevel fields of Test and the user has to run
+   'ht doc Request' to dig into the fields of Test. For CustomJS check and
+   JSExtractor it might be is important to know e.g. the details of how a
+   Response is structured. Maybe the documentation of these two has to be
+   augmented and should point to the official godoc of ht.Test.
+   For writing Hjson tests it is not really needed to know that Body is a
+   Condition: It is nice as a reference but you are interesetd in the details
+   for Min and Regexp so 'ht doc Body' should display the fields of a
+   Condition directly. This is already done in the GUI to some extent.
+   --> file://, bash:// and sql:// pseudo queries got their own examples
+       and examples in general should be most helpful in writing Tests.
