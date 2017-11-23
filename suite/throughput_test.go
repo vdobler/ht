@@ -5,6 +5,7 @@
 package suite
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -248,10 +249,18 @@ func TestThroughput(t *testing.T) {
 		CollectFrom:  ht.NotRun,
 		MaxErrorRate: 0, // disabled
 	}
-	data, failures, err := Throughput(scenarios, opts, livefile)
-	if err != nil {
-		fmt.Println("==> ", err.Error())
+	logbuf := &bytes.Buffer{}
+	var logger ht.Logger
+	if *verboseTest {
+		logger = log.New(logbuf, "Throughput Log ", log.LstdFlags)
 	}
+	data, failures, err := Throughput(scenarios, opts, livefile, logger)
+	t.Logf("Primary error: %v", err)
+
+	if *verboseTest {
+		fmt.Println(logbuf.String())
+	}
+
 	if *verboseTest {
 		fmt.Println("")
 		fmt.Println("## ", failures.Name)
@@ -278,7 +287,7 @@ func TestThroughput(t *testing.T) {
 		t.Errorf("Bad distribution of scenarios: fast=%f slow=%f slooow=%f",
 			fastP, slowP, slooowP)
 	}
-	fmt.Println("Recorded ", len(data), "points")
+	t.Logf("Recorded %d points", len(data))
 
 	file, err := os.Create("testdata/out/throughput.csv")
 	if err != nil {
@@ -365,8 +374,9 @@ func TestThroughput2(t *testing.T) {
 	}
 
 	scenarios := raw.ToScenario(global)
+	t.Logf("Running the following scenarios:")
 	for i, scen := range scenarios {
-		fmt.Printf("%d. %d%% %q (max %d threads)\n",
+		t.Logf("%d. %d%% %q (max %d threads)\n",
 			i+1, scen.Percentage, scen.Name, scen.MaxThreads)
 	}
 
@@ -377,12 +387,18 @@ func TestThroughput2(t *testing.T) {
 		CollectFrom:  ht.Bogus,
 		MaxErrorRate: 2, // de facto disabled
 	}
-	data, _, err := Throughput(scenarios, opts, ioutil.Discard)
-	if err != nil {
-		fmt.Println("==> ", err.Error())
+	logbuf := &bytes.Buffer{}
+	var logger ht.Logger
+	if *verboseTest {
+		logger = log.New(logbuf, "Throughput Log ", log.LstdFlags)
 	}
+	data, _, err := Throughput(scenarios, opts, ioutil.Discard, logger)
+	t.Logf("Recorded %d points", len(data))
+	t.Logf("Primary error: %v", err)
 
-	fmt.Println("Recorded ", len(data), "points")
+	if *verboseTest {
+		fmt.Println(logbuf.String())
+	}
 
 	file, err := os.Create("testdata/out/throughput2.csv")
 	if err != nil {

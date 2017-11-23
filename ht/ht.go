@@ -219,14 +219,17 @@ type Test struct {
 	Result Result
 
 	// Log is the logger to use.
-	Log interface {
-		Printf(format string, a ...interface{})
-	} `json:"-"`
+	Log Logger `json:"-"`
 
 	client *http.Client
 
 	// metadata allows to attach additional data to a Test.
 	metadata map[string]interface{}
+}
+
+// Logger is used for logging.
+type Logger interface {
+	Printf(format string, a ...interface{})
 }
 
 // Result contains information about an (executed) Test.

@@ -9,7 +9,6 @@ Open Issues
    before jumping into the test. A table would be good enough to start:
      normal limit, limits under race, normal on Travis, Travis under race.
 
-
 *  Instead of Hjson with variable replacement it could be much nicer to use
    a real configuration language for Checks, Tests and Suite.
    Maybe Skylark github.com/google/skylark might be a nice option as it

@@ -442,7 +442,7 @@ func TestExampleLoad(t *testing.T) {
 				CollectFrom:  ht.Error,
 				MaxErrorRate: -1,
 			}
-			data, failures, lterr := suite.Throughput(scenarios, opts, nil)
+			data, failures, lterr := suite.Throughput(scenarios, opts, nil, nil)
 			saveLoadtestData(data, failures, scenarios)
 			if lterr != nil && os.Getenv("TRAVIS_GO_VERSION") == "" {
 				t.Fatal(lterr)

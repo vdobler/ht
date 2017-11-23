@@ -7,7 +7,6 @@ package suite
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path"
 	"path/filepath"
 	"strings"
@@ -484,7 +483,7 @@ func (rs *RawSuite) Validate(global map[string]string) error {
 //      Teardown-1    Pass     Pass
 //      Teardown-2    Fail     Error
 //      Teardown-3    Pass     Pass
-func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
+func (rs *RawSuite) Execute(global map[string]string, jar *cookiejar.Jar, logger ht.Logger) *Suite {
 	suite := NewFromRaw(rs, global, jar, logger)
 	N := len(rs.tests)
 	setup, main, teardown := len(rs.Setup), len(rs.Main), len(rs.Teardown)

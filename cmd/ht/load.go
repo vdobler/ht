@@ -129,7 +129,8 @@ func runLoad(cmd *Command, args []string) {
 		CollectFrom:  collectStatus,
 		MaxErrorRate: maxErrorRate,
 	}
-	data, failures, lterr := suite.Throughput(scenarios, opts, livefile)
+	logger := log.New(os.Stdout, "", log.LstdFlags)
+	data, failures, lterr := suite.Throughput(scenarios, opts, livefile, logger)
 
 	if len(data) == 0 && failures == nil && lterr != nil {
 		fmt.Fprintf(os.Stderr, "Bad test setup: %s\n", lterr)

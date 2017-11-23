@@ -51,7 +51,7 @@ type Suite struct {
 }
 
 // NewFromRaw sets up a new Suite from rs, read to be Iterated.
-func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logger *log.Logger) *Suite {
+func NewFromRaw(rs *RawSuite, global map[string]string, jar *cookiejar.Jar, logger ht.Logger) *Suite {
 	// Create cookie jar if needed.
 	if rs.KeepCookies {
 		if jar == nil {

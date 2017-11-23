@@ -480,7 +480,7 @@ func TestLoadRawLoadtest(t *testing.T) {
 	scenarios := raw.ToScenario(global)
 	if *verboseTest {
 		for i, scen := range scenarios {
-			fmt.Printf("%d. %d%% %q (max %d threads)\n",
+			t.Logf("%d. %d%% %q (max %d threads)\n",
 				i, scen.Percentage, scen.RawSuite.Name, scen.MaxThreads)
 		}
 	}

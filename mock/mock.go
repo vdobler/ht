@@ -48,11 +48,6 @@ import (
 	"github.com/vdobler/ht/scope"
 )
 
-// Log is the interface used for logging.
-type Log interface {
-	Printf(format string, a ...interface{})
-}
-
 // Mock allows to mock a HTTP response for a certain request.
 //
 // It reuses functionality from github.com/vdobler/ht/ht, namely Checks
@@ -121,8 +116,8 @@ type Mock struct {
 	// This is nonsensical but is the fastet way to get mocking up running.
 	Monitor chan *ht.Test
 
-	// Log to report infos to.
-	Log Log
+	// Log is the logger to report infos to.
+	Log ht.Logger
 
 	tls bool // served via https
 }
@@ -409,7 +404,7 @@ var ServerShutdownGraceperiode = 250 * time.Millisecond
 // This is a low level function: If one just wishes to provide a bunch
 // of mocks services and check whether they were invoked properly one
 // should use Provide and Analyse.
-func Serve(mocks []*Mock, notfound http.Handler, log Log, certFile, keyFile string) (stop chan bool, err error) {
+func Serve(mocks []*Mock, notfound http.Handler, log ht.Logger, certFile, keyFile string) (stop chan bool, err error) {
 	stop = make(chan bool)
 	group, err := groupMocks(mocks)
 	if err != nil {
@@ -518,7 +513,7 @@ func groupMocks(mocks []*Mock) (map[string][]*Mock, error) {
 	return group, nil
 }
 
-func createServer(port string, mocks []*Mock, notfound http.Handler, log Log) *http.Server {
+func createServer(port string, mocks []*Mock, notfound http.Handler, log ht.Logger) *http.Server {
 	r := mux.NewRouter()
 	for _, m := range mocks {
 		u, _ := url.Parse(m.URL) // Cannot fail: validated during splitMocks.
@@ -575,7 +570,7 @@ type Control struct {
 // and recorded.
 // The returned control handle must be Analyze'd to stop data collection
 // and prevent goroutine leaks.
-func Provide(mocks []*Mock, logger Log) (Control, error) {
+func Provide(mocks []*Mock, logger ht.Logger) (Control, error) {
 	monitor := make(chan *ht.Test)
 	enabled := []*Mock{}
 
