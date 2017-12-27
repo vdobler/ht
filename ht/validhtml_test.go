@@ -261,6 +261,7 @@ func TestCheckAttributeEscaping(t *testing.T) {
 		{"proper-amp", `p title="foo&amp;bar"`, ""},
 		{"proper-circ", `p title="e&circ;2pi"`, ""},
 		{"bad1", `a href="/foo&circa;bar"`, "Line 1: Unknown entity &circa;"},
+		{"ioor", `CHF&nbsp;`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &htmlState{}

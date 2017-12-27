@@ -397,6 +397,9 @@ func (s *htmlState) checkAmbiguousAmpersand(text string) {
 				return
 			}
 		}
+		if i == len(text) {
+			break
+		}
 		text = text[i+1:]
 	}
 }
