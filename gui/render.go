@@ -635,7 +635,7 @@ func (v *Value) renderMap(path string, depth int, readonly bool, val reflect.Val
 			indent(depth+1), template.HTMLEscapeString(elemPath))
 
 		if !readonly {
-			v.printf("%s<td><button name=\"%s\" value=\"Remove\">-</button></td>\n",
+			v.printf("%s<td><button name=\"%s.__OP__\" value=\"Remove\">-</button></td>\n",
 				indent(depth+2), elemPath)
 		}
 		v.printf("%s<th>%s</th>\n", indent(depth+2),
