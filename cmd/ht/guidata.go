@@ -107,8 +107,11 @@ func init() {
 			}}})
 
 	gui.RegisterType(ht.ETag{}, gui.Typeinfo{
-		Doc:   "ETag checks for the presence of a (strong) ETag header and that a subsequent\nrequest with a If-None-Match header results in a 304 Not Modified response.\n",
-		Field: map[string]gui.Fieldinfo{}})
+		Doc: "ETag checks for the presence of a (string) ETag header and that a subsequent GET\nrequest with a If-None-Match header results in a 304 Not Modified response.\n",
+		Field: map[string]gui.Fieldinfo{
+			"Weak": gui.Fieldinfo{
+				Doc: "// Weak allows weak ETags too.",
+			}}})
 
 	gui.RegisterType(ht.FinalURL{}, gui.Typeinfo{
 		Doc: "FinalURL checks the last URL after following all redirects. This check is useful\nonly for tests with Request.FollowRedirects=true\n",

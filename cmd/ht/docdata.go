@@ -176,9 +176,12 @@ var typeDoc = map[string]string{
 		"    DeleteCookie checks that the HTTP response properly deletes all cookies\n" +
 		"    matching Name, Path and Domain. Path and Domain are optional in which case\n" +
 		"    all cookies with the given Name are checked for deletion.",
-	"etag": "type ETag struct{}\n" +
-		"    ETag checks for the presence of a (strong) ETag header and that a subsequent\n" +
-		"    request with a If-None-Match header results in a 304 Not Modified response.",
+	"etag": "type ETag struct {\n" +
+		"\tWeak bool // Weak allows weak ETags too.\n" +
+		"}\n" +
+		"    ETag checks for the presence of a (string) ETag header and that a subsequent\n" +
+		"    GET request with a If-None-Match header results in a 304 Not Modified\n" +
+		"    response.",
 	"execution": "type Execution struct {\n" +
 		"\t// Tries is the maximum number of tries made for this test.\n" +
 		"\t// Both 0 and 1 mean: \"Just one try. No redo.\"\n" +

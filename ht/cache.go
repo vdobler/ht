@@ -30,20 +30,24 @@ var (
 	errUnquotedETag  = errors.New("ETag value not quoted")
 	errEmptyETag     = errors.New("empty ETag value")
 	errMultipleETags = errors.New("multiple ETag headers")
-	errETagIgnored   = errors.New("ETag not honoured")
+	errETagIgnored   = errors.New("ETag not honoured in subsequent GET")
+	errWeakETag      = errors.New("received only a weak 'W/' ETag")
 )
 
-// ETag checks for the presence of a (strong) ETag header and that a
-// subsequent request with a If-None-Match header results in a
+// ETag checks for the presence of a (string) ETag header and that a
+// subsequent GET request with a If-None-Match header results in a
 // 304 Not Modified response.
-type ETag struct{}
+type ETag struct {
+	Weak bool // Weak allows weak ETags too.
+}
 
 // Execute implements Check's Execute method.
-func (ETag) Execute(t *Test) error {
+func (e ETag) Execute(t *Test) error {
 	if t.Request.Method != "" && t.Request.Method != http.MethodGet {
 		return errBadMethod
 	}
 
+	// We expect exactly one ETag header value.
 	values := etags(t.Response.Response.Header)
 	if len(values) == 0 {
 		return errNoETag
@@ -51,6 +55,14 @@ func (ETag) Execute(t *Test) error {
 		return errMultipleETags
 	}
 	val := values[0]
+
+	if strings.HasPrefix(val, "W/") {
+		if !e.Weak {
+			return errWeakETag
+		}
+		val = val[2:]
+	}
+
 	if len(val) < 3 {
 		return errEmptyETag
 	}
@@ -63,6 +75,7 @@ func (ETag) Execute(t *Test) error {
 	if err != nil {
 		return err
 	}
+	second.Request.Method = "GET"
 	second.Request.Header.Set("If-None-Match", val)
 	second.Checks = CheckList{
 		&StatusCode{Expect: 304},

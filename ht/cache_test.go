@@ -32,6 +32,12 @@ var wrongETagTests = []TC{
 	{Response{Response: &http.Response{Header: http.Header{
 		"Etag": []string{`"m1"`, `"m2"`}}}},
 		ETag{}, errMultipleETags},
+	{Response{Response: &http.Response{Header: http.Header{
+		"Etag": []string{`W/"deadbeef"`}}}},
+		ETag{}, errWeakETag},
+	{Response{Response: &http.Response{Header: http.Header{
+		"Etag": []string{`W/deadbeef`}}}},
+		ETag{Weak: true}, errUnquotedETag},
 }
 
 func TestETagMissing(t *testing.T) {
@@ -42,11 +48,14 @@ func TestETagMissing(t *testing.T) {
 
 var etagTests = []struct {
 	path string
+	weak bool
 	err  error
 }{
-	{"/notag", errNoETag},
-	{"/tagonly", errETagIgnored},
-	{"/okay", nil},
+	{"/notag", false, errNoETag},
+	{"/tagonly", false, errETagIgnored},
+	{"/okay", false, nil},
+	{"/okay?weak=1", false, errWeakETag},
+	{"/okay?weak=1", true, nil},
 }
 
 func TestETag(t *testing.T) {
@@ -61,7 +70,7 @@ func TestETag(t *testing.T) {
 				URL:    ts.URL + tc.path,
 			},
 			Checks: []Check{
-				ETag{},
+				ETag{Weak: tc.weak},
 			},
 		}
 
@@ -81,11 +90,6 @@ func TestETag(t *testing.T) {
 	}
 }
 
-// echoHandler answers the request based on the parameters status (HTTP status
-// code), text (the response body) and header and value (any HTTP header).
-// The handler sleeps for a random duration between smin and smax milliseconds.
-// If echoHandler is called with parameter fail it timeout with the given
-// probability. The parameter bad controls the probability if bad responses.
 func etagHandler(w http.ResponseWriter, r *http.Request) {
 	tag := `"halleluja-12345"`
 	path := r.URL.Path
@@ -100,6 +104,9 @@ func etagHandler(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("If-None-Match") == tag {
 			w.WriteHeader(304)
 		} else {
+			if r.URL.Query().Get("weak") == "1" {
+				tag = "W/" + tag
+			}
 			w.Header()["ETag"] = []string{tag}
 			http.Error(w, "You are welcome!", http.StatusOK)
 		}
