@@ -14,7 +14,9 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
 	"path"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -69,6 +71,7 @@ func init() {
 
 	addTestFlags(cmdExec.Flag)
 	addOutputFlag(cmdExec.Flag)
+	addShowFlag(cmdExec.Flag)
 
 	cmdExec.Flag.BoolVar(&carryVars, "carry", false,
 		"carry variables from finished suite to next suite")
@@ -175,6 +178,7 @@ func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *c
 	}
 
 	accum := newAccumulator()
+	multipleSuites := len(suites) > 1
 	for i, s := range suites {
 		if !ssilent {
 			logger.Println("Starting Suite", i+1, s.Name, s.File.Name)
@@ -195,10 +199,10 @@ func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *c
 		}
 		errors = errors.Append(err)
 
-		err = saveSingle(accum, outputDir, outcome)
+		err = saveSingle(accum, outputDir, outcome, showBrowser && (!multipleSuites))
 		errors = errors.Append(err)
-		if len(suites) > 1 {
-			err := saveOverallReport(outputDir, accum)
+		if multipleSuites {
+			err := saveOverallReport(outputDir, accum, showBrowser && i == 0)
 			errors = errors.Append(err)
 		}
 
@@ -216,7 +220,7 @@ func executeSuites(suites []*suite.RawSuite, variables map[string]string, jar *c
 //     result.txt
 //     variables.json
 //     cookies.json
-func saveSingle(accum *accumulator, outputDir string, s *suite.Suite) error {
+func saveSingle(accum *accumulator, outputDir string, s *suite.Suite, openBrowser bool) error {
 	if mute || outputDir == "/dev/null" {
 		return nil
 	}
@@ -245,6 +249,9 @@ func saveSingle(accum *accumulator, outputDir string, s *suite.Suite) error {
 	errors = errors.Append(err)
 	reportURL := "file://" + path.Join(cwd, dirname, "_Report_.html")
 	fmt.Printf("See %s\n", reportURL)
+	if openBrowser {
+		startBrowser(reportURL)
+	}
 
 	junit, err := s.JUnit4XML()
 	errors = errors.Append(err)
@@ -261,6 +268,20 @@ func saveSingle(accum *accumulator, outputDir string, s *suite.Suite) error {
 	errors = errors.Append(err)
 
 	return errors.AsError()
+}
+
+func startBrowser(file string) error {
+	command, args := "xdg-open", []string{}
+	switch runtime.GOOS {
+	case "darwin":
+		command = "open"
+	case "windows":
+		command = "cmd"
+		args = []string{"/c", "start"}
+	}
+	args = append(args, file)
+	cmd := exec.Command(command, args...)
+	return cmd.Start()
 }
 
 // reportOverall summary data to stdout and save final variables and cookies.
@@ -334,7 +355,7 @@ var overallReportTemplate = template.Must(template.New("report").Parse(`<!DOCTYP
 </html>
 `))
 
-func saveOverallReport(dirname string, accum *accumulator) error {
+func saveOverallReport(dirname string, accum *accumulator, openBrowser bool) error {
 	if mute {
 		return nil
 	}
@@ -356,6 +377,9 @@ func saveOverallReport(dirname string, accum *accumulator) error {
 	cwd, err := os.Getwd()
 	if err == nil {
 		reportURL := "file://" + path.Join(cwd, filename)
+		if openBrowser {
+			startBrowser(reportURL)
+		}
 		fmt.Printf("Overall: %s\n", reportURL)
 	}
 	return err

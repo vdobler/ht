@@ -47,7 +47,7 @@ var (
 	cookie           string          // flag -cookie
 	port             string          // flag -port
 	timeout          time.Duration   // flag -timeout
-
+	showBrowser      bool            // flag -show
 )
 
 func addVarsFlags(fs *flag.FlagSet) {
@@ -75,6 +75,11 @@ func addDfileFlag(fs *flag.FlagSet) {
 func addOutputFlag(fs *flag.FlagSet) {
 	fs.StringVar(&outputDir, "output", "",
 		"save results to `dirname` instead of timestamp")
+}
+
+func addShowFlag(fs *flag.FlagSet) {
+	fs.BoolVar(&showBrowser, "show", false,
+		"open result file in browser")
 }
 
 func addSeedFlag(fs *flag.FlagSet) {

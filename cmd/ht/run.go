@@ -26,8 +26,8 @@ See exec for a more detailed description of suite execution.
 
 func init() {
 	addOutputFlag(cmdRun.Flag)
-
 	addTestFlags(cmdRun.Flag)
+	addShowFlag(cmdRun.Flag)
 }
 
 func runRun(cmd *Command, tests []*suite.RawTest) {

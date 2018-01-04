@@ -35,6 +35,7 @@ var fullChecksFlag = false
 func init() {
 	addOutputFlag(cmdQuick.Flag)
 	addTestFlags(cmdQuick.Flag)
+	addShowFlag(cmdQuick.Flag)
 	cmdQuick.Flag.BoolVar(&fullChecksFlag, "full", false,
 		"check links, latency and resilience too")
 
@@ -158,6 +159,6 @@ func runQuick(cmd *Command, urls []string) {
 
 	accum := newAccumulator()
 	accum.update(s)
-	saveSingle(accum, outputDir, s)
+	saveSingle(accum, outputDir, s, showBrowser)
 	reportOverall(accum)
 }
