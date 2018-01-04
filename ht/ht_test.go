@@ -716,3 +716,28 @@ func TestQuantile(t *testing.T) {
 		}
 	}
 }
+
+func TestAsJSON(t *testing.T) {
+	test := &Test{
+		Name: "AsJSON",
+		Request: Request{
+			Method: "GET",
+			URL:    "https://example.com",
+			Params: url.Values{
+				"foo": []string{"simple"},
+				"bar": []string{"multiple", "complex"},
+			},
+		},
+		Checks: CheckList{
+			StatusCode{Expect: 200},
+		},
+	}
+
+	test.Run()
+
+	ser, err := test.AsJSON()
+	if err != nil {
+		t.Errorf("Unexpected error %q (%T)", err, err)
+	}
+	fmt.Println(string(ser))
+}

@@ -474,16 +474,20 @@ func (t *Test) AsJSON() ([]byte, error) {
 	// Nil some un-serilisable stuff.
 	t.Jar = nil
 	t.client = nil
+	t.Log = nil
 	if t.Request.Request != nil {
 		t.Request.Request.Body = nil
+		t.Request.Request.GetBody = nil
 		t.Request.Request.PostForm = nil
 		t.Request.Request.MultipartForm = nil
 		t.Request.Request.TLS = nil
 		t.Request.Request.Close = false
+		t.Request.Request.Response = nil
 	}
 	if t.Response.Response != nil {
 		t.Response.Response.TLS = nil
 		t.Response.Response.Body = nil
+		t.Response.Response.Request = nil
 	}
 
 	return json.MarshalIndent(t, "", "    ")
