@@ -394,13 +394,13 @@ func textContentRec(n *html.Node, raw bool) string {
 
 // Links checks links and references in HTML pages for availability.
 //
-// It can reports mixed content as a failure by setting FailMixedContent.
+// It can report 'mixed content' as a failure by setting FailMixedContent
 // (See https://w3c.github.io/webappsec-mixed-content/). Links will
 // upgrade any non-anchor links if the original reqesponse contains
 //     Content-Security-Policy: upgrade-insecure-requests
 // in the HTTP header.
 type Links struct {
-	// Which links to test; a space separated list of tag tag names:
+	// Which links to test; a space separated list of tag names:
 	//     'a',   'link',  'img',  'script', 'video', 'audio' or 'source'
 	// E.g. use "a img" to check the href attribute of all a-tags and
 	// the src attribute of all img-tags.
