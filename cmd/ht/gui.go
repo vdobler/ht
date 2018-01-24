@@ -101,7 +101,9 @@ func runGUI(cmd *Command, tests []*suite.RawTest) {
 	http.HandleFunc("/export", exportHandler(testValue))
 	http.HandleFunc("/binary", binaryHandler(testValue))
 	http.HandleFunc("/", displayHandler(testValue))
-	fmt.Printf("Open GUI on http://localhost%s/\n", port)
+	guiURL := fmt.Sprintf("http://localhost%s/", port)
+	fmt.Println("GUI accessible on", guiURL)
+	startBrowser(guiURL)
 	log.Fatal(http.ListenAndServe(port, nil))
 
 	os.Exit(0)
