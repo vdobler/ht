@@ -17,6 +17,9 @@ var conditionTests = []struct {
 	c Condition
 	w string
 }{
+	// Zero Condition
+	{"whatever", Condition{}, ``},
+
 	// Equals
 	{"foobar", Condition{Equals: "foobar"}, ``},
 	{"foobar", Condition{Equals: "barfoo"}, `Unequal, was "foobar"`},
