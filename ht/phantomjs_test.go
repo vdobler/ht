@@ -598,11 +598,11 @@ func TestRenderingTime(t *testing.T) {
 	}
 
 	if test := suite.Tests[0]; test.Result.Status != Fail {
-		t.Errorf("%s, %s: %s",
+		t.Errorf("%s, %s: %v",
 			test.Name, test.Result.Status, test.Result.Error)
 	}
 	if test := suite.Tests[1]; test.Result.Status != Pass {
-		t.Errorf("%s, %s: %s",
+		t.Errorf("%s, %s: %v",
 			test.Name, test.Result.Status, test.Result.Error)
 	}
 }
@@ -656,7 +656,7 @@ func TestRenderingTime2(t *testing.T) {
 		t.Errorf("Unexpected error %s (%#v)", err2, err2)
 	}
 	if test2.Result.Status != Fail || test2.Result.Error == nil {
-		t.Errorf("Want status=Fail and error, got %s, %s <%T>",
+		t.Errorf("Want status=Fail and error, got %s, %v <%T>",
 			test2.Result.Status, test2.Result.Error, test2.Result.Error)
 	}
 

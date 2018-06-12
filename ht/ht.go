@@ -578,39 +578,34 @@ func (t *Test) Run() error {
 
 // execute does a single request and check the response.
 func (t *Test) execute() {
-	var err error
-	switch t.Request.Request.URL.Scheme {
-	case "file":
-		err = t.executeFile()
-	case "http", "https":
-		err = t.executeRequest()
-	case "bash":
-		err = t.executeBash()
-	case "sql":
-		err = t.executeSQL()
-		if _, ok := err.(bogusSQLQuery); ok {
-			t.Result.Status = Bogus
-			t.Result.Error = err
-			return
-		}
-	default:
+
+	action := actionRegistry[t.Request.Request.URL.Scheme]
+	if action == nil {
 		t.Result.Status = Bogus
 		t.Result.Error = fmt.Errorf("ht: unrecognized URL scheme %q", t.Request.Request.URL.Scheme)
 		return
 	}
-	if err == nil {
-		if len(t.Checks) > 0 {
-			if t.Execution.InterSleep > 0 {
-				t.debugf("InterSleep %s", t.Execution.InterSleep)
-				time.Sleep(t.Execution.InterSleep)
-			}
-			t.ExecuteChecks()
-		} else {
-			t.Result.Status = Pass
-		}
-	} else {
+
+	err := action.Valid(t)
+	if err != nil {
+		t.Result.Status = Bogus
+		t.Result.Error = fmt.Errorf("ht: request is malformed: %s", err)
+		return
+	}
+
+	if err := action.Execute(t); err != nil {
 		t.Result.Status = Error
 		t.Result.Error = err
+		return
+	}
+
+	t.Result.Status = Pass // at least up to now
+	if len(t.Checks) > 0 {
+		if t.Execution.InterSleep > 0 {
+			t.debugf("InterSleep %s", t.Execution.InterSleep)
+			time.Sleep(t.Execution.InterSleep)
+		}
+		t.ExecuteChecks()
 	}
 }
 
@@ -1339,3 +1334,9 @@ func (t *Test) CurlCall() string {
 
 	return call
 }
+
+type httpAction string
+
+func (h httpAction) Schema() string        { return string(h) }
+func (h httpAction) Valid(t *Test) error   { return nil }
+func (h httpAction) Execute(t *Test) error { return t.executeRequest() }

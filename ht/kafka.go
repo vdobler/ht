@@ -7,11 +7,14 @@
 package ht
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/samuel/go-zookeeper/zk"
 )
 
 func init() {
@@ -24,10 +27,16 @@ func init() {
 // Kafka checks that a certain message was delivered to a Kafka topic.
 // This check starts consuming messages from all partitions from the given
 // topic the moment the check is Prepared. It will consume messaged until
-// a matching one is found check timeouts.
+// a matching one is found or the check times out.
 type Kafka struct {
-	// Zookeeper is the comma-separated list of Zookeeper hosts
+	// Zookeeper is the comma-separated list of Zookeeper hosts to
+	// query for brookers. If empty only the directly given Brookers
+	// are used.
 	Zookeeper string
+
+	// Brookers is a comma-separated list of Kafka brookers. If empty
+	// the brookers are read from the given Zookeeper.
+	Brookers string
 
 	// Topic to observe.
 	Topic string
@@ -45,12 +54,25 @@ type Kafka struct {
 
 // Prepare implements Check's Prepare method.
 func (k *Kafka) Prepare(t *Test) (err error) {
-	zookeepers := strings.Split(k.Zookeeper, ",")
-	for i, z := range zookeepers {
-		zookeepers[i] = strings.TrimSpace(z)
+	if k.Zookeeper == "" && k.Brookers == "" {
+		return errors.New("at least one of Zookeeper or Brookers must be specified")
 	}
 
-	k.consumer, err = sarama.NewConsumer(zookeepers, nil)
+	brookers := splitAndTrim(k.Brookers)
+	zookeepers := splitAndTrim(k.Zookeeper)
+	if len(zookeepers) > 0 {
+		zkbrookers, err := brookersFromZK(zookeepers)
+		if len(zkbrookers) > 0 {
+			brookers = append(zkbrookers, brookers...)
+		} else {
+			if len(brookers) == 0 {
+				return fmt.Errorf("could not read brooker from Zookeper: %v", err)
+			}
+			t.infof("problems reading Kafka brookers from Zookeeper: %v", err)
+		}
+	}
+
+	k.consumer, err = sarama.NewConsumer(brookers, nil)
 	if err != nil {
 		return err
 	}
@@ -62,7 +84,7 @@ func (k *Kafka) Prepare(t *Test) (err error) {
 
 	// Consume each partition in its own goroutine and combine all messages
 	// into one channel.
-	k.combined = make(chan *sarama.ConsumerMessage, 256)
+	k.combined = make(chan *sarama.ConsumerMessage, 1024)
 	k.done = make(chan bool)
 	for _, partition := range partitions {
 		pc, err := k.consumer.ConsumePartition(k.Topic, partition, sarama.OffsetNewest)
@@ -99,6 +121,50 @@ func (k *Kafka) Prepare(t *Test) (err error) {
 }
 
 var _ Preparable = &Kafka{}
+
+func splitAndTrim(list string) []string {
+	r := []string{}
+	for _, s := range strings.Split(list, ",") {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			r = append(r, s)
+		}
+	}
+	return r
+}
+
+func brookersFromZK(zookeepers []string) ([]string, error) {
+	conn, _, err := zk.Connect(zookeepers, time.Second)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	ids, _, err := conn.Children("/brokers/ids")
+	if err != nil {
+		return nil, err
+	}
+
+	hosts := []string{}
+	for _, bid := range ids {
+		data, _, err := conn.Get("/brokers/ids/" + bid)
+		if err != nil {
+			return nil, err
+		}
+
+		var x struct {
+			Host string `json:"host"`
+			Port int    `json:"port"`
+		}
+		err = json.Unmarshal([]byte(data), &x)
+		if err != nil {
+			return nil, err
+		}
+		hosts = append(hosts, fmt.Sprintf("%s:%d", x.Host, x.Port))
+	}
+
+	return hosts, nil
+}
 
 // Execute implements Check's Execute method.
 func (k *Kafka) Execute(t *Test) error {

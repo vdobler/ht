@@ -25,7 +25,19 @@ import (
 // ----------------------------------------------------------------------------
 // file:// pseudo-request
 
-// execute a file:// pseudorequest. This method returns a non-nil error if
+type fileAction struct{}
+
+func (f fileAction) Schema() string { return "file" }
+
+func (f fileAction) Valid(t *Test) error {
+	switch t.Request.Method {
+	case http.MethodGet, http.MethodPut, http.MethodDelete:
+		return nil
+	}
+	return fmt.Errorf("method %s not supported on file:// URL", t.Request.Method)
+}
+
+// Execute a file:// pseudorequest. This method returns a non-nil error if
 // the Request.Method is non of GET, PUT or DELETE. The file operations
 // themself do not return an error but a status codes 404 or 403.
 // This behaviour is in the line of how a HTTP request works and allows e.g.
@@ -33,7 +45,7 @@ import (
 //
 // Once remote file operations via ssh are implemented a failer to connect
 // to the remote host can be returned as an error. Again in accorancde
-func (t *Test) executeFile() error {
+func (f fileAction) Execute(t *Test) error {
 	t.infof("%s %q", t.Request.Request.Method, t.Request.Request.URL.String())
 
 	start := time.Now()
@@ -63,13 +75,13 @@ func (t *Test) executeFile() error {
 
 	switch t.Request.Method {
 	case http.MethodGet:
-		t.executeFileGET(u)
-	case "PUT":
-		t.executeFilePUT(u)
-	case "DELETE":
-		t.executeFileDELETE(u)
+		executeFileGET(t, u)
+	case http.MethodPut:
+		executeFilePUT(t, u)
+	case http.MethodDelete:
+		executeFileDELETE(t, u)
 	default:
-		return fmt.Errorf("method %s not supported on file:// URL", t.Request.Method)
+		panic("cannot happen")
 	}
 
 	return nil
@@ -100,7 +112,7 @@ func localFilename(p string) string {
 
 // file could be opened      --> 200
 // any problems opening file --> 404
-func (t *Test) executeFileGET(u *url.URL) {
+func executeFileGET(t *Test, u *url.URL) {
 	filename := localFilename(u.Path)
 	file, err := os.Open(filename)
 	if err != nil {
@@ -117,7 +129,7 @@ func (t *Test) executeFileGET(u *url.URL) {
 
 // properly created --> 200
 // any problems     --> 403
-func (t *Test) executeFilePUT(u *url.URL) {
+func executeFilePUT(t *Test, u *url.URL) {
 	filename := localFilename(u.Path)
 	err := ioutil.WriteFile(filename, []byte(t.Request.Body), 0666)
 	if err != nil {
@@ -135,7 +147,7 @@ func (t *Test) executeFilePUT(u *url.URL) {
 // properly deleted     --> 200
 // filename nonexisting --> 404
 // unable to delete     --> 403
-func (t *Test) executeFileDELETE(u *url.URL) {
+func executeFileDELETE(t *Test, u *url.URL) {
 	filename := localFilename(u.Path)
 	_, err := os.Stat(filename)
 	if err != nil {
@@ -162,21 +174,28 @@ func (t *Test) executeFileDELETE(u *url.URL) {
 // ----------------------------------------------------------------------------
 // bash:// pseudo-request
 
-// executeBash executes a bash script:
-func (t *Test) executeBash() error {
+type bashAction struct{}
+
+// Schema of a bash action.
+func (_ bashAction) Schema() string { return "bash" }
+
+// Valid implements Action.Valid.
+func (_ bashAction) Valid(t *Test) error {
+	u := t.Request.Request.URL
+	if u.Host != "" && (u.Host != "localhost" && u.Host != "127.0.0.1") { // TODO IPv6
+		return fmt.Errorf("bash:// on remote host not implemented")
+	}
+	return nil
+}
+
+// Execute a bash script:
+func (_ bashAction) Execute(t *Test) error {
 	t.infof("Bash script in %q", t.Request.Request.URL.String())
 
 	start := time.Now()
 	defer func() {
 		t.Response.Duration = time.Since(start)
 	}()
-
-	u := t.Request.Request.URL
-	if u.Host != "" {
-		if u.Host != "localhost" && u.Host != "127.0.0.1" { // TODO IPv6
-			return fmt.Errorf("bash:// on remote host not implemented")
-		}
-	}
 
 	workDir := t.Request.Request.URL.Path
 
@@ -274,16 +293,21 @@ var (
 	errMissingSQL      = bogusSQLQuery("ht: missing query (request body) in sql:// pseudo query")
 )
 
-// executeSQL executes a SQL query:
-func (t *Test) executeSQL() error {
-	t.infof("SQL query in %q", t.Request.Request.URL.String())
+type sqlAction struct{}
 
-	start := time.Now()
-	defer func() {
-		t.Response.Duration = time.Since(start)
-	}()
+// Schema implements Action.Schema.
 
+func (s sqlAction) Schema() string { return "sql" }
+
+// Valid implements Action.Valid.
+func (s sqlAction) Valid(t *Test) error {
 	// Is the pseudoquery formally okay? All needed information available?
+	if t.Request.Method != http.MethodGet && t.Request.Method != http.MethodPost {
+		return bogusSQLQuery(
+			fmt.Sprintf("ht: illegal method %s for sql:// pseudo query",
+				t.Request.Method))
+	}
+
 	u := t.Request.Request.URL
 	if u.Host == "" {
 		return errMissingDBDriver
@@ -296,6 +320,27 @@ func (t *Test) executeSQL() error {
 		return errMissingSQL
 	}
 
+	db, err := sql.Open(u.Host, dsn)
+	if err != nil {
+		return bogusSQLQuery(err.Error())
+	}
+	db.Close()
+
+	return nil
+}
+func (s sqlAction) Execute(t *Test) error { return executeSQL(t) }
+
+// executeSQL executes a SQL query:
+func executeSQL(t *Test) error {
+	t.infof("SQL query in %q", t.Request.Request.URL.String())
+
+	start := time.Now()
+	defer func() {
+		t.Response.Duration = time.Since(start)
+	}()
+
+	u := t.Request.Request.URL
+	dsn := t.Request.Header.Get("Data-Source-Name")
 	db, err := sql.Open(u.Host, dsn)
 	if err != nil {
 		return bogusSQLQuery(err.Error())
@@ -328,9 +373,7 @@ func (t *Test) executeSQL() error {
 			return err
 		}
 	default:
-		return bogusSQLQuery(
-			fmt.Sprintf("ht: illegal method %s for sql:// pseudo query",
-				t.Request.Method))
+		panic("cannot happen")
 	}
 	t.Response.Response.Header.Set("Content-Type", ct)
 

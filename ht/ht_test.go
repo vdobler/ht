@@ -739,5 +739,7 @@ func TestAsJSON(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error %q (%T)", err, err)
 	}
-	fmt.Println(string(ser))
+	if *verboseTest {
+		fmt.Println(string(ser))
+	}
 }
