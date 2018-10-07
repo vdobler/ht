@@ -375,6 +375,10 @@ DataExtraction: {
         Regexp: "[A-Z]+[0-9]*[g-p]",
         Submatch: 3
     }
+    Baz: {
+        Extractor: "HeaderExtractor",
+        Name: "X-Csrf-Token",
+    }
 }}`)
 	var raw interface{}
 	err := hjson.Unmarshal([]byte(j), &raw)
@@ -392,7 +396,7 @@ DataExtraction: {
 	}
 	em := ve.DataExtraction
 
-	if len(em) != 2 {
+	if len(em) != 3 {
 		t.Fatalf("Wrong len, got %d\n%#v", len(em), em)
 	}
 
@@ -426,6 +430,17 @@ DataExtraction: {
 		}
 	}
 
+	if baz, ok := em["Baz"]; !ok {
+		t.Errorf("missing Baz")
+	} else {
+		if headerex, ok := baz.(*HeaderExtractor); !ok {
+			t.Errorf("wrong type for baz. %#v", baz)
+		} else {
+			if headerex.Name != "X-Csrf-Token" {
+				t.Errorf("Regexp = %q", headerex.Name)
+			}
+		}
+	}
 }
 
 func TestSetTimestamp(t *testing.T) {
@@ -452,4 +467,52 @@ func TestSetTimestamp(t *testing.T) {
 		})
 	}
 
+}
+
+func TestHeaderExtractor(t *testing.T) {
+
+	const wantHeaderString = "9b8220154ac56d518ffbef8fdb3b57bb"
+	resp := &http.Response{
+		Header: http.Header{
+			"X-CSRF-Token": []string{
+				wantHeaderString,
+				"83a50c517db35fd2620c09770c4ec98c",
+			},
+		},
+	}
+
+	t.Run("found", func(t *testing.T) {
+		test := &Test{
+			Response: Response{Response: resp},
+		}
+		e := HeaderExtractor{
+			Name: "X-CSRF-Token",
+		}
+		haveHeader, haveErr := e.Extract(test)
+		if haveErr != nil {
+			t.Fatal(haveErr)
+		}
+		if haveHeader != wantHeaderString {
+			t.Errorf("Have %q Want %q", haveHeader, wantHeaderString)
+		}
+	})
+	t.Run("not found", func(t *testing.T) {
+		test := &Test{
+			Response: Response{Response: resp},
+		}
+		e := HeaderExtractor{
+			Name: "x-csrf-token",
+		}
+		haveHeader, haveErr := e.Extract(test)
+		if haveErr == nil {
+			t.Fatal("Expected an error")
+		}
+		if h, w := haveErr.Error(), "header x-csrf-token not received"; h != w {
+			t.Errorf("Have %q Want %q", h, w)
+		}
+		if haveHeader != "" {
+			t.Errorf("haveHeader should not contain any value, got %q", haveHeader)
+		}
+
+	})
 }

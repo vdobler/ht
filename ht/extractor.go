@@ -66,6 +66,7 @@ func init() {
 	RegisterExtractor(BodyExtractor{})
 	RegisterExtractor(JSONExtractor{})
 	RegisterExtractor(CookieExtractor{})
+	RegisterExtractor(HeaderExtractor{})
 	RegisterExtractor(JSExtractor{})
 	RegisterExtractor(SetVariable{})
 	RegisterExtractor(SetTimestamp{})
@@ -372,6 +373,24 @@ func (e CookieExtractor) Extract(t *Test) (string, error) {
 	}
 
 	return cookies[0].Value, nil
+}
+
+// ----------------------------------------------------------------------------
+// HeaderExtractor
+
+// HeaderExtractor extracts the value of a header. The value of the first
+// header with the given name is extracted.
+type HeaderExtractor struct {
+	Name string // Name is the name of the header.
+}
+
+// Extract implements Extractor's Extract method.
+func (e HeaderExtractor) Extract(t *Test) (string, error) {
+	h, ok := t.Response.Response.Header[e.Name]
+	if !ok || len(h) == 0 {
+		return "", fmt.Errorf("header %s not received", e.Name)
+	}
+	return h[0], nil
 }
 
 // ----------------------------------------------------------------------------
